@@ -1,6 +1,6 @@
 {
     "name": "@next-open-ai/openclawx-desktop",
-    "version": "0.6.6",
+    "version": "0.6.8",
     "description": "OpenClawX Desktop - Professional agent management application",
     "main": "main.js",
     "scripts": {
@@ -17,6 +17,9 @@
     "keywords": [
         "electron",
         "openbot",
+        "openclawx",
+        "clawdbot",
+        "openclaw",
         "agent",
         "desktop",
         "ai"
@@ -32,7 +35,7 @@
     },
     "build": {
         "appId": "com.openbot.openbot",
-        "productName": "OpenBot",
+        "productName": "OpenClawX",
         "icon": "build/icon.png",
         "publish": null,
         "directories": {
