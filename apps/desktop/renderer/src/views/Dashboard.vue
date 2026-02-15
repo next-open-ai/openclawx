@@ -45,7 +45,7 @@
                 <span class="action-desc">{{ t('dashboard.browseSkillsDesc') }}</span>
               </div>
             </router-link>
-            <router-link to="/settings/agent" class="action-card btn-glass">
+            <router-link to="/agents" class="action-card btn-glass">
               <span class="action-icon">⚙️</span>
               <div class="action-details">
                 <span class="action-name">{{ t('settings.agentConfig') }}</span>
@@ -168,13 +168,9 @@ export default {
       return Number(n).toLocaleString();
     };
 
-    const createNewSession = async () => {
-      try {
-        const session = await agentStore.createSession();
-        router.push(`/chat/${session.id}`);
-      } catch (error) {
-        console.error('Failed to create session:', error);
-      }
+    // 与对话页「新建对话」一致：只跳转到空白对话页，不预先创建 session；用户发首条消息时由 sendMessage 懒创建
+    const createNewSession = () => {
+      router.push('/chat');
     };
 
     const openSession = (sessionId) => {

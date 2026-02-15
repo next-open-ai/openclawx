@@ -116,14 +116,18 @@ async function createWindow() {
         frame: true,
     });
 
-    // macOS 在窗口显示/获得焦点时可能恢复默认菜单，需再次设为空菜单
-    const clearAppMenu = () => Menu.setApplicationMenu(emptyMenu);
-    mainWindow.once('ready-to-show', clearAppMenu);
-    mainWindow.on('show', clearAppMenu);
-    mainWindow.on('focus', clearAppMenu);
+    // 未打包（如 npm run desktop:dev）：显示系统默认菜单，便于测试；打包后使用空菜单
+    const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production';
+    const showSystemMenu = !app.isPackaged;
+    const setAppMenu = () => Menu.setApplicationMenu(showSystemMenu ? null : emptyMenu);
+    if (showSystemMenu) {
+        Menu.setApplicationMenu(null);
+    }
+    mainWindow.once('ready-to-show', setAppMenu);
+    mainWindow.on('show', setAppMenu);
+    mainWindow.on('focus', setAppMenu);
 
     // 打包安装后 NODE_ENV 可能未设置，以 app.isPackaged 为准，否则会误走 5173 导致白屏
-    const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production';
     let startUrl;
     if (isDev) {
         startUrl = 'http://localhost:5173';
@@ -188,7 +192,10 @@ function registerIpcHandlers() {
 const emptyMenu = Menu.buildFromTemplate([]);
 
 app.whenReady().then(async () => {
-    Menu.setApplicationMenu(emptyMenu);
+    // 仅打包后使用空菜单；未打包时保留系统默认菜单（在 createWindow 中会再确认一次）
+    if (app.isPackaged) {
+        Menu.setApplicationMenu(emptyMenu);
+    }
     registerIpcHandlers();
 
     try {

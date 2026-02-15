@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
-import { getProviderSupport, syncDesktopConfigToModelsJson } from '../../core/config/desktop-config.js';
+import { homedir } from 'os';
+import { getProviderSupport, syncDesktopConfigToModelsJson, type ChannelsConfig } from '../../core/config/desktop-config.js';
 import { AgentConfigService } from '../agent-config/agent-config.service.js';
 
 /** 模型 cost 配置，写入 models.json；缺省均为 0 */
@@ -60,6 +61,8 @@ export interface AppConfig {
     configuredModels?: ConfiguredModelItem[];
     /** RAG 知识库：embedding 使用该 provider+model，未配置时基于 RAG 的长记忆空转 */
     rag?: { embeddingProvider?: string; embeddingModel?: string };
+    /** 通道配置：飞书、Telegram 等 token/key */
+    channels?: ChannelsConfig;
 }
 
 @Injectable()
@@ -68,7 +71,7 @@ export class ConfigService {
     private config: AppConfig;
 
     constructor(private readonly agentConfigService: AgentConfigService) {
-        const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+        const homeDir = process.env.HOME || process.env.USERPROFILE || homedir();
         const configDir = join(homeDir, '.openbot', 'desktop');
         this.configPath = join(configDir, 'config.json');
 
@@ -92,6 +95,7 @@ export class ConfigService {
             providers: {},
             configuredModels: [],
             rag: undefined,
+            channels: {},
         };
     }
 

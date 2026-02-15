@@ -62,6 +62,14 @@
         </div>
         <div 
           class="nav-item" 
+          :class="{ active: activeTab === 'channels' }"
+          @click="activeTab = 'channels'; initChannelsTab()"
+        >
+          <span class="nav-icon">📡</span>
+          {{ t('settings.channels') }}
+        </div>
+        <div 
+          class="nav-item" 
           :class="{ active: activeTab === 'about' }"
           @click="activeTab = 'about'"
         >
@@ -511,6 +519,56 @@
           <SettingsTags />
         </div>
 
+        <!-- 通道配置 Tab -->
+        <div v-show="activeTab === 'channels'" class="tab-content">
+          <h2 class="tab-title">{{ t('settings.channels') }}</h2>
+          <p class="form-hint settings-channels-desc">{{ t('settings.channelsDesc') }}</p>
+          <div class="settings-group">
+            <h3>{{ t('settings.feishu') }}</h3>
+            <div class="form-group channel-feishu-enabled">
+              <label class="checkbox-label">
+                <input v-model="localChannels.feishu.enabled" type="checkbox" />
+                {{ t('settings.channelFeishuEnabled') }}
+              </label>
+            </div>
+            <div class="form-group">
+              <label>{{ t('settings.channelFeishuAppId') }}</label>
+              <input
+                v-model="localChannels.feishu.appId"
+                type="text"
+                class="input"
+                :placeholder="t('settings.channelFeishuAppIdPlaceholder')"
+                autocomplete="off"
+              />
+            </div>
+            <div class="form-group">
+              <label>{{ t('settings.channelFeishuAppSecret') }}</label>
+              <input
+                v-model="localChannels.feishu.appSecret"
+                type="password"
+                class="input"
+                :placeholder="t('settings.channelFeishuAppSecretPlaceholder')"
+                autocomplete="off"
+              />
+            </div>
+            <div class="form-group">
+              <label>{{ t('settings.channelDefaultAgentId') }}</label>
+              <input
+                v-model="localChannels.feishu.defaultAgentId"
+                type="text"
+                class="input"
+                :placeholder="t('settings.channelDefaultAgentIdPlaceholder')"
+              />
+            </div>
+            <p class="form-hint">{{ t('settings.channelFeishuHint') }}</p>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn-primary" @click="saveChannelsConfig">
+              {{ t('common.save') }}
+            </button>
+          </div>
+        </div>
+
         <!-- About Tab -->
         <div v-show="activeTab === 'about'" class="tab-content">
           <h2 class="tab-title">{{ t('settings.about') }}</h2>
@@ -674,7 +732,7 @@ import { usersAPI } from '@/api';
 import SettingsSkills from '@/components/SettingsSkills.vue';
 import SettingsTags from '@/components/SettingsTags.vue';
 
-const SETTINGS_TABS = ['general', 'agent', 'models', 'knowledge', 'users', 'skills', 'tags', 'about'];
+const SETTINGS_TABS = ['general', 'agent', 'models', 'knowledge', 'users', 'skills', 'tags', 'channels', 'about'];
     /** 是否显示 RAG/知识库 Tab（设为 false 可隐藏，相关代码与逻辑保留） */
     const showRagTab = false;
 
@@ -755,6 +813,9 @@ export default {
     const showChangeCurrentPasswordModal = ref(false);
     const currentUserPasswordForm = ref({ password: '', confirm: '' });
     const localRag = ref({ embeddingProvider: '', embeddingModel: '' });
+    const localChannels = ref({
+      feishu: { enabled: false, appId: '', appSecret: '', defaultAgentId: 'default' },
+    });
 
     const config = computed(() => settingsStore.config || {});
     const providers = computed(() => settingsStore.providers || []);
@@ -880,6 +941,33 @@ export default {
       const m = (localRag.value.embeddingModel || '').trim();
       await settingsStore.updateConfig({
         rag: p && m ? { embeddingProvider: p, embeddingModel: m } : undefined,
+      });
+      alert(t('common.saved'));
+    }
+
+    function initChannelsTab() {
+      const ch = config.value?.channels;
+      const feishu = ch?.feishu;
+      localChannels.value = {
+        feishu: {
+          enabled: !!feishu?.enabled,
+          appId: typeof feishu?.appId === 'string' ? feishu.appId : '',
+          appSecret: typeof feishu?.appSecret === 'string' ? feishu.appSecret : '',
+          defaultAgentId: typeof feishu?.defaultAgentId === 'string' ? feishu.defaultAgentId : 'default',
+        },
+      };
+    }
+
+    async function saveChannelsConfig() {
+      await settingsStore.updateConfig({
+        channels: {
+          feishu: {
+            enabled: !!localChannels.value.feishu.enabled,
+            appId: (localChannels.value.feishu.appId || '').trim(),
+            appSecret: (localChannels.value.feishu.appSecret || '').trim(),
+            defaultAgentId: (localChannels.value.feishu.defaultAgentId || 'default').trim(),
+          },
+        },
       });
       alert(t('common.saved'));
     }
@@ -1386,6 +1474,7 @@ export default {
         loadAgentConfig();
         initModelConfigTab();
         if (activeTab.value === 'knowledge') initKnowledgeTab();
+        if (activeTab.value === 'channels') initChannelsTab();
       } catch (err) {
         console.error('[Settings] onMounted error', err);
       }
@@ -1477,6 +1566,9 @@ export default {
       submitChangePassword,
       submitChangeCurrentUserPassword,
       submitDeleteUser,
+      localChannels,
+      initChannelsTab,
+      saveChannelsConfig,
     };
   },
 };

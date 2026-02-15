@@ -45,6 +45,11 @@ export interface RagEmbeddingConfig {
     baseUrl?: string;
 }
 
+/** 通道配置：各 IM 通道的 token、key 等，与设置页「通道配置」一致 */
+export interface ChannelsConfig {
+    feishu?: { enabled?: boolean; appId?: string; appSecret?: string; defaultAgentId?: string };
+}
+
 /** 与 Nest ConfigService 使用的 config.json 结构一致 */
 interface DesktopConfigJson {
     defaultProvider?: string;
@@ -57,6 +62,8 @@ interface DesktopConfigJson {
     configuredModels?: DesktopConfiguredModel[];
     /** RAG 知识库：embedding 使用该 provider+model，未配置时长记忆空转 */
     rag?: { embeddingProvider?: string; embeddingModel?: string };
+    /** 通道配置：飞书、Telegram 等 */
+    channels?: ChannelsConfig;
 }
 
 /** MCP 服务器配置（与 core/mcp 类型一致，避免 core/config 依赖 core/mcp 实现） */
@@ -110,6 +117,19 @@ export function getDesktopConfig(): { maxAgentSessions: number } {
         return { maxAgentSessions };
     } catch {
         return { maxAgentSessions: DEFAULT_MAX_AGENT_SESSIONS };
+    }
+}
+
+/** 同步读取通道配置（Gateway 启动时用） */
+export function getChannelsConfigSync(): ChannelsConfig {
+    try {
+        const configPath = getConfigPath();
+        if (!existsSync(configPath)) return {};
+        const content = readFileSync(configPath, "utf-8");
+        const data = JSON.parse(content) as DesktopConfigJson;
+        return data.channels ?? {};
+    } catch {
+        return {};
     }
 }
 
