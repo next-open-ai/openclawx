@@ -1,4 +1,4 @@
-# OpenBot
+# OpenClawX
 基于自已的OpenBot重构而来
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
@@ -215,14 +215,14 @@ npm -v    # 能正常输出版本号
 
 ```bash
 # 全局安装（测试过 node 版本：20/22；24 太新，部分库需本地编译环境）
-npm install -g @next-open-ai/openbot
+npm install -g @next-open-ai/openclawx
 ```
 
 安装后可直接使用 `openbot` 命令（见下方「使用方式」）。若需从源码构建再安装：
 
 ```bash
 git clone <repo>
-cd openbot
+cd openclawx
 npm install
 npm run build
 npm link   # 或 npm install -g . 本地全局安装
@@ -240,8 +240,8 @@ npm link   # 或 npm install -g . 本地全局安装
 
 ```bash
 # 示例（以实际仓库/镜像名为准）
-# docker pull next-open-ai/openbot
-# docker run -p 38080:38080 -e OPENAI_API_KEY=xxx next-open-ai/openbot gateway
+# docker pull next-open-ai/openclawx
+# docker run -p 38080:38080 -e OPENAI_API_KEY=xxx next-open-ai/openclawx gateway
 ```
 
 ---
@@ -250,7 +250,7 @@ npm link   # 或 npm install -g . 本地全局安装
 
 适用于：仅使用 **桌面端**，无需 Node 环境。
 
-- 从 [Releases](https://github.com/next-open-ai/openbot/releases) 下载对应平台的安装包（macOS / Windows）。
+- 从 [Releases](https://github.com/next-open-ai/openclawx/releases) 下载对应平台的安装包（macOS / Windows）。
 - 安装后启动 OpenBot，按界面引导配置 API Key 与默认模型即可使用。
 
 **macOS 若提示「已损坏、无法打开」**：因安装包未做 Apple 公证，从浏览器下载后会被系统加上「隔离」属性，出现“已损坏”的误报。请用**终端**去掉隔离属性后即可正常打开（一次性操作）：
@@ -258,10 +258,10 @@ npm link   # 或 npm install -g . 本地全局安装
 1. 将下载的 `.dmg` 打开，把 `OpenBot.app` 拖到「应用程序」文件夹（或你想放的目录）。
 2. 打开「终端」（应用程序 → 实用工具 → 终端），执行（路径按你实际放置位置修改）：
    ```bash
-   xattr -c /Applications/OpenBot.app
-   find /Applications/OpenBot.app -exec xattr -c {} \; 2>/dev/null
+   xattr -c /Applications/OpenClawX.app
+   find /Applications/OpenClawX.app -exec xattr -c {} \; 2>/dev/null
    ```
-   若系统支持递归可简化为：`xattr -cr /Applications/OpenBot.app`
+   若系统支持递归可简化为：`xattr -cr /Applications/OpenClawX.app`
 3. 之后像普通应用一样打开 OpenBot 即可，无需再右键或重复操作。
 
 安装包由仓库通过 **Desktop 打包** 流程生成（见下方「三、开发 → 3.3 Desktop 开发 → Desktop 打包」）。
@@ -335,7 +335,7 @@ openbot "总结一下当前有哪些技能"
 
 ```bash
 # 启动网关（默认端口 38080）
-openbot gateway --port 38080
+openclawx gateway --port 38080
 ```
 
 若需网关开机/登录自启，可执行 `openbot service install`（支持 Linux / macOS / Windows）；移除自启用 `openbot service uninstall`，停止当前网关用 `openbot service stop`。
@@ -388,7 +388,7 @@ openbot gateway --port 38080
 
 ```bash
 git clone <repo>
-cd openbot
+cd openclawx
 npm install
 npm run build
 ```
