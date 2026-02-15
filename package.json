@@ -1,10 +1,10 @@
 {
-    "name": "@next-open-ai/openbot",
+    "name": "@next-open-ai/openclawx",
     "publishConfig": {
         "access": "public"
     },
-    "version": "0.3.16",
-    "description": "CLI and library to run prompts with skill paths (Agent Skills style). Use as npm package or openbot CLI.",
+    "version": "0.6.6",
+    "description": "CLI and library to run prompts with skill paths (Agent Skills style). Use as npm package or openclawx CLI.",
     "type": "module",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

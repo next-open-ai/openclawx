@@ -1,7 +1,7 @@
 {
-    "name": "@openbot/openbot-desktop",
-    "version": "0.3.16",
-    "description": "OpenBot Desktop - Professional agent management application",
+    "name": "@next-open-ai/openclawx-desktop",
+    "version": "0.6.6",
+    "description": "OpenClawX Desktop - Professional agent management application",
     "main": "main.js",
     "scripts": {
         "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
