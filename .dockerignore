@@ -1,0 +1,27 @@
+# 依赖与构建产物（在镜像内重新安装/构建）
+node_modules
+desktop/renderer/node_modules
+desktop/node_modules
+dist
+desktop/renderer/dist
+
+# 版本控制与本地
+.git
+.gitignore
+.dockerignore
+.DS_Store
+*.log
+*.tgz
+
+# 测试与示例（运行时不依赖）
+test
+examples
+scripts
+
+# 文档与无关文件（可选，减小上下文）
+*.md
+!desktop/renderer/**/*.md
+
+# Electron 打包产物（Docker 不跑桌面）
+desktop/main.js
+desktop/preload.js

@@ -1,0 +1,73 @@
+{
+    "name": "@openbot/openbot-desktop",
+    "version": "0.3.16",
+    "description": "OpenBot Desktop - Professional agent management application",
+    "main": "main.js",
+    "scripts": {
+        "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
+        "dev:renderer": "cd renderer && npm run dev",
+        "dev:electron": "sleep 5 && electron .",
+        "build:renderer": "cd renderer && npm run build",
+        "build:gateway": "cd ../.. && npm run build",
+        "build:copy-gateway": "node scripts/copy-gateway.js",
+        "build:icon": "node scripts/build-icon.js",
+        "build": "npm run build:gateway && npm run build:copy-gateway && npm run build:renderer && npm run build:icon && electron-builder",
+        "postinstall": "cd renderer && npm install"
+    },
+    "keywords": [
+        "electron",
+        "openbot",
+        "agent",
+        "desktop",
+        "ai"
+    ],
+    "author": "",
+    "license": "MIT",
+    "devDependencies": {
+        "concurrently": "^8.2.2",
+        "electron": "^28.1.0",
+        "electron-builder": "^24.9.1",
+        "sharp": "^0.33.5",
+        "wait-on": "^7.2.0"
+    },
+    "build": {
+        "appId": "com.openbot.openbot",
+        "productName": "OpenBot",
+        "icon": "build/icon.png",
+        "publish": null,
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "main.js",
+            "preload.js",
+            "renderer/dist/**/*",
+            "assets/**/*"
+        ],
+        "extraResources": [
+            {
+                "from": "gateway-dist",
+                "to": "dist",
+                "filter": [
+                    "**/*"
+                ]
+            },
+            {
+                "from": "../../skills",
+                "to": "skills",
+                "filter": [
+                    "**/*"
+                ]
+            }
+        ],
+        "mac": {
+            "category": "public.app-category.productivity"
+        },
+        "win": {
+            "target": "nsis"
+        },
+        "linux": {
+            "target": "AppImage"
+        }
+    }
+}

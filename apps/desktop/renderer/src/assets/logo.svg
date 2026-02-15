@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="g" x1="0" y1=".2" x2="1" y2=".8" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="0.5" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <!-- Open O???????? Open????? -->
+  <path stroke="url(#g)" stroke-width="2.2" stroke-linecap="round" fill="none" d="M24.4 7.8 A13 13 0 1 1 15.6 7.8"/>
+  <!-- ?????????/???????? -->
+  <path stroke="url(#g)" stroke-width="1.4" stroke-linecap="round" d="M20 7.8V5"/>
+  <circle cx="20" cy="4.2" r="1.4" fill="url(#g)"/>
+  <!-- ?? -->
+  <circle cx="14" cy="18" r="2.2" fill="url(#g)"/>
+  <circle cx="14.5" cy="17.4" r="0.5" fill="#fff" opacity="0.9"/>
+  <!-- ?? -->
+  <circle cx="26" cy="18" r="2.2" fill="url(#g)"/>
+  <circle cx="26.5" cy="17.4" r="0.5" fill="#fff" opacity="0.9"/>
+  <!-- ?? -->
+  <path stroke="url(#g)" stroke-width="1.2" stroke-linecap="round" fill="none" d="M15 24q5 1.8 10 0"/>
+</svg>

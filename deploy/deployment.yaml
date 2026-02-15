@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.app_name}}
+  namespace: default
+  labels:
+    app: app-{{.app_name}}
+    name: {{.app_name}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-{{.app_name}}
+      name: {{.app_name}}
+  template:
+    metadata:
+      labels:
+        app: app-{{.app_name}}
+        name: {{.app_name}}
+    spec:
+      containers:
+        - name: container-{{.app_name}}
+          image: {{.image_name}}:{{.build_tag}}
+          ports:
+            - containerPort: 38080
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Always
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-{{.app_name}}
+spec:
+  ports:
+    - port: 80
+      targetPort: 38080
+      protocol: TCP
+      name: http
+  selector:
+    app: app-{{.app_name}}
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-{{.app_name}}
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/custom-response-headers: "Access-Control-Allow-Origin:*||Access-Control-Allow-Methods:GET,POST,OPTIONS||Access-Control-Allow-Headers:DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,token||Access-Control-Expose-Headers:Content-Length,Content-Range,token"
+spec:
+  tls:
+  - secretName: {{.soa_gateway_cert}}
+    hosts:
+    - {{.soa_gateway}}
+  rules:
+    - host: {{.soa_gateway}}
+      http:
+        paths:
+          - path: {{.path_name}}
+            pathType: Prefix
+            backend:
+              service:
+                name: service-{{.app_name}}
+                port:
+                  number: 80
+

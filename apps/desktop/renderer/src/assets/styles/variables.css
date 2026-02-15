@@ -1,0 +1,172 @@
+/* CSS Variables - Design System */
+:root {
+    /* Colors - Dark Theme */
+    --color-bg-primary: #0f0f1e;
+    --color-bg-secondary: #1a1a2e;
+    --color-bg-tertiary: #252541;
+    --color-bg-elevated: #2d2d4a;
+
+    /* Glassmorphism */
+    --glass-bg: rgba(42, 42, 68, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --gradient-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --gradient-accent: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+
+    /* Text Colors */
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #b8b8d1;
+    --color-text-tertiary: #8888a8;
+    --color-text-muted: #666688;
+
+    /* Accent Colors */
+    --color-accent-primary: #667eea;
+    --color-accent-secondary: #764ba2;
+    --color-success: #00f2fe;
+    --color-warning: #fee140;
+    --color-error: #f5576c;
+    --color-info: #4facfe;
+
+    /* Status Colors */
+    --color-status-idle: #4facfe;
+    --color-status-active: #00f2fe;
+    --color-status-error: #f5576c;
+    --color-status-thinking: #fee140;
+
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+
+    /* Border Radius */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.5rem;
+
+    /* Typography */
+    --font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-family-mono: 'Roboto Mono', 'Courier New', monospace;
+
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+    --font-size-4xl: 2.25rem;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    --shadow-glow: 0 0 20px rgba(102, 126, 234, 0.3);
+
+    /* Transitions */
+    --transition-fast: 150ms ease;
+    --transition-base: 250ms ease;
+    --transition-slow: 350ms ease;
+
+    /* Z-index */
+    --z-dropdown: 1000;
+    --z-sticky: 1020;
+    --z-fixed: 1030;
+    --z-modal-backdrop: 1040;
+    --z-modal: 1050;
+    --z-popover: 1060;
+    --z-tooltip: 1070;
+}
+
+/* Light Theme - 温馨浅色，与专业主题明显区分 */
+[data-theme="light"] {
+    --color-bg-primary: #fefcf9;
+    --color-bg-secondary: #faf6f1;
+    --color-bg-tertiary: #f5efe6;
+    --color-bg-elevated: #fffefc;
+
+    --glass-bg: rgba(254, 252, 249, 0.9);
+    --glass-border: rgba(180, 168, 152, 0.22);
+    --glass-shadow: 0 2px 8px rgba(140, 120, 100, 0.06), 0 1px 2px rgba(140, 120, 100, 0.04);
+
+    --color-text-primary: #2c2926;
+    --color-text-secondary: #5a554e;
+    --color-text-tertiary: #7d7870;
+    --color-text-muted: #9c968e;
+
+    --color-accent-primary: #b87a5c;
+    --color-accent-secondary: #a06b50;
+    --shadow-md: 0 2px 8px rgba(140, 120, 100, 0.06), 0 1px 2px rgba(140, 120, 100, 0.04);
+}
+
+/* Cosmic Theme (Pro/Minimal based on screenshot) */
+[data-theme="cosmic"] {
+    --color-bg-primary: #fdfdfd;
+    --color-bg-secondary: #ffffff;
+    --color-bg-tertiary: #fcfcfc;
+    --color-bg-elevated: #ffffff;
+
+    --glass-bg: rgba(255, 255, 255, 0.95);
+    --glass-border: rgba(0, 0, 0, 0.06);
+    --glass-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+
+    --color-text-primary: #171717;
+    --color-text-secondary: #525252;
+    --color-text-tertiary: #737373;
+    --color-text-muted: #a3a3a3;
+
+    --color-accent-primary: #2563eb;
+    --color-accent-secondary: #4f46e5;
+
+    --radius-lg: 0.5rem;
+    /* More squared, professional look */
+    --radius-md: 0.375rem;
+    --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* Neon / 炫彩主题 - Synthwave 霓虹风格 */
+[data-theme="neon"] {
+    --color-bg-primary: #0d0221;
+    --color-bg-secondary: #1a0b2e;
+    --color-bg-tertiary: #2d1b4e;
+    --color-bg-elevated: #3d2a5c;
+
+    --glass-bg: rgba(45, 27, 78, 0.85);
+    --glass-border: rgba(0, 255, 245, 0.15);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 255, 245, 0.05);
+
+    --color-text-primary: #e8f4ff;
+    --color-text-secondary: #b8c9ff;
+    --color-text-tertiary: #8892c4;
+    --color-text-muted: #6b6394;
+
+    --color-accent-primary: #05d9e8;
+    --color-accent-secondary: #ff2a6d;
+
+    --color-success: #00fff5;
+    --color-warning: #ffd700;
+    --color-error: #ff2a6d;
+    --color-info: #05d9e8;
+
+    --color-status-idle: #05d9e8;
+    --color-status-active: #00fff5;
+    --color-status-error: #ff2a6d;
+    --color-status-thinking: #ffd700;
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 8px rgba(5, 217, 232, 0.08);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35), 0 0 16px rgba(5, 217, 232, 0.06);
+    --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.4), 0 0 24px rgba(255, 42, 109, 0.08);
+    --shadow-glow: 0 0 24px rgba(5, 217, 232, 0.25), 0 0 48px rgba(255, 42, 109, 0.1);
+
+    --gradient-primary: linear-gradient(135deg, #05d9e8 0%, #ff2a6d 100%);
+    --gradient-accent: linear-gradient(135deg, #00fff5 0%, #ff2a6d 100%);
+}

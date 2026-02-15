@@ -1,0 +1,7 @@
+node_modules
+dist
+gateway-dist
+apps/desktop/gateway-dist
+*.log
+.DS_Store
+apps/desktop/gateway-dist

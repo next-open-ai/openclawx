@@ -1,0 +1,90 @@
+{
+    "name": "@next-open-ai/openbot",
+    "publishConfig": {
+        "access": "public"
+    },
+    "version": "0.3.16",
+    "description": "CLI and library to run prompts with skill paths (Agent Skills style). Use as npm package or openbot CLI.",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "default": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "skills",
+        "README.md",
+        "apps/desktop/renderer/dist"
+    ],
+    "bin": {
+        "openbot": "./dist/cli/cli.js"
+    },
+    "dependencies": {
+        "@mariozechner/pi-ai": "^0.51.2",
+        "@mariozechner/pi-coding-agent": "^0.51.2",
+        "@nestjs/common": "^10.3.0",
+        "@nestjs/core": "^10.3.0",
+        "@nestjs/platform-express": "^10.3.0",
+        "@nestjs/platform-socket.io": "^10.3.0",
+        "@nestjs/websockets": "^10.3.0",
+        "@sinclair/typebox": "^0.34.41",
+        "adm-zip": "^0.5.16",
+        "agent-browser": "^0.8.5",
+        "commander": "^14.0.2",
+        "croner": "^9.1.0",
+        "multer": "^1.4.5-lts.1",
+        "reflect-metadata": "^0.2.1",
+        "rxjs": "^7.8.1",
+        "sql.js": "^1.13.0",
+        "vectra": "^0.12.3",
+        "ws": "^8.19.0"
+    },
+    "devDependencies": {
+        "@nestjs/testing": "^10.3.0",
+        "@types/adm-zip": "^0.5.7",
+        "@types/express": "^4.17.21",
+        "@types/jest": "^29.5.14",
+        "@types/multer": "^2.0.0",
+        "@types/node": "^22.0.0",
+        "@types/sql.js": "^1.4.9",
+        "@types/ws": "^8.18.1",
+        "jest": "^29.7.0",
+        "rimraf": "^5.0.5",
+        "ts-jest": "^29.2.5",
+        "typescript": "^5.7.0"
+    },
+    "scripts": {
+        "clean": "rimraf dist",
+        "build": "npm run clean && tsc",
+        "build:web": "cd apps/desktop && npm run build:renderer",
+        "build:all": "npm run build && npm run build:web",
+        "prepublishOnly": "npm run build && cd apps/desktop && npm run build:renderer",
+        "start": "node dist/cli/cli.js",
+        "run": "node dist/cli/cli.js",
+        "dev": "npm run build && node dist/cli/cli.js",
+        "desktop:dev": "cd apps/desktop && npm run dev",
+        "desktop:build": "cd apps/desktop && npm run build",
+        "desktop:pack": "npm run build && cd apps/desktop && npm run build",
+        "desktop:install": "cd apps/desktop && npm install",
+        "test": "jest --config test/jest.config.cjs",
+        "test:memory": "node test/run-memory.mjs",
+        "test:e2e": "OPENBOT_DB_PATH=:memory: jest --config test/jest.config.cjs --testPathPattern=e2e",
+        "test:gateway-e2e": "npm run build && node test/gateway/server.e2e.mjs"
+    },
+    "engines": {
+        "node": ">=20.0.0"
+    },
+    "keywords": [
+        "skill",
+        "agent",
+        "cli",
+        "llm",
+        "openbot"
+    ],
+    "license": "MIT"
+}

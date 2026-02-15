@@ -1,0 +1,60 @@
+kind: pipeline
+type: docker
+name: openbot-PROD
+environment:
+  APP_CODE: 100088
+  APP_NAME: openbot
+  IMAGE_ARCH: amd64
+
+steps:
+  # - name: 编译打包前端代码
+  #   image: node:22.11.0
+  #   volumes:
+  #     - name: npmcache
+  #       path: /root/.npm
+  #   commands:
+  #     - echo 'start to build and install package.....'
+  #     - npm config set registry https://registry.npmmirror.com/
+  #     - cd  ./
+  #     - rm -rf ./dist-prod
+  #     - npm install --legacy-peer-deps
+  #     - npm run build:prod
+
+  - name: 构建openbot镜像&PUSH镜像到 Resigry Hub
+    image: plugins/docker:20.14
+    settings:
+      dockerfile: ./deploy/Dockerfile
+      use_cache: true
+      repo: ccr.ccs.tencentyun.com/windwithlife/openbot
+      registry: https://ccr.ccs.tencentyun.com
+      username: 100008098144
+      password: password7&
+      # 更多变量参考https://docs.drone.io/pipeline/environment/reference/
+      tags:
+        - ${DRONE_TAG=latest}
+        - build-ci-openbot-${DRONE_BUILD_NUMBER}
+
+  - name: 部署到集群-dron8s方式x
+    image: bh90210/dron8s:0.2.0
+    settings:
+      yaml: ./deploy/deployment.yaml
+      kubeconfig:
+        from_secret: kubeconfig-zyq
+      app_name: openbot
+      path_name: /
+      image_name: ccr.ccs.tencentyun.com/windwithlife/openbot
+      soa_gateway: agent.zhangyongqiao.com
+      soa_gateway_cert: api-default-secret
+
+      build_tag: build-ci-openbot-${DRONE_BUILD_NUMBER}
+
+volumes:
+  - name: mvncache
+    host:
+      path: /var/lib/cache/.m2
+
+trigger:
+  branch:
+    - release
+  event:
+    - push

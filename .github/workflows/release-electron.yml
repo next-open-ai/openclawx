@@ -1,0 +1,122 @@
+name: Build and Release Electron App
+
+# 触发条件：当推送v开头的标签时触发，例如 v1.0.0
+on:
+  push:
+    tags:
+      - "v*"
+
+# 关键：设置工作流权限
+permissions:
+  contents: write  # 允许创建Release和上传文件
+  discussions: write  # 如果需要创建Discussion
+
+jobs:
+  # Windows 构建任务
+  release-win:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout代码
+        uses: actions/checkout@v4
+
+      - name: 设置Node.js环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 安装桌面端及 renderer 依赖
+        run: npm run desktop:install
+
+      - name: 构建Windows应用
+        run: npm run desktop:pack
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # electron-builder需要这个token来上传
+
+      - name: 上传Windows构建产物（作为工作流产物）
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: |
+            apps/desktop/dist/*.exe
+            apps/desktop/dist/*.msi
+            apps/desktop/dist/*.zip
+          if-no-files-found: warn
+
+  # macOS 构建任务
+  release-mac:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout代码
+        uses: actions/checkout@v4
+
+      - name: 设置Node.js环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 安装桌面端及 renderer 依赖
+        run: npm run desktop:install
+
+      - name: 构建macOS应用
+        run: npm run desktop:pack
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false  # 解决macOS签名问题，无开发者证书时使用
+
+      - name: 上传macOS构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: |
+            apps/desktop/dist/*.dmg
+            apps/desktop/dist/*.zip
+            apps/desktop/dist/*.pkg
+          if-no-files-found: warn
+
+ 
+
+  # 汇总并发布Release
+  create-release:
+    needs: [release-win, release-mac]  # 等待所有构建完成
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载所有构建产物
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 查看下载的文件结构
+        run: find artifacts  # 调试用，可以看到文件在哪
+
+      - name: 创建Release并上传文件
+        uses: softprops/action-gh-release@v2
+        with:
+          # 自动从git tag获取版本号
+          name: Release ${{ github.ref_name }}
+          
+          # 上传所有构建产物（支持通配符）
+          files: |
+            artifacts/windows-build/*.exe
+            artifacts/windows-build/*.msi
+            artifacts/windows-build/*.zip
+            artifacts/macos-build/*.dmg
+            artifacts/macos-build/*.zip
+            artifacts/linux-build/*.AppImage
+           
+          
+          # 自动生成更新日志（从PR和commit）
+          generate_release_notes: true
+          
+          # 如果tag包含beta/alpha字样，标记为预发布
+          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') }}
+        
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

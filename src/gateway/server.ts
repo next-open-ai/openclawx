@@ -1,0 +1,218 @@
+/**
+ * Gateway 单进程入口：内嵌 Nest，按 path 分流。
+ * - /server-api → Nest（业务 REST）
+ * - /ws → Agent 对话 WebSocket
+ * - /ws/voice → 语音通道（占位）
+ * - /sse → SSE（占位）
+ * - /channel → 通道模块（占位）
+ * - 其余 → 静态资源
+ */
+/* Avoid MaxListenersExceededWarning */
+const Et = (globalThis as any).EventTarget;
+if (Et?.prototype?.addEventListener && Et.prototype.setMaxListeners) {
+    const add = Et.prototype.addEventListener;
+    Et.prototype.addEventListener = function (this: any, type: string, listener: any, options?: any) {
+        if (type === "abort" && typeof this.setMaxListeners === "function") {
+            this.setMaxListeners(32);
+        }
+        return add.call(this, type, listener, options);
+    };
+}
+
+import express from "express";
+import { createServer, type Server, type IncomingMessage, type ServerResponse } from "http";
+import { WebSocketServer } from "ws";
+import { readFile, stat } from "fs/promises";
+import { join, extname, dirname } from "path";
+import { fileURLToPath } from "node:url";
+import { existsSync } from "fs";
+
+import { PATHS } from "./paths.js";
+import { authHookServerApi, authHookChannel, authHookSse, authHookWs } from "./auth-hooks.js";
+import { handleChannel } from "./channel-handler.js";
+import { handleSse } from "./sse-handler.js";
+import { handleVoiceUpgrade } from "./voice-handler.js";
+import { handleConnection } from "./connection-handler.js";
+import { handleRunScheduledTask } from "./methods/run-scheduled-task.js";
+import multer from "multer";
+import { handleInstallSkillFromPath } from "./methods/install-skill-from-path.js";
+import { handleInstallSkillFromUpload } from "./methods/install-skill-from-upload.js";
+import { setBackendBaseUrl } from "./backend-url.js";
+import { ensureDesktopConfigInitialized } from "../core/config/desktop-config.js";
+import { createNestAppEmbedded } from "../server/bootstrap.js";
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PACKAGE_ROOT = join(__dirname, "..", "..");
+/** 内嵌到 Electron 时由主进程设置 OPENBOT_STATIC_DIR，指向打包后的 renderer/dist */
+const STATIC_DIR =
+    process.env.OPENBOT_STATIC_DIR || join(PACKAGE_ROOT, "apps", "desktop", "renderer", "dist");
+
+const MIME_TYPES: Record<string, string> = {
+    ".html": "text/html",
+    ".js": "text/javascript",
+    ".css": "text/css",
+    ".json": "application/json",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
+    ".eot": "application/vnd.ms-fontobject",
+};
+
+export async function startGatewayServer(port: number = 38080): Promise<{
+    httpServer: Server;
+    wss: WebSocketServer;
+    port: number;
+    close: () => Promise<void>;
+}> {
+    await ensureDesktopConfigInitialized();
+    console.log(`Starting gateway server on port ${port}...`);
+
+    setBackendBaseUrl(`http://localhost:${port}`);
+
+    const { app: nestApp, express: nestExpress } = await createNestAppEmbedded();
+
+    const gatewayExpress = express();
+
+    gatewayExpress.get(PATHS.HEALTH, (_req, res) => {
+        res.status(200).json({ status: "ok", timestamp: Date.now() });
+    });
+
+    gatewayExpress.post(PATHS.RUN_SCHEDULED_TASK, async (req, res) => {
+        await handleRunScheduledTask(req, res);
+    });
+
+    const uploadZip = multer({
+        storage: multer.memoryStorage(),
+        limits: { fileSize: 10 * 1024 * 1024 },
+    });
+
+    gatewayExpress.post(`${PATHS.SERVER_API}/skills/install-from-path`, async (req, res) => {
+        const body = await new Promise<string>((resolve, reject) => {
+            const chunks: Buffer[] = [];
+            req.on("data", (chunk: Buffer) => chunks.push(chunk));
+            req.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
+            req.on("error", reject);
+        });
+        try {
+            const parsed = JSON.parse(body || "{}") as { path?: string; scope?: string; workspace?: string };
+            const result = await handleInstallSkillFromPath({
+                path: parsed.path ?? "",
+                scope: parsed.scope === "workspace" ? "workspace" : "global",
+                workspace: parsed.workspace,
+            });
+            res.status(200).json(result);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
+            const code = message.includes("required") || message.includes("不存在") || message.includes("SKILL.md") || message.includes("目录名") ? 400 : 500;
+            res.status(code).json({ success: false, message });
+        }
+    });
+
+    gatewayExpress.post(
+        `${PATHS.SERVER_API}/skills/install-from-upload`,
+        authHookServerApi,
+        uploadZip.single("file"),
+        async (req, res) => {
+            try {
+                const file = (req as any).file;
+                const buffer = file?.buffer;
+                if (!buffer || !Buffer.isBuffer(buffer)) {
+                    return res.status(400).json({ success: false, message: "请上传 zip 文件" });
+                }
+                const scope = (req as any).body?.scope === "workspace" ? "workspace" : "global";
+                const workspace = (req as any).body?.workspace ?? "default";
+                const result = await handleInstallSkillFromUpload({ buffer, scope, workspace });
+                res.status(200).json(result);
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
+                const code = message.includes("请上传") || message.includes("SKILL.md") || message.includes("目录") || message.includes("10MB") ? 400 : 500;
+                res.status(code).json({ success: false, message });
+            }
+        },
+    );
+
+    gatewayExpress.use(PATHS.SERVER_API, authHookServerApi, nestExpress);
+
+    gatewayExpress.use(PATHS.CHANNEL, authHookChannel, (req, res) => handleChannel(req, res));
+
+    gatewayExpress.use(PATHS.SSE, authHookSse, (req, res) => handleSse(req, res));
+
+    gatewayExpress.use(async (req, res) => {
+        const staticDir = STATIC_DIR;
+        const urlPath = req.url?.split("?")[0] || "/";
+        let filePath = join(staticDir, urlPath === "/" ? "index.html" : urlPath);
+        try {
+            const stats = await stat(filePath);
+            if (stats.isDirectory()) {
+                filePath = join(filePath, "index.html");
+                await stat(filePath);
+            }
+        } catch {
+            if (req.headers.accept?.includes("text/html") && req.method === "GET") {
+                filePath = join(staticDir, "index.html");
+            } else {
+                res.writeHead(404, { "Content-Type": "text/plain" });
+                res.end("Not Found");
+                return;
+            }
+        }
+        try {
+            const content = await readFile(filePath);
+            const ext = extname(filePath).toLowerCase();
+            const contentType = MIME_TYPES[ext] || "application/octet-stream";
+            res.writeHead(200, { "Content-Type": contentType });
+            res.end(content);
+        } catch (error) {
+            console.error("Static file error:", error);
+            res.writeHead(500, { "Content-Type": "text/plain" });
+            res.end("Internal Server Error");
+        }
+    });
+
+    const httpServer = createServer(gatewayExpress);
+
+    const wss = new WebSocketServer({ noServer: true });
+    wss.on("connection", (ws, req) => handleConnection(ws, req));
+
+    httpServer.on("upgrade", (req: IncomingMessage, socket, head) => {
+        const path = req.url?.split("?")[0] || "";
+        if (handleVoiceUpgrade(req, socket, head)) {
+            return;
+        }
+        const isAgentWs = path === PATHS.WS || path === "/";
+        if (isAgentWs && authHookWs(req, path)) {
+            wss.handleUpgrade(req, socket, head, (ws) => {
+                wss.emit("connection", ws, req);
+            });
+        } else {
+            socket.destroy();
+        }
+    });
+
+    const actualPort = await new Promise<number>((resolve) => {
+        httpServer.listen(port, () => {
+            const addr = httpServer.address();
+            const p = typeof addr === "object" && addr && "port" in addr ? addr.port : port;
+            console.log(`✅ Gateway server listening on ws://localhost:${p}`);
+            console.log(`   Health: http://localhost:${p}${PATHS.HEALTH}`);
+            console.log(`   API:    http://localhost:${p}${PATHS.SERVER_API}`);
+            console.log(`   WS:     ws://localhost:${p}${PATHS.WS}`);
+            resolve(p);
+        });
+    });
+
+    const close = async () => {
+        console.log("Closing gateway server...");
+        await nestApp.close();
+        wss.clients.forEach((c) => c.close());
+        await new Promise<void>((r) => wss.close(() => r()));
+        await new Promise<void>((r) => httpServer.close(() => r()));
+        console.log("Gateway server closed");
+    };
+
+    return { httpServer, wss, port: actualPort, close };
+}
