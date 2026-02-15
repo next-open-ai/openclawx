@@ -81,11 +81,44 @@ jobs:
             apps/desktop/dist/*.pkg
           if-no-files-found: warn
 
- 
+  # Linux 构建任务
+  release-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout代码
+        uses: actions/checkout@v4
+
+      - name: 设置Node.js环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 安装桌面端及 renderer 依赖
+        run: npm run desktop:install
+
+      - name: 构建Linux应用
+        run: npm run desktop:pack
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 上传Linux构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: |
+            apps/desktop/dist/*.AppImage
+            apps/desktop/dist/*.deb
+            apps/desktop/dist/*.rpm
+            apps/desktop/dist/*.zip
+          if-no-files-found: warn
 
   # 汇总并发布Release
   create-release:
-    needs: [release-win, release-mac]  # 等待所有构建完成
+    needs: [release-win, release-mac, release-linux]  # 等待所有构建完成
     runs-on: ubuntu-latest
     steps:
       - name: 下载所有构建产物
@@ -109,7 +142,11 @@ jobs:
             artifacts/windows-build/*.zip
             artifacts/macos-build/*.dmg
             artifacts/macos-build/*.zip
+            artifacts/macos-build/*.pkg
             artifacts/linux-build/*.AppImage
+            artifacts/linux-build/*.deb
+            artifacts/linux-build/*.rpm
+            artifacts/linux-build/*.zip
            
           
           # 自动生成更新日志（从PR和commit）
