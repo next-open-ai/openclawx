@@ -251,7 +251,7 @@ npm link   # 或 npm install -g . 本地全局安装
 适用于：仅使用 **桌面端**，无需 Node 环境。
 
 - 从 [Releases](https://github.com/next-open-ai/openclawx/releases) 下载对应平台的安装包（macOS / Windows）。
-- 安装后启动 OpenBot，按界面引导配置 API Key 与默认模型即可使用。
+- 安装后启动 OpenClawX，按界面引导配置 API Key 与默认模型即可使用。
 
 **macOS 若提示「已损坏、无法打开」**：因安装包未做 Apple 公证，从浏览器下载后会被系统加上「隔离」属性，出现“已损坏”的误报。请用**终端**去掉隔离属性后即可正常打开（一次性操作）：
 
@@ -262,7 +262,7 @@ npm link   # 或 npm install -g . 本地全局安装
    find /Applications/OpenClawX.app -exec xattr -c {} \; 2>/dev/null
    ```
    若系统支持递归可简化为：`xattr -cr /Applications/OpenClawX.app`
-3. 之后像普通应用一样打开 OpenBot 即可，无需再右键或重复操作。
+3. 之后像普通应用一样打开 OpenClawX 即可，无需再右键或重复操作。
 
 安装包由仓库通过 **Desktop 打包** 流程生成（见下方「三、开发 → 3.3 Desktop 开发 → Desktop 打包」）。
 
@@ -354,15 +354,52 @@ openclawx gateway --port 38080
 
 ---
 
-## 2.4 即将支持
+## 2.4 通道支持
+
+除 CLI、Web、Desktop 外，OpenClawX 支持通过**通道**将 Agent 对接到第三方 IM/协作平台。通道在 Gateway 启动时根据配置注册并运行：入站消息经统一格式进入 Agent，回复再经该通道发回平台。
+
+### 已支持通道：飞书
+
+**说明**：飞书通道通过飞书开放平台与机器人对接。入站使用飞书官方 **WebSocket 事件订阅**（`im.message.receive_v1`）接收用户消息；出站使用 **开放 API** 发送回复。支持**流式输出**：先发一条「思考中」的互动卡片，再随 Agent 生成内容逐次更新同一条卡片，直至整轮对话结束（`agent_end`）。
+
+- **会话与 Agent**：同一飞书会话（单聊或群聊对应一个 `chat_id`）对应一个 Agent Session（`channel:feishu:<chat_id>`），由通道配置中的 `defaultAgentId` 指定使用哪个智能体。
+- **能力**：单聊、群聊均可；支持文本消息与流式卡片展示；`turn_end` / `agent_end` 事件会向各端广播，便于前端或其它通道按需处理。
+
+### 飞书配置
+
+| 配置项 | 说明 |
+|--------|------|
+| **enabled** | 是否启用飞书通道（勾选后 Gateway 启动时会连接飞书 WebSocket 并注册事件）。 |
+| **appId** | 飞书应用 ID（开放平台 → 应用凭证）。 |
+| **appSecret** | 飞书应用密钥（同上）。 |
+| **defaultAgentId** | 该通道使用的默认智能体 id，与桌面「智能体」配置一致，缺省为 `default`。 |
+
+**配置方式（二选一）**：
+
+1. **桌面端**：打开 OpenClawX → **设置** → **通道** → 勾选「启用飞书」并填写 App ID、App Secret，可选填写默认智能体 ID → 保存。保存后需**重启 Gateway**（若通过桌面启动，重启桌面即可）。
+2. **配置文件**：编辑桌面配置目录下的配置文件（如 `~/.openbot/desktop/config.json`），在 `channels.feishu` 中设置 `enabled`、`appId`、`appSecret`、`defaultAgentId`，保存后重启 Gateway。
+
+飞书开放平台需创建自建应用、开通「机器人」与「接收消息」等能力，并将应用添加到目标群或启用「私聊」；事件订阅需使用 WebSocket 模式（本通道使用官方 Node SDK 的 WebSocket 客户端）。
+
+### 飞书用法
+
+1. 在飞书开放平台创建应用并配置好权限与事件订阅（WebSocket）。
+2. 在 OpenClawX 中按上文完成飞书通道配置并重启 Gateway。
+3. 在飞书中**私聊**机器人或**群聊中 @ 机器人**发送消息，即可收到 Agent 回复；回复以流式卡片形式更新，结束后卡片标题显示「回答完成」。
+
+未配置或未启用飞书时，Gateway 会跳过飞书通道启动；若已启用但 appId/appSecret 为空，控制台会提示到「设置 → 通道」检查。
+
+---
+
+## 2.5 即将支持
 
 **通道与终端**
 
 | 端 | 说明 |
 |----|------|
+| **飞书** | 已支持，见上文「2.4 通道支持」。 |
 | **iOS** | 规划中 |
 | **Android** | 规划中 |
-| **飞书** | 规划中 |
 
 上述端将通过 WebSocket Gateway 或专用适配与现有 Agent 核心对接。
 

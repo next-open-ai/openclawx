@@ -23,5 +23,8 @@ socketService.on('agent_tool', (data) => {
 socketService.on('message_complete', (data) => {
   agentStore.handleMessageComplete(data);
 });
+socketService.on('conversation_end', (data) => {
+  agentStore.handleConversationEnd(data);
+});
 
 app.mount('#app');

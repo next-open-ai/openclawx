@@ -14,6 +14,86 @@ export interface RunAgentForChannelOptions {
     agentId?: string;
 }
 
+export interface RunAgentStreamCallbacks {
+    /** 每收到一段助手文本 delta 时调用 */
+    onChunk(delta: string): void;
+    /** turn_end 时可选调用，供通道按需处理（如本小轮结束、tool 结果已出） */
+    onTurnEnd?: () => void;
+    /** agent_end 时调用，表示整轮对话真正结束 */
+    onDone(): void;
+}
+
+/**
+ * 使用现有 agentManager 跑一轮对话，以流式回调方式推送助手回复（onChunk/onDone）。
+ * onDone 在 agent_end 时调用，保证「对话真正结束」语义（多轮 tool+文本合并为一条回复）。
+ */
+export async function runAgentAndStreamReply(
+    options: RunAgentForChannelOptions,
+    callbacks: RunAgentStreamCallbacks
+): Promise<void> {
+    const { sessionId, message, agentId: optionAgentId } = options;
+    const sessionAgentId = optionAgentId ?? "default";
+
+    let workspace = "default";
+    let provider: string | undefined;
+    let modelId: string | undefined;
+    let apiKey: string | undefined;
+    const agentConfig = await loadDesktopAgentConfig(sessionAgentId);
+    if (agentConfig) {
+        if (agentConfig.workspace) workspace = agentConfig.workspace;
+        provider = agentConfig.provider;
+        modelId = agentConfig.model;
+        if (agentConfig.apiKey) apiKey = agentConfig.apiKey;
+    }
+
+    const { maxAgentSessions } = getDesktopConfig();
+    const session = await agentManager.getOrCreateSession(sessionId, {
+        workspace,
+        provider,
+        modelId,
+        apiKey,
+        maxSessions: maxAgentSessions,
+        targetAgentId: sessionAgentId,
+        mcpServers: agentConfig?.mcpServers,
+    });
+
+    let resolveDone: () => void;
+    const donePromise = new Promise<void>((r) => {
+        resolveDone = r;
+    });
+
+    const unsubscribe = session.subscribe((event: any) => {
+        if (event.type === "message_update") {
+            const update = event as any;
+            if (update.assistantMessageEvent?.type === "text_delta" && update.assistantMessageEvent?.delta) {
+                callbacks.onChunk(update.assistantMessageEvent.delta);
+            }
+        } else if (event.type === "turn_end") {
+            callbacks.onTurnEnd?.();
+        } else if (event.type === "agent_end") {
+            callbacks.onDone();
+            resolveDone!();
+        }
+    });
+
+    try {
+        const experienceBlock = await getExperienceContextForUserMessage();
+        const userMessageToSend =
+            experienceBlock.trim().length > 0
+                ? `${experienceBlock}\n\n用户问题：\n${message}`
+                : message;
+
+        await session.sendUserMessage(userMessageToSend, { deliverAs: "followUp" });
+
+        await Promise.race([
+            donePromise,
+            new Promise<void>((_, rej) => setTimeout(() => rej(new Error("Channel agent reply timeout")), 120_000)),
+        ]);
+    } finally {
+        unsubscribe();
+    }
+}
+
 /**
  * 使用现有 agentManager 跑一轮对话，收集助手完整回复文本后返回。
  * 不依赖 WebSocket 客户端，供通道核心调用。
@@ -59,7 +139,7 @@ export async function runAgentAndCollectReply(
             if (update.assistantMessageEvent?.type === "text_delta" && update.assistantMessageEvent?.delta) {
                 chunks.push(update.assistantMessageEvent.delta);
             }
-        } else if (event.type === "turn_end") {
+        } else if (event.type === "agent_end") {
             resolveDone!();
         }
     });
@@ -73,7 +153,7 @@ export async function runAgentAndCollectReply(
 
         await session.sendUserMessage(userMessageToSend, { deliverAs: "followUp" });
 
-        // 等待 turn_end 或超时（如 120s）
+        // 等待 agent_end（整轮对话真正结束）或超时
         await Promise.race([
             donePromise,
             new Promise<void>((_, rej) => setTimeout(() => rej(new Error("Channel agent reply timeout")), 120_000)),

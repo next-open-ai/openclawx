@@ -73,17 +73,39 @@ export class AgentsGateway
         );
         subscriptions.set('tool', unsubTool);
 
-        // Subscribe to message completion
+        // turn_end / agent_end：各通道均可收到，按自身逻辑处理（如 desktop 用 agent_end 开放输入）
+        const unsubTurnEnd = this.agentsService.addEventListener(
+            'turn_end',
+            (data: any) => {
+                if (data.sessionId === sessionId) client.emit('turn_end', data);
+            },
+        );
+        subscriptions.set('turn_end', unsubTurnEnd);
+
+        const unsubAgentEnd = this.agentsService.addEventListener(
+            'agent_end',
+            (data: any) => {
+                if (data.sessionId === sessionId) client.emit('agent_end', data);
+            },
+        );
+        subscriptions.set('agent_end', unsubAgentEnd);
+
+        // 兼容：message_complete（turn_end 语义）、conversation_end（agent_end 语义）
         const unsubComplete = this.agentsService.addEventListener(
             'message_complete',
             (data: any) => {
-                // Ensure we only emit for the subscribed session
-                if (data.sessionId === sessionId) {
-                    client.emit('message_complete', data);
-                }
+                if (data.sessionId === sessionId) client.emit('message_complete', data);
             },
         );
         subscriptions.set('complete', unsubComplete);
+
+        const unsubConversationEnd = this.agentsService.addEventListener(
+            'conversation_end',
+            (data: any) => {
+                if (data.sessionId === sessionId) client.emit('conversation_end', data);
+            },
+        );
+        subscriptions.set('conversation_end', unsubConversationEnd);
 
         this.sessionSubscriptions.set(client.id, subscriptions);
 

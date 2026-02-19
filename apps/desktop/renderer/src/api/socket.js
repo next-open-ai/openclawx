@@ -81,13 +81,16 @@ class SocketService {
             return;
         }
 
-        // Event from Gateway (agent.chunk, agent.tool, message_complete)
+        // Event from Gateway：turn_end / agent_end 均可收到，前端按交互需求处理；message_complete / conversation_end 保留兼容。
         if (message.type === 'event') {
             const { event, payload } = message;
             const eventMap = {
                 'agent.chunk': 'agent_chunk',
                 'agent.tool': 'agent_tool',
                 'message_complete': 'message_complete',
+                'conversation_end': 'conversation_end',
+                'turn_end': 'turn_end',
+                'agent_end': 'agent_end',
             };
             const mappedEvent = eventMap[event] || event;
             this.emit(mappedEvent, payload);

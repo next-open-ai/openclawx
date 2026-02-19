@@ -95,7 +95,7 @@ async function handleAgentChatInner(
         throw err;
     }
 
-    // Set up event listener for streaming
+    // 向各通道广播：turn_end（本小轮结束）、agent_end（整轮对话结束），并保留 message_complete / conversation_end 兼容。各端按需处理。
     const unsubscribe = session.subscribe((event: any) => {
         // console.log(`Agent event received: ${event.type}`); // Reduce noise
 
@@ -131,17 +131,25 @@ async function handleAgentChatInner(
                 promptTokens > 0 || completionTokens > 0
                     ? { promptTokens, completionTokens }
                     : undefined;
-            wsMessage = createEvent("message_complete", {
+            const turnPayload = {
                 sessionId: targetSessionId,
                 content: "",
                 ...(usagePayload && { usage: usagePayload }),
-            });
+            };
+            broadcastToSession(targetSessionId, createEvent("turn_end", turnPayload));
+            broadcastToSession(targetSessionId, createEvent("message_complete", turnPayload));
+            wsMessage = null;
+        } else if (event.type === "agent_end") {
+            const agentPayload = { sessionId: targetSessionId };
+            broadcastToSession(targetSessionId, createEvent("agent_end", agentPayload));
+            broadcastToSession(targetSessionId, createEvent("conversation_end", agentPayload));
+            wsMessage = null;
         }
 
         if (wsMessage) {
             broadcastToSession(targetSessionId, wsMessage);
         }
-        if (event.type === "turn_end" && isEphemeralSession) {
+        if (event.type === "agent_end" && isEphemeralSession) {
             agentManager.deleteSession(targetSessionId);
         }
     });

@@ -251,6 +251,7 @@ export const useAgentStore = defineStore('agent', {
             }
         },
 
+        /** turn_end：仅记录本轮 token 用量，不结束会话（多轮 tool+ 文本时会有多次）。 */
         handleMessageComplete(data) {
             if (data?.usage && (data.usage.promptTokens > 0 || data.usage.completionTokens > 0) && data.sessionId) {
                 usageAPI
@@ -263,29 +264,30 @@ export const useAgentStore = defineStore('agent', {
                     .then(() => this.fetchUsageTotal())
                     .catch((e) => console.warn('Record usage failed:', e));
             }
-            if (data.sessionId === this.currentSession?.id) {
-                const content = this.currentMessage || data.content || '';
-                if (content || this.toolExecutions.length > 0) {
-                    const assistantMessage = {
-                        id: Date.now().toString(),
-                        role: 'assistant',
-                        content,
-                        timestamp: Date.now(),
-                        toolCalls: [...this.toolExecutions],
-                        contentParts: [...this.currentStreamParts],
-                    };
-                    this.messages.push(assistantMessage);
-                    agentAPI.appendMessage(this.currentSession.id, 'assistant', content, {
-                        toolCalls: assistantMessage.toolCalls,
-                        contentParts: assistantMessage.contentParts,
-                    }).catch(() => {});
-                }
-
-                this.currentMessage = '';
-                this.currentStreamParts = [];
-                this.isStreaming = false;
-                this.toolExecutions = [];
+        },
+        /** agent_end：整轮对话真正结束，落库消息并允许再次输入。 */
+        handleConversationEnd(data) {
+            if (data?.sessionId !== this.currentSession?.id) return;
+            const content = this.currentMessage || data.content || '';
+            if (content || this.toolExecutions.length > 0) {
+                const assistantMessage = {
+                    id: Date.now().toString(),
+                    role: 'assistant',
+                    content,
+                    timestamp: Date.now(),
+                    toolCalls: [...this.toolExecutions],
+                    contentParts: [...this.currentStreamParts],
+                };
+                this.messages.push(assistantMessage);
+                agentAPI.appendMessage(this.currentSession.id, 'assistant', content, {
+                    toolCalls: assistantMessage.toolCalls,
+                    contentParts: assistantMessage.contentParts,
+                }).catch(() => {});
             }
+            this.currentMessage = '';
+            this.currentStreamParts = [];
+            this.isStreaming = false;
+            this.toolExecutions = [];
         },
     },
 });
