@@ -146,6 +146,7 @@ For downloads, provide either a direct URL or a selector to click.`;
         sessionId?: string,
         compactionBlock?: string,
         customAgentPrompt?: string,
+        identity?: { agentId: string; workspace: string },
     ): DefaultResourceLoader {
         const loader = new DefaultResourceLoader({
             cwd: workspaceDir,
@@ -160,10 +161,15 @@ For downloads, provide either a direct URL or a selector to click.`;
                     customAgentPrompt && customAgentPrompt.trim()
                         ? customAgentPrompt.trim() + "\n\n" + basePrompt
                         : basePrompt;
+                const withIdentity =
+                    identity && identity.agentId
+                        ? `[Session identity] You are the agent with ID: ${identity.agentId}, workspace: ${identity.workspace || identity.agentId}. When asked which agent you are, answer according to this identity.\n\n` +
+                          withCustom
+                        : withCustom;
                 if (compactionBlock?.trim()) {
-                    return withCustom + "\n\n" + compactionBlock.trim();
+                    return withIdentity + "\n\n" + compactionBlock.trim();
                 }
-                return withCustom;
+                return withIdentity;
             },
         });
         return loader;
@@ -295,6 +301,7 @@ For downloads, provide either a direct URL or a selector to click.`;
             sessionId,
             compactionBlock,
             options.systemPrompt,
+            { agentId, workspace: workspaceName },
         );
         await loader.reload();
 
