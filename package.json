@@ -3,8 +3,8 @@
     "publishConfig": {
         "access": "public"
     },
-    "version": "0.6.9",
-    "description": "CLI and library to run prompts with skill paths (Agent Skills style). Use as npm package or openclawx CLI.",
+    "version": "0.8.1",
+    "description": "OpenClawX - A professional desktop application for managing and executing AI agents with real-time chat, session management, and skills browsing.",
     "type": "module",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
