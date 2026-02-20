@@ -5,7 +5,10 @@ import { AgentsModule } from '../../src/server/agents/agents.module.js';
 import { AgentsService } from '../../src/server/agents/agents.service.js';
 
 jest.mock('../../src/core/agent/agent-manager.js', () => ({
-    agentManager: { deleteSession: jest.fn(() => true) },
+    agentManager: {
+        deleteSession: jest.fn(() => true),
+        deleteSessionsByBusinessId: jest.fn(),
+    },
 }));
 
 describe('AgentsService (e2e, SQLite)', () => {
@@ -74,8 +77,7 @@ describe('AgentsService (e2e, SQLite)', () => {
         expect(service.getSession(session.id)).toBeDefined();
         expect(service.getMessageHistory(session.id).length).toBe(1);
 
-        const deleted = await service.deleteSession(session.id);
-        expect(deleted).toBe(true);
+        await service.deleteSession(session.id);
         expect(service.getSession(session.id)).toBeUndefined();
         expect(service.getMessageHistory(session.id)).toEqual([]);
     });

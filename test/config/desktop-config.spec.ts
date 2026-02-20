@@ -198,6 +198,26 @@ describe("config/desktop-config", () => {
             const noWsResult = await loadDesktopAgentConfig("no-ws");
             expect(noWsResult!.workspace).toBe("no-ws");
         });
+
+        it("returns systemPrompt when agent has systemPrompt", async () => {
+            writeFileSync(
+                join(desktopDir, "config.json"),
+                JSON.stringify({ defaultProvider: "deepseek", defaultModel: "deepseek-chat" }),
+                "utf-8",
+            );
+            writeFileSync(
+                join(desktopDir, "agents.json"),
+                JSON.stringify({
+                    agents: [
+                        { id: "custom", workspace: "custom", systemPrompt: "You are a code review assistant." },
+                    ],
+                }),
+                "utf-8",
+            );
+            const result = await loadDesktopAgentConfig("custom");
+            expect(result).not.toBeNull();
+            expect(result!.systemPrompt).toBe("You are a code review assistant.");
+        });
     });
 
     describe("setProviderApiKey / setDefaultModel / getDesktopConfigList", () => {
