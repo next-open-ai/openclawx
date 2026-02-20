@@ -62,24 +62,25 @@ export default {
     const toggleSessionsPanel = () => uiStore.toggleSessionsPanel();
 
     const pageTitle = computed(() => {
-      const titles = {
-        '/dashboard': t('nav.dashboard'),
-        '/chat': t('nav.agentChat'),
-        '/': t('nav.agentChat'), // Root is now also Chat
-        '/sessions': t('nav.sessions'),
-        '/skills': t('nav.skills'),
-        '/settings': t('nav.settings'),
+      const name = route.name;
+      const nameToTitle = {
+        Dashboard: () => t('nav.dashboard'),
+        AgentChat: () => t('nav.agentChat'),
+        Root: () => t('nav.agentChat'),
+        Sessions: () => t('nav.sessions'),
+        Agents: () => t('nav.agents'),
+        AgentDetail: () => t('nav.agents'),
+        Tasks: () => t('nav.tasks'),
+        Workspace: () => t('nav.workspace'),
+        WorkResults: () => t('nav.workResults'),
+        Settings: () => t('nav.settings'),
       };
-      
-      // Handle exact matches first
-      if (titles[route.path]) return titles[route.path];
-
-      // Handle other routes
-      for (const [path, title] of Object.entries(titles)) {
-        if (path !== '/' && route.path.startsWith(path)) return title;
-      }
-
-      return 'OpenBot';
+      const fn = nameToTitle[name];
+      if (fn) return fn();
+      if (route.path.startsWith('/chat')) return t('nav.agentChat');
+      if (route.path.startsWith('/agents')) return t('nav.agents');
+      if (route.path === '/settings' || route.path.startsWith('/settings')) return t('nav.settings');
+      return t('app.name');
     });
 
     return {

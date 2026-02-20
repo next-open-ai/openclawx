@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, shell } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const http = require('http');
@@ -37,6 +37,7 @@ async function startGatewayInProcess() {
         ? path.join(process.resourcesPath, 'dist', 'gateway', 'server.js')
         : path.join(__dirname, '..', '..', 'dist', 'gateway', 'server.js');
     const { startGatewayServer } = await import(pathToFileURL(serverPath).href);
+    process.env.PORT = String(GATEWAY_PORT);
     const result = await startGatewayServer(GATEWAY_PORT);
     gatewayClose = result.close;
     return result;
@@ -74,9 +75,9 @@ function createTray() {
         icon = fallback.resize({ width: 16, height: 16 });
     }
     tray = new Tray(icon);
-    tray.setToolTip('OpenBot');
+    tray.setToolTip('OpenClawX');
     const menu = Menu.buildFromTemplate([
-        { label: '打开 OpenBot', click: () => showMainWindow() },
+        { label: '打开 OpenClawX', click: () => showMainWindow() },
         { type: 'separator' },
         { label: '退出', click: () => app.quit() },
     ]);
@@ -137,7 +138,7 @@ async function createWindow() {
         // Gateway 未启动（打包后无法连上），显示错误页，避免请求 localhost 失败
         const errMsg = gatewayStartError ? String(gatewayStartError).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
         startUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(`
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>OpenBot</title></head><body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f0f1e;color:#e0e0e0;font-family:system-ui,sans-serif;padding:24px;box-sizing:border-box">
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>OpenClawX</title></head><body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f0f1e;color:#e0e0e0;font-family:system-ui,sans-serif;padding:24px;box-sizing:border-box">
 <div style="max-width:520px;text-align:center">
   <h1 style="color:#ff6b6b;margin-bottom:16px">服务未就绪</h1>
   <p>Gateway 未能启动，请关闭本窗口后重新打开应用。</p>
@@ -186,6 +187,12 @@ function registerIpcHandlers() {
         });
         if (canceled || !filePaths || filePaths.length === 0) return null;
         return filePaths[0];
+    });
+    /** 在系统默认浏览器打开 http(s) 链接，或用系统默认应用打开 file:// 本地文件 */
+    ipcMain.handle('open-external', (_, url) => {
+        if (typeof url !== 'string' || !url.trim()) return;
+        const u = url.trim();
+        if (/^https?:\/\//i.test(u) || /^file:\/\//i.test(u)) shell.openExternal(u);
     });
 }
 

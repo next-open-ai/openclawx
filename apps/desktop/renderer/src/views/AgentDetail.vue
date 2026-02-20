@@ -36,6 +36,22 @@
           <div v-show="activeTab === 'config'" class="tab-panel config-panel">
             <h2 class="panel-title">{{ t('agents.basicConfig') }}</h2>
             <div class="form-group">
+              <label>{{ t('agents.agentIcon') }}</label>
+              <div class="icon-picker">
+                <button
+                  v-for="opt in agentIconOptions"
+                  :key="opt.id"
+                  type="button"
+                  class="icon-picker-btn"
+                  :class="{ active: configForm.icon === opt.id }"
+                  :title="opt.label"
+                  @click="configForm.icon = opt.id"
+                >
+                  {{ opt.emoji }}
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
               <label>{{ t('agents.displayName') }}</label>
               <input
                 v-model="configForm.name"
@@ -397,6 +413,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
 import { useAgentStore } from '@/store/modules/agent';
 import { agentConfigAPI, skillsAPI, agentAPI, configAPI } from '@/api';
+import { AGENT_ICONS, AGENT_ICON_DEFAULT } from '@/constants/agent-icons';
 import { marked } from 'marked';
 import ChatMessage from '@/components/ChatMessage.vue';
 import SmartInstallDialog from '@/components/SmartInstallDialog.vue';
@@ -424,7 +441,8 @@ export default {
       { id: 'mcp', label: t('agents.mcpConfig'), icon: '🔌' },
     ]);
 
-    const configForm = ref({ name: '', systemPrompt: '' });
+    const agentIconOptions = AGENT_ICONS;
+    const configForm = ref({ name: '', systemPrompt: '', icon: AGENT_ICON_DEFAULT });
     const configSaving = ref(false);
 
     const modelForm = ref({ provider: '', model: '' });
@@ -608,7 +626,7 @@ export default {
         const res = await agentConfigAPI.getAgent(agentId.value);
         agent.value = res.data?.data ?? null;
         if (agent.value) {
-          configForm.value = { name: agent.value.name, systemPrompt: agent.value.systemPrompt ?? '' };
+          configForm.value = { name: agent.value.name, systemPrompt: agent.value.systemPrompt ?? '', icon: agent.value.icon || AGENT_ICON_DEFAULT };
           modelForm.value = {
             provider: agent.value.provider ?? '',
             model: agent.value.model ?? '',
@@ -619,14 +637,14 @@ export default {
             : [];
         } else if (agentId.value === 'default') {
           agent.value = { ...MAIN_AGENT_FALLBACK };
-          configForm.value = { name: agent.value.name, systemPrompt: '' };
+          configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
           modelForm.value = { provider: '', model: '' };
           mcpServers.value = [];
         }
       } catch (e) {
         if (agentId.value === 'default') {
           agent.value = { ...MAIN_AGENT_FALLBACK };
-          configForm.value = { name: agent.value.name, systemPrompt: '' };
+          configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
           modelForm.value = { provider: '', model: '' };
           mcpServers.value = [];
         } else {
@@ -650,11 +668,12 @@ export default {
         if (item && item.modelItemCode) payload.modelItemCode = item.modelItemCode;
         payload.mcpServers = mcpServers.value;
         payload.systemPrompt = configForm.value.systemPrompt?.trim() || undefined;
+        payload.icon = configForm.value.icon || undefined;
         await agentConfigAPI.updateAgent(agent.value.id, payload);
         if (!agent.value.isDefault) {
           agent.value.name = configForm.value.name || agent.value.workspace;
         }
-        agent.value = { ...agent.value, provider: modelForm.value.provider, model: modelForm.value.model, modelItemCode: item?.modelItemCode ?? agent.value.modelItemCode, systemPrompt: payload.systemPrompt };
+        agent.value = { ...agent.value, provider: modelForm.value.provider, model: modelForm.value.model, modelItemCode: item?.modelItemCode ?? agent.value.modelItemCode, systemPrompt: payload.systemPrompt, icon: payload.icon };
       } catch (e) {
         console.error('Save config failed', e);
       } finally {
@@ -842,6 +861,7 @@ export default {
       activeTab,
       tabs,
       configForm,
+      agentIconOptions,
       configSaving,
       saveConfig,
       modelForm,
@@ -1384,6 +1404,32 @@ export default {
 .form-hint-warn {
   color: var(--color-warning, #b8860b);
   margin: var(--spacing-xs) 0 0 0;
+}
+.icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+.icon-picker-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.icon-picker-btn:hover {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-text-tertiary);
+}
+.icon-picker-btn.active {
+  background: rgba(102, 126, 234, 0.2);
+  border-color: var(--color-accent-primary);
 }
 
 .btn-primary {

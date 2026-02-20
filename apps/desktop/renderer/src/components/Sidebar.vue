@@ -1,8 +1,8 @@
 <template>
   <div class="sidebar">
     <div class="sidebar-header">
-      <div class="logo" :title="'OpenBot'">
-        <img src="@/assets/logo.svg" alt="OpenBot" class="logo-image" />
+      <div class="logo" :title="t('app.name')">
+        <img src="@/assets/logo.svg" :alt="t('app.name')" class="logo-image" />
       </div>
     </div>
 

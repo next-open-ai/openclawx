@@ -29,6 +29,8 @@ export interface AgentConfigItem {
     mcpServers?: McpServerConfig[];
     /** 自定义系统提示词，会与技能等一起组成最终 systemPrompt */
     systemPrompt?: string;
+    /** 智能体图标标识（前端预设图标 id，如 default、star、code 等） */
+    icon?: string;
 }
 
 interface AgentsFile {
@@ -126,8 +128,10 @@ export class AgentConfigService {
         modelItemCode?: string;
         /** 自定义系统提示词；可由用户描述生成，创建后可在详情页修改 */
         systemPrompt?: string;
+        /** 智能体图标标识 */
+        icon?: string;
     }): Promise<AgentConfigItem> {
-        const { name, workspace, provider, model, modelItemCode, systemPrompt } = params;
+        const { name, workspace, provider, model, modelItemCode, systemPrompt, icon } = params;
         if (workspace === DEFAULT_AGENT_ID) {
             throw new BadRequestException('工作空间名 default 为系统保留（主智能体），请使用其他名称');
         }
@@ -158,13 +162,14 @@ export class AgentConfigService {
             model: model?.trim() || undefined,
             modelItemCode: modelItemCode?.trim() || undefined,
             systemPrompt: systemPrompt?.trim() || undefined,
+            icon: icon?.trim() || undefined,
         };
         file.agents.push(agent);
         await this.writeAgentsFile(file);
         return agent;
     }
 
-    async updateAgent(id: string, updates: Partial<Pick<AgentConfigItem, 'name' | 'provider' | 'model' | 'modelItemCode' | 'mcpServers' | 'systemPrompt'>>): Promise<AgentConfigItem> {
+    async updateAgent(id: string, updates: Partial<Pick<AgentConfigItem, 'name' | 'provider' | 'model' | 'modelItemCode' | 'mcpServers' | 'systemPrompt' | 'icon'>>): Promise<AgentConfigItem> {
         if (id === DEFAULT_AGENT_ID) {
             await this.ensureDefaultWorkspace();
         }
@@ -187,6 +192,7 @@ export class AgentConfigService {
         if (updates.modelItemCode !== undefined) agent.modelItemCode = updates.modelItemCode;
         if (updates.mcpServers !== undefined) agent.mcpServers = updates.mcpServers;
         if (updates.systemPrompt !== undefined) agent.systemPrompt = updates.systemPrompt?.trim() || undefined;
+        if (updates.icon !== undefined) agent.icon = updates.icon?.trim() || undefined;
         await this.writeAgentsFile(file);
         return { ...agent, isDefault: agent.id === DEFAULT_AGENT_ID };
     }

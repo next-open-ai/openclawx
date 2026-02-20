@@ -30,6 +30,7 @@ export class AgentConfigController {
             model?: string;
             modelItemCode?: string;
             systemPrompt?: string;
+            icon?: string;
         },
     ) {
         const agent = await this.agentConfigService.createAgent(body);
@@ -39,7 +40,7 @@ export class AgentConfigController {
     @Put(':id')
     async updateAgent(
         @Param('id') id: string,
-        @Body() body: Partial<Pick<AgentConfigItem, 'name' | 'provider' | 'model' | 'modelItemCode' | 'mcpServers' | 'systemPrompt'>>,
+        @Body() body: Partial<Pick<AgentConfigItem, 'name' | 'provider' | 'model' | 'modelItemCode' | 'mcpServers' | 'systemPrompt' | 'icon'>>,
     ) {
         const agent = await this.agentConfigService.updateAgent(id, body);
         return { success: true, data: agent };

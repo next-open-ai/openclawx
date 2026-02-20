@@ -4,7 +4,7 @@
     <div class="login-card">
       <header class="login-header">
         <div class="login-logo-wrap">
-          <img src="@/assets/logo.svg" alt="OpenBot" class="login-logo" />
+          <img src="@/assets/logo.svg" :alt="t('app.name')" class="login-logo" />
         </div>
         <h1 class="login-title">{{ t('login.title') }}</h1>
         <p class="login-subtitle">{{ t('login.subtitle') }}</p>

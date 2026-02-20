@@ -3,7 +3,7 @@
     <h2 class="tab-title">{{ t('settings.tagsManagement') }}</h2>
     <p class="panel-desc">{{ t('settings.tagsManagementDesc') }}</p>
 
-    <div class="tag-form-row">
+    <div class="tag-form-row card-glass">
       <input
         v-model="newTagName"
         type="text"
@@ -11,8 +11,8 @@
         :placeholder="t('settings.tagNamePlaceholder')"
         @keydown.enter="addTag"
       />
-      <button type="button" class="btn-primary" :disabled="!newTagName.trim() || saving" @click="addTag">
-        {{ t('settings.addTag') }}
+      <button type="button" class="btn-add-tag" :disabled="!newTagName.trim() || saving" @click="addTag">
+        {{ saving ? t('common.loading') : t('settings.addTag') }}
       </button>
     </div>
     <p v-if="tagError" class="form-error">{{ tagError }}</p>
@@ -39,8 +39,10 @@
         </template>
         <template v-else>
           <span class="tag-name">{{ tag.name }}</span>
-          <button type="button" class="link-btn" @click="startEdit(tag)">{{ t('settings.editTag') }}</button>
-          <button type="button" class="link-btn danger" @click="confirmDelete(tag)">{{ t('common.delete') }}</button>
+          <div class="tag-item-actions">
+            <button type="button" class="tag-action-btn" @click="startEdit(tag)">{{ t('settings.editTag') }}</button>
+            <button type="button" class="tag-action-btn tag-action-btn-danger" @click="confirmDelete(tag)">{{ t('common.delete') }}</button>
+          </div>
         </template>
       </li>
     </ul>
@@ -188,24 +190,48 @@ export default {
 }
 .tab-title {
   font-size: var(--font-size-2xl);
-  font-weight: 600;
-  margin-bottom: var(--spacing-md);
+  font-weight: 700;
+  margin: 0 0 var(--spacing-xs) 0;
   color: var(--color-text-primary);
 }
 .panel-desc {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
-  margin-bottom: var(--spacing-lg);
+  line-height: 1.5;
+  margin: 0 0 var(--spacing-lg) 0;
 }
 .tag-form-row {
   display: flex;
   gap: var(--spacing-md);
   align-items: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
 }
-.tag-input {
+.tag-form-row .tag-input {
   flex: 1;
-  max-width: 280px;
+  max-width: 320px;
+}
+.btn-add-tag {
+  padding: var(--spacing-sm) var(--spacing-xl);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-accent-primary);
+  background: transparent;
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+.btn-add-tag:hover:not(:disabled) {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border-color: var(--color-accent-secondary);
+}
+.btn-add-tag:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .tag-list {
   list-style: none;
@@ -219,10 +245,38 @@ export default {
   padding: var(--spacing-md) var(--spacing-lg);
   margin-bottom: var(--spacing-sm);
   border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
 }
 .tag-name {
   flex: 1;
   font-weight: 500;
+  color: var(--color-text-primary);
+}
+.tag-item-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+.tag-action-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+.tag-action-btn:hover {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-text-tertiary);
+  color: var(--color-accent-primary);
+}
+.tag-action-btn-danger:hover {
+  border-color: var(--color-error, #e5534b);
+  color: var(--color-error, #e5534b);
+  background: rgba(229, 83, 75, 0.1);
 }
 .tag-edit-input {
   flex: 1;
@@ -231,19 +285,6 @@ export default {
 .btn-sm {
   padding: var(--spacing-xs) var(--spacing-md);
   font-size: var(--font-size-sm);
-}
-.link-btn {
-  background: none;
-  border: none;
-  color: var(--color-accent-primary);
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-}
-.link-btn:hover {
-  text-decoration: underline;
-}
-.link-btn.danger {
-  color: var(--color-danger, #e5534b);
 }
 .delete-target-name {
   font-weight: 600;

@@ -6,7 +6,7 @@
         <p class="text-secondary">{{ t('agents.subtitle') }}</p>
         <p class="text-secondary agents-hint">{{ t('agents.defaultWorkHint') }}</p>
       </div>
-      <button class="btn-primary" @click="showCreateModal = true">
+      <button type="button" class="btn-add-agent" @click="showCreateModal = true">
         <span class="btn-icon">+</span>
         {{ t('agents.addAgent') }}
       </button>
@@ -17,7 +17,7 @@
       <p>{{ t('common.loading') }}</p>
     </div>
     <div v-else-if="agents.length === 0" class="empty-state">
-      <div class="empty-icon">🤖</div>
+      <div class="empty-icon">✨</div>
       <p>{{ t('agents.noAgents') }}</p>
       <p class="text-secondary">{{ t('agents.noAgentsHint') }}</p>
       <button class="btn-primary mt-4" @click="showCreateModal = true">
@@ -32,7 +32,7 @@
         class="agent-card card-glass"
       >
         <div class="card-icon-wrap">
-          <span class="card-icon">🤖</span>
+          <span class="card-icon" :aria-label="getAgentIconEmoji(agent.icon)">{{ getAgentIconEmoji(agent.icon) }}</span>
         </div>
         <h3 class="card-name">
           {{ agent.name }}
@@ -58,6 +58,22 @@
             <button type="button" class="close-btn" @click="showCreateModal = false">✕</button>
           </div>
           <div class="modal-body">
+            <div class="form-group">
+              <label>{{ t('agents.agentIcon') }}</label>
+              <div class="icon-picker">
+                <button
+                  v-for="opt in agentIconOptions"
+                  :key="opt.id"
+                  type="button"
+                  class="icon-picker-btn"
+                  :class="{ active: createForm.icon === opt.id }"
+                  :title="opt.label"
+                  @click="createForm.icon = opt.id"
+                >
+                  {{ opt.emoji }}
+                </button>
+              </div>
+            </div>
             <div class="form-group">
               <label>{{ t('agents.displayName') }}</label>
               <input
@@ -122,6 +138,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
 import { agentConfigAPI, configAPI } from '@/api';
+import { AGENT_ICONS, AGENT_ICON_DEFAULT, getAgentIconEmoji } from '@/constants/agent-icons';
 
 /** 主智能体（default）前端兜底，接口失败或返回空时至少显示此项 */
 const FALLBACK_DEFAULT_AGENT = {
@@ -144,11 +161,13 @@ export default {
     const loading = ref(true);
     const showCreateModal = ref(false);
     const config = ref(null);
+    const agentIconOptions = AGENT_ICONS;
     const createForm = ref({
       name: '',
       workspace: '',
       defaultModelKey: '',
       systemPrompt: '',
+      icon: AGENT_ICON_DEFAULT,
     });
     const createError = ref('');
     const createSaving = ref(false);
@@ -214,6 +233,7 @@ export default {
           name: name || workspace,
           workspace,
           systemPrompt: (createForm.value.systemPrompt || '').trim() || undefined,
+          icon: createForm.value.icon || undefined,
         };
         const key = (createForm.value.defaultModelKey || '').trim();
         const list = config.value?.configuredModels ?? [];
@@ -235,7 +255,7 @@ export default {
         const res = await agentConfigAPI.createAgent(body);
         const agent = res.data?.data;
         showCreateModal.value = false;
-        createForm.value = { name: '', workspace: '', defaultModelKey: '', systemPrompt: '' };
+        createForm.value = { name: '', workspace: '', defaultModelKey: '', systemPrompt: '', icon: AGENT_ICON_DEFAULT };
         await loadAgents();
         if (agent) router.push(`/agents/${agent.id}`);
       } catch (e) {
@@ -270,6 +290,8 @@ export default {
       createError,
       createSaving,
       createModelOptions,
+      agentIconOptions,
+      getAgentIconEmoji,
       optionValueFor,
       getModelOptionLabel,
       doCreate,
@@ -312,6 +334,27 @@ export default {
   opacity: 0.9;
 }
 
+.btn-add-agent {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-accent-primary);
+  background: transparent;
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.btn-add-agent:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border-color: var(--color-accent-secondary);
+}
+
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -328,6 +371,36 @@ export default {
 
 .btn-primary:hover:not(:disabled) {
   filter: brightness(1.1);
+}
+
+.icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.icon-picker-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.icon-picker-btn:hover {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-text-tertiary);
+}
+
+.icon-picker-btn.active {
+  background: rgba(102, 126, 234, 0.2);
+  border-color: var(--color-accent-primary);
 }
 
 .btn-primary:disabled {

@@ -7,7 +7,8 @@
           {{ t('workResults.currentWorkspace') }}: <strong>{{ currentWorkspace }}</strong>
         </p>
       </div>
-      <button class="btn-primary" @click="showSwitchModal = true">
+      <button type="button" class="btn-switch-workspace" @click="showSwitchModal = true">
+        <span class="btn-switch-icon" aria-hidden="true">↻</span>
         {{ t('workResults.switchWorkspace') }}
       </button>
     </div>
@@ -49,7 +50,7 @@
             @click="activeTab = 'tags'"
           >
             <span class="nav-icon">🏷️</span>
-            {{ t('settings.tagsManagement') }}
+            {{ t('settings.tagsTab') }}
           </button>
         </nav>
       </aside>
@@ -128,7 +129,7 @@
                   <span class="doc-icon">📄</span>
                   <span class="doc-name">{{ item.name }}</span>
                   <span class="doc-actions">
-                    <a :href="fileServeUrl(item.path, true)" download class="link-btn">{{ t('workspace.download') }}</a>
+                    <a :href="fileServeUrl(item.path, true)" download class="doc-action-btn">{{ t('workspace.download') }}</a>
                   </span>
                 </template>
               </div>
@@ -147,7 +148,7 @@
               <span class="doc-icon">📁</span>
               <button class="doc-name" @click="docPath = item.path">{{ item.name }}</button>
               <span class="doc-actions">
-                <button type="button" class="link-btn danger" @click="confirmDelete(item)">{{ t('common.delete') }}</button>
+                <button type="button" class="doc-action-btn doc-action-btn-danger" @click="confirmDelete(item)">{{ t('common.delete') }}</button>
               </span>
             </template>
             <template v-else>
@@ -155,14 +156,12 @@
               <span class="doc-name">{{ item.name }}</span>
               <span class="doc-actions">
                 <template v-if="isPreviewable(item.name)">
-                  <button type="button" class="link-btn" @click="openPreview(item)">
+                  <button type="button" class="doc-action-btn" @click="openPreview(item)">
                     {{ t('workspace.preview') }}
                   </button>
-                  <span class="sep">|</span>
                 </template>
-                <a :href="fileServeUrl(item.path, true)" download class="link-btn">{{ t('workspace.download') }}</a>
-                <span class="sep">|</span>
-                <button type="button" class="link-btn danger" @click="confirmDelete(item)">{{ t('common.delete') }}</button>
+                <a :href="fileServeUrl(item.path, true)" download class="doc-action-btn">{{ t('workspace.download') }}</a>
+                <button type="button" class="doc-action-btn doc-action-btn-danger" @click="confirmDelete(item)">{{ t('common.delete') }}</button>
               </span>
             </template>
           </div>
@@ -191,7 +190,7 @@
             {{ t('workResults.filterAll') }}
           </button>
           <button
-            v-for="tag in bookmarkTags"
+            v-for="tag in visibleBookmarkTags"
             :key="tag.id"
             type="button"
             class="tag-pill"
@@ -210,12 +209,18 @@
                 <img
                   :src="bookmarkImageSrc(item.url)"
                   :alt="item.title || item.url"
-                  class="bookmark-thumb"
+                  class="bookmark-thumb bookmark-thumb-clickable"
                   loading="lazy"
                   @error="(e) => (e.target.style.display = 'none')"
+                  @click.stop="openBookmarkPreview(item)"
                 />
               </template>
-              <div v-else class="bookmark-thumb bookmark-thumb-placeholder" :title="item.url">
+              <div
+                v-else
+                class="bookmark-thumb bookmark-thumb-placeholder bookmark-thumb-clickable"
+                :title="item.url"
+                @click.stop="openBookmarkPreview(item)"
+              >
                 <span class="bookmark-thumb-icon">🔗</span>
               </div>
               <div class="bookmark-text">
@@ -232,19 +237,19 @@
           <div class="bookmark-actions">
             <button
               type="button"
-              class="link-btn"
+              class="bookmark-action-btn"
               :disabled="downloadingId === item.id"
               @click="downloadBookmarkToWorkspace(item)"
             >
               {{ downloadingId === item.id ? t('common.loading') : t('workResults.downloadToWorkspace') }}
             </button>
-            <button type="button" class="link-btn" @click="openBookmarkPreview(item)">
+            <button type="button" class="bookmark-action-btn" @click="openBookmarkPreview(item)">
               {{ isImageBookmarkUrl(item.url) ? t('workResults.viewFullImage') : t('workResults.preview') }}
             </button>
-            <a :href="item.url" target="_blank" rel="noopener noreferrer" class="link-btn">
+            <button type="button" class="bookmark-action-btn" @click="openBookmarkInSystemBrowser(item.url)">
               {{ t('workResults.openLink') }}
-            </a>
-            <button type="button" class="link-btn danger" @click="confirmDeleteBookmark(item)">
+            </button>
+            <button type="button" class="bookmark-action-btn bookmark-action-btn-danger" @click="confirmDeleteBookmark(item)">
               {{ t('common.delete') }}
             </button>
           </div>
@@ -291,6 +296,24 @@
               <template v-else>
                 <iframe :src="previewBookmarkItem.url" class="preview-iframe bookmark-web-iframe" title="Preview" />
               </template>
+              <div class="preview-nav-bar">
+                <button
+                  type="button"
+                  class="preview-nav-btn"
+                  :disabled="!hasPrevBookmark"
+                  @click.stop="goToPrevBookmark"
+                >
+                  {{ t('workResults.prevItem') }}
+                </button>
+                <button
+                  type="button"
+                  class="preview-nav-btn"
+                  :disabled="!hasNextBookmark"
+                  @click.stop="goToNextBookmark"
+                >
+                  {{ t('workResults.nextItem') }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -366,6 +389,28 @@
               <pre v-if="previewTextContent !== null" class="preview-text">{{ previewTextContent }}</pre>
               <div v-else class="loading-state"><div class="spinner"></div></div>
             </template>
+            <template v-else-if="previewType === 'code'">
+              <pre v-if="previewTextContent !== null" class="preview-code"><code>{{ previewTextContent }}</code></pre>
+              <div v-else class="loading-state"><div class="spinner"></div></div>
+            </template>
+            <div class="preview-nav-bar">
+              <button
+                type="button"
+                class="preview-nav-btn"
+                :disabled="!hasPrevDoc"
+                @click.stop="goToPrevDoc"
+              >
+                {{ t('workResults.prevItem') }}
+              </button>
+              <button
+                type="button"
+                class="preview-nav-btn"
+                :disabled="!hasNextDoc"
+                @click.stop="goToNextDoc"
+              >
+                {{ t('workResults.nextItem') }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -430,7 +475,11 @@ import { workspaceAPI, configAPI, savedItemsAPI, tagsAPI } from '@/api';
 import { useSettingsStore } from '@/store/modules/settings';
 import SettingsTags from '@/components/SettingsTags.vue';
 
-const PREVIEW_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'pdf', 'txt', 'html', 'htm', 'md', 'json']);
+const PREVIEW_EXTS = new Set([
+  'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'pdf', 'txt', 'html', 'htm', 'md', 'json',
+  'py', 'js', 'ts', 'jsx', 'tsx', 'java', 'kt', 'go', 'rs', 'c', 'cpp', 'h', 'hpp', 'sh', 'bash', 'zsh',
+  'css', 'scss', 'sass', 'less', 'vue', 'svelte', 'mjs', 'cjs',
+]);
 
 export default {
   name: 'WorkResults',
@@ -484,6 +533,22 @@ export default {
 
     const showPreviewModal = computed(() => !!previewItem.value);
     const previewType = computed(() => (previewItem.value ? getPreviewType(previewItem.value.name) : ''));
+
+    /** 当前路径下可预览的文件列表（用于上一个/下一个） */
+    const previewableDocuments = computed(() =>
+      filteredDocuments.value.filter((item) => !item.isDirectory && isPreviewable(item.name))
+    );
+    const previewableIndex = computed(() => {
+      const cur = previewItem.value;
+      if (!cur || !previewableDocuments.value.length) return -1;
+      const idx = previewableDocuments.value.findIndex((d) => d.path === cur.path);
+      return idx;
+    });
+    const hasPrevDoc = computed(() => previewableIndex.value > 0);
+    const hasNextDoc = computed(() => {
+      const idx = previewableIndex.value;
+      return idx >= 0 && idx < previewableDocuments.value.length - 1;
+    });
     const previewUrl = computed(() =>
       previewItem.value && !previewItem.value.isDirectory
         ? fileServeUrl(previewItem.value.path, false)
@@ -505,12 +570,17 @@ export default {
       return PREVIEW_EXTS.has(ext);
     }
 
+    const CODE_EXTS = new Set([
+      'py', 'js', 'ts', 'jsx', 'tsx', 'java', 'kt', 'go', 'rs', 'c', 'cpp', 'h', 'hpp', 'sh', 'bash', 'zsh',
+      'css', 'scss', 'sass', 'less', 'vue', 'svelte', 'mjs', 'cjs',
+    ]);
     function getPreviewType(filename) {
       const ext = filename.split('.').pop()?.toLowerCase() || '';
       if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return 'image';
       if (ext === 'pdf') return 'pdf';
       if (['html', 'htm'].includes(ext)) return 'html';
       if (['txt', 'md', 'json'].includes(ext)) return 'text';
+      if (CODE_EXTS.has(ext)) return 'code';
       return '';
     }
 
@@ -520,7 +590,7 @@ export default {
       const type = getPreviewType(item.name);
       previewTextContent.value = null;
       previewHtmlContent.value = null;
-      if (type === 'text') {
+      if (type === 'text' || type === 'code') {
         try {
           const url = fileServeUrl(item.path, false);
           const res = await fetch(url);
@@ -543,6 +613,20 @@ export default {
       previewItem.value = null;
       previewTextContent.value = null;
       previewHtmlContent.value = null;
+    }
+
+    function goToPrevDoc() {
+      const idx = previewableIndex.value;
+      if (idx <= 0) return;
+      const prev = previewableDocuments.value[idx - 1];
+      if (prev) openPreview(prev);
+    }
+
+    function goToNextDoc() {
+      const idx = previewableIndex.value;
+      if (idx < 0 || idx >= previewableDocuments.value.length - 1) return;
+      const next = previewableDocuments.value[idx + 1];
+      if (next) openPreview(next);
     }
 
     function confirmDelete(item) {
@@ -602,6 +686,9 @@ export default {
       }
     }
 
+    /** 有至少一条收藏的标签名集合（用于只显示“有数据”的标签），在加载“全部”时更新 */
+    const tagNamesWithBookmarks = ref(new Set());
+
     async function loadBookmarks() {
       bookmarksLoading.value = true;
       try {
@@ -609,7 +696,11 @@ export default {
         const params = {};
         if (bookmarkTagFilter.value) params.tagId = bookmarkTagFilter.value;
         const res = await savedItemsAPI.list(params);
-        bookmarks.value = res.data?.data ?? [];
+        const list = res.data?.data ?? [];
+        bookmarks.value = list;
+        const next = new Set(tagNamesWithBookmarks.value);
+        list.forEach((b) => (b.tagNames || []).forEach((n) => next.add(n)));
+        tagNamesWithBookmarks.value = next;
       } catch (e) {
         console.error('List bookmarks failed', e);
         bookmarks.value = [];
@@ -651,12 +742,53 @@ export default {
         : ''
     );
 
+    const previewBookmarkIndex = computed(() => {
+      const cur = previewBookmarkItem.value;
+      if (!cur || !bookmarks.value.length) return -1;
+      const idx = bookmarks.value.findIndex((b) => b.id === cur.id);
+      return idx;
+    });
+
+    const hasPrevBookmark = computed(() => previewBookmarkIndex.value > 0);
+    const hasNextBookmark = computed(() => {
+      const idx = previewBookmarkIndex.value;
+      return idx >= 0 && idx < bookmarks.value.length - 1;
+    });
+
+    /** 仅显示有至少一条收藏的标签（该 tag 有数据才显示）；基于“全部”时的 tagNamesWithBookmarks */
+    const visibleBookmarkTags = computed(() =>
+      bookmarkTags.value.filter((t) => tagNamesWithBookmarks.value.has(t.name))
+    );
+
+    function openBookmarkInSystemBrowser(url) {
+      if (typeof url !== 'string' || !url) return;
+      if (typeof window !== 'undefined' && window.electronAPI?.openExternal) {
+        window.electronAPI.openExternal(url);
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    }
+
     function openBookmarkPreview(item) {
       previewBookmarkItem.value = item;
     }
 
     function closeBookmarkPreview() {
       previewBookmarkItem.value = null;
+    }
+
+    function goToPrevBookmark() {
+      const idx = previewBookmarkIndex.value;
+      if (idx <= 0) return;
+      const prev = bookmarks.value[idx - 1];
+      if (prev) previewBookmarkItem.value = prev;
+    }
+
+    function goToNextBookmark() {
+      const idx = previewBookmarkIndex.value;
+      if (idx < 0 || idx >= bookmarks.value.length - 1) return;
+      const next = bookmarks.value[idx + 1];
+      if (next) previewBookmarkItem.value = next;
     }
 
     function clearDownloadMessage() {
@@ -753,6 +885,7 @@ export default {
       bookmarksLoading,
       bookmarkTagFilter,
       bookmarkTags,
+      visibleBookmarkTags,
       setBookmarkTagFilter,
       isAllTagSelected,
       isTagSelected,
@@ -765,6 +898,11 @@ export default {
       imageProxyUrl,
       bookmarkImageSrc,
       bookmarkPreviewImageSrc,
+      hasPrevBookmark,
+      hasNextBookmark,
+      goToPrevBookmark,
+      goToNextBookmark,
+      openBookmarkInSystemBrowser,
       openBookmarkPreview,
       closeBookmarkPreview,
       downloadBookmarkToWorkspace,
@@ -775,6 +913,10 @@ export default {
       previewTextContent,
       previewHtmlContent,
       showPreviewModal,
+      hasPrevDoc,
+      hasNextDoc,
+      goToPrevDoc,
+      goToNextDoc,
       deleteTarget,
       fileServeUrl,
       isPreviewable,
@@ -810,6 +952,34 @@ export default {
   margin-bottom: var(--spacing-lg);
   border-radius: var(--radius-lg);
   border: 1px solid var(--glass-border);
+}
+
+.btn-switch-workspace {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-accent-primary);
+  background: transparent;
+  border: 1px solid var(--color-accent-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.btn-switch-workspace:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border-color: var(--color-accent-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-switch-icon {
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.9;
 }
 
 .view-title {
@@ -1141,8 +1311,30 @@ export default {
 .bookmark-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
 }
+
+/* 收藏项内的标签：胶囊样式，与筛选栏区分，布局清晰 */
+.bookmark-tags .tag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--color-accent-primary);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.bookmark-tags .tag-pill:hover {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-accent-primary);
+}
+
 .tag-pill {
   font-size: var(--font-size-xs);
   padding: 2px var(--spacing-sm);
@@ -1152,8 +1344,47 @@ export default {
 }
 .bookmark-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-sm);
   flex-shrink: 0;
+  align-items: center;
+}
+
+.bookmark-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.bookmark-action-btn:hover:not(:disabled) {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-text-tertiary);
+  color: var(--color-accent-primary);
+}
+
+.bookmark-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.bookmark-action-btn-danger {
+  color: var(--color-text-secondary);
+}
+
+.bookmark-action-btn-danger:hover {
+  background: rgba(245, 87, 108, 0.12);
+  border-color: var(--color-error, #f5576c);
+  color: var(--color-error, #f5576c);
 }
 
 .empty-state.small {
@@ -1231,8 +1462,38 @@ export default {
 
 .doc-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-sm);
+}
+
+.doc-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.doc-action-btn:hover {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-text-tertiary);
+  color: var(--color-accent-primary);
+}
+
+.doc-action-btn-danger:hover {
+  background: rgba(245, 87, 108, 0.12);
+  border-color: var(--color-error, #f5576c);
+  color: var(--color-error, #f5576c);
 }
 
 .sep {
@@ -1256,21 +1517,37 @@ export default {
 .preview-backdrop {
   align-items: center;
   justify-content: center;
+  background: rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(6px);
 }
 
-.preview-modal {
-  max-width: 90vw;
-  max-height: 90vh;
-  width: 900px;
+[data-theme="light"] .preview-backdrop,
+[data-theme="cosmic"] .preview-backdrop {
+  background: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 收藏/文档预览弹窗：接近全屏，覆盖全局 .modal-content 的 max-width/max-height；深色主题下加强对比 */
+.preview-modal,
+.modal-content.preview-modal,
+.modal-content.bookmark-preview-modal {
+  width: 96vw !important;
+  max-width: 96vw !important;
+  height: 94vh !important;
+  max-height: 94vh !important;
   display: flex;
   flex-direction: column;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 48px rgba(0, 0, 0, 0.5), 0 12px 24px rgba(0, 0, 0, 0.35) !important;
+  background: var(--color-bg-secondary) !important;
 }
 
 .preview-title {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 60%;
+  margin: 0 var(--spacing-md);
 }
 
 .preview-actions {
@@ -1280,24 +1557,65 @@ export default {
 }
 
 .preview-body {
+  position: relative;
   flex: 1;
-  min-height: 200px;
-  overflow: auto;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  align-items: stretch;
   background: var(--color-bg-tertiary);
 }
 
-.preview-image {
+.preview-nav-bar {
+  position: absolute;
+  bottom: var(--spacing-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  z-index: 2;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-bg-primary);
+  border-radius: 999px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+}
+
+.preview-nav-bar .preview-nav-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.preview-nav-bar .preview-nav-btn:hover:not(:disabled) {
+  background: var(--color-bg-tertiary);
+  color: var(--color-accent, #3b82f6);
+}
+
+.preview-nav-bar .preview-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.preview-body .preview-image {
+  margin: auto;
   max-width: 100%;
-  max-height: 70vh;
+  max-height: 100%;
   object-fit: contain;
 }
 
-.preview-iframe {
+.preview-body .preview-iframe {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: 70vh;
   border: none;
 }
 .bookmark-preview-modal .preview-actions {
@@ -1306,11 +1624,18 @@ export default {
   gap: var(--spacing-sm);
 }
 .bookmark-web-iframe {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: 70vh;
-  min-height: 400px;
   border: none;
   background: var(--color-bg-primary);
+}
+
+.bookmark-thumb-clickable {
+  cursor: pointer;
+}
+.bookmark-thumb-clickable:hover {
+  opacity: 0.9;
 }
 
 .preview-text {
@@ -1323,6 +1648,31 @@ export default {
   word-break: break-all;
   text-align: left;
   color: var(--color-text-primary);
+}
+
+.preview-code {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: var(--spacing-lg);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-mono, monospace);
+  line-height: 1.6;
+  white-space: pre;
+  overflow: auto;
+  text-align: left;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+}
+
+.preview-code code {
+  display: block;
+  min-height: 100%;
+  font-family: inherit;
+  font-size: inherit;
 }
 
 .delete-confirm-modal {
@@ -1434,6 +1784,31 @@ export default {
 
 .close-btn:hover {
   color: var(--color-text-primary);
+}
+
+/* 预览弹窗内关闭按钮：圆角背景、高对比，深色主题下更易辨认 */
+.preview-modal .close-btn,
+.bookmark-preview-modal .close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.preview-modal .close-btn:hover,
+.bookmark-preview-modal .close-btn:hover {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  border-color: var(--color-text-tertiary);
 }
 
 .modal-body {
