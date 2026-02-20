@@ -17,7 +17,7 @@ import { join } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
 import { createCompactionMemoryExtensionFactory } from "../memory/compaction-extension.js";
 import { getCompactionContextForSystemPrompt } from "../memory/index.js";
-import { createBrowserTool, createSaveExperienceTool, createInstallSkillTool, createSwitchAgentTool, createListAgentsTool, createGetBookmarkTagsTool, createSaveBookmarkTool } from "../tools/index.js";
+import { createBrowserTool, createSaveExperienceTool, createInstallSkillTool, createSwitchAgentTool, createListAgentsTool, createCreateAgentTool, createGetBookmarkTagsTool, createSaveBookmarkTool } from "../tools/index.js";
 
 /** Agent Session 缓存 key：sessionId + "::" + agentId，同一业务 session 下不同 agent 各自一个 Core Session */
 const COMPOSITE_KEY_SEP = "::";
@@ -322,6 +322,7 @@ For downloads, provide either a direct URL or a selector to click.`;
             createInstallSkillTool(options.targetAgentId ?? agentId),
             createSwitchAgentTool(sessionId),
             createListAgentsTool(),
+            createCreateAgentTool(),
             createGetBookmarkTagsTool(),
             createSaveBookmarkTool(),
             ...mcpTools,

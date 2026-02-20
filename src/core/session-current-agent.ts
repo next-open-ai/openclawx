@@ -7,9 +7,22 @@ export type SessionCurrentAgentResolver = (sessionId: string) => string | undefi
 export type SessionCurrentAgentUpdater = (sessionId: string, agentId: string) => void;
 export type AgentListProvider = () => Promise<{ id: string; name?: string }[]>;
 
+/** 创建智能体参数：由 create_agent 工具传入，缺省由工具层补齐 */
+export type CreateAgentParams = {
+    name: string;
+    workspace: string;
+    systemPrompt?: string;
+    provider?: string;
+    model?: string;
+    modelItemCode?: string;
+};
+export type CreateAgentResult = { id: string; name: string } | { error: string };
+export type CreateAgentProvider = (params: CreateAgentParams) => Promise<CreateAgentResult>;
+
 let resolver: SessionCurrentAgentResolver | null = null;
 let updater: SessionCurrentAgentUpdater | null = null;
 let agentListProvider: AgentListProvider | null = null;
+let createAgentProvider: CreateAgentProvider | null = null;
 
 export function setSessionCurrentAgentResolver(fn: SessionCurrentAgentResolver | null): void {
     resolver = fn;
@@ -33,4 +46,12 @@ export function setAgentListProvider(fn: AgentListProvider | null): void {
 
 export function getAgentListProvider(): AgentListProvider | null {
     return agentListProvider;
+}
+
+export function setCreateAgentProvider(fn: CreateAgentProvider | null): void {
+    createAgentProvider = fn;
+}
+
+export function getCreateAgentProvider(): CreateAgentProvider | null {
+    return createAgentProvider;
 }

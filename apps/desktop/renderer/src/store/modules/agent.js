@@ -14,6 +14,8 @@ export const useAgentStore = defineStore('agent', {
         totalTokens: 0,
         /** 为 true 时根路径 / 不自动跳转最近会话（新建对话/切换智能体后清除 stay query 时用，跨组件实例生效） */
         skipRedirectToRecentOnce: false,
+        /** 每次整轮对话结束时自增，用于通知对话页刷新智能体列表（如 create_agent 后） */
+        agentListRefreshTrigger: 0,
     }),
 
     getters: {
@@ -326,6 +328,7 @@ export const useAgentStore = defineStore('agent', {
                     })
                     .catch(() => {});
             }
+            this.agentListRefreshTrigger += 1;
         },
     },
 });

@@ -47,6 +47,7 @@ import {
     setSessionCurrentAgentResolver,
     setSessionCurrentAgentUpdater,
     setAgentListProvider,
+    setCreateAgentProvider,
 } from "../core/session-current-agent.js";
 import { AgentsService } from "../server/agents/agents.service.js";
 import { AgentConfigService } from "../server/agent-config/agent-config.service.js";
@@ -94,6 +95,15 @@ export async function startGatewayServer(port: number = 38080): Promise<{
         setAgentListProvider(() =>
             agentConfigService.listAgents().then((agents) => agents.map((a) => ({ id: a.id, name: a.name }))),
         );
+        setCreateAgentProvider(async (params) => {
+            try {
+                const agent = await agentConfigService.createAgent(params);
+                return { id: agent.id, name: agent.name };
+            } catch (e: any) {
+                const msg = e?.message ?? e?.response?.message ?? String(e);
+                return { error: msg };
+            }
+        });
     } catch (e) {
         console.warn("[Gateway] Channel session persistence / session-agent bridge unavailable:", e);
     }

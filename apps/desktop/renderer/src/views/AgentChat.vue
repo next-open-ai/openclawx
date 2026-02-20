@@ -417,6 +417,10 @@ export default {
       nextTick(updateScrollTriggers);
     }, { deep: true });
 
+    watch(() => agentStore.agentListRefreshTrigger, () => {
+      loadAgents();
+    }, { immediate: false });
+
     // Startup Logic
     onMounted(async () => {
       uiStore.setSessionsPanelVisible(false);
