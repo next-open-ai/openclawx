@@ -51,6 +51,24 @@ export const useAgentStore = defineStore('agent', {
             }
         },
 
+        /**
+         * 在当前 session 内切换 agent：更新后端并刷新本地 currentSession，下次发消息会带新 agentId。
+         */
+        async updateSessionAgentId(sessionId, agentId) {
+            await agentAPI.updateSessionAgentId(sessionId, agentId);
+            const nextAgentId = agentId ?? 'default';
+            if (this.currentSession?.id === sessionId) {
+                this.currentSession = { ...this.currentSession, agentId: nextAgentId };
+                await socketService.connectToSession(sessionId, nextAgentId, this.currentSession.type);
+            }
+            const idx = this.sessions.findIndex((s) => s.id === sessionId);
+            if (idx >= 0) {
+                this.sessions = this.sessions.map((s, i) =>
+                    i === idx ? { ...s, agentId: nextAgentId } : s
+                );
+            }
+        },
+
         async deleteSession(sessionId) {
             try {
                 await agentAPI.deleteSession(sessionId);
@@ -265,7 +283,7 @@ export const useAgentStore = defineStore('agent', {
                     .catch((e) => console.warn('Record usage failed:', e));
             }
         },
-        /** agent_end：整轮对话真正结束，落库消息并允许再次输入。 */
+        /** agent_end：整轮对话真正结束，落库消息并允许再次输入。同步后端 session（含 agentId），便于对话内 switch_agent 后前端展示最新智能体。 */
         handleConversationEnd(data) {
             if (data?.sessionId !== this.currentSession?.id) return;
             const content = this.currentMessage || data.content || '';
@@ -288,6 +306,26 @@ export const useAgentStore = defineStore('agent', {
             this.currentStreamParts = [];
             this.isStreaming = false;
             this.toolExecutions = [];
+
+            // 同步当前 session（含 agentId），对话内 switch_agent 后前端展示最新智能体
+            const sessionId = this.currentSession?.id;
+            if (sessionId) {
+                agentAPI.getSession(sessionId)
+                    .then((res) => {
+                        const session = res?.data?.data ?? res?.data;
+                        if (session && this.currentSession?.id === sessionId) {
+                            this.currentSession = session;
+                            const idx = this.sessions.findIndex((s) => s.id === sessionId);
+                            if (idx >= 0) {
+                                this.sessions = this.sessions.map((s, i) => (i === idx ? { ...s, ...session } : s));
+                            }
+                            if (socketService.currentSessionId === sessionId && session.agentId !== undefined) {
+                                socketService.connectToSession(sessionId, session.agentId, session.type ?? 'chat').catch(() => {});
+                            }
+                        }
+                    })
+                    .catch(() => {});
+            }
         },
     },
 });

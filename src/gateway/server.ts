@@ -42,6 +42,14 @@ import { ensureDesktopConfigInitialized, getChannelsConfigSync } from "../core/c
 import { createNestAppEmbedded } from "../server/bootstrap.js";
 import { registerChannel, startAllChannels, stopAllChannels } from "./channel/registry.js";
 import { createFeishuChannel } from "./channel/adapters/feishu.js";
+import { setChannelSessionPersistence } from "./channel/session-persistence.js";
+import {
+    setSessionCurrentAgentResolver,
+    setSessionCurrentAgentUpdater,
+    setAgentListProvider,
+} from "../core/session-current-agent.js";
+import { AgentsService } from "../server/agents/agents.service.js";
+import { AgentConfigService } from "../server/agent-config/agent-config.service.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = join(__dirname, "..", "..");
 /** 内嵌到 Electron 时由主进程设置 OPENBOT_STATIC_DIR，指向打包后的 renderer/dist */
@@ -76,6 +84,19 @@ export async function startGatewayServer(port: number = 38080): Promise<{
     setBackendBaseUrl(`http://localhost:${port}`);
 
     const { app: nestApp, express: nestExpress } = await createNestAppEmbedded();
+
+    try {
+        const agentsService = nestApp.get(AgentsService);
+        setChannelSessionPersistence(agentsService);
+        setSessionCurrentAgentResolver((sessionId) => agentsService.getSession(sessionId)?.agentId);
+        setSessionCurrentAgentUpdater((sessionId, agentId) => agentsService.updateSessionAgentId(sessionId, agentId));
+        const agentConfigService = nestApp.get(AgentConfigService);
+        setAgentListProvider(() =>
+            agentConfigService.listAgents().then((agents) => agents.map((a) => ({ id: a.id, name: a.name }))),
+        );
+    } catch (e) {
+        console.warn("[Gateway] Channel session persistence / session-agent bridge unavailable:", e);
+    }
 
     const gatewayExpress = express();
 

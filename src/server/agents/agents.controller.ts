@@ -1,8 +1,9 @@
 import {
     Controller,
-    Get,
-    Post,
     Delete,
+    Get,
+    Patch,
+    Post,
     Body,
     Param,
     Header,
@@ -55,6 +56,19 @@ export class AgentsController {
         };
     }
 
+    @Patch('sessions/:id')
+    updateSession(@Param('id') id: string, @Body() body: { agentId?: string }) {
+        const session = this.agentsService.getSession(id);
+        if (!session) {
+            throw new HttpException('Session not found', HttpStatus.NOT_FOUND);
+        }
+        if (body.agentId != null) {
+            this.agentsService.updateSessionAgentId(id, String(body.agentId));
+        }
+        const updated = this.agentsService.getSession(id);
+        return { success: true, data: updated };
+    }
+
     @Delete('sessions/:id')
     async deleteSession(@Param('id') id: string) {
         await this.agentsService.deleteSession(id);
@@ -71,6 +85,16 @@ export class AgentsController {
             success: true,
             data: history,
         };
+    }
+
+    @Delete('sessions/:id/messages')
+    clearHistory(@Param('id') id: string) {
+        const session = this.agentsService.getSession(id);
+        if (!session) {
+            throw new HttpException('Session not found', HttpStatus.NOT_FOUND);
+        }
+        this.agentsService.clearSessionMessages(id);
+        return { success: true, message: 'Messages cleared' };
     }
 
     @Post('sessions/:id/messages')

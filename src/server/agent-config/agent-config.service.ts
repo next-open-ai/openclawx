@@ -27,6 +27,8 @@ export interface AgentConfigItem {
     isDefault?: boolean;
     /** MCP 服务器配置列表，创建 Session 时传入（与 Skill 类似） */
     mcpServers?: McpServerConfig[];
+    /** 自定义系统提示词，会与技能等一起组成最终 systemPrompt */
+    systemPrompt?: string;
 }
 
 interface AgentsFile {
@@ -116,8 +118,16 @@ export class AgentConfigService {
         return null;
     }
 
-    async createAgent(params: { name: string; workspace: string }): Promise<AgentConfigItem> {
-        const { name, workspace } = params;
+    async createAgent(params: {
+        name: string;
+        workspace: string;
+        provider?: string;
+        model?: string;
+        modelItemCode?: string;
+        /** 自定义系统提示词；可由用户描述生成，创建后可在详情页修改 */
+        systemPrompt?: string;
+    }): Promise<AgentConfigItem> {
+        const { name, workspace, provider, model, modelItemCode, systemPrompt } = params;
         if (workspace === DEFAULT_AGENT_ID) {
             throw new BadRequestException('工作空间名 default 为系统保留（主智能体），请使用其他名称');
         }
@@ -144,15 +154,17 @@ export class AgentConfigService {
             id: workspace,
             name: trimmedName,
             workspace,
-            provider: undefined,
-            model: undefined,
+            provider: provider?.trim() || undefined,
+            model: model?.trim() || undefined,
+            modelItemCode: modelItemCode?.trim() || undefined,
+            systemPrompt: systemPrompt?.trim() || undefined,
         };
         file.agents.push(agent);
         await this.writeAgentsFile(file);
         return agent;
     }
 
-    async updateAgent(id: string, updates: Partial<Pick<AgentConfigItem, 'name' | 'provider' | 'model' | 'modelItemCode' | 'mcpServers'>>): Promise<AgentConfigItem> {
+    async updateAgent(id: string, updates: Partial<Pick<AgentConfigItem, 'name' | 'provider' | 'model' | 'modelItemCode' | 'mcpServers' | 'systemPrompt'>>): Promise<AgentConfigItem> {
         if (id === DEFAULT_AGENT_ID) {
             await this.ensureDefaultWorkspace();
         }
@@ -174,6 +186,7 @@ export class AgentConfigService {
         if (updates.model !== undefined) agent.model = updates.model;
         if (updates.modelItemCode !== undefined) agent.modelItemCode = updates.modelItemCode;
         if (updates.mcpServers !== undefined) agent.mcpServers = updates.mcpServers;
+        if (updates.systemPrompt !== undefined) agent.systemPrompt = updates.systemPrompt?.trim() || undefined;
         await this.writeAgentsFile(file);
         return { ...agent, isDefault: agent.id === DEFAULT_AGENT_ID };
     }

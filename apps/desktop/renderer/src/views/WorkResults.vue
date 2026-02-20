@@ -42,6 +42,15 @@
             <span class="nav-icon">📰</span>
             {{ t('workResults.news') }}
           </button>
+          <button
+            type="button"
+            class="nav-item"
+            :class="{ active: activeTab === 'tags' }"
+            @click="activeTab = 'tags'"
+          >
+            <span class="nav-icon">🏷️</span>
+            {{ t('settings.tagsManagement') }}
+          </button>
         </nav>
       </aside>
 
@@ -316,6 +325,11 @@
       </div>
     </div>
 
+    <!-- 标签管理 Tab -->
+    <div v-show="activeTab === 'tags'" class="tab-panel tags-panel">
+      <SettingsTags />
+    </div>
+
       </main>
     </div>
 
@@ -414,11 +428,13 @@ import { useI18n } from '@/composables/useI18n';
 import apiClient from '@/api';
 import { workspaceAPI, configAPI, savedItemsAPI, tagsAPI } from '@/api';
 import { useSettingsStore } from '@/store/modules/settings';
+import SettingsTags from '@/components/SettingsTags.vue';
 
 const PREVIEW_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'pdf', 'txt', 'html', 'htm', 'md', 'json']);
 
 export default {
   name: 'WorkResults',
+  components: { SettingsTags },
   setup() {
     const { t } = useI18n();
     const settingsStore = useSettingsStore();
@@ -706,15 +722,10 @@ export default {
     }
 
     async function switchWorkspace(name) {
-      try {
-        await configAPI.updateConfig({ defaultAgentId: name });
-        currentWorkspace.value = name;
-        showSwitchModal.value = false;
-        await settingsStore.loadConfig();
-        if (activeTab.value === 'documents') loadDocuments();
-      } catch (e) {
-        console.error('Switch workspace failed', e);
-      }
+      currentWorkspace.value = name;
+      showSwitchModal.value = false;
+      if (activeTab.value === 'documents') loadDocuments();
+      // 不再写入全局 defaultAgentId，避免「设置 → 缺省智能体」被工作区切换改写
     }
 
     watch([currentWorkspace, docPath], loadDocuments);

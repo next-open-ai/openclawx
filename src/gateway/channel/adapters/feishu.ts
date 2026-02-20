@@ -71,6 +71,8 @@ class FeishuWSInbound implements IInboundTransport {
             return;
         }
         const eventDispatcher = new Lark.EventDispatcher({}).register({
+            // 已读回执事件，无需处理，注册空 handler 避免 SDK 打 no handle 的 warn
+            "im.message.message_read_v1": async () => {},
             "im.message.receive_v1": async (data: any) => {
                 const msg = data?.message;
                 if (!msg?.chat_id) return;

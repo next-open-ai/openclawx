@@ -1,6 +1,6 @@
 {
     "name": "@openbot/openbot-desktop-renderer",
-    "version": "1.0.0",
+    "version": "0.6.9",
     "description": "OpenBot Desktop Frontend - Vue.js UI",
     "type": "module",
     "scripts": {

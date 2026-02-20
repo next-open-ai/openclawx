@@ -245,7 +245,19 @@ export default {
 
 .message-user .message-body {
   background: var(--gradient-primary);
-  color: white;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.message-user .message-body,
+.message-user .message-body :deep(*),
+.message-user .message-body :deep(p),
+.message-user .message-body :deep(span),
+.message-user .message-body :deep(li) {
+  color: #ffffff;
+}
+.message-user .message-body :deep(a) {
+  color: #e0e7ff;
+  text-decoration: underline;
 }
 
 /* If using steps (Assistant structured response), we remove inner padding/bg the message body 

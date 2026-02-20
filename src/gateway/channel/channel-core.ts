@@ -3,6 +3,7 @@
  */
 import type { UnifiedMessage, UnifiedReply, IChannel, IOutboundTransport, StreamSink } from "./types.js";
 import { runAgentAndCollectReply, runAgentAndStreamReply } from "./run-agent.js";
+import { getChannelSessionPersistence, persistChannelUserMessage, persistChannelAssistantMessage } from "./session-persistence.js";
 
 const STREAM_THROTTLE_MS = 280;
 
@@ -51,7 +52,10 @@ export async function handleChannelMessage(
     msg: UnifiedMessage
 ): Promise<void> {
     const sessionId = toSessionId(msg.channelId, msg.threadId);
-    const agentId = channel.defaultAgentId ?? "default";
+    const defaultAgentId = channel.defaultAgentId ?? "default";
+    // 当前 agent：已存（DB）> 通道默认，保证对话中切换 agent 后下次仍用新 agent
+    const persistence = getChannelSessionPersistence();
+    const currentAgentId = persistence?.getSession(sessionId)?.agentId ?? defaultAgentId;
 
     const outbound = channel.getOutboundForMessage
         ? channel.getOutboundForMessage(msg)
@@ -66,6 +70,13 @@ export async function handleChannelMessage(
         console.warn("[ChannelCore] invalid threadId, skip reply");
         return;
     }
+
+    // 与 Web/Desktop 统一：通道会话入库并追加用户消息（用 currentAgentId）
+    await persistChannelUserMessage(sessionId, {
+        agentId: currentAgentId,
+        title: msg.messageText?.trim().slice(0, 50) || undefined,
+        messageText: msg.messageText?.trim() || "",
+    });
 
     const useStream = typeof (outbound as IOutboundTransport).sendStream === "function";
 
@@ -86,7 +97,7 @@ export async function handleChannelMessage(
         }, STREAM_THROTTLE_MS);
         try {
             await runAgentAndStreamReply(
-                { sessionId, message: msg.messageText, agentId },
+                { sessionId, message: msg.messageText, agentId: currentAgentId },
                 {
                     onChunk(delta) {
                         accumulated += delta;
@@ -95,6 +106,7 @@ export async function handleChannelMessage(
                     onDone() {
                         throttled.cancel();
                         const final = accumulated.trim() || "(无文本回复)";
+                        persistChannelAssistantMessage(sessionId, final);
                         donePromise = Promise.resolve(sink.onDone(final)).catch((e) => console.error("[ChannelCore] stream onDone error:", e));
                     },
                 }
@@ -114,12 +126,13 @@ export async function handleChannelMessage(
         replyText = await runAgentAndCollectReply({
             sessionId,
             message: msg.messageText,
-            agentId,
+            agentId: currentAgentId,
         });
     } catch (err) {
         console.error("[ChannelCore] runAgent failed:", err);
         replyText = "处理时出错，请稍后再试。";
     }
+    persistChannelAssistantMessage(sessionId, replyText);
     const reply: UnifiedReply = { text: replyText };
     await outbound.send(threadId, reply);
 }

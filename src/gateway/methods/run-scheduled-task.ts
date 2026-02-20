@@ -64,13 +64,16 @@ export async function handleRunScheduledTask(
         if (agentConfig.apiKey) apiKey = agentConfig.apiKey;
     }
 
+    const COMPOSITE_KEY_SEP = "::";
     try {
         const session = await agentManager.getOrCreateSession(sessionId, {
+            agentId: sessionAgentId,
             workspace: resolvedWorkspace,
             provider,
             modelId,
             apiKey,
             mcpServers: agentConfig?.mcpServers,
+            systemPrompt: agentConfig?.systemPrompt,
         });
         let assistantContent = "";
         let turnPromptTokens = 0;
@@ -143,7 +146,6 @@ export async function handleRunScheduledTask(
         res.writeHead(500, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: false, error: friendlyError }));
     } finally {
-        // 执行完成（成功或失败）后立即关闭并移除该 AgentSession，避免空悬占用内存/连接等资源
-        agentManager.deleteSession(sessionId);
+        agentManager.deleteSession(sessionId + COMPOSITE_KEY_SEP + sessionAgentId);
     }
 }

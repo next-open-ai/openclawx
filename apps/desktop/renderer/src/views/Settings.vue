@@ -54,14 +54,6 @@
         </div>
         <div 
           class="nav-item" 
-          :class="{ active: activeTab === 'tags' }"
-          @click="activeTab = 'tags'"
-        >
-          <span class="nav-icon">🏷️</span>
-          {{ t('settings.tagsManagement') }}
-        </div>
-        <div 
-          class="nav-item" 
           :class="{ active: activeTab === 'channels' }"
           @click="activeTab = 'channels'; initChannelsTab()"
         >
@@ -145,11 +137,21 @@
             <h3>{{ t('settings.workspace') }}</h3>
             <div class="form-group">
               <label>{{ t('settings.defaultAgent') }}</label>
-              <input v-model="localConfig.defaultAgentId" class="input" placeholder="default" />
+              <select v-model="localConfig.defaultAgentId" class="input select-input">
+                <option
+                  v-for="a in defaultAgentOptions"
+                  :key="a.id"
+                  :value="a.id"
+                >
+                  {{ a.name || a.id }}
+                </option>
+              </select>
+              <p class="form-hint">{{ t('settings.defaultAgentHint') }}</p>
             </div>
           </div>
 
-          <div class="settings-group">
+          <!-- 网关配置暂时隐藏 -->
+          <div v-if="false" class="settings-group">
             <h3>{{ t('settings.gateway') }}</h3>
             <div class="form-group">
               <label>{{ t('settings.gatewayUrl') }}</label>
@@ -369,7 +371,7 @@
                   <label>{{ t('settings.selectProvider') }}</label>
                   <select v-model="addModelForm.provider" class="input select-input" :disabled="editingModelIndex >= 0" @change="onAddModelProviderOrTypeChange">
                     <option value="">—</option>
-                    <option v-for="p in configuredProviders" :key="p" :value="p">{{ p }}</option>
+                    <option v-for="p in configuredProviders" :key="p" :value="p">{{ getProviderDisplayName(p) }}</option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -389,15 +391,24 @@
                     class="input"
                     :placeholder="t('settings.modelIdCustomPlaceholder')"
                   />
-                  <select
-                    v-else
-                    v-model="addModelForm.modelId"
-                    class="input select-input"
-                    :disabled="!addModelForm.provider || editingModelIndex >= 0"
-                  >
-                    <option value="">—</option>
-                    <option v-for="m in addModelOptions" :key="m.id" :value="m.id">{{ m.name }}</option>
-                  </select>
+                  <template v-else>
+                    <select
+                      v-model="addModelForm.modelId"
+                      class="input select-input"
+                      :disabled="!addModelForm.provider || editingModelIndex >= 0"
+                    >
+                      <option value="">—</option>
+                      <option v-for="m in addModelOptions" :key="m.id" :value="m.id">{{ m.name }}</option>
+                    </select>
+                    <p class="form-hint form-hint-inline">{{ t('settings.modelCustomHint') }}</p>
+                    <input
+                      v-model="addModelForm.customModelId"
+                      type="text"
+                      class="input model-custom-input"
+                      :placeholder="t('settings.modelCustomPlaceholder')"
+                      :disabled="!addModelForm.provider || editingModelIndex >= 0"
+                    />
+                  </template>
                 </div>
                 <div class="form-group">
                   <label>{{ t('settings.modelAlias') }}</label>
@@ -425,7 +436,7 @@
                 </div>
                 <div class="modal-footer-actions">
                   <button type="button" class="btn-secondary" @click="closeAddModelModal">{{ t('common.close') }}</button>
-                  <button type="button" class="btn-primary" :disabled="!addModelForm.provider || !addModelForm.modelId" @click="submitAddModel">{{ t('common.save') }}</button>
+                  <button type="button" class="btn-primary" :disabled="!addModelForm.provider || !effectiveAddModelId" @click="submitAddModel">{{ t('common.save') }}</button>
                 </div>
               </div>
             </div>
@@ -514,11 +525,6 @@
           <SettingsSkills />
         </div>
 
-        <!-- Tags Tab -->
-        <div v-show="activeTab === 'tags'" class="tab-content">
-          <SettingsTags />
-        </div>
-
         <!-- 通道配置 Tab -->
         <div v-show="activeTab === 'channels'" class="tab-content">
           <h2 class="tab-title">{{ t('settings.channels') }}</h2>
@@ -553,12 +559,15 @@
             </div>
             <div class="form-group">
               <label>{{ t('settings.channelDefaultAgentId') }}</label>
-              <input
-                v-model="localChannels.feishu.defaultAgentId"
-                type="text"
-                class="input"
-                :placeholder="t('settings.channelDefaultAgentIdPlaceholder')"
-              />
+              <select v-model="localChannels.feishu.defaultAgentId" class="input select-input">
+                <option
+                  v-for="a in channelFeishuDefaultAgentOptions"
+                  :key="a.id"
+                  :value="a.id"
+                >
+                  {{ a.name || a.id }}
+                </option>
+              </select>
             </div>
             <p class="form-hint">{{ t('settings.channelFeishuHint') }}</p>
           </div>
@@ -575,10 +584,10 @@
           
           <div class="about-card">
             <div class="logo-large">
-              <img src="@/assets/logo.svg" alt="OpenBot" />
+              <img src="@/assets/logo.svg" alt="OpenClawX" />
             </div>
-            <h3>OpenBot Desktop</h3>
-            <p class="version">v1.0.0</p>
+            <h3>OpenClawX Desktop</h3>
+            <p class="version">{{ appVersion || 'v1.0.0' }}</p>
             
 <div class="about-details">
             <div class="detail-row">
@@ -728,17 +737,16 @@ import { useSettingsStore } from '@/store/modules/settings';
 import { useLocaleStore } from '@/store/modules/locale';
 import { useAuthStore } from '@/store/modules/auth';
 import { useI18n } from '@/composables/useI18n';
-import { usersAPI } from '@/api';
+import { usersAPI, agentConfigAPI } from '@/api';
 import SettingsSkills from '@/components/SettingsSkills.vue';
-import SettingsTags from '@/components/SettingsTags.vue';
 
-const SETTINGS_TABS = ['general', 'agent', 'models', 'knowledge', 'users', 'skills', 'tags', 'channels', 'about'];
+const SETTINGS_TABS = ['general', 'agent', 'models', 'knowledge', 'users', 'skills', 'channels', 'about'];
     /** 是否显示 RAG/知识库 Tab（设为 false 可隐藏，相关代码与逻辑保留） */
     const showRagTab = false;
 
 export default {
   name: 'Settings',
-  components: { SettingsSkills, SettingsTags },
+  components: { SettingsSkills },
   setup() {
     const route = useRoute();
     const router = useRouter();
@@ -766,6 +774,11 @@ export default {
         await settingsStore.loadConfig();
         loadAgentConfig();
       }
+      if (tab === 'agent') {
+        await settingsStore.loadConfig();
+        loadAgentConfig();
+        await loadAgentList();
+      }
       if (tab === 'models') {
         await settingsStore.loadConfig();
         initModelConfigTab();
@@ -774,8 +787,12 @@ export default {
         await settingsStore.loadConfig();
         initKnowledgeTab();
       }
+      if (tab === 'channels') {
+        await loadAgentList();
+      }
     });
     const localConfig = ref({});
+    const agentList = ref([]);
     const modelConfigSubTab = ref('provider');
     const localProviderConfig = ref({});
     const localDefaultProvider = ref('');
@@ -791,6 +808,8 @@ export default {
       provider: '',
       type: 'llm',
       modelId: '',
+      /** 自定义模型 ID（可选）；有值时保存优先使用此项，适用于列表中没有的目标模型 */
+      customModelId: '',
       alias: '',
       reasoning: false,
       cost: defaultCost(),
@@ -882,9 +901,24 @@ export default {
       if (!Array.isArray(list)) return [];
       return list.map((m) => (typeof m === 'string' ? { id: m, name: m } : { id: m.id, name: m.name || m.id }));
     });
+    /** 新增/编辑模型弹窗中实际使用的模型 ID：自定义输入优先，否则为下拉选择值 */
+    const effectiveAddModelId = computed(() => {
+      const custom = (addModelForm.value.customModelId || '').trim();
+      if (custom) return custom;
+      if (isOpenAiCustomProvider.value) return (addModelForm.value.modelId || '').trim();
+      return (addModelForm.value.modelId || '').trim();
+    });
+    /** 通道配置-飞书：绑定当前通道的缺省智能体下拉选项（default + 智能体列表；若当前值不在列表中则追加一项） */
+    const channelFeishuDefaultAgentOptions = computed(() => {
+      const current = (localChannels.value?.feishu?.defaultAgentId || '').trim() || 'default';
+      const list = [{ id: 'default', name: 'default' }, ...agentList.value];
+      const hasCurrent = list.some((a) => a.id === current);
+      if (!hasCurrent && current) return [...list, { id: current, name: current }];
+      return list;
+    });
     const platform = window.electronAPI?.platform || 'web';
-    // Mock electron version if not available
-    const electronVersion = window.process?.versions?.electron || 'Unknown';
+    const appVersion = ref('');
+    const electronVersion = ref('Unknown');
 
     const currentLocale = computed({
       get: () => localeStore.locale,
@@ -905,6 +939,28 @@ export default {
         localConfig.value = { loginPassword: '' };
       }
     };
+
+    const loadAgentList = async () => {
+      try {
+        const res = await agentConfigAPI.listAgents();
+        const raw = res?.data?.data ?? res?.data;
+        agentList.value = Array.isArray(raw) ? raw : [];
+      } catch (err) {
+        console.warn('[Settings] loadAgentList error', err);
+        agentList.value = [];
+      }
+    };
+
+    /** 缺省智能体下拉选项：default + 现有智能体列表；若当前配置值不在列表中则追加一项以便正确显示 */
+    const defaultAgentOptions = computed(() => {
+      const current = localConfig.value?.defaultAgentId ?? 'default';
+      const list = [{ id: 'default', name: 'default' }, ...agentList.value];
+      const hasCurrent = list.some((a) => a.id === current);
+      if (!hasCurrent && current && current !== 'default') {
+        return [...list, { id: current, name: current }];
+      }
+      return list;
+    });
 
     const saveAgentConfig = async () => {
       const payload = { ...localConfig.value };
@@ -1062,6 +1118,7 @@ export default {
         provider: configuredProviders.value[0] || '',
         type: 'llm',
         modelId: '',
+        customModelId: '',
         alias: '',
         reasoning: false,
         cost: defaultCost(),
@@ -1084,6 +1141,7 @@ export default {
         provider: item.provider,
         type: item.type || 'llm',
         modelId: item.modelId,
+        customModelId: '',
         alias: (item.alias || '').trim() || '',
         reasoning: !!item.reasoning,
         cost: {
@@ -1102,12 +1160,13 @@ export default {
     function closeAddModelModal() {
       showAddModelModal.value = false;
       editingModelIndex.value = -1;
-      addModelForm.value = { provider: '', type: 'llm', modelId: '', alias: '', reasoning: false, cost: defaultCost(), contextWindow: 64000, maxTokens: 8192 };
+      addModelForm.value = { provider: '', type: 'llm', modelId: '', customModelId: '', alias: '', reasoning: false, cost: defaultCost(), contextWindow: 64000, maxTokens: 8192 };
     }
 
     function onAddModelProviderOrTypeChange() {
       const { provider, type } = addModelForm.value;
       addModelForm.value.modelId = '';
+      addModelForm.value.customModelId = '';
       if (provider && type) settingsStore.loadModels(provider, type).catch(() => {});
     }
 
@@ -1116,7 +1175,8 @@ export default {
     }
 
     async function submitAddModel() {
-      const { provider, type, modelId } = addModelForm.value;
+      const { provider, type } = addModelForm.value;
+      const modelId = effectiveAddModelId.value;
       if (!provider || !modelId) return;
       const baseAlias = (addModelForm.value.alias || '').trim() || getModelDisplayName(provider, modelId);
       const list = configuredModelsList.value;
@@ -1466,6 +1526,18 @@ export default {
     }
 
     onMounted(async () => {
+      if (typeof window !== 'undefined' && window.electronAPI) {
+        if (window.electronAPI.getAppVersion) {
+          window.electronAPI.getAppVersion().then((v) => {
+            appVersion.value = v ? `v${v}` : '';
+          });
+        }
+        if (window.electronAPI.getElectronVersion) {
+          window.electronAPI.getElectronVersion().then((v) => {
+            electronVersion.value = v || 'Unknown';
+          });
+        }
+      }
       try {
         activeTab.value = tabFromQuery();
         await settingsStore.loadProviderSupport();
@@ -1473,8 +1545,12 @@ export default {
         await settingsStore.loadConfig();
         loadAgentConfig();
         initModelConfigTab();
+        if (activeTab.value === 'agent') await loadAgentList();
         if (activeTab.value === 'knowledge') initKnowledgeTab();
-        if (activeTab.value === 'channels') initChannelsTab();
+        if (activeTab.value === 'channels') {
+          await loadAgentList();
+          initChannelsTab();
+        }
       } catch (err) {
         console.error('[Settings] onMounted error', err);
       }
@@ -1494,6 +1570,8 @@ export default {
       defaultModelIndex,
       isOpenAiCustomProvider,
       addModelOptions,
+      effectiveAddModelId,
+      channelFeishuDefaultAgentOptions,
       getModelDisplayName,
       getModelAlias,
       getProviderDisplayName,
@@ -1536,8 +1614,10 @@ export default {
       setDefaultModel,
       currentLocale,
       platform,
+      appVersion,
       electronVersion,
       setTheme,
+      defaultAgentOptions,
       saveAgentConfig,
       resetAgentConfig,
       logout,
@@ -1993,6 +2073,13 @@ export default {
   color: var(--color-text-secondary);
   margin-top: var(--spacing-xs);
   margin-bottom: 0;
+}
+.form-hint-inline {
+  margin-top: var(--spacing-xs);
+}
+.model-custom-input {
+  margin-top: var(--spacing-sm);
+  display: block;
 }
 .settings-group .form-hint:first-child {
   margin-top: 0;

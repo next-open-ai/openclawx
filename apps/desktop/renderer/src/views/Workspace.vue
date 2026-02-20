@@ -367,15 +367,10 @@ export default {
     }
 
     async function switchWorkspace(name) {
-      try {
-        await configAPI.updateConfig({ defaultAgentId: name });
-        currentWorkspace.value = name;
-        showSwitchModal.value = false;
-        await settingsStore.loadConfig();
-        if (activeTab.value === 'documents') loadDocuments();
-      } catch (e) {
-        console.error('Switch workspace failed', e);
-      }
+      currentWorkspace.value = name;
+      showSwitchModal.value = false;
+      if (activeTab.value === 'documents') loadDocuments();
+      // 不再写入全局 defaultAgentId，避免「设置 → 缺省智能体」被工作区切换改写
     }
 
     async function selectSkill(name) {

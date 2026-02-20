@@ -14,8 +14,10 @@ export const agentAPI = {
     createSession: (options) => apiClient.post('/agents/sessions', options),
     getSessions: () => apiClient.get('/agents/sessions'),
     getSession: (id) => apiClient.get(`/agents/sessions/${id}`),
+    updateSessionAgentId: (id, agentId) => apiClient.patch(`/agents/sessions/${id}`, { agentId }),
     deleteSession: (id) => apiClient.delete(`/agents/sessions/${id}`),
     getHistory: (id) => apiClient.get(`/agents/sessions/${id}/history`),
+    clearSessionMessages: (id) => apiClient.delete(`/agents/sessions/${id}/messages`),
     appendMessage: (id, role, content, options = {}) =>
         apiClient.post(`/agents/sessions/${id}/messages`, { role, content, ...options }),
 };

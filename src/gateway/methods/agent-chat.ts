@@ -1,9 +1,12 @@
 import type { GatewayClient, AgentChatParams } from "../types.js";
 import { agentManager } from "../../core/agent/agent-manager.js";
+import { getSessionCurrentAgentResolver, getSessionCurrentAgentUpdater } from "../../core/session-current-agent.js";
 import { getExperienceContextForUserMessage } from "../../core/memory/index.js";
 import { send, createEvent } from "../utils.js";
 import { connectedClients } from "../clients.js";
 import { getDesktopConfig, loadDesktopAgentConfig } from "../../core/config/desktop-config.js";
+
+const COMPOSITE_KEY_SEP = "::";
 
 /**
  * Broadcast message to all clients subscribed to a session
@@ -47,15 +50,22 @@ async function handleAgentChatInner(
     params: AgentChatParams,
 ): Promise<{ status: string; sessionId: string }> {
     const { targetAgentId } = params;
-    // 客户端在 connect 或 agent.chat 传入 agentId/sessionType，Gateway 不再请求 Nest
-    const sessionAgentId = params.agentId ?? client.agentId ?? "default";
     const sessionType = params.sessionType ?? client.sessionType ?? "chat";
+    // 当前 agent：请求传入 > 已存（DB）> 连接/默认
+    const resolveCurrentAgent = getSessionCurrentAgentResolver();
+    const storedAgentId = resolveCurrentAgent?.(targetSessionId);
+    const clientAgentId = params.agentId ?? client.agentId ?? "default";
+    let currentAgentId = params.agentId ?? storedAgentId ?? clientAgentId ?? "default";
+    if (params.agentId) {
+        getSessionCurrentAgentUpdater()?.(targetSessionId, params.agentId);
+        currentAgentId = params.agentId;
+    }
 
     let workspace = "default";
     let provider: string | undefined;
     let modelId: string | undefined;
     let apiKey: string | undefined;
-    const agentConfig = await loadDesktopAgentConfig(sessionAgentId);
+    const agentConfig = await loadDesktopAgentConfig(currentAgentId);
     if (agentConfig) {
         if (agentConfig.workspace) workspace = agentConfig.workspace;
         provider = agentConfig.provider;
@@ -63,19 +73,18 @@ async function handleAgentChatInner(
         if (agentConfig.apiKey) apiKey = agentConfig.apiKey;
     }
 
-    // system / scheduled：每次对话前先删再建，对话结束马上关闭，节省资源
     const isEphemeralSession = sessionType === "system" || sessionType === "scheduled";
     if (isEphemeralSession) {
-        agentManager.deleteSession(targetSessionId);
+        agentManager.deleteSession(targetSessionId + COMPOSITE_KEY_SEP + currentAgentId);
     }
 
-    // system 会话用请求里的 targetAgentId；chat/scheduled 用 session 对应的 agentId 传给 install_skill
-    const effectiveTargetAgentId = sessionType === "system" ? targetAgentId : sessionAgentId;
+    const effectiveTargetAgentId = sessionType === "system" ? targetAgentId : currentAgentId;
 
     const { maxAgentSessions } = getDesktopConfig();
     let session;
     try {
         session = await agentManager.getOrCreateSession(targetSessionId, {
+            agentId: currentAgentId,
             workspace,
             provider,
             modelId,
@@ -83,6 +92,7 @@ async function handleAgentChatInner(
             maxSessions: maxAgentSessions,
             targetAgentId: effectiveTargetAgentId,
             mcpServers: agentConfig?.mcpServers,
+            systemPrompt: agentConfig?.systemPrompt,
         });
     } catch (err: any) {
         const msg = err?.message ?? String(err);
@@ -150,7 +160,7 @@ async function handleAgentChatInner(
             broadcastToSession(targetSessionId, wsMessage);
         }
         if (event.type === "agent_end" && isEphemeralSession) {
-            agentManager.deleteSession(targetSessionId);
+            agentManager.deleteSession(targetSessionId + COMPOSITE_KEY_SEP + currentAgentId);
         }
     });
 

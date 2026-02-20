@@ -17,7 +17,13 @@ import { join } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
 import { createCompactionMemoryExtensionFactory } from "../memory/compaction-extension.js";
 import { getCompactionContextForSystemPrompt } from "../memory/index.js";
-import { createBrowserTool, createSaveExperienceTool, createInstallSkillTool, createGetBookmarkTagsTool, createSaveBookmarkTool } from "../tools/index.js";
+import { createBrowserTool, createSaveExperienceTool, createInstallSkillTool, createSwitchAgentTool, createListAgentsTool, createGetBookmarkTagsTool, createSaveBookmarkTool } from "../tools/index.js";
+
+/** Agent Session 缓存 key：sessionId + "::" + agentId，同一业务 session 下不同 agent 各自一个 Core Session */
+const COMPOSITE_KEY_SEP = "::";
+function toCompositeKey(sessionId: string, agentId: string): string {
+    return sessionId + COMPOSITE_KEY_SEP + agentId;
+}
 import { createMcpToolsForSession } from "../mcp/index.js";
 import type { McpServerConfig } from "../mcp/index.js";
 import { registerBuiltInApiProviders } from "@mariozechner/pi-ai/dist/providers/register-builtins.js";
@@ -135,7 +141,12 @@ For downloads, provide either a direct URL or a selector to click.`;
         return { systemPrompt, skills: loadedSkills };
     }
 
-    private createResourceLoader(workspaceDir: string, sessionId?: string, compactionBlock?: string): DefaultResourceLoader {
+    private createResourceLoader(
+        workspaceDir: string,
+        sessionId?: string,
+        compactionBlock?: string,
+        customAgentPrompt?: string,
+    ): DefaultResourceLoader {
         const loader = new DefaultResourceLoader({
             cwd: workspaceDir,
             agentDir: this.agentDir,
@@ -144,11 +155,15 @@ For downloads, provide either a direct URL or a selector to click.`;
             extensionFactories: sessionId ? [createCompactionMemoryExtensionFactory(sessionId)] : [],
             systemPromptOverride: (base) => {
                 const loadedSkills = loader.getSkills().skills;
-                let customPrompt = this.buildSystemPrompt(loadedSkills);
+                let basePrompt = this.buildSystemPrompt(loadedSkills);
+                const withCustom =
+                    customAgentPrompt && customAgentPrompt.trim()
+                        ? customAgentPrompt.trim() + "\n\n" + basePrompt
+                        : basePrompt;
                 if (compactionBlock?.trim()) {
-                    customPrompt = customPrompt + "\n\n" + compactionBlock.trim();
+                    return withCustom + "\n\n" + compactionBlock.trim();
                 }
-                return customPrompt;
+                return withCustom;
             },
         });
         return loader;
@@ -182,25 +197,31 @@ For downloads, provide either a direct URL or a selector to click.`;
 
     /**
      * Get or create an agent session.
-     * @param options.workspace 该会话绑定的工作区名（来自 agent 配置），不传则用 default，创建时 cwd/技能路径依此
-     * @param options.provider / options.modelId 来自 agent 配置的大模型，不传则用环境变量默认
-     * @param options.maxSessions 若提供且当前 session 数 >= 该值，会先淘汰最后调用时间最早的 session 再创建新的
-     * @param options.targetAgentId 创建时绑定到 install_skill 工具，用于安装目标（具体 agentId 或 global）
+     * 缓存 key 为 sessionId + "::" + agentId，同一业务 session 下可切换 agent 且各自保留上下文。
+     * @param sessionId 业务会话 ID（桌面 UUID 或 channel:feishu:threadId 等）
+     * @param options.agentId 当前使用的 agent，与 sessionId 组成复合 key，必传或默认 "default"
+     * @param options.workspace 该会话绑定的工作区名（来自 agent 配置）
+     * @param options.maxSessions 若提供且当前 session 数 >= 该值，按 LRU 淘汰
+     * @param options.targetAgentId 创建时绑定到 install_skill 工具
      */
     public async getOrCreateSession(sessionId: string, options: {
+        agentId?: string;
         workspace?: string;
         provider?: string;
         modelId?: string;
         apiKey?: string;
         maxSessions?: number;
         targetAgentId?: string;
-        /** MCP 服务器配置列表（与 Skill 类似，配到 Agent 后在创建 Session 时传入） */
         mcpServers?: McpServerConfig[];
+        /** 自定义系统提示词（来自 agent 配置），会与技能等一起组成最终 systemPrompt */
+        systemPrompt?: string;
     } = {}): Promise<AgentSession> {
+        const agentId = options.agentId ?? "default";
+        const compositeKey = toCompositeKey(sessionId, agentId);
         const now = Date.now();
-        if (this.sessions.has(sessionId)) {
-            this.sessionLastActiveAt.set(sessionId, now);
-            return this.sessions.get(sessionId)!;
+        if (this.sessions.has(compositeKey)) {
+            this.sessionLastActiveAt.set(compositeKey, now);
+            return this.sessions.get(compositeKey)!;
         }
 
         const { maxSessions } = options;
@@ -269,7 +290,12 @@ For downloads, provide either a direct URL or a selector to click.`;
         });
 
         const compactionBlock = await getCompactionContextForSystemPrompt(sessionId);
-        const loader = this.createResourceLoader(sessionWorkspaceDir, sessionId, compactionBlock);
+        const loader = this.createResourceLoader(
+            sessionWorkspaceDir,
+            sessionId,
+            compactionBlock,
+            options.systemPrompt,
+        );
         await loader.reload();
 
         const coreTools: Record<string, any> = {
@@ -286,7 +312,9 @@ For downloads, provide either a direct URL or a selector to click.`;
         const customTools = [
             createBrowserTool(sessionWorkspaceDir),
             createSaveExperienceTool(sessionId),
-            createInstallSkillTool(options.targetAgentId),
+            createInstallSkillTool(options.targetAgentId ?? agentId),
+            createSwitchAgentTool(sessionId),
+            createListAgentsTool(),
             createGetBookmarkTagsTool(),
             createSaveBookmarkTool(),
             ...mcpTools,
@@ -309,18 +337,31 @@ For downloads, provide either a direct URL or a selector to click.`;
             await session.setModel(model);
         }
 
-        this.sessions.set(sessionId, session);
-        this.sessionLastActiveAt.set(sessionId, now);
+        this.sessions.set(compositeKey, session);
+        this.sessionLastActiveAt.set(compositeKey, now);
         return session;
     }
 
-    public getSession(sessionId: string): AgentSession | undefined {
-        return this.sessions.get(sessionId);
+    /** 按复合 key 获取（key = sessionId + "::" + agentId） */
+    public getSession(compositeKey: string): AgentSession | undefined {
+        return this.sessions.get(compositeKey);
     }
 
-    public deleteSession(sessionId: string): boolean {
-        this.sessionLastActiveAt.delete(sessionId);
-        return this.sessions.delete(sessionId);
+    /** 删除一个 Agent Session（传入复合 key） */
+    public deleteSession(compositeKey: string): boolean {
+        this.sessionLastActiveAt.delete(compositeKey);
+        return this.sessions.delete(compositeKey);
+    }
+
+    /** 按业务 sessionId 删除该会话下所有 agent 的 Core Session（如删除会话时） */
+    public deleteSessionsByBusinessId(sessionId: string): void {
+        const prefix = sessionId + COMPOSITE_KEY_SEP;
+        for (const key of Array.from(this.sessions.keys())) {
+            if (key.startsWith(prefix)) {
+                this.sessionLastActiveAt.delete(key);
+                this.sessions.delete(key);
+            }
+        }
     }
 
     public clearAll(): void {

@@ -61,6 +61,7 @@ export async function run(options: RunOptions): Promise<RunResult> {
     // Create a temporary session for this run
     const sessionId = `cli-${Date.now()}`;
     const session = await manager.getOrCreateSession(sessionId, {
+        agentId: "default",
         provider,
         modelId,
         apiKey,
@@ -104,8 +105,7 @@ export async function run(options: RunOptions): Promise<RunResult> {
     // Send prompt and wait for completion
     await session.prompt(userPrompt);
 
-    // Clean up session
-    manager.deleteSession(sessionId);
+    manager.deleteSession(sessionId + "::" + "default");
 
     result.assistantContent = assistantContent.trim();
     return result;

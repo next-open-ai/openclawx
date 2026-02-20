@@ -79,6 +79,8 @@ interface AgentItem {
     modelItemCode?: string;
     /** MCP 服务器列表，创建 Session 时传入（与 Skill 类似） */
     mcpServers?: DesktopMcpServerConfig[];
+    /** 自定义系统提示词，与技能等一起组成最终 systemPrompt */
+    systemPrompt?: string;
 }
 
 interface AgentsFile {
@@ -175,6 +177,8 @@ export interface DesktopAgentConfig {
     workspace?: string;
     /** MCP 服务器配置，创建 Session 时传入 */
     mcpServers?: DesktopMcpServerConfig[];
+    /** 自定义系统提示词，会与技能等一起组成最终 systemPrompt */
+    systemPrompt?: string;
 }
 
 /**
@@ -242,6 +246,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
     }
     let workspaceName: string = resolvedAgentId;
     let mcpServers: DesktopMcpServerConfig[] | undefined;
+    let systemPrompt: string | undefined;
 
     if (existsSync(agentsPath)) {
         try {
@@ -254,6 +259,9 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
                 else if (agent.id) workspaceName = agent.id;
                 if (agent.mcpServers && Array.isArray(agent.mcpServers)) {
                     mcpServers = agent.mcpServers;
+                }
+                if (agent.systemPrompt && typeof agent.systemPrompt === "string") {
+                    systemPrompt = agent.systemPrompt.trim();
                 }
                 if (agent.modelItemCode && Array.isArray(config.configuredModels)) {
                     const configured = config.configuredModels.find((m) => m.modelItemCode === agent.modelItemCode);
@@ -280,7 +288,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
             ? provConfig.apiKey.trim()
             : undefined;
 
-    return { provider, model, apiKey: apiKey ?? undefined, workspace: workspaceName, mcpServers };
+    return { provider, model, apiKey: apiKey ?? undefined, workspace: workspaceName, mcpServers, systemPrompt };
 }
 
 /** 供 CLI config list 使用：从桌面 config 读出的配置列表项 */

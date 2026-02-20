@@ -59,6 +59,16 @@
               />
               <p class="form-hint">{{ t('agents.workspaceReadonly') }}</p>
             </div>
+            <div class="form-group">
+              <label>{{ t('agents.agentDescription') }}</label>
+              <textarea
+                v-model="configForm.systemPrompt"
+                class="form-input form-textarea"
+                :placeholder="t('agents.agentDescriptionPlaceholder')"
+                rows="4"
+              />
+              <p class="form-hint">{{ t('agents.agentDescriptionHint') }}</p>
+            </div>
             <!-- 模型配置：从已配置的模型列表中选择，选项为 供应商 / 模型名，选中后显示供应商及模型 ID -->
             <div class="config-section model-section">
               <h3 class="config-section-title">{{ t('agents.modelConfig') }}</h3>
@@ -414,7 +424,7 @@ export default {
       { id: 'mcp', label: t('agents.mcpConfig'), icon: '🔌' },
     ]);
 
-    const configForm = ref({ name: '' });
+    const configForm = ref({ name: '', systemPrompt: '' });
     const configSaving = ref(false);
 
     const modelForm = ref({ provider: '', model: '' });
@@ -598,7 +608,7 @@ export default {
         const res = await agentConfigAPI.getAgent(agentId.value);
         agent.value = res.data?.data ?? null;
         if (agent.value) {
-          configForm.value = { name: agent.value.name };
+          configForm.value = { name: agent.value.name, systemPrompt: agent.value.systemPrompt ?? '' };
           modelForm.value = {
             provider: agent.value.provider ?? '',
             model: agent.value.model ?? '',
@@ -609,14 +619,14 @@ export default {
             : [];
         } else if (agentId.value === 'default') {
           agent.value = { ...MAIN_AGENT_FALLBACK };
-          configForm.value = { name: agent.value.name };
+          configForm.value = { name: agent.value.name, systemPrompt: '' };
           modelForm.value = { provider: '', model: '' };
           mcpServers.value = [];
         }
       } catch (e) {
         if (agentId.value === 'default') {
           agent.value = { ...MAIN_AGENT_FALLBACK };
-          configForm.value = { name: agent.value.name };
+          configForm.value = { name: agent.value.name, systemPrompt: '' };
           modelForm.value = { provider: '', model: '' };
           mcpServers.value = [];
         } else {
@@ -639,11 +649,12 @@ export default {
         const item = selectedModelItem.value;
         if (item && item.modelItemCode) payload.modelItemCode = item.modelItemCode;
         payload.mcpServers = mcpServers.value;
+        payload.systemPrompt = configForm.value.systemPrompt?.trim() || undefined;
         await agentConfigAPI.updateAgent(agent.value.id, payload);
         if (!agent.value.isDefault) {
           agent.value.name = configForm.value.name || agent.value.workspace;
         }
-        agent.value = { ...agent.value, provider: modelForm.value.provider, model: modelForm.value.model, modelItemCode: item?.modelItemCode ?? agent.value.modelItemCode };
+        agent.value = { ...agent.value, provider: modelForm.value.provider, model: modelForm.value.model, modelItemCode: item?.modelItemCode ?? agent.value.modelItemCode, systemPrompt: payload.systemPrompt };
       } catch (e) {
         console.error('Save config failed', e);
       } finally {
@@ -1358,6 +1369,12 @@ export default {
 .form-input.readonly {
   opacity: 0.8;
   cursor: not-allowed;
+}
+
+.form-input.form-textarea {
+  min-height: 88px;
+  resize: vertical;
+  max-width: 100%;
 }
 
 .form-hint {

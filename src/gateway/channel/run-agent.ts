@@ -48,6 +48,7 @@ export async function runAgentAndStreamReply(
 
     const { maxAgentSessions } = getDesktopConfig();
     const session = await agentManager.getOrCreateSession(sessionId, {
+        agentId: sessionAgentId,
         workspace,
         provider,
         modelId,
@@ -55,6 +56,7 @@ export async function runAgentAndStreamReply(
         maxSessions: maxAgentSessions,
         targetAgentId: sessionAgentId,
         mcpServers: agentConfig?.mcpServers,
+        systemPrompt: agentConfig?.systemPrompt,
     });
 
     let resolveDone: () => void;
@@ -118,6 +120,7 @@ export async function runAgentAndCollectReply(
 
     const { maxAgentSessions } = getDesktopConfig();
     const session = await agentManager.getOrCreateSession(sessionId, {
+        agentId: sessionAgentId,
         workspace,
         provider,
         modelId,
@@ -125,6 +128,7 @@ export async function runAgentAndCollectReply(
         maxSessions: maxAgentSessions,
         targetAgentId: sessionAgentId,
         mcpServers: agentConfig?.mcpServers,
+        systemPrompt: agentConfig?.systemPrompt,
     });
 
     const chunks: string[] = [];

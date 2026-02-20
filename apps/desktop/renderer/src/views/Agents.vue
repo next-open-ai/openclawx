@@ -77,6 +77,30 @@
               />
               <p class="form-hint">{{ t('agents.workspaceNameHint') }}</p>
             </div>
+            <div class="form-group">
+              <label>{{ t('agents.defaultModel') }}</label>
+              <select v-model="createForm.defaultModelKey" class="form-input">
+                <option value="">— {{ t('agents.defaultModelCreateHint') }} —</option>
+                <option
+                  v-for="item in createModelOptions"
+                  :key="optionValueFor(item)"
+                  :value="optionValueFor(item)"
+                >
+                  {{ getModelOptionLabel(item) }}
+                </option>
+              </select>
+              <p class="form-hint">{{ t('agents.modelConfigHint') }}</p>
+            </div>
+            <div class="form-group">
+              <label>{{ t('agents.agentDescription') }}</label>
+              <textarea
+                v-model="createForm.systemPrompt"
+                class="form-input form-textarea"
+                :placeholder="t('agents.agentDescriptionPlaceholder')"
+                rows="4"
+              />
+              <p class="form-hint">{{ t('agents.agentDescriptionHint') }}</p>
+            </div>
             <p v-if="createError" class="form-error">{{ createError }}</p>
             <div class="modal-footer-actions">
               <button type="button" class="btn-secondary" @click="showCreateModal = false">
@@ -94,10 +118,10 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@/composables/useI18n';
-import { agentConfigAPI } from '@/api';
+import { agentConfigAPI, configAPI } from '@/api';
 
 /** 主智能体（default）前端兜底，接口失败或返回空时至少显示此项 */
 const FALLBACK_DEFAULT_AGENT = {
@@ -107,6 +131,10 @@ const FALLBACK_DEFAULT_AGENT = {
   isDefault: true,
 };
 
+function keyFor(provider, modelId) {
+  return (provider || '') + '::' + (modelId || '');
+}
+
 export default {
   name: 'Agents',
   setup() {
@@ -115,9 +143,33 @@ export default {
     const agents = ref([]);
     const loading = ref(true);
     const showCreateModal = ref(false);
-    const createForm = ref({ name: '', workspace: '' });
+    const config = ref(null);
+    const createForm = ref({
+      name: '',
+      workspace: '',
+      defaultModelKey: '',
+      systemPrompt: '',
+    });
     const createError = ref('');
     const createSaving = ref(false);
+
+    const createModelOptions = computed(() => {
+      const list = config.value?.configuredModels ?? [];
+      return Array.isArray(list) ? list : [];
+    });
+
+    function optionValueFor(item) {
+      if (!item) return '';
+      if (item.modelItemCode) return item.modelItemCode;
+      return keyFor(item.provider, item.modelId);
+    }
+
+    function getModelOptionLabel(item) {
+      if (!item) return '';
+      const prov = item.provider || item.providerName || '';
+      const model = item.modelId || item.model || '';
+      return prov && model ? `${prov} / ${model}` : model || prov || '—';
+    }
 
     function ensureMainAgentFirst(list) {
       const rest = (Array.isArray(list) ? list : []).filter((a) => a && a.id !== 'default');
@@ -158,13 +210,32 @@ export default {
       createError.value = '';
       createSaving.value = true;
       try {
-        const res = await agentConfigAPI.createAgent({
+        const body = {
           name: name || workspace,
           workspace,
-        });
+          systemPrompt: (createForm.value.systemPrompt || '').trim() || undefined,
+        };
+        const key = (createForm.value.defaultModelKey || '').trim();
+        const list = config.value?.configuredModels ?? [];
+        if (key && Array.isArray(list) && list.length > 0) {
+          const byCode = list.find((m) => m.modelItemCode === key);
+          const byKey = list.find((m) => keyFor(m.provider, m.modelId) === key);
+          const item = byCode || byKey;
+          if (item) {
+            body.provider = item.provider;
+            body.model = item.modelId;
+            body.modelItemCode = item.modelItemCode;
+          }
+        }
+        if (!body.provider && (config.value?.defaultProvider || config.value?.defaultModel)) {
+          body.provider = config.value.defaultProvider;
+          body.model = config.value.defaultModel;
+          body.modelItemCode = config.value.defaultModelItemCode;
+        }
+        const res = await agentConfigAPI.createAgent(body);
         const agent = res.data?.data;
         showCreateModal.value = false;
-        createForm.value = { name: '', workspace: '' };
+        createForm.value = { name: '', workspace: '', defaultModelKey: '', systemPrompt: '' };
         await loadAgents();
         if (agent) router.push(`/agents/${agent.id}`);
       } catch (e) {
@@ -174,6 +245,19 @@ export default {
         createSaving.value = false;
       }
     }
+
+    async function loadConfig() {
+      try {
+        const res = await configAPI.getConfig();
+        config.value = res.data?.data ?? res.data ?? null;
+      } catch (_) {
+        config.value = null;
+      }
+    }
+
+    watch(showCreateModal, (visible) => {
+      if (visible) loadConfig();
+    });
 
     onMounted(loadAgents);
 
@@ -185,6 +269,9 @@ export default {
       createForm,
       createError,
       createSaving,
+      createModelOptions,
+      optionValueFor,
+      getModelOptionLabel,
       doCreate,
     };
   },
@@ -457,6 +544,11 @@ export default {
   background: var(--color-bg-secondary);
   color: var(--color-text-primary);
   font-size: var(--font-size-base);
+}
+
+.form-input.form-textarea {
+  min-height: 88px;
+  resize: vertical;
 }
 
 .form-hint {

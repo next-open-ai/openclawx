@@ -199,12 +199,19 @@ export class AgentsService {
         return r ? this.rowToSession(r) : undefined;
     }
 
+    /** 更新会话的当前 agent（同一 session 内切换 agent 时调用） */
+    updateSessionAgentId(sessionId: string, agentId: string): void {
+        const session = this.getSession(sessionId);
+        if (!session) return;
+        this.db.run('UPDATE sessions SET agent_id = ? WHERE id = ?', [agentId, sessionId]);
+    }
+
     async deleteSession(sessionId: string): Promise<void> {
         const result = this.db.run('DELETE FROM sessions WHERE id = ?', [sessionId]);
         if (result.changes > 0) {
             this.db.persist();
         }
-        agentManager.deleteSession(sessionId);
+        agentManager.deleteSessionsByBusinessId(sessionId);
     }
 
     getMessageHistory(sessionId: string): ChatMessage[] {
@@ -248,6 +255,15 @@ export class AgentsService {
             'UPDATE sessions SET last_active_at = ?, status = ?, message_count = message_count + 1 WHERE id = ?',
             [now, role === 'assistant' ? 'idle' : session.status, sessionId],
         );
+    }
+
+    /** 清除会话的所有对话消息（保留会话本身，message_count 置 0） */
+    clearSessionMessages(sessionId: string): void {
+        const session = this.getSession(sessionId);
+        if (!session) return;
+        this.db.run('DELETE FROM chat_messages WHERE session_id = ?', [sessionId]);
+        this.db.run('UPDATE sessions SET message_count = 0 WHERE id = ?', [sessionId]);
+        this.db.persist();
     }
 }
 

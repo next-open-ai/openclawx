@@ -46,7 +46,7 @@ async function startGatewayInProcess() {
 function waitForGateway() {
     return new Promise((resolve) => {
         const check = () => {
-            const req = http.get(`http://localhost:${GATEWAY_PORT}/health`, (res) => {
+            const req = http.get(`http://127.0.0.1:${GATEWAY_PORT}/health`, (res) => {
                 if (res.statusCode === 200) resolve();
                 else setTimeout(check, 500);
             });
@@ -130,7 +130,7 @@ async function createWindow() {
     // 打包安装后 NODE_ENV 可能未设置，以 app.isPackaged 为准，否则会误走 5173 导致白屏
     let startUrl;
     if (isDev) {
-        startUrl = 'http://localhost:5173';
+        startUrl = 'http://127.0.0.1:5173';
     } else if (gatewayClose) {
         startUrl = `http://localhost:${GATEWAY_PORT}`;
     } else {
@@ -165,6 +165,7 @@ async function createWindow() {
 
 function registerIpcHandlers() {
     ipcMain.handle('get-app-version', () => app.getVersion());
+    ipcMain.handle('get-electron-version', () => process.versions.electron);
     ipcMain.handle('minimize-window', () => {
         if (mainWindow) mainWindow.minimize();
     });

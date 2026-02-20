@@ -2,7 +2,8 @@ import { defineStore } from 'pinia';
 
 const STORAGE_KEY = 'openbot-ui';
 const defaultState = {
-  sessionsPanelVisible: true,
+  /** 对话界面左侧会话列表：缺省不显示，点击顶部左侧显示图标按钮后展开 */
+  sessionsPanelVisible: false,
 };
 
 function getStored() {
