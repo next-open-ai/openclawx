@@ -6,11 +6,14 @@ import {
     Post,
     Body,
     Param,
+    Res,
     Header,
     HttpException,
     HttpStatus,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { AgentsService } from './agents.service.js';
+import { runForChannelStream, runForChannelCollect } from '../../core/agent/proxy/index.js';
 
 @Controller('agents')
 export class AgentsController {
@@ -107,5 +110,61 @@ export class AgentsController {
             contentParts: body.contentParts,
         });
         return { success: true };
+    }
+
+    /** 供远程 OpenClawX 代理调用：一次性返回助手回复 */
+    @Post('proxy-chat')
+    async proxyChat(@Body() body: { sessionId: string; message: string; agentId?: string }) {
+        const sessionId = body?.sessionId ?? '';
+        const message = body?.message ?? '';
+        const agentId = body?.agentId ?? 'default';
+        if (!sessionId || !message) {
+            throw new HttpException('sessionId and message are required', HttpStatus.BAD_REQUEST);
+        }
+        try {
+            const text = await runForChannelCollect({ sessionId, message, agentId });
+            return { success: true, text };
+        } catch (error: any) {
+            throw new HttpException(
+                error?.message ?? 'Proxy chat failed',
+                HttpStatus.INTERNAL_SERVER_ERROR,
+            );
+        }
+    }
+
+    /** 供远程 OpenClawX 代理调用：SSE 流式返回助手回复 */
+    @Post('proxy-chat/stream')
+    @Header('Content-Type', 'text/event-stream')
+    @Header('Cache-Control', 'no-cache')
+    @Header('Connection', 'keep-alive')
+    async proxyChatStream(
+        @Body() body: { sessionId: string; message: string; agentId?: string },
+        @Res() res: Response,
+    ) {
+        const sessionId = body?.sessionId ?? '';
+        const message = body?.message ?? '';
+        const agentId = body?.agentId ?? 'default';
+        if (!sessionId || !message) {
+            res.status(400).json({ error: 'sessionId and message are required' });
+            return;
+        }
+        res.flushHeaders();
+        try {
+            await runForChannelStream(
+                { sessionId, message, agentId },
+                {
+                    onChunk(delta: string) {
+                        res.write(`data: ${JSON.stringify({ delta })}\n\n`);
+                    },
+                    onDone() {
+                        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+                        res.end();
+                    },
+                },
+            );
+        } catch (error: any) {
+            res.write(`data: ${JSON.stringify({ error: error?.message ?? 'Stream failed' })}\n\n`);
+            res.end();
+        }
     }
 }

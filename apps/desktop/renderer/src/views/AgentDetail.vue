@@ -126,6 +126,106 @@
             </button>
           </div>
 
+          <!-- 代理配置：本机 / Coze / OpenClawX（独立 Tab 便于查找） -->
+          <div v-show="activeTab === 'proxy'" class="tab-panel proxy-panel">
+            <h2 class="panel-title">{{ t('agents.proxyConfig') }}</h2>
+            <p class="form-hint">{{ t('agents.proxyConfigHint') }}</p>
+            <div class="form-group">
+              <label>{{ t('agents.runnerType') }}</label>
+              <template v-if="agent?.runnerType === 'coze' || agent?.runnerType === 'openclawx'">
+                <p class="form-runner-type-fixed">
+                  {{ agent?.runnerType === 'coze' ? t('agents.runnerTypeCoze') : t('agents.runnerTypeOpenclawx') }}
+                </p>
+              </template>
+              <select v-else v-model="proxyForm.runnerType" class="form-input">
+                <option value="local">{{ t('agents.runnerTypeLocal') }}</option>
+                <option value="coze">{{ t('agents.runnerTypeCoze') }}</option>
+                <option value="openclawx">{{ t('agents.runnerTypeOpenclawx') }}</option>
+              </select>
+            </div>
+            <template v-if="proxyForm.runnerType === 'coze'">
+              <div class="form-group">
+                <label>{{ t('agents.cozeRegion') }}</label>
+                <select v-model="proxyForm.coze.region" class="form-input">
+                  <option value="com">{{ t('agents.cozeRegionCom') }}</option>
+                  <option value="cn">{{ t('agents.cozeRegionCn') }}</option>
+                </select>
+                <p class="form-hint">{{ t('agents.cozeRegionHint') }}</p>
+                <p class="form-hint">{{ t('agents.cozeTokenTypesHint') }}</p>
+              </div>
+              <template v-if="proxyForm.coze.region === 'cn'">
+                <div class="form-group">
+                  <label>{{ t('agents.cozeBotId') }}（{{ t('agents.cozeRegionCn') }}）</label>
+                  <input
+                    v-model="proxyForm.coze.cn.botId"
+                    type="text"
+                    class="form-input"
+                    :placeholder="t('agents.cozeBotIdPlaceholder')"
+                  />
+                  <p class="form-hint">{{ t('agents.cozeBotIdHint') }}</p>
+                </div>
+                <div class="form-group">
+                  <label>{{ t('agents.cozeApiKey') }}（{{ t('agents.cozeRegionCn') }}）</label>
+                  <input
+                    v-model="proxyForm.coze.cn.apiKey"
+                    type="password"
+                    class="form-input"
+                    :placeholder="t('agents.cozeApiKeyPlaceholder')"
+                    autocomplete="off"
+                  />
+                  <p class="form-hint">{{ t('agents.cozeAccessTokenHint') }}</p>
+                </div>
+              </template>
+              <template v-if="proxyForm.coze.region === 'com'">
+                <div class="form-group">
+                  <label>{{ t('agents.cozeBotId') }}（{{ t('agents.cozeRegionCom') }}）</label>
+                  <input
+                    v-model="proxyForm.coze.com.botId"
+                    type="text"
+                    class="form-input"
+                    :placeholder="t('agents.cozeBotIdPlaceholder')"
+                  />
+                  <p class="form-hint">{{ t('agents.cozeBotIdHint') }}</p>
+                </div>
+                <div class="form-group">
+                  <label>{{ t('agents.cozeApiKey') }}（{{ t('agents.cozeRegionCom') }}）</label>
+                  <input
+                    v-model="proxyForm.coze.com.apiKey"
+                    type="password"
+                    class="form-input"
+                    :placeholder="t('agents.cozeApiKeyPlaceholder')"
+                    autocomplete="off"
+                  />
+                  <p class="form-hint">{{ t('agents.cozeAccessTokenHint') }}</p>
+                </div>
+              </template>
+            </template>
+            <template v-if="proxyForm.runnerType === 'openclawx'">
+              <div class="form-group">
+                <label>{{ t('agents.openclawxBaseUrl') }}</label>
+                <input
+                  v-model="proxyForm.openclawx.baseUrl"
+                  type="text"
+                  class="form-input"
+                  :placeholder="t('agents.openclawxBaseUrlPlaceholder')"
+                />
+              </div>
+              <div class="form-group">
+                <label>{{ t('agents.openclawxApiKey') }}</label>
+                <input
+                  v-model="proxyForm.openclawx.apiKey"
+                  type="password"
+                  class="form-input"
+                  :placeholder="t('agents.openclawxApiKeyPlaceholder')"
+                  autocomplete="off"
+                />
+              </div>
+            </template>
+            <button class="btn-primary" :disabled="configSaving" @click="saveConfig">
+              {{ configSaving ? t('common.loading') : t('agents.saveConfig') }}
+            </button>
+          </div>
+
           <!-- Skills 配置：仅当前智能体的 skills，支持删除 -->
           <div v-show="activeTab === 'skills'" class="tab-panel skills-panel">
             <div class="panel-header">
@@ -435,17 +535,37 @@ export default {
     const agent = ref(null);
     const loading = ref(true);
     const activeTab = ref('config');
-    const tabs = computed(() => [
-      { id: 'config', label: t('agents.basicConfig'), icon: '⚙️' },
-      { id: 'skills', label: t('agents.skillsConfig'), icon: '🎯' },
-      { id: 'mcp', label: t('agents.mcpConfig'), icon: '🔌' },
-    ]);
+    const isProxyAgent = computed(() => {
+      const a = agent.value;
+      return a && (a.runnerType === 'coze' || a.runnerType === 'openclawx');
+    });
+    const tabs = computed(() => {
+      const list = [
+        { id: 'config', label: t('agents.basicConfig'), icon: '⚙️' },
+        { id: 'proxy', label: t('agents.proxyConfig'), icon: '🔗' },
+      ];
+      if (!isProxyAgent.value) {
+        list.push({ id: 'skills', label: t('agents.skillsConfig'), icon: '🎯' });
+        list.push({ id: 'mcp', label: t('agents.mcpConfig'), icon: '🔌' });
+      }
+      return list;
+    });
 
     const agentIconOptions = AGENT_ICONS;
     const configForm = ref({ name: '', systemPrompt: '', icon: AGENT_ICON_DEFAULT });
     const configSaving = ref(false);
 
     const modelForm = ref({ provider: '', model: '' });
+    const proxyForm = ref({
+      runnerType: 'local',
+      coze: {
+        region: 'com',
+        cn: { botId: '', apiKey: '' },
+        com: { botId: '', apiKey: '' },
+        endpoint: '',
+      },
+      openclawx: { baseUrl: '', apiKey: '' },
+    });
     const configRef = ref({});
     const configuredModelsList = ref([]);
     const selectedConfiguredModelKey = ref('');
@@ -631,6 +751,32 @@ export default {
             provider: agent.value.provider ?? '',
             model: agent.value.model ?? '',
           };
+          const coze = agent.value.coze;
+          const cozeRegion = coze?.region === 'cn' ? 'cn' : 'com';
+          const legacyBotId = (coze?.botId != null && typeof coze.botId === 'string') ? coze.botId.trim() : '';
+          const legacyApiKey = (coze?.apiKey != null && typeof coze.apiKey === 'string') ? coze.apiKey.trim() : '';
+          const legacyCreds = legacyBotId || legacyApiKey ? { botId: legacyBotId, apiKey: legacyApiKey } : null;
+          const emptyCreds = () => ({ botId: '', apiKey: '' });
+          const norm = (c) => (c && (c.botId || c.apiKey) ? { botId: String(c.botId || '').trim(), apiKey: String(c.apiKey || '').trim() } : emptyCreds());
+          const cnCreds = coze?.cn ? norm(coze.cn) : (legacyCreds || emptyCreds());
+          const comCreds = coze?.com ? norm(coze.com) : (legacyCreds || emptyCreds());
+          const defaultCn = 'https://api.coze.cn';
+          const defaultCom = 'https://api.coze.com';
+          const ep = (coze?.endpoint ?? '').trim();
+          const endpoint = (ep === defaultCn || ep === defaultCom) ? '' : ep;
+          proxyForm.value = {
+            runnerType: agent.value.runnerType === 'coze' || agent.value.runnerType === 'openclawx' ? agent.value.runnerType : 'local',
+            coze: {
+              region: cozeRegion,
+              cn: cnCreds,
+              com: comCreds,
+              endpoint,
+            },
+            openclawx: {
+              baseUrl: agent.value.openclawx?.baseUrl ?? '',
+              apiKey: agent.value.openclawx?.apiKey ?? '',
+            },
+          };
           const raw = agent.value.mcpServers;
           mcpServers.value = Array.isArray(raw)
             ? raw.map(normalizeMcpItem).filter((m) => m && (m.transport === 'sse' ? (m.url || '').trim() : (m.command || '').trim()))
@@ -639,6 +785,11 @@ export default {
           agent.value = { ...MAIN_AGENT_FALLBACK };
           configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
           modelForm.value = { provider: '', model: '' };
+          proxyForm.value = {
+            runnerType: 'local',
+            coze: { region: 'com', cn: { botId: '', apiKey: '' }, com: { botId: '', apiKey: '' }, endpoint: '' },
+            openclawx: { baseUrl: '', apiKey: '' },
+          };
           mcpServers.value = [];
         }
       } catch (e) {
@@ -646,6 +797,11 @@ export default {
           agent.value = { ...MAIN_AGENT_FALLBACK };
           configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
           modelForm.value = { provider: '', model: '' };
+          proxyForm.value = {
+            runnerType: 'local',
+            coze: { region: 'com', cn: { botId: '', apiKey: '' }, com: { botId: '', apiKey: '' }, endpoint: '' },
+            openclawx: { baseUrl: '', apiKey: '' },
+          };
           mcpServers.value = [];
         } else {
           agent.value = null;
@@ -669,11 +825,45 @@ export default {
         payload.mcpServers = mcpServers.value;
         payload.systemPrompt = configForm.value.systemPrompt?.trim() || undefined;
         payload.icon = configForm.value.icon || undefined;
+        payload.runnerType = proxyForm.value.runnerType;
+        if (proxyForm.value.runnerType === 'coze') {
+          const c = proxyForm.value.coze;
+          payload.coze = {
+            region: c.region === 'cn' ? 'cn' : 'com',
+            cn: {
+              botId: (c.cn?.botId ?? '').trim(),
+              apiKey: (c.cn?.apiKey ?? '').trim(),
+            },
+            com: {
+              botId: (c.com?.botId ?? '').trim(),
+              apiKey: (c.com?.apiKey ?? '').trim(),
+            },
+            endpoint: undefined,
+          };
+        } else if (proxyForm.value.runnerType === 'openclawx') {
+          payload.openclawx = {
+            baseUrl: (proxyForm.value.openclawx.baseUrl || '').trim(),
+            apiKey: (proxyForm.value.openclawx.apiKey || '').trim() || undefined,
+          };
+        } else {
+          payload.coze = undefined;
+          payload.openclawx = undefined;
+        }
         await agentConfigAPI.updateAgent(agent.value.id, payload);
         if (!agent.value.isDefault) {
           agent.value.name = configForm.value.name || agent.value.workspace;
         }
-        agent.value = { ...agent.value, provider: modelForm.value.provider, model: modelForm.value.model, modelItemCode: item?.modelItemCode ?? agent.value.modelItemCode, systemPrompt: payload.systemPrompt, icon: payload.icon };
+        agent.value = {
+          ...agent.value,
+          provider: modelForm.value.provider,
+          model: modelForm.value.model,
+          modelItemCode: item?.modelItemCode ?? agent.value.modelItemCode,
+          systemPrompt: payload.systemPrompt,
+          icon: payload.icon,
+          runnerType: payload.runnerType,
+          coze: payload.coze,
+          openclawx: payload.openclawx,
+        };
       } catch (e) {
         console.error('Save config failed', e);
       } finally {
@@ -819,11 +1009,28 @@ export default {
       }
     }
 
+    watch(
+      () => proxyForm.value.runnerType === 'coze' && proxyForm.value.coze?.region,
+      (region) => {
+        if (region !== 'cn' && region !== 'com') return;
+        const ep = (proxyForm.value.coze?.endpoint ?? '').trim();
+        const otherDefault = region === 'cn' ? 'https://api.coze.com' : 'https://api.coze.cn';
+        if (ep === otherDefault || ep.includes(region === 'cn' ? 'api.coze.com' : 'api.coze.cn')) {
+          proxyForm.value.coze.endpoint = '';
+        }
+      }
+    );
     watch(agentId, loadAgent);
     watch([agent, activeTab], () => {
       if (agent.value && activeTab.value === 'skills') loadSkills();
       if (agent.value && activeTab.value === 'config') loadModelConfig();
     });
+    watch(tabs, (newTabs) => {
+      const ids = newTabs.map((tab) => tab.id);
+      if (ids.length && !ids.includes(activeTab.value)) {
+        activeTab.value = ids[0];
+      }
+    }, { immediate: true });
     watch(
       () => route.query.smartInstallSession,
       async (sessionId) => {
@@ -850,6 +1057,14 @@ export default {
         document.body.style.overflow = '';
       }
     });
+    watch(
+      () => route.query.tab,
+      (tab) => {
+        if (tab === 'proxy') activeTab.value = 'proxy';
+      },
+      { immediate: true }
+    );
+
     onMounted(() => {
       loadAgent();
     });
@@ -865,6 +1080,7 @@ export default {
       configSaving,
       saveConfig,
       modelForm,
+      proxyForm,
       configuredModelsList,
       selectedConfiguredModelKey,
       selectedModelItem,
@@ -1389,6 +1605,17 @@ export default {
 .form-input.readonly {
   opacity: 0.8;
   cursor: not-allowed;
+}
+
+.form-runner-type-fixed {
+  max-width: 400px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary, rgba(255, 255, 255, 0.06));
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  margin: 0;
 }
 
 .form-input.form-textarea {

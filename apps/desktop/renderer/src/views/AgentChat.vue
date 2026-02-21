@@ -266,14 +266,29 @@ export default {
 
     const routeSessionId = computed(() => route.params.sessionId || null);
     const currentSession = computed(() => agentStore.currentSession);
-    /** 左侧列表：仅展示非 system 会话；若当前会话非 system 且不在列表中则补上 */
+    /** 是否为桌面/Web 会话（非通道会话）。约定：id 以 channel: 开头为通道会话，否则为桌面会话 */
+    const isDesktopSessionId = (id) => id != null && !String(id).startsWith('channel:');
+    /** 左侧列表：仅展示桌面会话且非 system；若当前会话为桌面且不在列表中则补上（不展示通道会话） */
     const sessions = computed(() => {
-      const list = (agentStore.sessions || []).filter(s => s.type !== 'system');
+      const list = (agentStore.sessions || []).filter(
+        (s) => s.type !== 'system' && isDesktopSessionId(s.id)
+      );
       const cur = agentStore.currentSession;
-      if (cur && cur.type !== 'system' && !list.some(s => s.id === cur.id)) {
+      if (cur && cur.type !== 'system' && isDesktopSessionId(cur.id) && !list.some((s) => s.id === cur.id)) {
         return [cur, ...list];
       }
       return list;
+    });
+    /** 用于「最近会话」重定向：取最近活跃的桌面会话（非 system） */
+    const recentDesktopSession = computed(() => {
+      const desktop = (agentStore.sessions || []).filter(
+        (s) => s.type !== 'system' && isDesktopSessionId(s.id)
+      );
+      if (desktop.length === 0) return null;
+      const sorted = [...desktop].sort(
+        (a, b) => (b.lastActiveAt || b.createdAt || 0) - (a.lastActiveAt || a.createdAt || 0)
+      );
+      return sorted[0];
     });
     /** 当前会话为 system 时不展示对话历史（仅左侧不展示、对话区也不展示） */
     const isSystemSession = computed(() => currentSession.value?.type === 'system');
@@ -323,7 +338,7 @@ export default {
       }
     };
 
-    /** 发送消息：无当前 session 时由 store 在首条发送时懒创建 session（使用当前选中的 selectedAgentId），再走后续对话逻辑 */
+    /** 发送消息：始终传入选中的智能体（与底部栏勾选一致），无 session 时懒创建使用 selectedAgentId */
     const sendMessage = async () => {
       if (!inputMessage.value.trim() || isStreaming.value) return;
 
@@ -331,7 +346,8 @@ export default {
       inputMessage.value = '';
 
       try {
-        const options = currentSession.value ? {} : { agentId: selectedAgentId.value };
+        const selectedId = currentSession.value ? effectiveSelectedAgentId.value : selectedAgentId.value;
+        const options = { agentId: selectedId || 'default' };
         const session = await agentStore.sendMessage(message, options);
         if (session && !routeSessionId.value) {
           agentStore.skipRedirectToRecentOnce = false;
@@ -370,11 +386,16 @@ export default {
       { immediate: true },
     );
 
-    // Sync Route -> Session
+    // Sync Route -> Session（禁止用通道会话做桌面对话：channel:* 时重定向到首页）
     watch(
       () => route.params.sessionId,
       async (sessionId) => {
         if (sessionId) {
+          if (!isDesktopSessionId(sessionId)) {
+            if (agentStore.currentSession?.id === sessionId) agentStore.clearCurrentSession();
+            router.replace({ path: '/', query: STAY_ON_ROOT_QUERY });
+            return;
+          }
           if (agentStore.currentSession?.id !== sessionId) {
             try {
               await agentStore.selectSession(sessionId);
@@ -405,7 +426,7 @@ export default {
         if (agentStore.skipRedirectToRecentOnce) {
           return;
         }
-        const recent = agentStore.sessions[0];
+        const recent = recentDesktopSession.value;
         if (recent) {
           router.replace(`/chat/${recent.id}`);
         }
@@ -437,11 +458,14 @@ export default {
 
         const sessionId = route.params.sessionId;
         if (sessionId) {
-          if (agentStore.currentSession?.id !== sessionId) {
+          if (!isDesktopSessionId(sessionId)) {
+            if (agentStore.currentSession?.id === sessionId) agentStore.clearCurrentSession();
+            router.replace({ path: '/', query: STAY_ON_ROOT_QUERY });
+          } else if (agentStore.currentSession?.id !== sessionId) {
             await agentStore.selectSession(sessionId);
           }
         } else if (route.path === '/' && !route.query?.stay && !agentStore.skipRedirectToRecentOnce) {
-          const recent = agentStore.sessions[0];
+          const recent = recentDesktopSession.value;
           if (recent) {
             router.replace(`/chat/${recent.id}`);
           }

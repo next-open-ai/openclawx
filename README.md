@@ -298,7 +298,7 @@ openbot --model deepseek-chat --provider deepseek "写一段 TypeScript 示例"
 CLI 与桌面端共用**桌面配置**（`~/.openbot/desktop/`）。主要文件：
 
 - **config.json**：全局缺省 provider/model、**defaultModelItemCode**（缺省模型在 configuredModels 中的唯一标识）、缺省智能体 id（`defaultAgentId`）、各 provider 的 API Key/baseUrl、已配置模型列表（configuredModels）等。
-- **agents.json**：智能体列表；每个智能体可配置 provider、model、**modelItemCode**（匹配 configuredModels）、工作区。
+- **agents.json**：智能体列表；每个智能体可配置 provider、model、**modelItemCode**（匹配 configuredModels）、工作区。执行方式可为 **local** / **coze** / **openclawx**；Coze 代理需配置 botId、apiKey，并选择站点 **region**（`cn` 国内 api.coze.cn / `com` 国际 api.coze.com），可选填 endpoint 覆盖默认地址。
 - **provider-support.json**：Provider 与模型目录，供设置页下拉选择。
 
 | 操作 | 命令 | 说明 |

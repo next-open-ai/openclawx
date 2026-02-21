@@ -1,5 +1,6 @@
 import type { GatewayClient, AgentChatParams } from "../types.js";
 import { agentManager } from "../../core/agent/agent-manager.js";
+import { runForChannelStream } from "../../core/agent/proxy/index.js";
 import { getSessionCurrentAgentResolver, getSessionCurrentAgentUpdater } from "../../core/session-current-agent.js";
 import { getExperienceContextForUserMessage } from "../../core/memory/index.js";
 import { send, createEvent } from "../utils.js";
@@ -60,6 +61,9 @@ async function handleAgentChatInner(
         getSessionCurrentAgentUpdater()?.(targetSessionId, params.agentId);
         currentAgentId = params.agentId;
     }
+    console.log(
+        `[agent.chat] session=${targetSessionId} resolved agentId=${currentAgentId} (params=${params.agentId ?? "—"}, stored=${storedAgentId ?? "—"}, client=${client.agentId ?? "—"})`
+    );
 
     let workspace = "default";
     let provider: string | undefined;
@@ -71,6 +75,43 @@ async function handleAgentChatInner(
         provider = agentConfig.provider;
         modelId = agentConfig.model;
         if (agentConfig.apiKey) apiKey = agentConfig.apiKey;
+    }
+
+    const runnerType = agentConfig?.runnerType ?? "local";
+    const isProxyAgent = runnerType === "coze" || runnerType === "openclawx";
+
+    if (isProxyAgent) {
+        console.log(`[agent.chat] Using proxy agent (${runnerType}) for session=${targetSessionId}, agentId=${currentAgentId}`);
+    }
+
+    // 代理智能体（Coze / OpenClawX）：走 AgentProxy 统一入口，流式结果通过 WebSocket 推给客户端
+    if (isProxyAgent) {
+        try {
+            await runForChannelStream(
+                {
+                    sessionId: targetSessionId,
+                    message,
+                    agentId: currentAgentId,
+                },
+                {
+                    onChunk(delta: string) {
+                        broadcastToSession(targetSessionId, createEvent("agent.chunk", { text: delta }));
+                    },
+                    onTurnEnd() {
+                        broadcastToSession(targetSessionId, createEvent("turn_end", { sessionId: targetSessionId, content: "" }));
+                        broadcastToSession(targetSessionId, createEvent("message_complete", { sessionId: targetSessionId, content: "" }));
+                    },
+                    onDone() {
+                        broadcastToSession(targetSessionId, createEvent("agent_end", { sessionId: targetSessionId }));
+                        broadcastToSession(targetSessionId, createEvent("conversation_end", { sessionId: targetSessionId }));
+                    },
+                }
+            );
+            return { status: "completed", sessionId: targetSessionId };
+        } catch (error: any) {
+            console.error(`Error in agent chat (proxy ${runnerType}):`, error);
+            throw error;
+        }
     }
 
     const isEphemeralSession = sessionType === "system" || sessionType === "scheduled";

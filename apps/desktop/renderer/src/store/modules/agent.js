@@ -21,6 +21,10 @@ export const useAgentStore = defineStore('agent', {
     getters: {
         activeSessions: (state) => state.sessions.filter(s => s.status !== 'error'),
         sessionById: (state) => (id) => state.sessions.find(s => s.id === id),
+        /** 是否为桌面/Web 会话（非通道会话）。约定：id 以 channel: 开头为通道会话，否则为桌面会话 */
+        isDesktopSession: () => (s) => (s?.id != null && !String(s.id).startsWith('channel:')),
+        /** 仅桌面/Web 会话，用于左侧列表与「最近会话」重定向 */
+        desktopSessions: (state) => state.sessions.filter((s) => s?.id != null && !String(s.id).startsWith('channel:')),
     },
 
     actions: {
@@ -140,6 +144,11 @@ export const useAgentStore = defineStore('agent', {
         async sendMessage(message, options = {}) {
             if (!message.trim()) return;
 
+            // 桌面对话禁止使用通道会话：若当前为 channel:* 会话则视为无会话，走新建桌面会话流程
+            if (this.currentSession?.id != null && String(this.currentSession.id).startsWith('channel:')) {
+                this.currentSession = null;
+            }
+
             // Lazy Session Creation: If no current session, create one now（使用传入的 agentId 或 default）
             if (!this.currentSession) {
                 try {
@@ -155,6 +164,10 @@ export const useAgentStore = defineStore('agent', {
             }
 
             try {
+                const agentIdForRequest = options?.agentId ?? this.currentSession?.agentId ?? 'default';
+                if (this.currentSession && agentIdForRequest !== this.currentSession.agentId) {
+                    await this.updateSessionAgentId(this.currentSession.id, agentIdForRequest);
+                }
                 if (this.currentSession && socketService.currentSessionId !== this.currentSession.id) {
                     await socketService.connectToSession(
                         this.currentSession.id,
@@ -179,12 +192,12 @@ export const useAgentStore = defineStore('agent', {
                 // Persist user message to NestJS (for history)
                 agentAPI.appendMessage(this.currentSession.id, 'user', message).catch(() => {});
 
-                const targetAgentId = options?.targetAgentId ?? this.currentSession?.agentId ?? 'default';
+                const targetAgentId = options?.targetAgentId ?? agentIdForRequest;
                 await socketService.sendMessage(
                     this.currentSession.id,
                     message,
                     targetAgentId,
-                    this.currentSession.agentId,
+                    agentIdForRequest,
                     this.currentSession.type,
                 );
             } catch (error) {

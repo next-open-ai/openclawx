@@ -40,7 +40,13 @@ export class AgentConfigController {
     @Put(':id')
     async updateAgent(
         @Param('id') id: string,
-        @Body() body: Partial<Pick<AgentConfigItem, 'name' | 'provider' | 'model' | 'modelItemCode' | 'mcpServers' | 'systemPrompt' | 'icon'>>,
+        @Body()
+        body: Partial<
+            Pick<
+                AgentConfigItem,
+                'name' | 'provider' | 'model' | 'modelItemCode' | 'mcpServers' | 'systemPrompt' | 'icon' | 'runnerType' | 'coze' | 'openclawx'
+            >
+        >,
     ) {
         const agent = await this.agentConfigService.updateAgent(id, body);
         return { success: true, data: agent };

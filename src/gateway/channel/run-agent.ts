@@ -1,9 +1,8 @@
 /**
  * 通道用：跑 Agent 并收集完整回复文本（无 WebSocket 客户端）。
+ * 委托给 core/agent/proxy 统一入口，按 runnerType 分发到 local/coze/openclawx 等适配器。
  */
-import { agentManager } from "../../core/agent/agent-manager.js";
-import { getDesktopConfig, loadDesktopAgentConfig } from "../../core/config/desktop-config.js";
-import { getExperienceContextForUserMessage } from "../../core/memory/index.js";
+import { runForChannelStream, runForChannelCollect } from "../../core/agent/proxy/index.js";
 
 export interface RunAgentForChannelOptions {
     /** 会话 ID，建议 channel:platform:threadId */
@@ -24,147 +23,29 @@ export interface RunAgentStreamCallbacks {
 }
 
 /**
- * 使用现有 agentManager 跑一轮对话，以流式回调方式推送助手回复（onChunk/onDone）。
- * onDone 在 agent_end 时调用，保证「对话真正结束」语义（多轮 tool+文本合并为一条回复）。
+ * 使用 AgentProxy 统一入口跑一轮对话，以流式回调方式推送助手回复（onChunk/onDone）。
  */
 export async function runAgentAndStreamReply(
     options: RunAgentForChannelOptions,
     callbacks: RunAgentStreamCallbacks
 ): Promise<void> {
-    const { sessionId, message, agentId: optionAgentId } = options;
-    const sessionAgentId = optionAgentId ?? "default";
-
-    let workspace = "default";
-    let provider: string | undefined;
-    let modelId: string | undefined;
-    let apiKey: string | undefined;
-    const agentConfig = await loadDesktopAgentConfig(sessionAgentId);
-    if (agentConfig) {
-        if (agentConfig.workspace) workspace = agentConfig.workspace;
-        provider = agentConfig.provider;
-        modelId = agentConfig.model;
-        if (agentConfig.apiKey) apiKey = agentConfig.apiKey;
-    }
-
-    const { maxAgentSessions } = getDesktopConfig();
-    const session = await agentManager.getOrCreateSession(sessionId, {
-        agentId: sessionAgentId,
-        workspace,
-        provider,
-        modelId,
-        apiKey,
-        maxSessions: maxAgentSessions,
-        targetAgentId: sessionAgentId,
-        mcpServers: agentConfig?.mcpServers,
-        systemPrompt: agentConfig?.systemPrompt,
-    });
-
-    let resolveDone: () => void;
-    const donePromise = new Promise<void>((r) => {
-        resolveDone = r;
-    });
-
-    const unsubscribe = session.subscribe((event: any) => {
-        if (event.type === "message_update") {
-            const update = event as any;
-            if (update.assistantMessageEvent?.type === "text_delta" && update.assistantMessageEvent?.delta) {
-                callbacks.onChunk(update.assistantMessageEvent.delta);
-            }
-        } else if (event.type === "turn_end") {
-            callbacks.onTurnEnd?.();
-        } else if (event.type === "agent_end") {
-            callbacks.onDone();
-            resolveDone!();
-        }
-    });
-
-    try {
-        const experienceBlock = await getExperienceContextForUserMessage();
-        const userMessageToSend =
-            experienceBlock.trim().length > 0
-                ? `${experienceBlock}\n\n用户问题：\n${message}`
-                : message;
-
-        await session.sendUserMessage(userMessageToSend, { deliverAs: "followUp" });
-
-        await Promise.race([
-            donePromise,
-            new Promise<void>((_, rej) => setTimeout(() => rej(new Error("Channel agent reply timeout")), 120_000)),
-        ]);
-    } finally {
-        unsubscribe();
-    }
+    await runForChannelStream(
+        {
+            sessionId: options.sessionId,
+            message: options.message,
+            agentId: options.agentId ?? "default",
+        },
+        callbacks
+    );
 }
 
 /**
- * 使用现有 agentManager 跑一轮对话，收集助手完整回复文本后返回。
- * 不依赖 WebSocket 客户端，供通道核心调用。
+ * 使用 AgentProxy 统一入口跑一轮对话，收集助手完整回复文本后返回。
  */
-export async function runAgentAndCollectReply(
-    options: RunAgentForChannelOptions
-): Promise<string> {
-    const { sessionId, message, agentId: optionAgentId } = options;
-    const sessionAgentId = optionAgentId ?? "default";
-
-    let workspace = "default";
-    let provider: string | undefined;
-    let modelId: string | undefined;
-    let apiKey: string | undefined;
-    const agentConfig = await loadDesktopAgentConfig(sessionAgentId);
-    if (agentConfig) {
-        if (agentConfig.workspace) workspace = agentConfig.workspace;
-        provider = agentConfig.provider;
-        modelId = agentConfig.model;
-        if (agentConfig.apiKey) apiKey = agentConfig.apiKey;
-    }
-
-    const { maxAgentSessions } = getDesktopConfig();
-    const session = await agentManager.getOrCreateSession(sessionId, {
-        agentId: sessionAgentId,
-        workspace,
-        provider,
-        modelId,
-        apiKey,
-        maxSessions: maxAgentSessions,
-        targetAgentId: sessionAgentId,
-        mcpServers: agentConfig?.mcpServers,
-        systemPrompt: agentConfig?.systemPrompt,
+export async function runAgentAndCollectReply(options: RunAgentForChannelOptions): Promise<string> {
+    return runForChannelCollect({
+        sessionId: options.sessionId,
+        message: options.message,
+        agentId: options.agentId ?? "default",
     });
-
-    const chunks: string[] = [];
-    let resolveDone: () => void;
-    const donePromise = new Promise<void>((r) => {
-        resolveDone = r;
-    });
-
-    const unsubscribe = session.subscribe((event: any) => {
-        if (event.type === "message_update") {
-            const update = event as any;
-            if (update.assistantMessageEvent?.type === "text_delta" && update.assistantMessageEvent?.delta) {
-                chunks.push(update.assistantMessageEvent.delta);
-            }
-        } else if (event.type === "agent_end") {
-            resolveDone!();
-        }
-    });
-
-    try {
-        const experienceBlock = await getExperienceContextForUserMessage();
-        const userMessageToSend =
-            experienceBlock.trim().length > 0
-                ? `${experienceBlock}\n\n用户问题：\n${message}`
-                : message;
-
-        await session.sendUserMessage(userMessageToSend, { deliverAs: "followUp" });
-
-        // 等待 agent_end（整轮对话真正结束）或超时
-        await Promise.race([
-            donePromise,
-            new Promise<void>((_, rej) => setTimeout(() => rej(new Error("Channel agent reply timeout")), 120_000)),
-        ]);
-    } finally {
-        unsubscribe();
-    }
-
-    return chunks.join("").trim() || "(无文本回复)";
 }

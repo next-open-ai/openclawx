@@ -66,11 +66,15 @@ function truncateForTelegram(text: string): string {
 /**
  * 入站：长轮询 getUpdates，收到 message/edited_message 后转 UnifiedMessage 并分发。
  */
+/** 轮询错误日志节流：同一类错误至少间隔此毫秒数再打印，避免刷屏 */
+const TELEGRAM_POLL_ERROR_LOG_INTERVAL_MS = 60_000;
+
 class TelegramLongPollInbound implements IInboundTransport {
     private config: TelegramChannelConfig;
     private messageHandler: ((msg: UnifiedMessage) => void | Promise<void>) | null = null;
     private stopped = false;
     private lastOffset = 0;
+    private lastPollErrorLogTime = 0;
 
     constructor(config: TelegramChannelConfig) {
         this.config = config;
@@ -123,8 +127,17 @@ class TelegramLongPollInbound implements IInboundTransport {
                             await dispatchMessage(unified);
                         }
                     }
-                } catch (e) {
-                    if (!this.stopped) console.error("[Telegram] long poll error:", e);
+                } catch (e: any) {
+                    if (!this.stopped) {
+                        const now = Date.now();
+                        if (now - this.lastPollErrorLogTime >= TELEGRAM_POLL_ERROR_LOG_INTERVAL_MS) {
+                            this.lastPollErrorLogTime = now;
+                            const cause = e?.cause?.code === "UND_ERR_CONNECT_TIMEOUT"
+                                ? " (api.telegram.org 连接超时，可能需代理或网络不可达，将继续重试)"
+                                : "";
+                            console.warn("[Telegram] long poll error:", e?.message ?? e, cause);
+                        }
+                    }
                     await new Promise((r) => setTimeout(r, 2000));
                 }
             }

@@ -71,6 +71,44 @@ interface DesktopConfigJson {
 /** MCP 服务器配置（与 core/mcp 类型一致，避免 core/config 依赖 core/mcp 实现） */
 export type DesktopMcpServerConfig = import("../mcp/index.js").McpServerConfig;
 
+/** Agent 执行器类型：local=本机 pi-coding-agent，coze/openclawx=远程代理 */
+export type AgentRunnerType = "local" | "coze" | "openclawx";
+
+/** Coze 站点：国内站 api.coze.cn / 国际站 api.coze.com，凭证不通用 */
+export type CozeRegion = "cn" | "com";
+
+/** 某站点的 Bot 凭证（国内/国际各自独立） */
+export interface CozeRegionCredentials {
+    botId: string;
+    apiKey: string;
+}
+
+/** Coze 代理配置（agents.json）：按站点分别存凭证，请求时用当前 region 对应的一套 */
+export interface AgentCozeConfig {
+    /** 当前使用的站点，未填默认 com */
+    region?: CozeRegion;
+    /** 国内站 (api.coze.cn) 凭证 */
+    cn?: CozeRegionCredentials;
+    /** 国际站 (api.coze.com) 凭证 */
+    com?: CozeRegionCredentials;
+    /** 可选：自定义 API 地址，覆盖当前站点的默认地址 */
+    endpoint?: string;
+}
+
+/** 解析后的 Coze 配置（供适配器使用）：当前站点的 botId/apiKey + region/endpoint */
+export interface CozeResolvedConfig {
+    botId: string;
+    apiKey: string;
+    region?: CozeRegion;
+    endpoint?: string;
+}
+
+/** OpenClawX 代理配置（代理到另一台 OpenClawX 实例） */
+export interface AgentOpenClawXConfig {
+    baseUrl: string;
+    apiKey?: string;
+}
+
 interface AgentItem {
     id: string;
     name?: string;
@@ -83,6 +121,12 @@ interface AgentItem {
     mcpServers?: DesktopMcpServerConfig[];
     /** 自定义系统提示词，与技能等一起组成最终 systemPrompt */
     systemPrompt?: string;
+    /** 执行器类型，缺省 local */
+    runnerType?: AgentRunnerType;
+    /** Coze 代理配置，当 runnerType 为 coze 时使用 */
+    coze?: AgentCozeConfig;
+    /** OpenClawX 代理配置，当 runnerType 为 openclawx 时使用 */
+    openclawx?: AgentOpenClawXConfig;
 }
 
 interface AgentsFile {
@@ -181,6 +225,12 @@ export interface DesktopAgentConfig {
     mcpServers?: DesktopMcpServerConfig[];
     /** 自定义系统提示词，会与技能等一起组成最终 systemPrompt */
     systemPrompt?: string;
+    /** 执行器类型，缺省 local */
+    runnerType?: AgentRunnerType;
+    /** Coze 代理配置（解析后：当前站点的凭证） */
+    coze?: CozeResolvedConfig;
+    /** OpenClawX 代理配置 */
+    openclawx?: AgentOpenClawXConfig;
 }
 
 /**
@@ -290,7 +340,73 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
             ? provConfig.apiKey.trim()
             : undefined;
 
-    return { provider, model, apiKey: apiKey ?? undefined, workspace: workspaceName, mcpServers, systemPrompt };
+    let runnerType: AgentRunnerType = "local";
+    let coze: CozeResolvedConfig | undefined;
+    let openclawx: AgentOpenClawXConfig | undefined;
+    if (existsSync(agentsPath)) {
+        try {
+            const rawAgents = await readFile(agentsPath, "utf-8");
+            const dataAgents = JSON.parse(rawAgents) as AgentsFile;
+            const agentsList = Array.isArray(dataAgents.agents) ? dataAgents.agents : [];
+            const agentRow = agentsList.find((a) => a.id === resolvedAgentId);
+            if (agentRow) {
+                if (agentRow.runnerType === "coze" || agentRow.runnerType === "openclawx") {
+                    runnerType = agentRow.runnerType;
+                }
+                if (agentRow.coze) {
+                    const row = agentRow.coze as AgentCozeConfig & { botId?: string; apiKey?: string };
+                    const region: CozeRegion =
+                        row.region === "cn" || row.region === "com" ? row.region : "com";
+                    const credsCn = row.cn;
+                    const credsCom = row.com;
+                    const legacyBotId = row.botId != null ? String(row.botId).trim() : "";
+                    const legacyKey = row.apiKey != null ? String(row.apiKey).trim() : "";
+                    const fromRegion =
+                        region === "cn"
+                            ? credsCn && String(credsCn.botId || "").trim() && String(credsCn.apiKey || "").trim()
+                                ? { botId: String(credsCn.botId).trim(), apiKey: String(credsCn.apiKey).trim() }
+                                : null
+                            : credsCom && String(credsCom.botId || "").trim() && String(credsCom.apiKey || "").trim()
+                              ? { botId: String(credsCom.botId).trim(), apiKey: String(credsCom.apiKey).trim() }
+                              : null;
+                    const fromLegacy = legacyBotId && legacyKey ? { botId: legacyBotId, apiKey: legacyKey } : null;
+                    const creds = fromRegion ?? fromLegacy;
+                    if (creds) {
+                        coze = {
+                            botId: creds.botId,
+                            apiKey: creds.apiKey,
+                            region,
+                            endpoint: row.endpoint?.trim(),
+                        };
+                    } else if (runnerType === "coze") {
+                        console.warn(
+                            `[loadDesktopAgentConfig] agentId=${resolvedAgentId} runnerType=coze but no credentials for region=${region} (configure 国内/国际 in proxy settings)`
+                        );
+                    }
+                }
+                if (agentRow.openclawx?.baseUrl) {
+                    openclawx = {
+                        baseUrl: String(agentRow.openclawx.baseUrl).replace(/\/$/, ""),
+                        apiKey: agentRow.openclawx.apiKey?.trim(),
+                    };
+                }
+            }
+        } catch {
+            // ignore
+        }
+    }
+
+    return {
+        provider,
+        model,
+        apiKey: apiKey ?? undefined,
+        workspace: workspaceName,
+        mcpServers,
+        systemPrompt,
+        runnerType,
+        coze,
+        openclawx,
+    };
 }
 
 /** 供 CLI config list 使用：从桌面 config 读出的配置列表项 */
