@@ -113,128 +113,16 @@ docs/
 - **Desktop**：Electron 包一层 Vue 前端 + 上述后端；通过 Gateway 或直连 Desktop 后端与 Agent 通信。
 - **Agent 核心**：统一由 `AgentManager` 管理会话、技能注入与工具注册；**执行方式**可为 **local**（本机 pi-coding-agent + Skills）、**coze**（代理至 Coze 国内/国际站）、**openclawx**（代理至其他 OpenClawX 节点，多节点协作）。记忆与 compaction 作为扩展参与 system prompt 与经验写入。
 
-### 项目目录结构
-
-```
-openbot/
-├── src/                    # 源码（构建输出 dist/）
-│   ├── core/               # 公共核心，CLI 与 Gateway 共用
-│   │   ├── agent/          # AgentManager、run、技能与配置；proxy/ 代理（local/coze/openclawx）
-│   │   ├── config/         # 桌面配置（~/.openbot/desktop）
-│   │   ├── memory/         # 向量存储、嵌入、compaction
-│   │   ├── installer/      # 技能安装
-│   │   └── tools/          # 内置工具（browser、install-skill、save-experience 等）
-│   ├── cli/                # CLI 入口与 service 子命令
-│   │   ├── cli.ts          # 主入口，构建为 dist/cli/cli.js
-│   │   └── service.ts      # 开机自启 install/uninstall/stop
-│   ├── gateway/            # WebSocket 网关（内嵌 Nest、path 分流）
-│   │   ├── channel/        # 通道模块：多 IM 接入与 Agent 对接
-│   │   │   ├── channel-core.ts   # 通道核心（注册、入站/出站统一格式）
-│   │   │   ├── registry.ts       # 按配置注册各通道
-│   │   │   ├── run-agent.ts      # 入站消息调用 Agent/Proxy，回写通道
-│   │   │   ├── session-persistence.ts
-│   │   │   ├── types.ts
-│   │   │   └── adapters/         # 各平台适配器
-│   │   │       ├── feishu.ts     # 飞书 WebSocket 事件
-│   │   │       ├── dingtalk.ts   # 钉钉 Stream
-│   │   │       └── telegram.ts   # Telegram 长轮询
-│   │   ├── channel-handler.ts    # /channel 路由入口
-│   │   ├── methods/              # JSON-RPC 方法（connect、agent.chat 等）
-│   │   ├── server.ts             # 网关主进程
-│   │   └── ...
-│   ├── server/             # Desktop 后端（NestJS）
-│   ├── cli.ts              # 兼容入口，仅转发到 cli/cli.js
-│   └── index.ts            # 包导出
-├── apps/
-│   ├── desktop/            # Electron + Vue 桌面端
-│   ├── web/                # 预留
-│   ├── mobile/             # 预留
-│   ├── miniprogram/        # 预留
-│   └── browser-extension/  # 预留
-├── deploy/                 # Docker、K8s 等部署
-├── test/                   # 单元与 e2e 测试
-├── examples/               # 示例（含 workspace、gateway-client）
-└── skills/                 # 技能目录（SKILL.md 规范）
-```
-
-### 目录与模块对应
-
-| 目录 | 说明 |
-|------|------|
-| `src/core/` | **公共核心**：`agent/`（AgentManager、pi-coding-agent、**proxy/** 代理：local/coze/openclawx 适配器）、`config/`（桌面配置）、`memory/`、`installer/`、`tools/`；CLI 与 Gateway 共用。 |
-| `src/cli/` | **CLI**：`cli.ts` 主入口（构建为 `dist/cli/cli.js`），`service.ts` 提供开机自启（install/uninstall/stop）。 |
-| `src/gateway/` | **WebSocket 网关**：单进程内嵌 Nest，按 path 分流：`/server-api`、`/ws`、`/ws/voice`、`/sse`、`/channel`、`/health`、静态资源（`apps/desktop/renderer/dist`）。 |
-| `src/gateway/channel/` | **通道模块**：多 IM 通道接入与 Agent 对接。`channel-core` 统一入站/出站格式与注册；`registry` 按 config 注册飞书/钉钉/Telegram；`run-agent` 将入站消息交给 Agent/Proxy 执行并回写该通道；`adapters/` 下为各平台实现（feishu、dingtalk、telegram）。`channel-handler.ts` 为 `/channel` 路由入口。 |
-| `src/server/` | **Desktop 后端**（NestJS），HTTP API 前缀 `server-api`；可内嵌到 Gateway 或独立监听。 |
-| `apps/desktop/` | **桌面端**（Electron + Vue），前端构建产物由 Gateway 提供。 |
-| `deploy/` | Dockerfile、K8s 等部署配置。 |
-| `test/` | 单元与 e2e 测试（config、gateway、server、installer）。 |
-| `examples/` | 示例工作区、gateway 客户端等。真实工作区根目录为 `~/.openbot/workspace/`。 |
-| `skills/` | 技能目录（SKILL.md 规范）。 |
-
----
-
 ## 各端技术栈
 
-### CLI
-
-| 类别 | 技术 |
+| 端 | 技术 |
 |------|------|
-| 运行时 | Node.js 20+ |
-| 语言 | TypeScript 5.7 |
-| 入口 | `openbot`（bin → `dist/cli/cli.js`） |
-| 框架 | Commander（子命令：`gateway`、`login`、`config`、`service`） |
-| 配置 | `~/.openbot/agent`（API Key、模型、技能等）；`~/.openbot/desktop`（与桌面共用） |
-| 开机自启 | `openbot service install` / `uninstall`（Linux cron、macOS LaunchAgent、Windows 计划任务）；`openbot service stop` 停止当前 gateway |
-
-### WebSocket Gateway
-
-| 类别 | 技术 |
-|------|------|
-| 协议 | JSON-RPC over WebSocket（`ws`） |
-| 端口 | 默认 38080，可 `-p` 指定 |
-| 架构 | 单进程内嵌 Nest；按 path 分流：`/server-api`、`/ws`、`/ws/voice`、`/sse`、`/channel`、`/health`、静态资源 |
-| 职责 | 连接管理、消息路由、鉴权钩子、静态资源（Desktop 前端） |
-| 方法 | `connect`、`agent.chat`、`agent.cancel`、`subscribe_session`、`unsubscribe_session` 等 |
-
-### Agent 核心
-
-| 类别 | 技术 |
-|------|------|
-| 智能体 | @mariozechner/pi-coding-agent |
-| 模型/Provider | @mariozechner/pi-ai（DeepSeek、DashScope、OpenAI 等） |
-| **代理执行** | **local**（本机） / **coze**（Coze 国内/国际站） / **openclawx**（其他 OpenClawX 节点）；Gateway/Desktop 通过 proxy 适配器统一调用 runForChannelStream 等 |
-| 工具 | read/write/edit、bash、find/grep/ls、browser、install-skill、save-experience |
-| 技能 | SKILL.md 规范，多路径加载，formatSkillsForPrompt 注入 system prompt |
-
-### Desktop 后端（NestJS）
-
-| 类别 | 技术 |
-|------|------|
-| 框架 | NestJS 10、Express、Socket.io |
-| 前缀 | `server-api` |
-| 模块 | Database · Agents · AgentConfig · Skills · Config · Auth · Users · Workspace · Tasks · Usage |
-| 数据 | sql.js（SQLite WASM，无需预编译） |
-
-### Desktop 前端（Electron + Vue）
-
-| 类别 | 技术 |
-|------|------|
-| 壳子 | Electron 28 |
-| 前端 | Vue 3、Vue Router、Pinia |
-| 构建 | Vite 5 |
-| 通信 | axios、socket.io-client |
-| 视图 | Dashboard、Agents、AgentChat/AgentDetail、Sessions、Skills、Settings、Tasks、WorkResults、Workspace、Login |
-| 国际化 | 自研 useI18n + locales (zh/en) |
-
-### 记忆与向量
-
-| 类别 | 技术 |
-|------|------|
-| 向量索引 | Vectra（LocalIndex） |
-| 嵌入 | 远端 API（config.json 中 RAG 知识库配置的 embedding 模型；未配置时长记忆空转） |
-| 扩展 | compaction-extension（会话压缩、摘要入 prompt） |
-| 持久化 | 与 agent 目录一致的 memory 目录、sql.js（若用于元数据） |
+| **CLI** | Node.js 20+、TypeScript 5.7、Commander（gateway/login/config/service）；`openbot` 入口，配置 `~/.openbot/desktop`，支持开机自启 |
+| **WebSocket Gateway** | JSON-RPC over WebSocket，默认 38080；单进程内嵌 Nest，path 分流（/server-api、/ws、/channel 等）；连接管理、通道（飞书/钉钉/Telegram） |
+| **Agent 核心** | pi-coding-agent、pi-ai 多模型；执行方式 local/coze/openclawx；工具 read/write/bash/browser 等，SKILL.md 技能注入 |
+| **Desktop 后端** | NestJS 10、Express、Socket.io，前缀 `server-api`；sql.js；Agents·Skills·Config·Auth·Workspace·Tasks |
+| **Desktop 前端** | Electron 28、Vue 3、Pinia、Vite 5；Dashboard、Agents、Sessions、Skills、Settings、Tasks、Workspace |
+| **记忆与向量** | Vectra 向量索引、远端嵌入、compaction 会话压缩、memory 目录持久化 |
 
 ---
 
