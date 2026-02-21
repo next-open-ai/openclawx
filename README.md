@@ -1,10 +1,56 @@
 # OpenClawX
+
 基于自已的OpenBot重构而来
+
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**一个桌面级 OpenClaw 实现**，是基于 Agent Skills 的**一体化 AI 助手平台**。核心支持 CLI、WebSocket 网关与桌面端；除可自我升级扩展的 AI Agent 引擎及多通道、多终端接入外，**支持代理模式**：可将对话代理到 **Coze** 或 **OpenClawX**，实现 Coze 平台接入与 OpenClawX 多节点协作。后续将支持 MCP 以降低 Token 消耗与大模型幻觉，形成互联互通的 Agent 平台。
+---
+
+## 📚 文档导航
+
+完整使用说明请进入 **[使用文档入口](docs/README.md)**。文档结构如下：
+
+| 分类 | 文档 | 说明 |
+|------|------|------|
+| **入门** | [快速开始](docs/guides/getting-started.md) | 5 分钟跑通：安装、首次对话、桌面/通道入口 |
+| | [安装与部署](docs/guides/installation.md) | npm、Docker、Desktop 安装包及环境要求 |
+| **使用指南** | [CLI 使用](docs/guides/cli-usage.md) | 命令行对话、登录、模型与技能、开机自启 |
+| | [桌面端使用](docs/guides/desktop-usage.md) | Desktop 安装与启动、智能体/会话/技能/设置 |
+| | [Web 与 Gateway](docs/guides/gateway-web.md) | 启动网关、端口与路径、Web 端连接 |
+| **配置** | [配置概览](docs/configuration/config-overview.md) | 配置目录、config.json 与 agents.json |
+| | [智能体配置](docs/configuration/agents.md) | 本机/Coze/OpenClawX 执行方式与模型 |
+| | [通道配置](docs/configuration/channels.md) | 飞书、钉钉、Telegram 启用与配置项 |
+| **功能说明** | [代理模式与多节点](docs/features/proxy-mode.md) | Coze 接入、OpenClawX 多节点协作 |
+| | [技能系统](docs/features/skills.md) | Agent Skills 规范与扩展 |
+| **参考** | [常见问题](docs/reference/faq.md) | 安装失败、端口占用、通道不回复等 FAQ |
+
+<details>
+<summary><strong>📂 文档树结构</strong></summary>
+
+```
+docs/
+├── README.md                   → 文档入口与导航
+├── guides/                     → 使用指南
+│   ├── getting-started.md      快速开始
+│   ├── installation.md         安装与部署
+│   ├── cli-usage.md            CLI 使用
+│   ├── desktop-usage.md        桌面端使用
+│   └── gateway-web.md          Web 与 Gateway
+├── configuration/              → 配置说明
+│   ├── config-overview.md      配置概览
+│   ├── agents.md              智能体配置
+│   └── channels.md            通道配置（飞书/钉钉/Telegram）
+├── features/                   → 功能说明
+│   ├── proxy-mode.md          代理模式与多节点协作
+│   └── skills.md              技能系统
+├── reference/                  → 参考
+│   └── faq.md                 常见问题
+└── channel-streaming-design.md 通道流式设计（开发参考）
+```
+
+</details>
 
 ---
 
@@ -108,7 +154,7 @@ openbot/
 ├── deploy/                 # Docker、K8s 等部署
 ├── test/                   # 单元与 e2e 测试
 ├── examples/               # 示例（含 workspace、gateway-client）
-└── skills/                 # 内置技能（find-skills、agent-browser）
+└── skills/                 # 技能目录（SKILL.md 规范）
 ```
 
 ### 目录与模块对应
@@ -124,7 +170,7 @@ openbot/
 | `deploy/` | Dockerfile、K8s 等部署配置。 |
 | `test/` | 单元与 e2e 测试（config、gateway、server、installer）。 |
 | `examples/` | 示例工作区、gateway 客户端等。真实工作区根目录为 `~/.openbot/workspace/`。 |
-| `skills/` | 内置技能（SKILL.md 规范）。 |
+| `skills/` | 技能目录（SKILL.md 规范）。 |
 
 ---
 
@@ -189,13 +235,6 @@ openbot/
 | 嵌入 | 远端 API（config.json 中 RAG 知识库配置的 embedding 模型；未配置时长记忆空转） |
 | 扩展 | compaction-extension（会话压缩、摘要入 prompt） |
 | 持久化 | 与 agent 目录一致的 memory 目录、sql.js（若用于元数据） |
-
-### 内置技能
-
-| 技能 | 说明 |
-|------|------|
-| find-skills | 发现与安装 Cursor/Agent 技能 |
-| agent-browser | 浏览器自动化（Playwright/agent-browser CLI） |
 
 ---
 
@@ -582,18 +621,11 @@ npm run test:memory
 
 ---
 
-## 各端技术栈
+### 社区与交流
 
-详见上文「各端技术栈」章节（CLI、WebSocket Gateway、Agent 核心、Desktop 后端/前端、记忆与向量、内置技能）。
+扫码加入交流群：
 
----
-
-## 内置技能
-
-| 技能 | 说明 |
-|------|------|
-| find-skills | 发现与安装 Cursor/Agent 技能 |
-| agent-browser | 浏览器自动化（Playwright/agent-browser CLI） |
+![OpenClawX 交流群](docs/group-1.png)
 
 ---
 
