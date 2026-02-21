@@ -42,6 +42,7 @@ import { ensureDesktopConfigInitialized, getChannelsConfigSync } from "../core/c
 import { createNestAppEmbedded } from "../server/bootstrap.js";
 import { registerChannel, startAllChannels, stopAllChannels } from "./channel/registry.js";
 import { createFeishuChannel } from "./channel/adapters/feishu.js";
+import { createDingTalkChannel } from "./channel/adapters/dingtalk.js";
 import { setChannelSessionPersistence } from "./channel/session-persistence.js";
 import {
     setSessionCurrentAgentResolver,
@@ -238,25 +239,41 @@ export async function startGatewayServer(port: number = 38080): Promise<{
         });
     });
 
-    // 通道：根据配置注册并启动（如飞书 WebSocket）
+    // 通道：根据配置注册并启动（飞书 WebSocket、钉钉 Stream 等）
     const channelsConfig = getChannelsConfigSync();
     const feishuCfg = channelsConfig.feishu;
     if (feishuCfg?.enabled && feishuCfg.appId?.trim() && feishuCfg.appSecret?.trim()) {
         try {
-            console.log("[Channel] Starting Feishu (WebSocket)...");
             const feishuChannel = createFeishuChannel({
                 appId: feishuCfg.appId.trim(),
                 appSecret: feishuCfg.appSecret.trim(),
                 defaultAgentId: feishuCfg.defaultAgentId?.trim() || "default",
             });
             registerChannel(feishuChannel);
-            await startAllChannels();
         } catch (e) {
-            console.warn("Feishu channel start failed:", e);
+            console.warn("Feishu channel register failed:", e);
         }
     } else if (feishuCfg?.enabled) {
-        console.warn("[Channel] Feishu is enabled but appId or appSecret is missing; skip start. Check Settings → Channels.");
+        console.warn("[Channel] Feishu is enabled but appId or appSecret is missing; skip. Check Settings → Channels.");
     }
+
+    const dingtalkCfg = channelsConfig.dingtalk;
+    if (dingtalkCfg?.enabled && dingtalkCfg.clientId?.trim() && dingtalkCfg.clientSecret?.trim()) {
+        try {
+            const dingtalkChannel = createDingTalkChannel({
+                clientId: dingtalkCfg.clientId.trim(),
+                clientSecret: dingtalkCfg.clientSecret.trim(),
+                defaultAgentId: dingtalkCfg.defaultAgentId?.trim() || "default",
+            });
+            registerChannel(dingtalkChannel);
+        } catch (e) {
+            console.warn("DingTalk channel register failed:", e);
+        }
+    } else if (dingtalkCfg?.enabled) {
+        console.warn("[Channel] DingTalk is enabled but clientId or clientSecret is missing; skip. Check Settings → Channels.");
+    }
+
+    await startAllChannels();
 
     const close = async () => {
         console.log("Closing gateway server...");

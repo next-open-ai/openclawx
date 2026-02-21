@@ -571,6 +571,48 @@
             </div>
             <p class="form-hint">{{ t('settings.channelFeishuHint') }}</p>
           </div>
+          <div class="settings-group">
+            <h3>{{ t('settings.dingtalk') }}</h3>
+            <div class="form-group channel-dingtalk-enabled">
+              <label class="checkbox-label">
+                <input v-model="localChannels.dingtalk.enabled" type="checkbox" />
+                {{ t('settings.channelDingtalkEnabled') }}
+              </label>
+            </div>
+            <div class="form-group">
+              <label>{{ t('settings.channelDingtalkClientId') }}</label>
+              <input
+                v-model="localChannels.dingtalk.clientId"
+                type="text"
+                class="input"
+                :placeholder="t('settings.channelDingtalkClientIdPlaceholder')"
+                autocomplete="off"
+              />
+            </div>
+            <div class="form-group">
+              <label>{{ t('settings.channelDingtalkClientSecret') }}</label>
+              <input
+                v-model="localChannels.dingtalk.clientSecret"
+                type="password"
+                class="input"
+                :placeholder="t('settings.channelDingtalkClientSecretPlaceholder')"
+                autocomplete="off"
+              />
+            </div>
+            <div class="form-group">
+              <label>{{ t('settings.channelDefaultAgentId') }}</label>
+              <select v-model="localChannels.dingtalk.defaultAgentId" class="input select-input">
+                <option
+                  v-for="a in channelDingtalkDefaultAgentOptions"
+                  :key="a.id"
+                  :value="a.id"
+                >
+                  {{ a.name || a.id }}
+                </option>
+              </select>
+            </div>
+            <p class="form-hint">{{ t('settings.channelDingtalkHint') }}</p>
+          </div>
           <div class="actions">
             <button type="button" class="btn-primary" @click="saveChannelsConfig">
               {{ t('common.save') }}
@@ -834,6 +876,7 @@ export default {
     const localRag = ref({ embeddingProvider: '', embeddingModel: '' });
     const localChannels = ref({
       feishu: { enabled: false, appId: '', appSecret: '', defaultAgentId: 'default' },
+      dingtalk: { enabled: false, clientId: '', clientSecret: '', defaultAgentId: 'default' },
     });
 
     const config = computed(() => settingsStore.config || {});
@@ -911,6 +954,14 @@ export default {
     /** 通道配置-飞书：绑定当前通道的缺省智能体下拉选项（default + 智能体列表；若当前值不在列表中则追加一项） */
     const channelFeishuDefaultAgentOptions = computed(() => {
       const current = (localChannels.value?.feishu?.defaultAgentId || '').trim() || 'default';
+      const list = [{ id: 'default', name: 'default' }, ...agentList.value];
+      const hasCurrent = list.some((a) => a.id === current);
+      if (!hasCurrent && current) return [...list, { id: current, name: current }];
+      return list;
+    });
+    /** 通道配置-钉钉：默认智能体下拉选项 */
+    const channelDingtalkDefaultAgentOptions = computed(() => {
+      const current = (localChannels.value?.dingtalk?.defaultAgentId || '').trim() || 'default';
       const list = [{ id: 'default', name: 'default' }, ...agentList.value];
       const hasCurrent = list.some((a) => a.id === current);
       if (!hasCurrent && current) return [...list, { id: current, name: current }];
@@ -1004,12 +1055,19 @@ export default {
     function initChannelsTab() {
       const ch = config.value?.channels;
       const feishu = ch?.feishu;
+      const dingtalk = ch?.dingtalk;
       localChannels.value = {
         feishu: {
           enabled: !!feishu?.enabled,
           appId: typeof feishu?.appId === 'string' ? feishu.appId : '',
           appSecret: typeof feishu?.appSecret === 'string' ? feishu.appSecret : '',
           defaultAgentId: typeof feishu?.defaultAgentId === 'string' ? feishu.defaultAgentId : 'default',
+        },
+        dingtalk: {
+          enabled: !!dingtalk?.enabled,
+          clientId: typeof dingtalk?.clientId === 'string' ? dingtalk.clientId : '',
+          clientSecret: typeof dingtalk?.clientSecret === 'string' ? dingtalk.clientSecret : '',
+          defaultAgentId: typeof dingtalk?.defaultAgentId === 'string' ? dingtalk.defaultAgentId : 'default',
         },
       };
     }
@@ -1022,6 +1080,12 @@ export default {
             appId: (localChannels.value.feishu.appId || '').trim(),
             appSecret: (localChannels.value.feishu.appSecret || '').trim(),
             defaultAgentId: (localChannels.value.feishu.defaultAgentId || 'default').trim(),
+          },
+          dingtalk: {
+            enabled: !!localChannels.value.dingtalk.enabled,
+            clientId: (localChannels.value.dingtalk.clientId || '').trim(),
+            clientSecret: (localChannels.value.dingtalk.clientSecret || '').trim(),
+            defaultAgentId: (localChannels.value.dingtalk.defaultAgentId || 'default').trim(),
           },
         },
       });
@@ -1572,6 +1636,7 @@ export default {
       addModelOptions,
       effectiveAddModelId,
       channelFeishuDefaultAgentOptions,
+      channelDingtalkDefaultAgentOptions,
       getModelDisplayName,
       getModelAlias,
       getProviderDisplayName,

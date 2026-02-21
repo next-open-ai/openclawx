@@ -48,6 +48,7 @@ export interface RagEmbeddingConfig {
 /** 通道配置：各 IM 通道的 token、key 等，与设置页「通道配置」一致 */
 export interface ChannelsConfig {
     feishu?: { enabled?: boolean; appId?: string; appSecret?: string; defaultAgentId?: string };
+    dingtalk?: { enabled?: boolean; clientId?: string; clientSecret?: string; defaultAgentId?: string };
 }
 
 /** 与 Nest ConfigService 使用的 config.json 结构一致 */

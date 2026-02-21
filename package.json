@@ -38,6 +38,7 @@
         "agent-browser": "^0.8.5",
         "commander": "^14.0.2",
         "croner": "^9.1.0",
+        "dingtalk-stream": "^2.1.4",
         "multer": "^1.4.5-lts.1",
         "reflect-metadata": "^0.2.1",
         "rxjs": "^7.8.1",

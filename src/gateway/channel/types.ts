@@ -22,6 +22,8 @@ export interface UnifiedMessage {
     replyTarget?: string;
     /** 平台消息 ID（可选，用于回复引用等） */
     messageId?: string;
+    /** 通道可选：回复发送完成后调用的 ack（如钉钉 Stream 需回调响应防重试），参数为 send 返回值 */
+    ack?: (sendResult?: unknown) => void | Promise<void>;
 }
 
 /** 统一出站回复 */
@@ -46,9 +48,9 @@ export interface StreamSink {
     onDone(accumulated: string): void | Promise<void>;
 }
 
-/** 出站传输：将 UnifiedReply 发到外部 */
+/** 出站传输：将 UnifiedReply 发到外部；返回值可传给 UnifiedMessage.ack */
 export interface IOutboundTransport {
-    send(targetId: string, reply: UnifiedReply): Promise<void>;
+    send(targetId: string, reply: UnifiedReply): Promise<unknown>;
     /** 可选：该出站是否还能往 targetId 发（如连接是否有效） */
     canSend?(targetId: string): boolean;
     /** 可选：流式发送。先创建占位消息，返回 sink 供调用方按累积内容更新（如飞书 create + patch）。 */

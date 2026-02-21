@@ -205,10 +205,11 @@ export default {
       return [...sessions.value].sort((a, b) => (b.lastActiveAt || b.createdAt) - (a.lastActiveAt || a.createdAt));
     });
 
-    /** 会话来源：channel:feishu:xxx -> 飞书通道；channel:xxx:yyy -> 通道: xxx；否则 Web/Desktop */
+    /** 会话来源：channel:feishu:xxx -> 飞书通道；channel:dingtalk:xxx -> 钉钉通道；channel:xxx:yyy -> 通道: xxx；否则 Web/Desktop */
     function getSessionSourceLabel(session) {
       const id = session?.id || '';
       if (id.startsWith('channel:feishu:')) return t('sessions.sourceFeishu');
+      if (id.startsWith('channel:dingtalk:')) return t('sessions.sourceDingtalk');
       if (id.startsWith('channel:')) {
         const parts = id.split(':');
         return t('sessions.sourceChannel', { name: parts[1] || 'unknown' });
@@ -219,6 +220,7 @@ export default {
     function sourceTagClass(session) {
       const id = session?.id || '';
       if (id.startsWith('channel:feishu:')) return 'source-feishu';
+      if (id.startsWith('channel:dingtalk:')) return 'source-dingtalk';
       if (id.startsWith('channel:')) return 'source-channel';
       return 'source-web';
     }
@@ -492,6 +494,12 @@ export default {
   background: rgba(0, 127, 255, 0.12);
   color: #0077ff;
   border-color: rgba(0, 127, 255, 0.3);
+}
+
+.source-tag.source-dingtalk {
+  background: rgba(0, 166, 90, 0.12);
+  color: #00a65a;
+  border-color: rgba(0, 166, 90, 0.3);
 }
 
 .source-tag.source-channel {

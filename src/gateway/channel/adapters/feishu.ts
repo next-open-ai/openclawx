@@ -137,7 +137,7 @@ class FeishuApiOutbound implements IOutboundTransport {
         });
     }
 
-    async send(targetId: string, reply: UnifiedReply): Promise<void> {
+    async send(targetId: string, reply: UnifiedReply): Promise<unknown> {
         if (!targetId || targetId === "default") {
             console.error("[Feishu] send skipped: invalid receive_id (missing or 'default'), check threadId from event");
             return;
