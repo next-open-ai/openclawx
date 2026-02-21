@@ -82,6 +82,20 @@ openbot/
 │   │   ├── cli.ts          # 主入口，构建为 dist/cli/cli.js
 │   │   └── service.ts      # 开机自启 install/uninstall/stop
 │   ├── gateway/            # WebSocket 网关（内嵌 Nest、path 分流）
+│   │   ├── channel/        # 通道模块：多 IM 接入与 Agent 对接
+│   │   │   ├── channel-core.ts   # 通道核心（注册、入站/出站统一格式）
+│   │   │   ├── registry.ts       # 按配置注册各通道
+│   │   │   ├── run-agent.ts      # 入站消息调用 Agent/Proxy，回写通道
+│   │   │   ├── session-persistence.ts
+│   │   │   ├── types.ts
+│   │   │   └── adapters/         # 各平台适配器
+│   │   │       ├── feishu.ts     # 飞书 WebSocket 事件
+│   │   │       ├── dingtalk.ts   # 钉钉 Stream
+│   │   │       └── telegram.ts   # Telegram 长轮询
+│   │   ├── channel-handler.ts    # /channel 路由入口
+│   │   ├── methods/              # JSON-RPC 方法（connect、agent.chat 等）
+│   │   ├── server.ts             # 网关主进程
+│   │   └── ...
 │   ├── server/             # Desktop 后端（NestJS）
 │   ├── cli.ts              # 兼容入口，仅转发到 cli/cli.js
 │   └── index.ts            # 包导出
@@ -103,7 +117,8 @@ openbot/
 |------|------|
 | `src/core/` | **公共核心**：`agent/`（AgentManager、pi-coding-agent、**proxy/** 代理：local/coze/openclawx 适配器）、`config/`（桌面配置）、`memory/`、`installer/`、`tools/`；CLI 与 Gateway 共用。 |
 | `src/cli/` | **CLI**：`cli.ts` 主入口（构建为 `dist/cli/cli.js`），`service.ts` 提供开机自启（install/uninstall/stop）。 |
-| `src/gateway/` | **WebSocket 网关**：单进程内嵌 Nest，按 path 分流：`/server-api`、`/ws`、`/ws/voice`、`/sse`、`/channel`、`/health`、静态资源（`apps/desktop/renderer/dist`）；通道适配（feishu、dingtalk、telegram）在 `channel/adapters/`。 |
+| `src/gateway/` | **WebSocket 网关**：单进程内嵌 Nest，按 path 分流：`/server-api`、`/ws`、`/ws/voice`、`/sse`、`/channel`、`/health`、静态资源（`apps/desktop/renderer/dist`）。 |
+| `src/gateway/channel/` | **通道模块**：多 IM 通道接入与 Agent 对接。`channel-core` 统一入站/出站格式与注册；`registry` 按 config 注册飞书/钉钉/Telegram；`run-agent` 将入站消息交给 Agent/Proxy 执行并回写该通道；`adapters/` 下为各平台实现（feishu、dingtalk、telegram）。`channel-handler.ts` 为 `/channel` 路由入口。 |
 | `src/server/` | **Desktop 后端**（NestJS），HTTP API 前缀 `server-api`；可内嵌到 Gateway 或独立监听。 |
 | `apps/desktop/` | **桌面端**（Electron + Vue），前端构建产物由 Gateway 提供。 |
 | `deploy/` | Dockerfile、K8s 等部署配置。 |
@@ -579,6 +594,14 @@ npm run test:memory
 |------|------|
 | find-skills | 发现与安装 Cursor/Agent 技能 |
 | agent-browser | 浏览器自动化（Playwright/agent-browser CLI） |
+
+---
+
+### 社区与交流
+
+扫码加入交流群：
+
+![OpenClawX 交流群](docs/group-1.png)
 
 ---
 
