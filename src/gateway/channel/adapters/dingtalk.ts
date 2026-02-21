@@ -2,7 +2,7 @@
  * 钉钉通道适配器：使用 dingtalk-stream SDK Stream 模式接收机器人消息，通过 sessionWebhook 回传回复。
  */
 import { DWClient, EventAck, TOPIC_ROBOT, type RobotMessage } from "dingtalk-stream";
-import type { IChannel, IInboundTransport, IOutboundTransport, UnifiedMessage, UnifiedReply } from "../types.js";
+import type { IChannel, IInboundTransport, IOutboundTransport, StreamSink, UnifiedMessage, UnifiedReply } from "../types.js";
 import { dispatchMessage } from "../registry.js";
 
 export interface DingTalkChannelConfig {
@@ -84,12 +84,30 @@ class DingTalkStreamInbound implements IInboundTransport {
 
 /**
  * 钉钉出站：通过 sessionWebhook POST 发送文本回复（需 access_token）。
+ * 支持 sendStream：按 agent 每轮（turn_end）发一条消息，不拆解最终回答。
  */
 class DingTalkWebhookOutbound implements IOutboundTransport {
     private client: DWClient;
 
     constructor(client: DWClient) {
         this.client = client;
+    }
+
+    private async postOne(sessionWebhook: string, text: string): Promise<unknown> {
+        const accessToken = await this.client.getAccessToken();
+        const body = JSON.stringify({
+            msgtype: "text",
+            text: { content: text },
+        });
+        const res = await fetch(sessionWebhook, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-acs-dingtalk-access-token": accessToken,
+            },
+            body,
+        });
+        return res.json().catch(() => ({}));
     }
 
     async send(targetId: string, reply: UnifiedReply): Promise<unknown> {
@@ -100,25 +118,69 @@ class DingTalkWebhookOutbound implements IOutboundTransport {
         }
         const text = reply.text?.trim() || "(无内容)";
         try {
-            const accessToken = await this.client.getAccessToken();
-            const body = JSON.stringify({
-                msgtype: "text",
-                text: { content: text },
-            });
-            const res = await fetch(sessionWebhook, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-acs-dingtalk-access-token": accessToken,
-                },
-                body,
-            });
-            const data = await res.json().catch(() => ({}));
-            return data;
+            return await this.postOne(sessionWebhook, text);
         } catch (e) {
             console.error("[DingTalk] send message failed:", e);
             throw e;
         }
+    }
+
+    async sendStream(targetId: string): Promise<StreamSink> {
+        const sessionWebhook = sessionWebhookByConversation.get(targetId);
+        if (!sessionWebhook) {
+            throw new Error("[DingTalk] sendStream: no sessionWebhook for conversationId " + targetId);
+        }
+        /** 已发送的字符右边界，[lastSentIndex, accumulated.length) 为未发送 */
+        let lastSentIndex = 0;
+        /** 串行锁：onTurnEnd 与 onDone 可能不 await，必须顺序执行发送，避免重复发同一段 */
+        let sendLock: Promise<void> = Promise.resolve();
+
+        const sendOne = (text: string): Promise<void> => {
+            if (!text.trim()) return Promise.resolve();
+            return this.postOne(sessionWebhook!, text.trim()).then(
+                () => {},
+                (e) => {
+                    console.error("[DingTalk] sendStream post failed:", e);
+                }
+            );
+        };
+
+        /** 仅发送尚未发送的区间，并推进 lastSentIndex；在锁内执行 */
+        const flushPending = (accumulated: string): Promise<void> => {
+            const pending = accumulated.slice(lastSentIndex).trim();
+            if (!pending) return Promise.resolve();
+            return sendOne(pending).then(() => {
+                lastSentIndex = accumulated.length;
+            });
+        };
+
+        return {
+            onChunk: async () => {
+                // 钉钉按轮发，不按 chunk 发
+            },
+            onTurnEnd: async (accumulated: string) => {
+                sendLock = sendLock.then(() => flushPending(accumulated));
+                await sendLock;
+            },
+            onDone: async (accumulated: string) => {
+                const final = accumulated.trim() || "(无内容)";
+                sendLock = sendLock.then(() => {
+                    const remaining = final.slice(lastSentIndex).trim();
+                    if (remaining) {
+                        return sendOne(remaining).then(() => {
+                            lastSentIndex = final.length;
+                        });
+                    }
+                    if (lastSentIndex === 0) {
+                        return sendOne(final).then(() => {
+                            lastSentIndex = final.length;
+                        });
+                    }
+                    return Promise.resolve();
+                });
+                await sendLock;
+            },
+        };
     }
 }
 

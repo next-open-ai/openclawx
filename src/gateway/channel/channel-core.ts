@@ -103,6 +103,10 @@ export async function handleChannelMessage(
                         accumulated += delta;
                         throttled.run();
                     },
+                    onTurnEnd() {
+                        throttled.flush();
+                        if (sink.onTurnEnd) void Promise.resolve(sink.onTurnEnd(accumulated)).catch((e) => console.error("[ChannelCore] stream onTurnEnd error:", e));
+                    },
                     onDone() {
                         throttled.cancel();
                         const final = accumulated.trim() || "(无文本回复)";

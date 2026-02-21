@@ -40,10 +40,12 @@ export interface IInboundTransport {
     setMessageHandler(handler: (msg: UnifiedMessage) => void | Promise<void>): void;
 }
 
-/** 流式出站：先发一条占位消息，再由调用方按累积内容多次更新。返回的 sink 由 channel-core 在 onChunk/onDone 时调用。 */
+/** 流式出站：先发一条占位消息，再由调用方按累积内容多次更新。返回的 sink 由 channel-core 在 onChunk / onTurnEnd / onDone 时调用。 */
 export interface StreamSink {
-    /** 更新当前已累积的全文（节流后调用） */
+    /** 更新当前已累积的全文（节流后调用），通道可用来做占位或实时更新 */
     onChunk(accumulated: string): void | Promise<void>;
+    /** 可选：agent 每轮结束（turn_end）时调用，通道可在此发一条消息（如钉钉按轮发） */
+    onTurnEnd?(accumulated: string): void | Promise<void>;
     /** 流结束，做最终一次更新 */
     onDone(accumulated: string): void | Promise<void>;
 }
