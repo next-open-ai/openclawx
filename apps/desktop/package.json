@@ -1,6 +1,6 @@
 {
     "name": "@next-open-ai/openclawx-desktop",
-    "version": "0.6.9",
+    "version": "0.8.7",
     "description": "OpenClawX Desktop - Professional agent management application",
     "main": "main.js",
     "scripts": {
