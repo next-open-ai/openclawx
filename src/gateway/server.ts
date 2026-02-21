@@ -43,6 +43,7 @@ import { createNestAppEmbedded } from "../server/bootstrap.js";
 import { registerChannel, startAllChannels, stopAllChannels } from "./channel/registry.js";
 import { createFeishuChannel } from "./channel/adapters/feishu.js";
 import { createDingTalkChannel } from "./channel/adapters/dingtalk.js";
+import { createTelegramChannel } from "./channel/adapters/telegram.js";
 import { setChannelSessionPersistence } from "./channel/session-persistence.js";
 import {
     setSessionCurrentAgentResolver,
@@ -271,6 +272,21 @@ export async function startGatewayServer(port: number = 38080): Promise<{
         }
     } else if (dingtalkCfg?.enabled) {
         console.warn("[Channel] DingTalk is enabled but clientId or clientSecret is missing; skip. Check Settings → Channels.");
+    }
+
+    const telegramCfg = channelsConfig.telegram;
+    if (telegramCfg?.enabled && telegramCfg.botToken?.trim()) {
+        try {
+            const telegramChannel = createTelegramChannel({
+                botToken: telegramCfg.botToken.trim(),
+                defaultAgentId: telegramCfg.defaultAgentId?.trim() || "default",
+            });
+            registerChannel(telegramChannel);
+        } catch (e) {
+            console.warn("Telegram channel register failed:", e);
+        }
+    } else if (telegramCfg?.enabled) {
+        console.warn("[Channel] Telegram is enabled but botToken is missing; skip. Check Settings → Channels.");
     }
 
     await startAllChannels();

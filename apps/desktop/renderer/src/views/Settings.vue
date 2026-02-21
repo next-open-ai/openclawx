@@ -613,6 +613,38 @@
             </div>
             <p class="form-hint">{{ t('settings.channelDingtalkHint') }}</p>
           </div>
+          <div class="settings-group">
+            <h3>{{ t('settings.telegram') }}</h3>
+            <div class="form-group channel-telegram-enabled">
+              <label class="checkbox-label">
+                <input v-model="localChannels.telegram.enabled" type="checkbox" />
+                {{ t('settings.channelTelegramEnabled') }}
+              </label>
+            </div>
+            <div class="form-group">
+              <label>{{ t('settings.channelTelegramBotToken') }}</label>
+              <input
+                v-model="localChannels.telegram.botToken"
+                type="password"
+                class="input"
+                :placeholder="t('settings.channelTelegramBotTokenPlaceholder')"
+                autocomplete="off"
+              />
+            </div>
+            <div class="form-group">
+              <label>{{ t('settings.channelDefaultAgentId') }}</label>
+              <select v-model="localChannels.telegram.defaultAgentId" class="input select-input">
+                <option
+                  v-for="a in channelTelegramDefaultAgentOptions"
+                  :key="a.id"
+                  :value="a.id"
+                >
+                  {{ a.name || a.id }}
+                </option>
+              </select>
+            </div>
+            <p class="form-hint">{{ t('settings.channelTelegramHint') }}</p>
+          </div>
           <div class="actions">
             <button type="button" class="btn-primary" @click="saveChannelsConfig">
               {{ t('common.save') }}
@@ -877,6 +909,7 @@ export default {
     const localChannels = ref({
       feishu: { enabled: false, appId: '', appSecret: '', defaultAgentId: 'default' },
       dingtalk: { enabled: false, clientId: '', clientSecret: '', defaultAgentId: 'default' },
+      telegram: { enabled: false, botToken: '', defaultAgentId: 'default' },
     });
 
     const config = computed(() => settingsStore.config || {});
@@ -962,6 +995,14 @@ export default {
     /** 通道配置-钉钉：默认智能体下拉选项 */
     const channelDingtalkDefaultAgentOptions = computed(() => {
       const current = (localChannels.value?.dingtalk?.defaultAgentId || '').trim() || 'default';
+      const list = [{ id: 'default', name: 'default' }, ...agentList.value];
+      const hasCurrent = list.some((a) => a.id === current);
+      if (!hasCurrent && current) return [...list, { id: current, name: current }];
+      return list;
+    });
+    /** 通道配置-Telegram：默认智能体下拉选项 */
+    const channelTelegramDefaultAgentOptions = computed(() => {
+      const current = (localChannels.value?.telegram?.defaultAgentId || '').trim() || 'default';
       const list = [{ id: 'default', name: 'default' }, ...agentList.value];
       const hasCurrent = list.some((a) => a.id === current);
       if (!hasCurrent && current) return [...list, { id: current, name: current }];
@@ -1056,6 +1097,7 @@ export default {
       const ch = config.value?.channels;
       const feishu = ch?.feishu;
       const dingtalk = ch?.dingtalk;
+      const telegram = ch?.telegram;
       localChannels.value = {
         feishu: {
           enabled: !!feishu?.enabled,
@@ -1068,6 +1110,11 @@ export default {
           clientId: typeof dingtalk?.clientId === 'string' ? dingtalk.clientId : '',
           clientSecret: typeof dingtalk?.clientSecret === 'string' ? dingtalk.clientSecret : '',
           defaultAgentId: typeof dingtalk?.defaultAgentId === 'string' ? dingtalk.defaultAgentId : 'default',
+        },
+        telegram: {
+          enabled: !!telegram?.enabled,
+          botToken: typeof telegram?.botToken === 'string' ? telegram.botToken : '',
+          defaultAgentId: typeof telegram?.defaultAgentId === 'string' ? telegram.defaultAgentId : 'default',
         },
       };
     }
@@ -1086,6 +1133,11 @@ export default {
             clientId: (localChannels.value.dingtalk.clientId || '').trim(),
             clientSecret: (localChannels.value.dingtalk.clientSecret || '').trim(),
             defaultAgentId: (localChannels.value.dingtalk.defaultAgentId || 'default').trim(),
+          },
+          telegram: {
+            enabled: !!localChannels.value.telegram.enabled,
+            botToken: (localChannels.value.telegram.botToken || '').trim(),
+            defaultAgentId: (localChannels.value.telegram.defaultAgentId || 'default').trim(),
           },
         },
       });
@@ -1637,6 +1689,7 @@ export default {
       effectiveAddModelId,
       channelFeishuDefaultAgentOptions,
       channelDingtalkDefaultAgentOptions,
+      channelTelegramDefaultAgentOptions,
       getModelDisplayName,
       getModelAlias,
       getProviderDisplayName,
