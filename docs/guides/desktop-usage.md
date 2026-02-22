@@ -9,9 +9,18 @@ OpenClawX Desktop 提供图形界面：会话、智能体、技能、任务、�
 | 方式 | 说明 |
 |------|------|
 | **安装包** | 安装后直接打开 OpenClawX，按引导配置 API Key 与默认模型 |
-| **开发环境** | 在仓库根目录执行 `npm run desktop:dev` 启动开发版桌面 |
+### Mac上安装使用（开源非签名发布版本）
+   打开如果提示损坏无法使用，则需要如下操作：
+   ```bash
+   xattr -c /Applications/OpenClawX.app
+   #或者
+   find /Applications/OpenClawX.app -exec xattr -c {} \; 2>/dev/null
+   ```
+### Windows上安装使用（开源非签名发布版本）
+   待更新
 
-桌面端与 CLI 共用同一套配置（`~/.openbot/desktop/`）与 Agent 核心，同一台机器上配置一次即可双端使用。
+
+桌面端与 WEB端，CLI端 共用同一套配置（`~/.openbot/desktop/`）与 Agent 核心，同一台机器上配置一次即三端使用。
 
 ---
 
