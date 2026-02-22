@@ -509,11 +509,7 @@ npm run test:memory
 
 ---
 
-### 社区与交流
 
-扫码加入交流群：
-
-![OpenClawX 交流群](docs/group-1.png)
 
 ---
 
@@ -521,7 +517,7 @@ npm run test:memory
 
 扫码加入交流群：
 
-![OpenClawX 交流群](docs/group-1.png)
+![OpenClawX QQ交流群:362347735](docs/group-1.png)
 
 ---
 
