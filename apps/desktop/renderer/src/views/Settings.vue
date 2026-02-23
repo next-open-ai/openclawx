@@ -726,6 +726,48 @@
             </div>
             <p class="form-hint">{{ t('settings.channelTelegramHint') }}</p>
           </div>
+          <div class="settings-group">
+            <h3>{{ t('settings.wechat') }}</h3>
+            <div class="form-group channel-wechat-enabled">
+              <label class="checkbox-label">
+                <input v-model="localChannels.wechat.enabled" type="checkbox" />
+                {{ t('settings.channelWechatEnabled') }}
+              </label>
+            </div>
+            <div class="form-group">
+              <label>{{ t('settings.channelDefaultAgentId') }}</label>
+              <select v-model="localChannels.wechat.defaultAgentId" class="input select-input">
+                <option
+                  v-for="a in channelWechatDefaultAgentOptions"
+                  :key="a.id"
+                  :value="a.id"
+                >
+                  {{ a.name || a.id }}
+                </option>
+              </select>
+            </div>
+            <div v-if="localChannels.wechat.enabled" class="form-group wechat-qrcode-section">
+              <div class="wechat-status-row">
+                <span class="wechat-status-dot" :class="wechatStatusClass"></span>
+                <span>{{ wechatStatusText }}</span>
+                <span v-if="wechatUserName" class="wechat-username">（{{ wechatUserName }}）</span>
+              </div>
+              <button
+                v-if="wechatStatus !== 'logged_in'"
+                type="button"
+                class="btn-secondary"
+                :disabled="wechatQrLoading"
+                @click="fetchWechatQrCode"
+              >
+                {{ wechatQrCode ? t('settings.channelWechatRefreshQrCode') : t('settings.channelWechatGetQrCode') }}
+              </button>
+              <div v-if="wechatQrCode && wechatStatus !== 'logged_in'" class="wechat-qrcode-wrap">
+                <p class="form-hint">{{ t('settings.channelWechatQrCodeHint') }}</p>
+                <img :src="wechatQrCode" alt="WeChat QR Code" class="wechat-qrcode-img" />
+              </div>
+            </div>
+            <p class="form-hint">{{ t('settings.channelWechatHint') }}</p>
+          </div>
           <div class="actions">
             <button type="button" class="btn-primary" @click="saveChannelsConfig">
               {{ t('common.save') }}
@@ -999,7 +1041,70 @@ export default {
       feishu: { enabled: false, appId: '', appSecret: '', defaultAgentId: 'default' },
       dingtalk: { enabled: false, clientId: '', clientSecret: '', defaultAgentId: 'default' },
       telegram: { enabled: false, botToken: '', defaultAgentId: 'default' },
+      wechat: { enabled: false, puppet: '', defaultAgentId: 'default' },
     });
+
+    /* ---------- WeChat QR code state ---------- */
+    const wechatQrCode = ref(null);
+    const wechatStatus = ref('logged_out');
+    const wechatUserName = ref(null);
+    const wechatQrLoading = ref(false);
+    let wechatPollTimer = null;
+
+    const wechatStatusClass = computed(() => ({
+      'status-scanning': wechatStatus.value === 'scanning',
+      'status-logged-in': wechatStatus.value === 'logged_in',
+      'status-logged-out': wechatStatus.value === 'logged_out',
+    }));
+    const wechatStatusText = computed(() => {
+      if (wechatStatus.value === 'scanning') return t('settings.channelWechatScanning');
+      if (wechatStatus.value === 'logged_in') return t('settings.channelWechatLoggedIn');
+      return t('settings.channelWechatLoggedOut');
+    });
+
+    async function fetchWechatQrCode() {
+      wechatQrLoading.value = true;
+      try {
+        const rawUrl = settingsStore.config?.gatewayUrl || 'http://127.0.0.1:38080';
+        const baseUrl = rawUrl.replace(/^ws(s?):\/\//, 'http$1://');
+        // First try GET to see if QR code is already available
+        let res = await fetch(`${baseUrl}/server-api/wechat/qrcode`);
+        let data = await res.json();
+        // If QR code is null (expired/not yet generated), trigger a refresh (restart bot)
+        if (!data.qrcode && data.status !== 'logged_in') {
+          console.log('[Settings] QR code not available, requesting refresh...');
+          res = await fetch(`${baseUrl}/server-api/wechat/qrcode/refresh`, { method: 'POST' });
+          data = await res.json();
+        }
+        wechatQrCode.value = data.qrcode || null;
+        wechatStatus.value = data.status || 'logged_out';
+        wechatUserName.value = data.userName || null;
+        // Start polling if scanning
+        if (data.status === 'scanning' && !wechatPollTimer) {
+          wechatPollTimer = setInterval(pollWechatStatus, 3000);
+        }
+      } catch (e) {
+        console.error('[Settings] fetch wechat qrcode failed:', e);
+      } finally {
+        wechatQrLoading.value = false;
+      }
+    }
+
+    async function pollWechatStatus() {
+      try {
+        const rawUrl = settingsStore.config?.gatewayUrl || 'http://127.0.0.1:38080';
+        const baseUrl = rawUrl.replace(/^ws(s?):\/\//, 'http$1://');
+        const res = await fetch(`${baseUrl}/server-api/wechat/qrcode`);
+        const data = await res.json();
+        wechatQrCode.value = data.qrcode || null;
+        wechatStatus.value = data.status || 'logged_out';
+        wechatUserName.value = data.userName || null;
+        if (data.status === 'logged_in' || data.status === 'logged_out') {
+          clearInterval(wechatPollTimer);
+          wechatPollTimer = null;
+        }
+      } catch (_e) { /* ignore */ }
+    }
 
     const config = computed(() => settingsStore.config || {});
     const providers = computed(() => settingsStore.providers || []);
@@ -1097,6 +1202,14 @@ export default {
     /** 通道配置-Telegram：默认智能体下拉选项 */
     const channelTelegramDefaultAgentOptions = computed(() => {
       const current = (localChannels.value?.telegram?.defaultAgentId || '').trim() || 'default';
+      const list = [{ id: 'default', name: 'default' }, ...agentList.value];
+      const hasCurrent = list.some((a) => a.id === current);
+      if (!hasCurrent && current) return [...list, { id: current, name: current }];
+      return list;
+    });
+    /** 通道配置-微信：默认智能体下拉选项 */
+    const channelWechatDefaultAgentOptions = computed(() => {
+      const current = (localChannels.value?.wechat?.defaultAgentId || '').trim() || 'default';
       const list = [{ id: 'default', name: 'default' }, ...agentList.value];
       const hasCurrent = list.some((a) => a.id === current);
       if (!hasCurrent && current) return [...list, { id: current, name: current }];
@@ -1231,6 +1344,7 @@ export default {
       const feishu = ch?.feishu;
       const dingtalk = ch?.dingtalk;
       const telegram = ch?.telegram;
+      const wechat = ch?.wechat;
       localChannels.value = {
         feishu: {
           enabled: !!feishu?.enabled,
@@ -1248,6 +1362,11 @@ export default {
           enabled: !!telegram?.enabled,
           botToken: typeof telegram?.botToken === 'string' ? telegram.botToken : '',
           defaultAgentId: typeof telegram?.defaultAgentId === 'string' ? telegram.defaultAgentId : 'default',
+        },
+        wechat: {
+          enabled: !!wechat?.enabled,
+          puppet: typeof wechat?.puppet === 'string' ? wechat.puppet : '',
+          defaultAgentId: typeof wechat?.defaultAgentId === 'string' ? wechat.defaultAgentId : 'default',
         },
       };
     }
@@ -1271,6 +1390,11 @@ export default {
             enabled: !!localChannels.value.telegram.enabled,
             botToken: (localChannels.value.telegram.botToken || '').trim(),
             defaultAgentId: (localChannels.value.telegram.defaultAgentId || 'default').trim(),
+          },
+          wechat: {
+            enabled: !!localChannels.value.wechat.enabled,
+            puppet: (localChannels.value.wechat.puppet || '').trim() || undefined,
+            defaultAgentId: (localChannels.value.wechat.defaultAgentId || 'default').trim(),
           },
         },
       });
@@ -1823,6 +1947,14 @@ export default {
       channelFeishuDefaultAgentOptions,
       channelDingtalkDefaultAgentOptions,
       channelTelegramDefaultAgentOptions,
+      channelWechatDefaultAgentOptions,
+      wechatQrCode,
+      wechatStatus,
+      wechatUserName,
+      wechatQrLoading,
+      wechatStatusClass,
+      wechatStatusText,
+      fetchWechatQrCode,
       getModelDisplayName,
       getModelAlias,
       getProviderDisplayName,
@@ -2714,5 +2846,55 @@ export default {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* ---------- WeChat QR Code Section ---------- */
+.wechat-qrcode-section {
+  margin-top: 8px;
+}
+.wechat-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+.wechat-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.wechat-status-dot.status-scanning {
+  background: #f5a623;
+  animation: wechat-pulse 1.5s ease-in-out infinite;
+}
+.wechat-status-dot.status-logged-in {
+  background: #4cd964;
+}
+.wechat-status-dot.status-logged-out {
+  background: #8e8e93;
+}
+@keyframes wechat-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.wechat-username {
+  color: var(--text-secondary, #888);
+  font-size: 13px;
+}
+.wechat-qrcode-wrap {
+  margin-top: 12px;
+  text-align: center;
+}
+.wechat-qrcode-img {
+  display: block;
+  margin: 10px auto 0;
+  width: 256px;
+  height: 256px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e0e0e0);
+  background: #fff;
 }
 </style>

@@ -17,7 +17,7 @@ function patchAddEventListener(proto: any) {
         if (type === "abort") {
             try {
                 if (typeof this.setMaxListeners === "function") this.setMaxListeners(limit);
-            } catch (_) {}
+            } catch (_) { }
         }
         return add.call(this, type, listener, options);
     };
@@ -50,6 +50,7 @@ import { registerChannel, startAllChannels, stopAllChannels } from "./channel/re
 import { createFeishuChannel } from "./channel/adapters/feishu.js";
 import { createDingTalkChannel } from "./channel/adapters/dingtalk.js";
 import { createTelegramChannel } from "./channel/adapters/telegram.js";
+import { createWechatChannel, getWechatQrCode, getWechatStatus, refreshWechatQrCode } from "./channel/adapters/wechat.js";
 import { setChannelSessionPersistence } from "./channel/session-persistence.js";
 import {
     setSessionCurrentAgentResolver,
@@ -176,6 +177,37 @@ export async function startGatewayServer(port: number = 38080): Promise<{
         },
     );
 
+    // WeChat QR code & status API (must be before NestJS catch-all)
+    gatewayExpress.get(`${PATHS.SERVER_API}/wechat/qrcode`, (_req, res) => {
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+        const qrcode = getWechatQrCode();
+        const { status, userName } = getWechatStatus();
+        res.status(200).json({ qrcode, status, userName });
+    });
+
+    // Refresh: restart Wechaty bot to get a fresh QR code
+    gatewayExpress.post(`${PATHS.SERVER_API}/wechat/qrcode/refresh`, async (_req, res) => {
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        res.setHeader("Cache-Control", "no-store");
+        try {
+            await refreshWechatQrCode();
+            // Wait a bit for scan event to fire
+            await new Promise(r => setTimeout(r, 3000));
+            const qrcode = getWechatQrCode();
+            const { status, userName } = getWechatStatus();
+            console.log(`[WeChat API refresh] qrcode=${qrcode ? 'has_data' : 'null'}, status=${status}`);
+            res.status(200).json({ qrcode, status, userName });
+        } catch (e: any) {
+            console.error("[WeChat API refresh] error:", e);
+            res.status(500).json({ error: e?.message || String(e) });
+        }
+    });
+
     gatewayExpress.use(PATHS.SERVER_API, authHookServerApi, nestExpress);
 
     gatewayExpress.use(PATHS.CHANNEL, authHookChannel, (req, res) => handleChannel(req, res));
@@ -294,6 +326,21 @@ export async function startGatewayServer(port: number = 38080): Promise<{
     } else if (telegramCfg?.enabled) {
         console.warn("[Channel] Telegram is enabled but botToken is missing; skip. Check Settings → Channels.");
     }
+
+    const wechatCfg = channelsConfig.wechat;
+    if (wechatCfg?.enabled) {
+        try {
+            const wechatChannel = createWechatChannel({
+                puppet: wechatCfg.puppet?.trim() || undefined,
+                defaultAgentId: wechatCfg.defaultAgentId?.trim() || "default",
+            });
+            registerChannel(wechatChannel);
+            console.log("[Channel] WeChat channel registered");
+        } catch (e) {
+            console.warn("WeChat channel register failed:", e);
+        }
+    }
+
 
     await startAllChannels();
 
