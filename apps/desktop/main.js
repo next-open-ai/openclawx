@@ -8,7 +8,7 @@ const os = require('os');
 if (typeof globalThis.File === 'undefined') {
     try {
         globalThis.File = require('node:buffer').File;
-    } catch (_) {}
+    } catch (_) { }
 }
 
 let mainWindow = null;
@@ -32,10 +32,12 @@ async function startGatewayInProcess() {
         process.env.OPENBOT_STATIC_DIR = path.join(__dirname, 'renderer', 'dist');
         // 打包后系统技能目录在 Resources/skills（由 electron-builder extraResources 复制）
         process.env.OPENBOT_SYSTEM_SKILLS_DIR = path.resolve(process.resourcesPath, 'skills');
+        process.env.OPENBOT_PRESETS_DIR = path.resolve(process.resourcesPath, 'presets');
     } else {
         // 开发环境：main.js 在 apps/desktop，仓库根目录 skills 为 openbot/skills（使用绝对路径）
         const devSkillsDir = path.resolve(__dirname, '..', '..', 'skills');
         process.env.OPENBOT_SYSTEM_SKILLS_DIR = devSkillsDir;
+        process.env.OPENBOT_PRESETS_DIR = path.resolve(__dirname, '..', '..', 'presets');
     }
     // 打包后 dist 通过 extraResources 放在 Contents/Resources/dist，可直接 import
     const serverPath = app.isPackaged
@@ -115,6 +117,7 @@ async function createWindow() {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
             contextIsolation: true,
+            plugins: true,
         },
         backgroundColor: '#0f0f1e',
         show: false,

@@ -63,6 +63,13 @@
                 "filter": [
                     "**/*"
                 ]
+            },
+            {
+                "from": "../../presets",
+                "to": "presets",
+                "filter": [
+                    "**/*"
+                ]
             }
         ],
         "mac": {

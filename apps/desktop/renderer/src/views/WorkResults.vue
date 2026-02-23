@@ -290,8 +290,15 @@
               </div>
             </div>
             <div class="preview-body">
-              <template v-if="isImageBookmarkUrl(previewBookmarkItem.url)">
+              <template v-if="bookmarkPreviewType === 'image'">
                 <img :src="bookmarkPreviewImageSrc" alt="" class="preview-image" />
+              </template>
+              <template v-else-if="bookmarkPreviewType === 'html'">
+                <iframe v-if="bookmarkPreviewHtmlContent !== null" :srcdoc="bookmarkPreviewHtmlContent" class="preview-iframe bookmark-web-iframe" title="Preview" />
+                <div v-else class="loading-state"><div class="spinner"></div></div>
+              </template>
+              <template v-else-if="bookmarkPreviewType === 'pdf'">
+                <iframe :src="bookmarkPreviewProxyUrl" class="preview-iframe bookmark-web-iframe" title="PDF" />
               </template>
               <template v-else>
                 <iframe :src="previewBookmarkItem.url" class="preview-iframe bookmark-web-iframe" title="Preview" />
@@ -506,6 +513,7 @@ export default {
     const bookmarkTags = ref([]);
     const deleteBookmarkTarget = ref(null);
     const previewBookmarkItem = ref(null);
+    const bookmarkPreviewHtmlContent = ref(null);
     const downloadingId = ref(null);
     const downloadMessage = ref('');
     const downloadMessageError = ref(false);
@@ -555,14 +563,26 @@ export default {
         : ''
     );
 
-    function fileServeUrl(relativePath, download) {
+    function fileServeUrl(relativePath, download, workspaceOverride) {
       const base = apiClient.defaults.baseURL || '/server-api';
       const params = new URLSearchParams({
-        workspace: currentWorkspace.value,
+        workspace: workspaceOverride || currentWorkspace.value,
         path: relativePath,
       });
       if (download) params.set('download', '1');
       return `${base}/workspace/files/serve?${params.toString()}`;
+    }
+
+    function parseLocalWorkspaceUrl(url) {
+      if (!url) return null;
+      const match = url.match(/^file:\/\/.+[\/\\]workspace[\/\\]([^\/\\]+)[\/\\](.*)/i);
+      if (match) {
+        return {
+          workspace: decodeURIComponent(match[1]),
+          path: decodeURIComponent(match[2])
+        };
+      }
+      return null;
     }
 
     function isPreviewable(filename) {
@@ -592,17 +612,21 @@ export default {
       previewHtmlContent.value = null;
       if (type === 'text' || type === 'code') {
         try {
-          const url = fileServeUrl(item.path, false);
-          const res = await fetch(url);
-          previewTextContent.value = await res.text();
+          const res = await apiClient.get('/workspace/files/serve', {
+            params: { workspace: currentWorkspace.value, path: item.path },
+            responseType: 'text'
+          });
+          previewTextContent.value = res.data;
         } catch (e) {
           previewTextContent.value = '';
         }
       } else if (type === 'html') {
         try {
-          const url = fileServeUrl(item.path, false);
-          const res = await fetch(url);
-          previewHtmlContent.value = await res.text();
+          const res = await apiClient.get('/workspace/files/serve', {
+            params: { workspace: currentWorkspace.value, path: item.path },
+            responseType: 'text'
+          });
+          previewHtmlContent.value = res.data;
         } catch (e) {
           previewHtmlContent.value = '';
         }
@@ -742,6 +766,33 @@ export default {
         : ''
     );
 
+    const bookmarkPreviewParsed = computed(() => {
+      if (!previewBookmarkItem.value?.url) return null;
+      return parseLocalWorkspaceUrl(previewBookmarkItem.value.url);
+    });
+
+    const bookmarkPreviewType = computed(() => {
+      const url = previewBookmarkItem.value?.url;
+      if (!url) return '';
+      if (isImageBookmarkUrl(url)) return 'image';
+      
+      const parsed = bookmarkPreviewParsed.value;
+      if (parsed) {
+        const ext = parsed.path.split('.').pop()?.toLowerCase() || '';
+        if (['html', 'htm'].includes(ext)) return 'html';
+        if (ext === 'pdf') return 'pdf';
+      }
+      return 'web';
+    });
+
+    const bookmarkPreviewProxyUrl = computed(() => {
+      const parsed = bookmarkPreviewParsed.value;
+      if (parsed) {
+        return fileServeUrl(parsed.path, false, parsed.workspace);
+      }
+      return '';
+    });
+
     const previewBookmarkIndex = computed(() => {
       const cur = previewBookmarkItem.value;
       if (!cur || !bookmarks.value.length) return -1;
@@ -769,8 +820,25 @@ export default {
       }
     }
 
-    function openBookmarkPreview(item) {
+    async function openBookmarkPreview(item) {
       previewBookmarkItem.value = item;
+      bookmarkPreviewHtmlContent.value = null;
+
+      const parsed = parseLocalWorkspaceUrl(item.url);
+      if (parsed) {
+        const ext = parsed.path.split('.').pop()?.toLowerCase() || '';
+        if (['html', 'htm'].includes(ext)) {
+          try {
+            const res = await apiClient.get('/workspace/files/serve', {
+              params: { workspace: parsed.workspace, path: parsed.path },
+              responseType: 'text'
+            });
+            bookmarkPreviewHtmlContent.value = res.data;
+          } catch (e) {
+            bookmarkPreviewHtmlContent.value = '';
+          }
+        }
+      }
     }
 
     function closeBookmarkPreview() {

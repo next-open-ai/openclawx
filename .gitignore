@@ -26,6 +26,4 @@ Thumbs.db
 *.swo
 
 # Env
-.env
-.env.local
-.env.*.local
+

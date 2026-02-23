@@ -3,7 +3,7 @@
  * 供 CLI、WebSocket Gateway 等读取与写入，与 Nest Desktop Backend 使用的 config.json / agents.json 一致。
  * provider-support.json 提供流行 provider 及模型目录，供配置时下拉备选；配置完成后可同步到 agent 目录 models.json 供 pi 使用。
  */
-import { readFile, writeFile } from "fs/promises";
+import { readFile, writeFile, cp, mkdir } from "fs/promises";
 import { readFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
@@ -21,6 +21,11 @@ export type { ProviderSupport, ProviderSupportEntry, ProviderSupportModel, Model
 function getDesktopDir(): string {
     const home = process.env.HOME || process.env.USERPROFILE || homedir();
     return join(home, ".openbot", "desktop");
+}
+
+/** 获取预装资源目录（打包后在 Resources/presets，dev 时在仓库根 presets） */
+function getPresetsDir(): string {
+    return process.env.OPENBOT_PRESETS_DIR || join(process.cwd(), "presets");
 }
 
 /** 已配置模型项（与 Nest ConfiguredModelItem 一致），用于读取 config 并写入 models.json */
@@ -652,19 +657,58 @@ export async function getDesktopConfigList(): Promise<DesktopConfigList> {
  * 确保桌面目录下存在 provider-support.json（不存在则写入默认内容）。
  * 供配置供应商时作备选下拉列表项。
  */
+/**
+ * 确保桌面目录下存在 provider-support.json，并与预装的最新供应商列表合并。
+ */
 export async function ensureProviderSupportFile(): Promise<void> {
+    const presetPath = join(getPresetsDir(), "preset-providers.json");
+    let presetData: any = { providers: DEFAULT_PROVIDER_SUPPORT };
+    if (existsSync(presetPath)) {
+        try {
+            presetData = JSON.parse(await readFile(presetPath, "utf-8"));
+        } catch { }
+    }
+    const presetProviders: ProviderSupport = presetData.providers || DEFAULT_PROVIDER_SUPPORT;
+
     const path = getProviderSupportPath();
-    if (existsSync(path)) return;
     ensureDesktopDir();
-    await writeFile(path, JSON.stringify(DEFAULT_PROVIDER_SUPPORT, null, 2), "utf-8");
+    if (!existsSync(path)) {
+        await writeFile(path, JSON.stringify(presetProviders, null, 2), "utf-8");
+        return;
+    }
+
+    try {
+        const userContent = await readFile(path, "utf-8");
+        const userProviders: ProviderSupport = JSON.parse(userContent);
+        let changed = false;
+
+        for (const [providerId, presetEntry] of Object.entries(presetProviders)) {
+            if (!userProviders[providerId]) {
+                userProviders[providerId] = presetEntry;
+                changed = true;
+            } else {
+                const userModels = userProviders[providerId].models || [];
+                for (const presetModel of presetEntry.models) {
+                    if (!userModels.some((m) => m.id === presetModel.id)) {
+                        userModels.push(presetModel);
+                        changed = true;
+                    }
+                }
+                userProviders[providerId].models = userModels;
+            }
+        }
+        if (changed) {
+            await writeFile(path, JSON.stringify(userProviders, null, 2), "utf-8");
+        }
+    } catch {
+        await writeFile(path, JSON.stringify(presetProviders, null, 2), "utf-8");
+    }
 }
 
-/** 若 config.json 不存在则写入默认结构，供 CLI/Gateway 启动时初始化 */
+/** 若 config.json 不存在则用 preset-config.json 初始化，若存在则浅合并补充新基础键值 */
 async function ensureConfigJsonInitialized(): Promise<void> {
-    const configPath = getConfigPath();
-    if (existsSync(configPath)) return;
-    ensureDesktopDir();
-    const defaultConfig: DesktopConfigJson = {
+    const presetPath = join(getPresetsDir(), "preset-config.json");
+    let presetConfig: DesktopConfigJson = {
         defaultProvider: "deepseek",
         defaultModel: "deepseek-chat",
         defaultAgentId: DEFAULT_AGENT_ID,
@@ -672,20 +716,83 @@ async function ensureConfigJsonInitialized(): Promise<void> {
         providers: {},
         configuredModels: [],
     };
-    await writeFile(configPath, JSON.stringify(defaultConfig, null, 2), "utf-8");
+    if (existsSync(presetPath)) {
+        try {
+            const data = JSON.parse(await readFile(presetPath, "utf-8"));
+            if (data.config) presetConfig = data.config;
+        } catch { }
+    }
+
+    const configPath = getConfigPath();
+    ensureDesktopDir();
+    if (!existsSync(configPath)) {
+        await writeFile(configPath, JSON.stringify(presetConfig, null, 2), "utf-8");
+        return;
+    }
+
+    try {
+        const userConfig: DesktopConfigJson = JSON.parse(await readFile(configPath, "utf-8"));
+        let changed = false;
+        for (const [key, value] of Object.entries(presetConfig)) {
+            if ((userConfig as any)[key] === undefined) {
+                (userConfig as any)[key] = value;
+                changed = true;
+            }
+        }
+        if (changed) {
+            await writeFile(configPath, JSON.stringify(userConfig, null, 2), "utf-8");
+        }
+    } catch { }
 }
 
-/** 若 agents.json 不存在则写入默认智能体，供 CLI/Gateway 启动时初始化 */
+/** 合并 preset-agents.json 中的预置智能体，并随之释放对应的工作区技能 */
 async function ensureAgentsJsonInitialized(): Promise<void> {
+    const presetPath = join(getPresetsDir(), "preset-agents.json");
+    let presetAgents: any[] = [];
+    if (existsSync(presetPath)) {
+        try {
+            const data = JSON.parse(await readFile(presetPath, "utf-8"));
+            if (Array.isArray(data.agents)) presetAgents = data.agents;
+        } catch { }
+    }
+
     const agentsPath = join(getDesktopDir(), "agents.json");
-    if (existsSync(agentsPath)) return;
     ensureDesktopDir();
-    const defaultAgents: AgentsFile = {
-        agents: [
-            { id: DEFAULT_AGENT_ID, name: "主智能体", workspace: DEFAULT_AGENT_ID },
-        ],
-    };
-    await writeFile(agentsPath, JSON.stringify(defaultAgents, null, 2), "utf-8");
+
+    let currentData = { agents: [] as any[] };
+    if (existsSync(agentsPath)) {
+        try {
+            currentData = JSON.parse(await readFile(agentsPath, "utf-8"));
+            if (!Array.isArray(currentData.agents)) currentData.agents = [];
+        } catch { }
+    }
+
+    let changed = false;
+
+    for (const pa of presetAgents) {
+        if (!currentData.agents.some((a: any) => a.id === pa.id)) {
+            currentData.agents.push(pa);
+            changed = true;
+
+            try {
+                const srcSkillsDir = join(getPresetsDir(), "workspaces", pa.id, "skills");
+                const homeDir = process.env.HOME || process.env.USERPROFILE || homedir();
+                const destSkillsDir = join(homeDir, ".openbot", "workspace", pa.id, "skills");
+                if (existsSync(srcSkillsDir)) {
+                    if (!existsSync(destSkillsDir)) {
+                        await mkdir(destSkillsDir, { recursive: true });
+                    }
+                    await cp(srcSkillsDir, destSkillsDir, { recursive: true, force: false, errorOnExist: false });
+                }
+            } catch (err) {
+                console.error(`Failed to copy preset skills for agent ${pa.id}:`, err);
+            }
+        }
+    }
+
+    if (changed || !existsSync(agentsPath)) {
+        await writeFile(agentsPath, JSON.stringify(currentData, null, 2), "utf-8");
+    }
 }
 
 /**

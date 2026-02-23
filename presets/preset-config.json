@@ -1,0 +1,11 @@
+{
+    "presetVersion": "1.0",
+    "config": {
+        "defaultProvider": "deepseek",
+        "defaultModel": "deepseek-chat",
+        "defaultAgentId": "default",
+        "maxAgentSessions": 50,
+        "providers": {},
+        "configuredModels": []
+    }
+}
