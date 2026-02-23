@@ -5,8 +5,11 @@
  */
 import { NestFactory } from '@nestjs/core';
 import type { INestApplication } from '@nestjs/common';
+import express from 'express';
 import type { Express } from 'express';
 import { AppModule } from './app.module.js';
+
+const BODY_LIMIT = '10mb';
 
 export interface NestAppResult {
     app: INestApplication;
@@ -21,13 +24,15 @@ export async function createNestAppEmbedded(): Promise<NestAppResult> {
     const app = await NestFactory.create(AppModule, {
         cors: true,
     });
+    const expressApp = app.getHttpAdapter().getInstance() as Express;
+    expressApp.use(express.json({ limit: BODY_LIMIT }));
+    expressApp.use(express.urlencoded({ extended: true, limit: BODY_LIMIT }));
     app.enableCors({
         origin: ['http://localhost:5173', 'http://localhost:38080', 'http://localhost:38081'],
         credentials: true,
     });
     await app.init();
-    const express = app.getHttpAdapter().getInstance() as Express;
-    return { app, express };
+    return { app, express: expressApp };
 }
 
 /**
@@ -37,6 +42,9 @@ export async function createNestAppStandalone(port: number = 38081): Promise<INe
     const app = await NestFactory.create(AppModule, {
         cors: true,
     });
+    const expressApp = app.getHttpAdapter().getInstance() as Express;
+    expressApp.use(express.json({ limit: BODY_LIMIT }));
+    expressApp.use(express.urlencoded({ extended: true, limit: BODY_LIMIT }));
     app.setGlobalPrefix('server-api');
     app.enableCors({
         origin: ['http://localhost:5173', 'http://localhost:38080', 'http://localhost:38081'],

@@ -1,23 +1,19 @@
 import type { ExtensionFactory } from "@mariozechner/pi-coding-agent";
-import { addMemory } from "./index.js";
 
 /**
- * 创建用于在 session_compact 事件时把 compaction summary 写入向量库的 extension factory。
- * 在 AgentSession 发生 compaction（自动或手动）后触发，无需等到关闭会话。
+ * 创建用于在 session_compact 事件时更新「当前 session 最新 compaction」的 extension factory。
+ * 发生 compaction 时只回调 onUpdateLatestCompaction(summary)，由调用方保存；
+ * 向量库写入推迟到 SessionAgent 关闭时由 AgentManager 统一执行。
  */
-export function createCompactionMemoryExtensionFactory(sessionId: string): ExtensionFactory {
+export function createCompactionMemoryExtensionFactory(
+    _sessionId: string,
+    onUpdateLatestCompaction: (summary: string) => void,
+): ExtensionFactory {
     return (pi) => {
-        pi.on("session_compact", async (event) => {
+        pi.on("session_compact", (event) => {
             const summary = event.compactionEntry?.summary?.trim();
             if (!summary) return;
-            try {
-                await addMemory(summary, {
-                    infotype: "compaction",
-                    sessionId,
-                });
-            } catch (_) {
-                // 写入失败不打断会话
-            }
+            onUpdateLatestCompaction(summary);
         });
     };
 }

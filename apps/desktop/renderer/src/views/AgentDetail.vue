@@ -85,6 +85,17 @@
               />
               <p class="form-hint">{{ t('agents.agentDescriptionHint') }}</p>
             </div>
+            <div class="form-group form-group-switch">
+              <label class="switch-label">
+                <input
+                  v-model="configForm.useLongMemory"
+                  type="checkbox"
+                  class="form-checkbox"
+                />
+                <span>{{ t('agents.useLongMemory') }}</span>
+              </label>
+              <p class="form-hint">{{ t('agents.useLongMemoryHint') }}</p>
+            </div>
             <!-- 模型配置：从已配置的模型列表中选择，选项为 供应商 / 模型名，选中后显示供应商及模型 ID -->
             <div class="config-section model-section">
               <h3 class="config-section-title">{{ t('agents.modelConfig') }}</h3>
@@ -540,11 +551,10 @@ export default {
       return a && (a.runnerType === 'coze' || a.runnerType === 'openclawx');
     });
     const tabs = computed(() => {
-      const list = [
-        { id: 'config', label: t('agents.basicConfig'), icon: '⚙️' },
-        { id: 'proxy', label: t('agents.proxyConfig'), icon: '🔗' },
-      ];
-      if (!isProxyAgent.value) {
+      const list = [{ id: 'config', label: t('agents.basicConfig'), icon: '⚙️' }];
+      if (isProxyAgent.value) {
+        list.push({ id: 'proxy', label: t('agents.proxyConfig'), icon: '🔗' });
+      } else {
         list.push({ id: 'skills', label: t('agents.skillsConfig'), icon: '🎯' });
         list.push({ id: 'mcp', label: t('agents.mcpConfig'), icon: '🔌' });
       }
@@ -552,7 +562,7 @@ export default {
     });
 
     const agentIconOptions = AGENT_ICONS;
-    const configForm = ref({ name: '', systemPrompt: '', icon: AGENT_ICON_DEFAULT });
+    const configForm = ref({ name: '', systemPrompt: '', icon: AGENT_ICON_DEFAULT, useLongMemory: true });
     const configSaving = ref(false);
 
     const modelForm = ref({ provider: '', model: '' });
@@ -746,7 +756,12 @@ export default {
         const res = await agentConfigAPI.getAgent(agentId.value);
         agent.value = res.data?.data ?? null;
         if (agent.value) {
-          configForm.value = { name: agent.value.name, systemPrompt: agent.value.systemPrompt ?? '', icon: agent.value.icon || AGENT_ICON_DEFAULT };
+          configForm.value = {
+            name: agent.value.name,
+            systemPrompt: agent.value.systemPrompt ?? '',
+            icon: agent.value.icon || AGENT_ICON_DEFAULT,
+            useLongMemory: agent.value.useLongMemory !== false,
+          };
           modelForm.value = {
             provider: agent.value.provider ?? '',
             model: agent.value.model ?? '',
@@ -783,7 +798,7 @@ export default {
             : [];
         } else if (agentId.value === 'default') {
           agent.value = { ...MAIN_AGENT_FALLBACK };
-          configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
+          configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT, useLongMemory: true };
           modelForm.value = { provider: '', model: '' };
           proxyForm.value = {
             runnerType: 'local',
@@ -795,7 +810,7 @@ export default {
       } catch (e) {
         if (agentId.value === 'default') {
           agent.value = { ...MAIN_AGENT_FALLBACK };
-          configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
+          configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT, useLongMemory: true };
           modelForm.value = { provider: '', model: '' };
           proxyForm.value = {
             runnerType: 'local',
@@ -825,6 +840,7 @@ export default {
         payload.mcpServers = mcpServers.value;
         payload.systemPrompt = configForm.value.systemPrompt?.trim() || undefined;
         payload.icon = configForm.value.icon || undefined;
+        payload.useLongMemory = configForm.value.useLongMemory;
         payload.runnerType = proxyForm.value.runnerType;
         if (proxyForm.value.runnerType === 'coze') {
           const c = proxyForm.value.coze;
@@ -860,6 +876,7 @@ export default {
           modelItemCode: item?.modelItemCode ?? agent.value.modelItemCode,
           systemPrompt: payload.systemPrompt,
           icon: payload.icon,
+          useLongMemory: payload.useLongMemory,
           runnerType: payload.runnerType,
           coze: payload.coze,
           openclawx: payload.openclawx,
@@ -1631,6 +1648,17 @@ export default {
 .form-hint-warn {
   color: var(--color-warning, #b8860b);
   margin: var(--spacing-xs) 0 0 0;
+}
+
+.form-group-switch .switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+}
+.form-group-switch .form-checkbox {
+  width: 1.1em;
+  height: 1.1em;
 }
 .icon-picker {
   display: flex;

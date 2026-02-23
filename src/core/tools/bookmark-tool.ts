@@ -5,12 +5,17 @@ import { getBackendBaseUrl } from "../../gateway/backend-url.js";
 const GetBookmarkTagsSchema = Type.Object({});
 type GetBookmarkTagsParams = Record<string, never>;
 
+const AddBookmarkTagSchema = Type.Object({
+    tagName: Type.String({ description: "要新增的标签名称，如「技术」「待读」「美女」等" }),
+});
+type AddBookmarkTagParams = { tagName: string };
+
 const SaveBookmarkSchema = Type.Object({
     url: Type.String({ description: "要收藏的 URL" }),
     title: Type.Optional(Type.String({ description: "可选标题" })),
     tagNames: Type.Optional(
         Type.Array(Type.String(), {
-            description: "标签名称列表，须与系统中已维护的标签一致。保存前应先用 get_bookmark_tags 获取可用标签。",
+            description: "标签名称列表，须与系统中已维护的标签一致。保存前应先用 get_bookmark_tags 获取可用标签；若缺标签可先用 add_bookmark_tag 新增。",
         }),
     ),
 });
@@ -50,6 +55,66 @@ async function apiPost<T>(path: string, body: unknown): Promise<T> {
 }
 
 /**
+ * 新增一个收藏标签。当 get_bookmark_tags 返回的列表中缺少用户想要的标签时，可先调用本工具创建该标签，再使用 save_bookmark 保存收藏。
+ */
+export function createAddBookmarkTagTool(): ToolDefinition {
+    return {
+        name: "add_bookmark_tag",
+        label: "Add Bookmark Tag",
+        description:
+            "在系统中新增一个收藏标签。当用户要保存链接到某个尚不存在的标签（如「美女」「技术」「待读」）时，先调用本工具创建该标签，再调用 get_bookmark_tags 获取最新列表并用 save_bookmark 保存。若标签已存在会提示无需重复创建。",
+        parameters: AddBookmarkTagSchema,
+        execute: async (
+            _toolCallId: string,
+            params: AddBookmarkTagParams,
+            _signal: AbortSignal | undefined,
+            _onUpdate: any,
+            _ctx: any,
+        ) => {
+            const tagName = (params.tagName ?? "").trim();
+            if (!tagName) {
+                return {
+                    content: [{ type: "text" as const, text: "请提供要新增的标签名称。" }],
+                    details: undefined,
+                };
+            }
+            try {
+                const json = await apiPost<{ success: boolean; data: { id: string; name: string } }>("/tags", {
+                    name: tagName,
+                });
+                const data = json.data;
+                return {
+                    content: [
+                        {
+                            type: "text" as const,
+                            text: `已新增标签「${data?.name ?? tagName}」，可直接用于 save_bookmark 的 tagNames。`,
+                        },
+                    ],
+                    details: data,
+                };
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                if (msg.includes("409") || msg.includes("已存在") || msg.includes("Conflict")) {
+                    return {
+                        content: [
+                            {
+                                type: "text" as const,
+                                text: `标签「${tagName}」已存在，无需重复创建。可直接在 save_bookmark 的 tagNames 中使用该名称。`,
+                            },
+                        ],
+                        details: undefined,
+                    };
+                }
+                return {
+                    content: [{ type: "text" as const, text: `新增标签失败: ${msg}` }],
+                    details: undefined,
+                };
+            }
+        },
+    };
+}
+
+/**
  * 获取当前系统中已维护的标签列表，供保存 URL 时选择匹配的标签。
  */
 export function createGetBookmarkTagsTool(): ToolDefinition {
@@ -73,7 +138,7 @@ export function createGetBookmarkTagsTool(): ToolDefinition {
                 const text =
                     names.length > 0
                         ? `当前可用标签：${names.join("、")}。请根据用户意图选择匹配的标签名用于 save_bookmark。`
-                        : "当前暂无标签。请在设置中先添加标签，或使用 save_bookmark 时不传 tagNames。";
+                        : "当前暂无标签。可使用 add_bookmark_tag 新增标签，或 save_bookmark 时不传 tagNames。";
                 return {
                     content: [{ type: "text" as const, text }],
                     details: { tags: data },
@@ -97,7 +162,7 @@ export function createSaveBookmarkTool(): ToolDefinition {
         name: "save_bookmark",
         label: "Save Bookmark",
         description:
-            "将用户提供的 URL 保存到收藏库，并可关联一个或多个标签。标签名必须使用 get_bookmark_tags 返回的已有标签；若用户未指定标签，可根据上下文推断或留空。",
+            "将用户提供的 URL 保存到收藏库，并可关联一个或多个标签。标签名须为系统已有标签（get_bookmark_tags 返回）；若缺少某标签可先用 add_bookmark_tag 新增。",
         parameters: SaveBookmarkSchema,
         execute: async (
             _toolCallId: string,

@@ -28,7 +28,7 @@
           {{ t('settings.modelsNav') }}
         </div>
         <div 
-          v-if="showRagTab"
+          v-if="false"
           class="nav-item" 
           :class="{ active: activeTab === 'knowledge' }"
           @click="activeTab = 'knowledge'; initKnowledgeTab()"
@@ -150,21 +150,32 @@
             </div>
           </div>
 
-          <!-- 网关配置暂时隐藏 -->
-          <div v-if="false" class="settings-group">
-            <h3>{{ t('settings.gateway') }}</h3>
-            <div class="form-group">
-              <label>{{ t('settings.gatewayUrl') }}</label>
-              <input v-model="localConfig.gatewayUrl" class="input" placeholder="ws://localhost:38080" />
-            </div>
-          </div>
-
           <div class="settings-group">
             <h3>{{ t('settings.sessionsLimit') }}</h3>
             <div class="form-group">
               <label>{{ t('settings.maxAgentSessions') }}</label>
               <input v-model.number="localConfig.maxAgentSessions" type="number" min="1" max="50" class="input" />
               <p class="form-hint">{{ t('settings.maxAgentSessionsHint') }}</p>
+            </div>
+          </div>
+
+          <!-- Memory 记忆库配置 -->
+          <div class="settings-group">
+            <h3>{{ t('settings.memoryConfig') }}</h3>
+            <p class="form-hint">{{ t('settings.memoryConfigHint') }}</p>
+            <div class="form-group">
+              <label>{{ t('settings.embeddingModel') }}</label>
+              <select v-model="localConfig.memory.embeddingModelItemCode" class="input select-input">
+                <option value="">{{ t('settings.memoryEmbeddingNone') }}</option>
+                <option
+                  v-for="m in configuredEmbeddingModels"
+                  :key="m.modelItemCode"
+                  :value="m.modelItemCode"
+                >
+                  {{ m.alias || m.modelId }} ({{ m.provider }})
+                </option>
+              </select>
+              <p v-if="configuredEmbeddingModels.length === 0" class="form-hint form-hint-warn">{{ t('settings.memoryNoEmbeddingModels') }}</p>
             </div>
           </div>
 
@@ -443,33 +454,103 @@
           </div>
         </transition>
 
-        <!-- 知识库 Tab（RAG 长记忆 embedding 配置）：通过 showRagTab 控制是否展示 -->
+        <!-- 知识库 Tab：向量模型 + 向量库 -->
         <div v-show="showRagTab && activeTab === 'knowledge'" class="tab-content">
           <h2 class="tab-title">{{ t('settings.knowledgeTitle') }}</h2>
           <div class="settings-hint-block">
             <span class="settings-hint-icon">ℹ️</span>
             <p class="settings-hint-text">{{ t('settings.knowledgeHint') }}</p>
           </div>
+
+          <!-- 向量模型 -->
           <div class="settings-group">
-            <div class="form-group">
-              <label>{{ t('settings.embeddingProvider') }}</label>
-              <select v-model="localRag.embeddingProvider" class="input select-input" @change="onKnowledgeProviderChange">
-                <option value="">— {{ t('settings.optional') }} —</option>
-                <option v-for="p in providersWithEmbedding" :key="p" :value="p">{{ getProviderDisplayName(p) }}</option>
-              </select>
-              <p v-if="configuredProviders.length > 0 && providersWithEmbedding.length === 0" class="form-hint form-hint-warn">{{ t('settings.noEmbeddingModel') }}</p>
-              <p v-else-if="configuredProviders.length === 0" class="form-hint form-hint-warn">{{ t('settings.noEmbeddingProvider') }}</p>
+            <h3>{{ t('settings.vectorModelSection') }}</h3>
+            <p class="form-hint">{{ t('settings.vectorModelSectionHint') }}</p>
+            <div class="form-group knowledge-radio-group">
+              <label class="radio-label">
+                <input v-model="localRag.embeddingSource" type="radio" value="local" />
+                {{ t('settings.vectorModelLocal') }}
+              </label>
+              <label class="radio-label">
+                <input v-model="localRag.embeddingSource" type="radio" value="online" />
+                {{ t('settings.vectorModelOnline') }}
+              </label>
             </div>
-            <div class="form-group">
-              <label>{{ t('settings.embeddingModel') }}</label>
-              <select v-model="localRag.embeddingModel" class="input select-input" :disabled="!localRag.embeddingProvider">
-                <option value="">—</option>
-                <option v-for="m in knowledgeEmbeddingModels" :key="m.id" :value="m.id">{{ m.name }}</option>
-              </select>
+            <div v-if="localRag.embeddingSource === 'local'" class="form-group">
+              <label>{{ t('settings.localModelPath') }}</label>
+              <input
+                v-model="localRag.localModelPath"
+                type="text"
+                class="input"
+                :placeholder="t('settings.localModelPathPlaceholder')"
+              />
             </div>
-            <div class="actions">
-              <button @click="saveKnowledgeConfig" class="btn-primary">{{ t('common.save') }}</button>
+            <template v-if="localRag.embeddingSource === 'online'">
+              <div class="form-group">
+                <label>{{ t('settings.embeddingModelItemCode') }}</label>
+                <select v-model="localRag.embeddingModelItemCode" class="input select-input">
+                  <option value="">— {{ t('settings.optional') }} —</option>
+                  <option
+                    v-for="m in configuredEmbeddingModels"
+                    :key="m.modelItemCode || m.provider + ':' + m.modelId"
+                    :value="m.modelItemCode || m.provider + ':' + m.modelId"
+                  >
+                    {{ getProviderDisplayName(m.provider) }} / {{ getModelAlias(m) }}
+                  </option>
+                </select>
+                <p v-if="configuredEmbeddingModels.length === 0" class="form-hint form-hint-warn">{{ t('settings.noConfiguredEmbeddingModels') }}</p>
+              </div>
+            </template>
+          </div>
+
+          <!-- 向量库 -->
+          <div class="settings-group">
+            <h3>{{ t('settings.vectorStoreSection') }}</h3>
+            <p class="form-hint">{{ t('settings.vectorStoreSectionHint') }}</p>
+            <div class="form-group knowledge-radio-group">
+              <label class="radio-label">
+                <input v-model="localRag.vectorStore" type="radio" value="local" />
+                {{ t('settings.vectorStoreLocal') }}
+              </label>
+              <label class="radio-label">
+                <input v-model="localRag.vectorStore" type="radio" value="qdrant" />
+                {{ t('settings.vectorStoreQdrant') }}
+              </label>
             </div>
+            <template v-if="localRag.vectorStore === 'qdrant'">
+              <div class="form-group">
+                <label>{{ t('settings.qdrantUrl') }}</label>
+                <input
+                  v-model="localRag.qdrant.url"
+                  type="text"
+                  class="input"
+                  :placeholder="t('settings.qdrantUrlPlaceholder')"
+                />
+              </div>
+              <div class="form-group">
+                <label>{{ t('settings.qdrantApiKey') }}</label>
+                <input
+                  v-model="localRag.qdrant.apiKey"
+                  type="password"
+                  class="input"
+                  :placeholder="t('settings.qdrantApiKeyPlaceholder')"
+                  autocomplete="off"
+                />
+              </div>
+              <div class="form-group">
+                <label>{{ t('settings.qdrantCollection') }}</label>
+                <input
+                  v-model="localRag.qdrant.collection"
+                  type="text"
+                  class="input"
+                  :placeholder="t('settings.qdrantCollectionPlaceholder')"
+                />
+              </div>
+            </template>
+          </div>
+
+          <div class="actions">
+            <button @click="saveKnowledgeConfig" class="btn-primary">{{ t('common.save') }}</button>
           </div>
         </div>
 
@@ -815,8 +896,8 @@ import { usersAPI, agentConfigAPI } from '@/api';
 import SettingsSkills from '@/components/SettingsSkills.vue';
 
 const SETTINGS_TABS = ['general', 'agent', 'models', 'knowledge', 'users', 'skills', 'channels', 'about'];
-    /** 是否显示 RAG/知识库 Tab（设为 false 可隐藏，相关代码与逻辑保留） */
-    const showRagTab = false;
+    /** 是否显示 RAG/知识库 Tab */
+    const showRagTab = true;
 
 export default {
   name: 'Settings',
@@ -865,7 +946,7 @@ export default {
         await loadAgentList();
       }
     });
-    const localConfig = ref({});
+    const localConfig = ref({ memory: {} });
     const agentList = ref([]);
     const modelConfigSubTab = ref('provider');
     const localProviderConfig = ref({});
@@ -905,7 +986,15 @@ export default {
     const userFormSaving = ref(false);
     const showChangeCurrentPasswordModal = ref(false);
     const currentUserPasswordForm = ref({ password: '', confirm: '' });
-    const localRag = ref({ embeddingProvider: '', embeddingModel: '' });
+    const localRag = ref({
+      embeddingSource: 'online',
+      embeddingProvider: '',
+      embeddingModel: '',
+      embeddingModelItemCode: '',
+      localModelPath: '',
+      vectorStore: 'local',
+      qdrant: { url: '', apiKey: '', collection: '' },
+    });
     const localChannels = ref({
       feishu: { enabled: false, appId: '', appSecret: '', defaultAgentId: 'default' },
       dingtalk: { enabled: false, clientId: '', clientSecret: '', defaultAgentId: 'default' },
@@ -957,13 +1046,18 @@ export default {
         return Array.isArray(models) && models.some((m) => m.types?.includes('embedding'));
       });
     });
-    /** 知识库 Tab 下当前选的 Provider 的 embedding 模型列表 */
+    /** 知识库 Tab 下当前选的 Provider 的 embedding 模型列表（旧 UI 用） */
     const knowledgeEmbeddingModels = computed(() => {
       const p = localRag.value.embeddingProvider;
       if (!p) return [];
       const entry = providerSupport.value[p];
       if (!entry?.models) return [];
       return entry.models.filter((m) => m.types?.includes('embedding'));
+    });
+    /** 已配置的 Embedding 模型列表（供知识库「在线」下拉选择） */
+    const configuredEmbeddingModels = computed(() => {
+      const list = configuredModelsList.value;
+      return list.filter((item) => item.type === 'embedding');
     });
     /** 是否为 OpenAI 自定义 Provider（模型 ID 允许手工录入） */
     const isOpenAiCustomProvider = computed(() => addModelForm.value.provider === 'openai-custom');
@@ -1025,10 +1119,11 @@ export default {
       try {
         const cfg = settingsStore.config || {};
         const effectiveAgentId = cfg.defaultAgentId ?? 'default';
-        localConfig.value = { ...cfg, defaultAgentId: effectiveAgentId, loginPassword: '' };
+        const memoryCfg = cfg.memory || {};
+        localConfig.value = { ...cfg, defaultAgentId: effectiveAgentId, loginPassword: '', memory: { ...memoryCfg } };
       } catch (err) {
         console.warn('[Settings] loadAgentConfig error', err);
-        localConfig.value = { loginPassword: '' };
+        localConfig.value = { loginPassword: '', memory: {} };
       }
     };
 
@@ -1059,7 +1154,9 @@ export default {
       if (payload.loginPassword === '') delete payload.loginPassword;
       const agentId = payload.defaultAgentId ?? 'default';
       await settingsStore.updateConfig({ ...payload, defaultAgentId: agentId });
-      localConfig.value = { ...settingsStore.config, defaultAgentId: settingsStore.config?.defaultAgentId ?? 'default', loginPassword: '' };
+      const updatedCfg = settingsStore.config || {};
+      const memoryCfg = updatedCfg.memory || {};
+      localConfig.value = { ...updatedCfg, defaultAgentId: updatedCfg.defaultAgentId ?? 'default', loginPassword: '', memory: { ...memoryCfg } };
       alert(t('common.saved'));
     };
 
@@ -1074,9 +1171,26 @@ export default {
     function initKnowledgeTab() {
       const cfg = config.value || {};
       const rag = cfg.rag;
+      const q = rag?.qdrant;
+      let embeddingModelItemCode = (rag?.embeddingModelItemCode && typeof rag.embeddingModelItemCode === 'string' ? rag.embeddingModelItemCode : '').trim();
+      const p = (rag?.embeddingProvider || '').trim();
+      const m = (rag?.embeddingModel || '').trim();
+      if (!embeddingModelItemCode && p && m && Array.isArray(cfg.configuredModels)) {
+        const item = cfg.configuredModels.find((x) => x.type === 'embedding' && x.provider === p && x.modelId === m);
+        if (item) embeddingModelItemCode = item.modelItemCode || `${item.provider}:${item.modelId}`;
+      }
       localRag.value = {
-        embeddingProvider: (rag?.embeddingProvider && typeof rag.embeddingProvider === 'string' ? rag.embeddingProvider : '').trim(),
-        embeddingModel: (rag?.embeddingModel && typeof rag.embeddingModel === 'string' ? rag.embeddingModel : '').trim(),
+        embeddingSource: rag?.embeddingSource === 'local' ? 'local' : 'online',
+        embeddingProvider: p,
+        embeddingModel: m,
+        embeddingModelItemCode,
+        localModelPath: (rag?.localModelPath && typeof rag.localModelPath === 'string' ? rag.localModelPath : '').trim(),
+        vectorStore: rag?.vectorStore === 'qdrant' ? 'qdrant' : 'local',
+        qdrant: {
+          url: (q?.url && typeof q.url === 'string' ? q.url : '').trim(),
+          apiKey: (q?.apiKey && typeof q.apiKey === 'string' ? q.apiKey : '').trim(),
+          collection: (q?.collection && typeof q.collection === 'string' ? q.collection : '').trim(),
+        },
       };
     }
 
@@ -1085,11 +1199,30 @@ export default {
     }
 
     async function saveKnowledgeConfig() {
-      const p = (localRag.value.embeddingProvider || '').trim();
-      const m = (localRag.value.embeddingModel || '').trim();
-      await settingsStore.updateConfig({
-        rag: p && m ? { embeddingProvider: p, embeddingModel: m } : undefined,
-      });
+      const v = localRag.value;
+      const embeddingSource = v.embeddingSource === 'local' ? 'local' : 'online';
+      const vectorStore = v.vectorStore === 'qdrant' ? 'qdrant' : 'local';
+      let embeddingModelItemCode = (v.embeddingModelItemCode || '').trim();
+      let embeddingProvider = (v.embeddingProvider || '').trim();
+      let embeddingModel = (v.embeddingModel || '').trim();
+      const localModelPath = (v.localModelPath || '').trim();
+      const qdrantUrl = (v.qdrant?.url || '').trim();
+      if (embeddingSource === 'online' && embeddingModelItemCode) {
+        const list = configuredModelsList.value;
+        const item = list.find((m) => (m.modelItemCode || m.provider + ':' + m.modelId) === embeddingModelItemCode);
+        if (item) {
+          embeddingProvider = item.provider;
+          embeddingModel = item.modelId;
+          if (item.modelItemCode) embeddingModelItemCode = item.modelItemCode;
+        }
+      }
+      const rag = {
+        embeddingSource,
+        vectorStore,
+        ...(embeddingSource === 'local' ? { localModelPath: localModelPath || undefined } : { embeddingModelItemCode: embeddingModelItemCode || undefined, embeddingProvider: embeddingProvider || undefined, embeddingModel: embeddingModel || undefined }),
+        ...(vectorStore === 'qdrant' && qdrantUrl ? { qdrant: { url: qdrantUrl, apiKey: (v.qdrant?.apiKey || '').trim() || undefined, collection: (v.qdrant?.collection || '').trim() || undefined } } : { qdrant: undefined }),
+      };
+      await settingsStore.updateConfig({ rag });
       alert(t('common.saved'));
     }
 
@@ -1718,6 +1851,7 @@ export default {
       localRag,
       providersWithEmbedding,
       knowledgeEmbeddingModels,
+      configuredEmbeddingModels,
       initKnowledgeTab,
       onKnowledgeProviderChange,
       saveKnowledgeConfig,
@@ -2184,6 +2318,23 @@ export default {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   margin-bottom: var(--spacing-sm);
+}
+
+.knowledge-radio-group {
+  display: flex;
+  gap: var(--spacing-xl);
+  flex-wrap: wrap;
+}
+.knowledge-radio-group .radio-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  font-weight: 500;
+}
+.knowledge-radio-group .radio-label input {
+  width: 1rem;
+  height: 1rem;
 }
 
 .form-hint {

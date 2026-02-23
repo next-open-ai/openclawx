@@ -211,7 +211,7 @@ export class AgentsService {
         if (result.changes > 0) {
             this.db.persist();
         }
-        agentManager.deleteSessionsByBusinessId(sessionId);
+        await agentManager.deleteSessionsByBusinessId(sessionId);
     }
 
     getMessageHistory(sessionId: string): ChatMessage[] {

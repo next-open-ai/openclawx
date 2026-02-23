@@ -16,8 +16,12 @@ import type { AgentSession } from "@mariozechner/pi-coding-agent";
 import { join } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
 import { createCompactionMemoryExtensionFactory } from "../memory/compaction-extension.js";
-import { getCompactionContextForSystemPrompt } from "../memory/index.js";
-import { createBrowserTool, createSaveExperienceTool, createInstallSkillTool, createSwitchAgentTool, createListAgentsTool, createCreateAgentTool, createGetBookmarkTagsTool, createSaveBookmarkTool } from "../tools/index.js";
+import { addMemory } from "../memory/index.js";
+import {
+    persistStoredCompactionForSession,
+    persistStoredCompactionForBusinessSession,
+} from "../memory/persist-compaction-on-close.js";
+import { createBrowserTool, createSaveExperienceTool, createMemoryRecallTool, createInstallSkillTool, createSwitchAgentTool, createListAgentsTool, createCreateAgentTool, createGetBookmarkTagsTool, createSaveBookmarkTool, createAddBookmarkTagTool } from "../tools/index.js";
 
 /** Agent Session 缓存 key：sessionId + "::" + agentId，同一业务 session 下不同 agent 各自一个 Core Session */
 const COMPOSITE_KEY_SEP = "::";
@@ -51,6 +55,8 @@ export class AgentManager {
     private sessions = new Map<string, AgentSession>();
     /** 每个 session 最后被使用的时间戳，用于 LRU 淘汰 */
     private sessionLastActiveAt = new Map<string, number>();
+    /** 每个 SessionAgent 当前最新的 compaction summary，关闭会话时写入向量库（infotype: compaction） */
+    private sessionLatestCompactionSummary = new Map<string, string>();
     private agentDir: string;
     private workspaceDir: string;
     private skillPaths: string[] = [];
@@ -122,10 +128,17 @@ You have access to a \`browser\` tool for web automation:
 Use refs from snapshots (e.g., @e1) for reliable element selection.
 For downloads, provide either a direct URL or a selector to click.`;
 
+        const experienceMemoryDesc = `
+## Long-term memory
+
+- **save_experience**: Store summaries in long-term memory. **At the end of each round of conversation** (after you have finished replying to the user), briefly summarize the main outcomes, conclusions, or reusable points and call \`save_experience\` with that summary.
+- **memory_recall**: Retrieve relevant memories by semantic search. **When the user asks about past work, decisions, dates, people, preferences, todos, complex tasks, scheduled tasks, or anything that may need past experience**, call \`memory_recall\` first with a suitable query, then answer using the recalled content. Do not inject any history or memory into your replies unless you have just retrieved it via \`memory_recall\` for that question.`;
+
         const parts = [
             "You are a helpful assistant. When users ask about skills, explain what skills are available.",
             browserToolDesc,
             skillsBlock,
+            experienceMemoryDesc,
         ].filter(Boolean);
         return parts.join("\n\n");
     }
@@ -144,32 +157,30 @@ For downloads, provide either a direct URL or a selector to click.`;
     private createResourceLoader(
         workspaceDir: string,
         sessionId?: string,
-        compactionBlock?: string,
         customAgentPrompt?: string,
         identity?: { agentId: string; workspace: string },
+        onUpdateLatestCompaction?: (summary: string) => void,
     ): DefaultResourceLoader {
         const loader = new DefaultResourceLoader({
             cwd: workspaceDir,
             agentDir: this.agentDir,
             noSkills: true, // Disable SDK's built-in skills logic to take full control
             additionalSkillPaths: this.resolveSkillPaths(workspaceDir),
-            extensionFactories: sessionId ? [createCompactionMemoryExtensionFactory(sessionId)] : [],
+            extensionFactories:
+                sessionId && onUpdateLatestCompaction
+                    ? [createCompactionMemoryExtensionFactory(sessionId, onUpdateLatestCompaction)]
+                    : [],
             systemPromptOverride: (base) => {
                 const loadedSkills = loader.getSkills().skills;
-                let basePrompt = this.buildSystemPrompt(loadedSkills);
+                const basePrompt = this.buildSystemPrompt(loadedSkills);
                 const withCustom =
                     customAgentPrompt && customAgentPrompt.trim()
                         ? customAgentPrompt.trim() + "\n\n" + basePrompt
                         : basePrompt;
-                const withIdentity =
-                    identity && identity.agentId
-                        ? `[Session identity] You are the agent with ID: ${identity.agentId}, workspace: ${identity.workspace || identity.agentId}. When asked which agent you are, answer according to this identity.\n\n` +
+                return identity && identity.agentId
+                    ? `[Session identity] You are the agent with ID: ${identity.agentId}, workspace: ${identity.workspace || identity.agentId}. When asked which agent you are, answer according to this identity.\n\n` +
                           withCustom
-                        : withCustom;
-                if (compactionBlock?.trim()) {
-                    return withIdentity + "\n\n" + compactionBlock.trim();
-                }
-                return withIdentity;
+                    : withCustom;
             },
         });
         return loader;
@@ -221,6 +232,8 @@ For downloads, provide either a direct URL or a selector to click.`;
         mcpServers?: McpServerConfig[];
         /** 自定义系统提示词（来自 agent 配置），会与技能等一起组成最终 systemPrompt */
         systemPrompt?: string;
+        /** 是否使用长记忆（memory_recall/save_experience）；默认 true */
+        useLongMemory?: boolean;
     } = {}): Promise<AgentSession> {
         const agentId = options.agentId ?? "default";
         const compositeKey = toCompositeKey(sessionId, agentId);
@@ -241,7 +254,7 @@ For downloads, provide either a direct URL or a selector to click.`;
                 }
             }
             if (oldestId != null) {
-                this.deleteSession(oldestId);
+                await this.deleteSession(oldestId);
             }
         }
 
@@ -295,13 +308,12 @@ For downloads, provide either a direct URL or a selector to click.`;
             return process.env.OPENAI_API_KEY;
         });
 
-        const compactionBlock = await getCompactionContextForSystemPrompt(sessionId);
         const loader = this.createResourceLoader(
             sessionWorkspaceDir,
             sessionId,
-            compactionBlock,
             options.systemPrompt,
             { agentId, workspace: workspaceName },
+            (summary) => this.sessionLatestCompactionSummary.set(compositeKey, summary),
         );
         await loader.reload();
 
@@ -315,16 +327,19 @@ For downloads, provide either a direct URL or a selector to click.`;
             ls: createLsTool(sessionWorkspaceDir),
         };
 
+        const useLongMemory = options.useLongMemory !== false;
         const mcpTools = await createMcpToolsForSession({ mcpServers: options.mcpServers });
         const customTools = [
             createBrowserTool(sessionWorkspaceDir),
             createSaveExperienceTool(sessionId),
+            createMemoryRecallTool(useLongMemory),
             createInstallSkillTool(options.targetAgentId ?? agentId),
             createSwitchAgentTool(sessionId),
             createListAgentsTool(),
             createCreateAgentTool(),
             createGetBookmarkTagsTool(),
             createSaveBookmarkTool(),
+            createAddBookmarkTagTool(),
             ...mcpTools,
         ];
 
@@ -355,26 +370,37 @@ For downloads, provide either a direct URL or a selector to click.`;
         return this.sessions.get(compositeKey);
     }
 
-    /** 删除一个 Agent Session（传入复合 key） */
-    public deleteSession(compositeKey: string): boolean {
+    /** 删除一个 Agent Session（传入复合 key）；关闭前将本 session 最新 compaction summary 写入向量库 */
+    public async deleteSession(compositeKey: string): Promise<boolean> {
+        await persistStoredCompactionForSession(
+            this.sessionLatestCompactionSummary,
+            compositeKey,
+            addMemory,
+        );
         this.sessionLastActiveAt.delete(compositeKey);
         return this.sessions.delete(compositeKey);
     }
 
-    /** 按业务 sessionId 删除该会话下所有 agent 的 Core Session（如删除会话时） */
-    public deleteSessionsByBusinessId(sessionId: string): void {
+    /** 按业务 sessionId 删除该会话下所有 agent 的 Core Session（如删除会话时）；关闭前将各 session 最新 compaction 写入向量库 */
+    public async deleteSessionsByBusinessId(sessionId: string): Promise<void> {
         const prefix = sessionId + COMPOSITE_KEY_SEP;
-        for (const key of Array.from(this.sessions.keys())) {
-            if (key.startsWith(prefix)) {
-                this.sessionLastActiveAt.delete(key);
-                this.sessions.delete(key);
-            }
+        const keysToProcess = Array.from(this.sessions.keys()).filter((k) => k.startsWith(prefix));
+        await persistStoredCompactionForBusinessSession(
+            this.sessionLatestCompactionSummary,
+            keysToProcess,
+            sessionId,
+            addMemory,
+        );
+        for (const key of keysToProcess) {
+            this.sessionLastActiveAt.delete(key);
+            this.sessions.delete(key);
         }
     }
 
     public clearAll(): void {
         this.sessions.clear();
         this.sessionLastActiveAt.clear();
+        this.sessionLatestCompactionSummary.clear();
     }
 }
 

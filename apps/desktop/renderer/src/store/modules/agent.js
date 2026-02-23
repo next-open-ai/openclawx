@@ -128,6 +128,25 @@ export const useAgentStore = defineStore('agent', {
             this.messages = [];
         },
 
+        /**
+         * 清除当前会话的全部对话记录（仅消息历史，会话保留）。
+         */
+        async clearCurrentSessionMessages() {
+            const id = this.currentSession?.id;
+            if (!id) return;
+            try {
+                await agentAPI.clearSessionMessages(id);
+                this.messages = [];
+                this.currentMessage = '';
+                this.currentStreamParts = [];
+                this.toolExecutions = [];
+                this.isStreaming = false;
+            } catch (error) {
+                console.error('Failed to clear session messages:', error);
+                throw error;
+            }
+        },
+
         async cancelCurrentTurn() {
             if (!this.currentSession?.id || !this.isStreaming) return;
             try {

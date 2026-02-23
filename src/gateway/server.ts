@@ -7,17 +7,23 @@
  * - /channel → 通道模块（占位）
  * - 其余 → 静态资源
  */
-/* Avoid MaxListenersExceededWarning */
-const Et = (globalThis as any).EventTarget;
-if (Et?.prototype?.addEventListener && Et.prototype.setMaxListeners) {
-    const add = Et.prototype.addEventListener;
-    Et.prototype.addEventListener = function (this: any, type: string, listener: any, options?: any) {
-        if (type === "abort" && typeof this.setMaxListeners === "function") {
-            this.setMaxListeners(32);
+/* Avoid MaxListenersExceededWarning for AbortSignal (e.g. agent 多轮 tool 调用，Electron 下需尽早 patch) */
+const g = globalThis as any;
+const limit = 128;
+function patchAddEventListener(proto: any) {
+    if (!proto?.addEventListener) return;
+    const add = proto.addEventListener;
+    proto.addEventListener = function (this: any, type: string, listener: any, options?: any) {
+        if (type === "abort") {
+            try {
+                if (typeof this.setMaxListeners === "function") this.setMaxListeners(limit);
+            } catch (_) {}
         }
         return add.call(this, type, listener, options);
     };
 }
+patchAddEventListener(g.EventTarget?.prototype);
+patchAddEventListener(g.AbortSignal?.prototype);
 
 import express from "express";
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from "http";

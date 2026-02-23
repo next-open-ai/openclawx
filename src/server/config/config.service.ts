@@ -59,8 +59,20 @@ export interface AppConfig {
     };
     /** 已配置的模型列表（备用），从该列表中选一个为缺省模型 */
     configuredModels?: ConfiguredModelItem[];
-    /** RAG 知识库：embedding 使用该 provider+model，未配置时基于 RAG 的长记忆空转 */
-    rag?: { embeddingProvider?: string; embeddingModel?: string };
+    /** RAG 知识库：向量模型（本地/在线）+ 向量库（本地/远程 Qdrant） */
+    rag?: {
+        embeddingSource?: 'local' | 'online';
+        embeddingModelItemCode?: string;
+        localModelPath?: string;
+        embeddingProvider?: string;
+        embeddingModel?: string;
+        vectorStore?: 'local' | 'qdrant';
+        qdrant?: { url: string; apiKey?: string; collection?: string };
+    };
+    /** Memory 记忆库：为 Agent 提供默认嵌入模型 */
+    memory?: {
+        embeddingModelItemCode?: string;
+    };
     /** 通道配置：飞书、Telegram 等 token/key */
     channels?: ChannelsConfig;
 }
@@ -95,6 +107,7 @@ export class ConfigService {
             providers: {},
             configuredModels: [],
             rag: undefined,
+            memory: {},
             channels: {},
         };
     }

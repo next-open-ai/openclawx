@@ -37,6 +37,23 @@ interface DesktopConfiguredModel {
     maxTokens?: number;
 }
 
+/** 知识库 RAG 配置（config.json.rag） */
+export interface RagConfig {
+    /** 向量模型来源：local=本地 GGUF，online=在线 OpenAPI */
+    embeddingSource?: "local" | "online";
+    /** 在线时：从已配置模型中选的 embedding 项，对应 modelItemCode */
+    embeddingModelItemCode?: string;
+    /** 本地时：GGUF 模型路径；优先用 node-llama-cpp */
+    localModelPath?: string;
+    /** 兼容旧配置：在线时的 provider+model */
+    embeddingProvider?: string;
+    embeddingModel?: string;
+    /** 向量库类型：local=本地 Vectra，qdrant=远程 Qdrant */
+    vectorStore?: "local" | "qdrant";
+    /** 远程 Qdrant 配置 */
+    qdrant?: { url: string; apiKey?: string; collection?: string };
+}
+
 /** RAG 长记忆：使用远端 embedding 模型；未配置时基于 RAG 的长记忆空转 */
 export interface RagEmbeddingConfig {
     provider: string;
@@ -62,8 +79,12 @@ interface DesktopConfigJson {
     maxAgentSessions?: number;
     providers?: Record<string, { apiKey?: string; baseUrl?: string; alias?: string }>;
     configuredModels?: DesktopConfiguredModel[];
-    /** RAG 知识库：embedding 使用该 provider+model，未配置时长记忆空转 */
-    rag?: { embeddingProvider?: string; embeddingModel?: string };
+    /** RAG 知识库：向量模型（本地/在线）+ 向量库（本地/远程 Qdrant）；未配置时长记忆空转 */
+    rag?: RagConfig;
+    /** Memory 记忆库：为 Agent 提供默认嵌入模型 */
+    memory?: {
+        embeddingModelItemCode?: string;
+    };
     /** 通道配置：飞书、Telegram 等 */
     channels?: ChannelsConfig;
 }
@@ -127,6 +148,8 @@ interface AgentItem {
     coze?: AgentCozeConfig;
     /** OpenClawX 代理配置，当 runnerType 为 openclawx 时使用 */
     openclawx?: AgentOpenClawXConfig;
+    /** 是否使用经验（长记忆）；默认 true */
+    useLongMemory?: boolean;
 }
 
 interface AgentsFile {
@@ -181,15 +204,32 @@ export function getChannelsConfigSync(): ChannelsConfig {
     }
 }
 
-/** 同步读取 RAG embedding 配置；未配置或无效时返回 null，长记忆将空转 */
+/** 同步读取 RAG embedding 配置；embeddingSource 为 local 或未配置在线模型时返回 null，长记忆将空转 */
 export function getRagEmbeddingConfigSync(): RagEmbeddingConfig | null {
     try {
         const configPath = getConfigPath();
         if (!existsSync(configPath)) return null;
         const content = readFileSync(configPath, "utf-8");
         const data = JSON.parse(content) as DesktopConfigJson;
-        const provider = data.rag?.embeddingProvider?.trim();
-        const modelId = data.rag?.embeddingModel?.trim();
+        const rag = data.rag;
+        if (rag?.embeddingSource === "local") return null;
+        let provider: string | undefined;
+        let modelId: string | undefined;
+        if (rag?.embeddingModelItemCode && Array.isArray(data.configuredModels)) {
+            const code = rag.embeddingModelItemCode;
+            const item = data.configuredModels.find((m: { modelItemCode?: string; type?: string; provider?: string; modelId?: string }) => {
+                if (m.type !== "embedding") return false;
+                return m.modelItemCode === code || (m.provider && m.modelId && `${m.provider}:${m.modelId}` === code);
+            });
+            if (item && (item as { provider?: string; modelId?: string }).provider) {
+                provider = (item as { provider: string }).provider;
+                modelId = (item as { modelId: string }).modelId;
+            }
+        }
+        if (!provider || !modelId) {
+            provider = rag?.embeddingProvider?.trim();
+            modelId = rag?.embeddingModel?.trim();
+        }
         if (!provider || !modelId) return null;
         const prov = data.providers?.[provider];
         const apiKey = prov?.apiKey?.trim();
@@ -201,6 +241,39 @@ export function getRagEmbeddingConfigSync(): RagEmbeddingConfig | null {
         }
         if (!baseUrl) return null;
         return { provider, modelId, apiKey, baseUrl: baseUrl.replace(/\/$/, "") };
+    } catch {
+        return null;
+    }
+}
+
+/** 同步读取 RAG 本地 GGUF 模型路径；embeddingSource 非 local 或未填时返回 null，调用方使用默认模型（如 embeddinggemma）。 */
+export function getRagLocalModelPathSync(): string | null {
+    try {
+        const configPath = getConfigPath();
+        if (!existsSync(configPath)) return null;
+        const content = readFileSync(configPath, "utf-8");
+        const data = JSON.parse(content) as DesktopConfigJson;
+        if (data.rag?.embeddingSource !== "local") return null;
+        const modelPath = data.rag?.localModelPath?.trim();
+        return modelPath || null;
+    } catch {
+        return null;
+    }
+}
+
+/** 同步读取 RAG 向量库配置；vectorStore 为 qdrant 且 url 有效时返回，否则为 null（使用本地向量库）。 */
+export function getRagQdrantConfigSync(): { url: string; apiKey?: string; collection?: string } | null {
+    try {
+        const configPath = getConfigPath();
+        if (!existsSync(configPath)) return null;
+        const content = readFileSync(configPath, "utf-8");
+        const data = JSON.parse(content) as DesktopConfigJson;
+        if (data.rag?.vectorStore !== "qdrant" || !data.rag?.qdrant?.url?.trim()) return null;
+        return {
+            url: data.rag.qdrant.url.trim().replace(/\/$/, ""),
+            apiKey: data.rag.qdrant.apiKey?.trim(),
+            collection: data.rag.qdrant.collection?.trim(),
+        };
     } catch {
         return null;
     }
@@ -231,6 +304,8 @@ export interface DesktopAgentConfig {
     coze?: CozeResolvedConfig;
     /** OpenClawX 代理配置 */
     openclawx?: AgentOpenClawXConfig;
+    /** 是否使用经验（长记忆）；默认 true */
+    useLongMemory?: boolean;
 }
 
 /**
@@ -299,6 +374,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
     let workspaceName: string = resolvedAgentId;
     let mcpServers: DesktopMcpServerConfig[] | undefined;
     let systemPrompt: string | undefined;
+    let useLongMemory: boolean = true;
 
     if (existsSync(agentsPath)) {
         try {
@@ -315,6 +391,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
                 if (agent.systemPrompt && typeof agent.systemPrompt === "string") {
                     systemPrompt = agent.systemPrompt.trim();
                 }
+                if (agent.useLongMemory !== undefined) useLongMemory = !!agent.useLongMemory;
                 if (agent.modelItemCode && Array.isArray(config.configuredModels)) {
                     const configured = config.configuredModels.find((m) => m.modelItemCode === agent.modelItemCode);
                     if (configured) {
@@ -367,8 +444,8 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
                                 ? { botId: String(credsCn.botId).trim(), apiKey: String(credsCn.apiKey).trim() }
                                 : null
                             : credsCom && String(credsCom.botId || "").trim() && String(credsCom.apiKey || "").trim()
-                              ? { botId: String(credsCom.botId).trim(), apiKey: String(credsCom.apiKey).trim() }
-                              : null;
+                                ? { botId: String(credsCom.botId).trim(), apiKey: String(credsCom.apiKey).trim() }
+                                : null;
                     const fromLegacy = legacyBotId && legacyKey ? { botId: legacyBotId, apiKey: legacyKey } : null;
                     const creds = fromRegion ?? fromLegacy;
                     if (creds) {
@@ -406,6 +483,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
         runnerType,
         coze,
         openclawx,
+        useLongMemory,
     };
 }
 

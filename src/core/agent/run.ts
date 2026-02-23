@@ -105,7 +105,7 @@ export async function run(options: RunOptions): Promise<RunResult> {
     // Send prompt and wait for completion
     await session.prompt(userPrompt);
 
-    manager.deleteSession(sessionId + "::" + "default");
+    await manager.deleteSession(sessionId + "::" + "default");
 
     result.assistantContent = assistantContent.trim();
     return result;

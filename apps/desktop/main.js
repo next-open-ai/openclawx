@@ -19,6 +19,11 @@ const GATEWAY_PORT = 38080;
 
 /** 主进程内启动 Gateway（dev 与打包均可用），不 spawn 子进程 */
 async function startGatewayInProcess() {
+    // 开发环境：将 cwd 设为仓库根，使 gateway 及其原生依赖（如 onnxruntime-node）从根 node_modules 正确解析
+    if (!app.isPackaged) {
+        const repoRoot = path.resolve(__dirname, '..', '..');
+        process.chdir(repoRoot);
+    }
     // 与 AgentConfigService 使用相同的 home 解析，确保工作区/技能目录一致（~/.openbot/workspace、~/.openbot/agent）
     const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir();
     process.env.OPENBOT_WORKSPACE_DIR = process.env.OPENBOT_WORKSPACE_DIR || path.join(homeDir, '.openbot', 'workspace');

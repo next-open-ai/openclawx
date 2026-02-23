@@ -32,6 +32,9 @@ export async function addMemory(
         createdAt: new Date().toISOString(),
     };
     await addToStore(id, vec, text, meta);
+    if (metadata.infotype === "experience") {
+        console.log(`[Memory] 经验已写入向量库 sessionId=${metadata.sessionId} id=${id}`);
+    }
     return id;
 }
 

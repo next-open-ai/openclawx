@@ -12,7 +12,8 @@
         "build:copy-gateway": "node scripts/copy-gateway.js",
         "build:icon": "node scripts/build-icon.js",
         "build": "npm run build:gateway && npm run build:copy-gateway && npm run build:renderer && npm run build:icon && electron-builder",
-        "postinstall": "cd renderer && npm install"
+        "postinstall": "cd renderer && npm install",
+        "rebuild:native": "electron-rebuild -f --module-dir=../.."
     },
     "keywords": [
         "electron",
@@ -28,7 +29,8 @@
     "license": "MIT",
     "devDependencies": {
         "concurrently": "^8.2.2",
-        "electron": "^28.1.0",
+        "electron": "^39.0.0",
+        "electron-rebuild": "^3.2.9",
         "electron-builder": "^24.9.1",
         "sharp": "^0.33.5",
         "wait-on": "^7.2.0"

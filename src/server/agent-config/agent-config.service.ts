@@ -62,6 +62,8 @@ export interface AgentConfigItem {
     coze?: AgentCozeConfig;
     /** OpenClawX 代理配置（runnerType 为 openclawx 时使用） */
     openclawx?: AgentOpenClawXConfig;
+    /** 是否使用经验（长记忆）：memory_recall / save_experience；默认 true */
+    useLongMemory?: boolean;
 }
 
 interface AgentsFile {
@@ -215,6 +217,7 @@ export class AgentConfigService {
                 | 'runnerType'
                 | 'coze'
                 | 'openclawx'
+                | 'useLongMemory'
             >
         >,
     ): Promise<AgentConfigItem> {
@@ -293,6 +296,7 @@ export class AgentConfigService {
             }
         }
         if (updates.openclawx !== undefined) agent.openclawx = updates.openclawx;
+        if (updates.useLongMemory !== undefined) agent.useLongMemory = updates.useLongMemory;
         await this.writeAgentsFile(file);
         return { ...agent, isDefault: agent.id === DEFAULT_AGENT_ID };
     }

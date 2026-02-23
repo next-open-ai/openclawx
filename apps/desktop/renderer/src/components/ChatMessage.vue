@@ -1,7 +1,10 @@
 <template>
   <div class="chat-message" :class="`message-${role}`">
     <div class="message-avatar">
-      <span class="avatar-icon">{{ role === 'user' ? '👤' : '🤖' }}</span>
+      <span class="avatar-icon">
+        <IconAssistantAvatar v-if="role !== 'user'" />
+        <span v-else>👤</span>
+      </span>
     </div>
     <div class="message-content">
       <div class="message-header">
@@ -49,6 +52,7 @@ import { useI18n } from '@/composables/useI18n';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github-dark.css';
 import ToolExecutionCard from './ToolExecutionCard.vue';
+import IconAssistantAvatar from './icons/IconAssistantAvatar.vue';
 
 // Configure marked
 marked.setOptions({
@@ -65,6 +69,7 @@ export default {
   name: 'ChatMessage',
   components: {
     ToolExecutionCard,
+    IconAssistantAvatar,
   },
   props: {
     role: {
@@ -205,6 +210,7 @@ export default {
   border-radius: 50%;
   background: var(--gradient-primary);
   font-size: 1.25rem;
+  color: #fff;
 }
 
 .message-user .avatar-icon {

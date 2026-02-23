@@ -3,7 +3,6 @@
  */
 import { agentManager } from "../../agent-manager.js";
 import { getDesktopConfig } from "../../../config/desktop-config.js";
-import { getExperienceContextForUserMessage } from "../../../memory/index.js";
 import type { DesktopAgentConfig } from "../../../config/desktop-config.js";
 import type {
     IAgentProxyAdapter,
@@ -30,6 +29,7 @@ export const localAdapter: IAgentProxyAdapter = {
             targetAgentId: agentId,
             mcpServers: config.mcpServers,
             systemPrompt: config.systemPrompt,
+            useLongMemory: config.useLongMemory,
         });
 
         let resolveDone: () => void;
@@ -49,12 +49,7 @@ export const localAdapter: IAgentProxyAdapter = {
         });
 
         try {
-            const experienceBlock = await getExperienceContextForUserMessage();
-            const userMessageToSend =
-                experienceBlock.trim().length > 0
-                    ? `${experienceBlock}\n\n用户问题：\n${message}`
-                    : message;
-            await session.sendUserMessage(userMessageToSend, { deliverAs: "followUp" });
+            await session.sendUserMessage(message, { deliverAs: "followUp" });
             await Promise.race([
                 donePromise,
                 new Promise<void>((_, rej) =>
@@ -80,6 +75,7 @@ export const localAdapter: IAgentProxyAdapter = {
             targetAgentId: agentId,
             mcpServers: config.mcpServers,
             systemPrompt: config.systemPrompt,
+            useLongMemory: config.useLongMemory,
         });
 
         const chunks: string[] = [];
@@ -97,12 +93,7 @@ export const localAdapter: IAgentProxyAdapter = {
         });
 
         try {
-            const experienceBlock = await getExperienceContextForUserMessage();
-            const userMessageToSend =
-                experienceBlock.trim().length > 0
-                    ? `${experienceBlock}\n\n用户问题：\n${message}`
-                    : message;
-            await session.sendUserMessage(userMessageToSend, { deliverAs: "followUp" });
+            await session.sendUserMessage(message, { deliverAs: "followUp" });
             await Promise.race([
                 donePromise,
                 new Promise<void>((_, rej) =>

@@ -1,7 +1,31 @@
+# Dependencies
 node_modules
+
+# Build outputs
 dist
 gateway-dist
 apps/desktop/gateway-dist
+apps/desktop/renderer/dist
+apps/desktop/dist
+
+# Cache
+local_cache
+
+# Logs
 *.log
+npm-debug.log*
+
+# OS files
 .DS_Store
-apps/desktop/gateway-dist
+Thumbs.db
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Env
+.env
+.env.local
+.env.*.local
