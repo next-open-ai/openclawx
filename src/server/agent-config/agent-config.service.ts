@@ -4,6 +4,8 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import { homedir } from 'os';
 import type { McpServerConfig } from '../../core/mcp/index.js';
+import { DatabaseService } from '../database/database.service.js';
+import { WorkspaceService } from '../workspace/workspace.service.js';
 
 /** 工作空间名仅允许英文、数字、下划线、连字符 */
 const WORKSPACE_NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
@@ -36,9 +38,15 @@ export interface AgentOpenClawXConfig {
     apiKey?: string;
 }
 
+/** OpenCode 启动模式：local=本应用启动本机服务；remote=连接已运行的服务 */
+export type OpenCodeServerMode = "local" | "remote";
+
 /** OpenCode 代理配置：按官方 Server API 或 OpenAI 兼容端点 */
 export interface AgentOpenCodeConfig {
-    address: string;
+    /** 启动模式：local=本应用按需启动；remote=连接已有服务 */
+    mode?: OpenCodeServerMode;
+    /** 地址（仅 remote 必填；local 时由适配器使用 127.0.0.1） */
+    address?: string;
     port: number;
     password?: string;
     /** Basic 认证用户名（默认 opencode） */
@@ -47,7 +55,10 @@ export interface AgentOpenCodeConfig {
     apiStyle?: "server" | "openai";
     path?: string;
     streamPath?: string;
+    /** 默认模型（local 时写入启动配置；remote 时作为请求 model） */
     model?: string;
+    /** 工作目录（仅 local 模式）：启动 opencode serve 时的 cwd，留空则使用进程当前目录 */
+    workingDirectory?: string;
 }
 
 /**
@@ -89,12 +100,20 @@ interface AgentsFile {
 /** 主智能体（default）的默认展示名 */
 const DEFAULT_AGENT_NAME = '主智能体';
 
+export interface DeleteAgentOptions {
+    /** 是否同时删除该工作区在磁盘上的目录及文件；默认 false（仅删数据库中的工作区相关数据，保留目录） */
+    deleteWorkspaceDir?: boolean;
+}
+
 @Injectable()
 export class AgentConfigService {
     private configDir: string;
     private agentsPath: string;
 
-    constructor() {
+    constructor(
+        private readonly db: DatabaseService,
+        private readonly workspaceService: WorkspaceService,
+    ) {
         const homeDir = process.env.HOME || process.env.USERPROFILE || homedir();
         this.configDir = join(homeDir, '.openbot', 'desktop');
         this.agentsPath = join(this.configDir, 'agents.json');
@@ -319,7 +338,7 @@ export class AgentConfigService {
         return { ...agent, isDefault: agent.id === DEFAULT_AGENT_ID };
     }
 
-    async deleteAgent(id: string): Promise<void> {
+    async deleteAgent(id: string, options?: DeleteAgentOptions): Promise<void> {
         if (id === DEFAULT_AGENT_ID) {
             throw new BadRequestException('主智能体（default）不可删除');
         }
@@ -328,8 +347,26 @@ export class AgentConfigService {
         if (idx < 0) {
             throw new NotFoundException('智能体不存在');
         }
+        const agent = file.agents[idx];
+        const workspace = (agent.workspace || agent.id || '').trim();
         file.agents.splice(idx, 1);
         await this.writeAgentsFile(file);
+
+        if (workspace && workspace !== DEFAULT_AGENT_ID) {
+            this.deleteWorkspaceDataFromDb(workspace);
+        }
+        if (options?.deleteWorkspaceDir && workspace && workspace !== DEFAULT_AGENT_ID) {
+            await this.workspaceService.deleteWorkspaceDirectory(workspace);
+        }
+    }
+
+    /** 仅删除数据库中与该工作区相关的数据（会话、定时任务、收藏等），不删磁盘目录 */
+    private deleteWorkspaceDataFromDb(workspace: string): void {
+        this.db.run('DELETE FROM token_usage WHERE session_id IN (SELECT id FROM sessions WHERE workspace = ?)', [workspace]);
+        this.db.run('DELETE FROM sessions WHERE workspace = ?', [workspace]);
+        this.db.run('DELETE FROM scheduled_tasks WHERE workspace = ?', [workspace]);
+        this.db.run('DELETE FROM saved_items WHERE workspace = ?', [workspace]);
+        this.db.persist();
     }
 
     /**

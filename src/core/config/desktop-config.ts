@@ -136,10 +136,15 @@ export interface AgentOpenClawXConfig {
     apiKey?: string;
 }
 
+/** OpenCode 启动模式：local=由本应用按需启动本机服务；remote=连接已运行的远端服务 */
+export type OpenCodeServerMode = "local" | "remote";
+
 /** OpenCode 代理配置：仅对接 [OpenCode 官方 Server API](https://opencode.ai/docs/server)（Session/Message + HTTP Basic） */
 export interface AgentOpenCodeConfig {
-    /** 地址（主机名或 IP） */
-    address: string;
+    /** 启动模式：local=本应用控制启动并可选设置默认模型；remote=连接已有服务 */
+    mode?: OpenCodeServerMode;
+    /** 地址（仅 remote 必填；local 时固定为 127.0.0.1） */
+    address?: string;
     /** 端口（opencode serve 默认 4096） */
     port: number;
     /** HTTP Basic 认证密码（见 OPENCODE_SERVER_PASSWORD） */
@@ -152,8 +157,13 @@ export interface AgentOpenCodeConfig {
     path?: string;
     /** @deprecated 仅保留向后兼容 */
     streamPath?: string;
-    /** 请求体中的 model 字段；可选。不填时用 OpenCode 服务端默认（如 opencode/minimax-m2.5-free、opencode/glm-5-free） */
+    /**
+     * 默认模型：local 时由本应用启动服务时写入 OpenCode 配置；remote 时作为请求 model 发送。
+     * 不填则 local 使用本机已有 OpenCode 配置、remote 使用服务端默认。
+     */
     model?: string;
+    /** 工作目录（仅 local 模式生效）：启动 opencode serve 时使用的 cwd，留空则使用进程当前目录 */
+    workingDirectory?: string;
 }
 
 interface AgentItem {
@@ -502,27 +512,41 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
                         apiKey: agentRow.openclawx.apiKey?.trim(),
                     };
                 }
-                if (agentRow.opencode?.address != null && agentRow.opencode?.port != null) {
-                    const addr = String(agentRow.opencode.address).trim();
-                    const port = Number(agentRow.opencode.port);
-                    if (addr && !Number.isNaN(port) && port > 0) {
-                        const raw = agentRow.opencode;
-                        const apiStyle = raw.apiStyle === "openai" ? "openai" : "server";
-                        opencode = {
-                            address: addr,
-                            port,
-                            password:
-                                raw.password != null ? String(raw.password).trim() : undefined,
-                            username:
-                                raw.username != null ? String(raw.username).trim() || undefined : undefined,
-                            apiStyle,
-                            path: raw.path != null ? String(raw.path).trim() || undefined : undefined,
-                            streamPath:
-                                raw.streamPath != null
-                                    ? String(raw.streamPath).trim() || undefined
-                                    : undefined,
-                            model: raw.model != null ? String(raw.model).trim() || undefined : undefined,
-                        };
+                if (agentRow.opencode?.port != null) {
+                    const raw = agentRow.opencode;
+                    const port = Number(raw.port);
+                    if (!Number.isNaN(port) && port > 0) {
+                        const mode: OpenCodeServerMode =
+                            raw.mode === "local" || raw.mode === "remote"
+                                ? raw.mode
+                                : raw.address != null && String(raw.address).trim()
+                                    ? "remote"
+                                    : "local";
+                        const address =
+                            mode === "remote" && raw.address != null
+                                ? String(raw.address).trim()
+                                : "127.0.0.1";
+                        if (mode === "local" || address) {
+                            const apiStyle = raw.apiStyle === "openai" ? "openai" : "server";
+                            opencode = {
+                                mode,
+                                address: mode === "remote" ? address : "127.0.0.1",
+                                port,
+                                password:
+                                    raw.password != null ? String(raw.password).trim() : undefined,
+                                username:
+                                    raw.username != null ? String(raw.username).trim() || undefined : undefined,
+                                apiStyle,
+                                path: raw.path != null ? String(raw.path).trim() || undefined : undefined,
+                                streamPath:
+                                    raw.streamPath != null
+                                        ? String(raw.streamPath).trim() || undefined
+                                        : undefined,
+                                model: raw.model != null ? String(raw.model).trim() || undefined : undefined,
+                                workingDirectory:
+                                    raw.workingDirectory != null ? String(raw.workingDirectory).trim() || undefined : undefined,
+                            };
+                        }
                     }
                 }
             }

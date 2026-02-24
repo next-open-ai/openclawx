@@ -5,6 +5,9 @@ import { existsSync } from 'fs';
 import { homedir } from 'os';
 import { getOpenbotWorkspaceDir } from '../../core/agent/agent-dir.js';
 
+/** 主智能体对应工作区名，禁止删除其目录 */
+export const DEFAULT_WORKSPACE_NAME = 'default';
+
 export interface WorkspaceItem {
     name: string;
     path: string; // relative path from workspace root
@@ -80,6 +83,20 @@ export class WorkspaceService {
         const absolute = resolve(root, safe);
         const ok = resolve(absolute).startsWith(root) && existsSync(absolute);
         return { absolutePath: absolute, safe: ok };
+    }
+
+    /**
+     * 删除整个工作区目录（磁盘）。禁止删除 default 工作区。
+     * 仅当调用方确认需物理删除时使用（如删除智能体时用户勾选「同时删除工作区目录」）。
+     */
+    async deleteWorkspaceDirectory(workspaceName: string): Promise<void> {
+        const name = (workspaceName || '').trim();
+        if (name === '' || name === DEFAULT_WORKSPACE_NAME) {
+            throw new Error('不能删除 default 工作区目录');
+        }
+        const root = resolve(this.getWorkspaceRoot(name));
+        if (!existsSync(root)) return;
+        await rm(root, { recursive: true });
     }
 
     /** Delete a file or directory (recursive) under workspace. Returns true if deleted. skills 与 .skills 目录禁止删除。 */

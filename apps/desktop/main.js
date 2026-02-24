@@ -188,9 +188,10 @@ function registerIpcHandlers() {
         if (mainWindow) mainWindow.close();
     });
     ipcMain.handle('get-user-data-path', () => app.getPath('userData'));
-    ipcMain.handle('show-open-directory-dialog', async () => {
+    ipcMain.handle('show-open-directory-dialog', async (_, options) => {
+        const title = (options && options.title) || '选择目录';
         const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow || null, {
-            title: '选择技能目录',
+            title,
             properties: ['openDirectory'],
         });
         if (canceled || !filePaths || filePaths.length === 0) return null;

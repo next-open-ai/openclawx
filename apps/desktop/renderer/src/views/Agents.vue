@@ -65,28 +65,38 @@
             </button>
           </div>
           <div v-else class="agents-grid">
-            <router-link
+            <div
               v-for="agent in localAgents"
               :key="agent.id"
-              :to="`/agents/${agent.id}`"
-              class="agent-card card-glass"
+              class="agent-card-wrap"
             >
-              <div class="card-icon-wrap">
-                <span class="card-icon" :aria-label="getAgentIconEmoji(agent.icon)">{{ getAgentIconEmoji(agent.icon) }}</span>
-              </div>
-              <h3 class="card-name">
-                {{ agent.name }}
-                <span v-if="agent.isDefault" class="card-badge card-badge-default">{{ t('agents.defaultBadge') }}</span>
-              </h3>
-              <p class="card-workspace">
-                <span class="ws-label">{{ t('agents.workspace') }}:</span>
-                <code>{{ agent.workspace }}</code>
-              </p>
-              <p class="card-llm text-secondary">
-                {{ (agent.provider && agent.model) ? `${agent.provider} / ${agent.model}` : t('agents.runnerTypeLocalShort') }}
-              </p>
-              <span class="card-arrow" aria-hidden="true">→</span>
-            </router-link>
+              <router-link :to="`/agents/${agent.id}`" class="agent-card card-glass">
+                <div class="card-icon-wrap">
+                  <span class="card-icon" :aria-label="getAgentIconEmoji(agent.icon)">{{ getAgentIconEmoji(agent.icon) }}</span>
+                </div>
+                <h3 class="card-name">
+                  {{ agent.name }}
+                  <span v-if="agent.isDefault" class="card-badge card-badge-default">{{ t('agents.defaultBadge') }}</span>
+                </h3>
+                <p class="card-workspace">
+                  <span class="ws-label">{{ t('agents.workspace') }}:</span>
+                  <code>{{ agent.workspace }}</code>
+                </p>
+                <p class="card-llm text-secondary">
+                  {{ (agent.provider && agent.model) ? `${agent.provider} / ${agent.model}` : t('agents.runnerTypeLocalShort') }}
+                </p>
+                <span class="card-arrow" aria-hidden="true">→</span>
+              </router-link>
+              <button
+                v-if="!agent.isDefault"
+                type="button"
+                class="agent-card-delete"
+                :title="t('agents.deleteAgent')"
+                @click.stop="openDeleteConfirm(agent)"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         </template>
         <template v-else>
@@ -99,28 +109,38 @@
             </button>
           </div>
           <div v-else class="agents-grid">
-            <router-link
+            <div
               v-for="agent in proxyAgents"
               :key="agent.id"
-              :to="`/agents/${agent.id}?tab=proxy`"
-              class="agent-card card-glass agent-card-proxy"
+              class="agent-card-wrap"
             >
-              <div class="card-icon-wrap card-icon-wrap-proxy">
-                <span class="card-icon">🔗</span>
-              </div>
-              <h3 class="card-name">
-                {{ agent.name }}
-                <span class="card-badge proxy-badge">{{ proxyTypeLabel(agent) }}</span>
-              </h3>
-              <p class="card-workspace">
-                <span class="ws-label">{{ t('agents.workspace') }}:</span>
-                <code>{{ agent.workspace }}</code>
-              </p>
-              <p class="card-llm text-secondary">
-                {{ proxyTypeLabel(agent) }}
-              </p>
-              <span class="card-arrow" aria-hidden="true">→</span>
-            </router-link>
+              <router-link :to="`/agents/${agent.id}?tab=proxy`" class="agent-card card-glass agent-card-proxy">
+                <div class="card-icon-wrap card-icon-wrap-proxy">
+                  <span class="card-icon">🔗</span>
+                </div>
+                <h3 class="card-name">
+                  {{ agent.name }}
+                  <span class="card-badge proxy-badge">{{ proxyTypeLabel(agent) }}</span>
+                </h3>
+                <p class="card-workspace">
+                  <span class="ws-label">{{ t('agents.workspace') }}:</span>
+                  <code>{{ agent.workspace }}</code>
+                </p>
+                <p class="card-llm text-secondary">
+                  {{ proxyTypeLabel(agent) }}
+                </p>
+                <span class="card-arrow" aria-hidden="true">→</span>
+              </router-link>
+              <button
+                v-if="!agent.isDefault"
+                type="button"
+                class="agent-card-delete"
+                :title="t('agents.deleteAgent')"
+                @click.stop="openDeleteConfirm(agent)"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         </template>
         </div>
@@ -326,54 +346,102 @@
             <template v-if="proxyCreateForm.runnerType === 'opencode'">
               <p class="form-hint">{{ t('agents.opencodeHint') }}</p>
               <div class="form-group">
-                <label>{{ t('agents.opencodeAddress') }}</label>
-                <input
-                  v-model="proxyCreateForm.opencode.address"
-                  type="text"
-                  class="form-input"
-                  :placeholder="t('agents.opencodeAddressPlaceholder')"
-                />
+                <label>{{ t('agents.opencodeMode') }}</label>
+                <div class="form-radio-group">
+                  <label class="form-radio">
+                    <input v-model="proxyCreateForm.opencode.mode" type="radio" value="local" />
+                    <span>{{ t('agents.opencodeModeLocal') }}</span>
+                  </label>
+                  <label class="form-radio">
+                    <input v-model="proxyCreateForm.opencode.mode" type="radio" value="remote" />
+                    <span>{{ t('agents.opencodeModeRemote') }}</span>
+                  </label>
+                </div>
               </div>
-              <div class="form-group">
-                <label>{{ t('agents.opencodePort') }}</label>
-                <input
-                  v-model.number="proxyCreateForm.opencode.port"
-                  type="number"
-                  min="1"
-                  max="65535"
-                  class="form-input"
-                  :placeholder="t('agents.opencodePortPlaceholder')"
-                />
-              </div>
-              <div class="form-group">
-                <label>{{ t('agents.opencodeUsername') }}</label>
-                <input
-                  v-model="proxyCreateForm.opencode.username"
-                  type="text"
-                  class="form-input"
-                  :placeholder="t('agents.opencodeUsernamePlaceholder')"
-                />
-              </div>
-              <div class="form-group">
-                <label>{{ t('agents.opencodePassword') }}</label>
-                <input
-                  v-model="proxyCreateForm.opencode.password"
-                  type="password"
-                  class="form-input"
-                  :placeholder="t('agents.opencodePasswordPlaceholder')"
-                  autocomplete="off"
-                />
-              </div>
-              <div class="form-group">
-                <label>{{ t('agents.opencodeModel') }}</label>
-                <input
-                  v-model="proxyCreateForm.opencode.model"
-                  type="text"
-                  class="form-input"
-                  :placeholder="t('agents.opencodeModelPlaceholder')"
-                />
-              </div>
-              <p class="form-hint">{{ t('agents.opencodeHint') }}</p>
+              <template v-if="proxyCreateForm.opencode.mode === 'local'">
+                <p class="form-hint">{{ t('agents.opencodeLocalHint') }}</p>
+                <div class="form-group">
+                  <label>{{ t('agents.opencodePortLocalLabel') }}</label>
+                  <input
+                    v-model.number="proxyCreateForm.opencode.port"
+                    type="number"
+                    min="1"
+                    max="65535"
+                    class="form-input"
+                    :placeholder="t('agents.opencodePortPlaceholder')"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>{{ t('agents.opencodeModel') }}</label>
+                  <select v-model="proxyCreateForm.opencode.model" class="form-input">
+                    <option value="">{{ t('agents.opencodeUseLocalDefault') }}</option>
+                    <option v-for="m in opencodeFreeModels" :key="m.id" :value="m.id">
+                      {{ m.label }}{{ m.free ? ' (Free)' : '' }}
+                    </option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>{{ t('agents.opencodeWorkingDirectory') }}</label>
+                  <div class="form-input-with-btn">
+                    <input
+                      v-model="proxyCreateForm.opencode.workingDirectory"
+                      type="text"
+                      class="form-input"
+                      :placeholder="t('agents.opencodeWorkingDirectoryPlaceholder')"
+                    />
+                    <button
+                      v-if="hasElectronFolderPicker"
+                      type="button"
+                      class="btn-secondary btn-pick-folder"
+                      @click="pickOpencodeWorkingDirectory"
+                    >
+                      {{ t('agents.opencodeSelectFolder') }}
+                    </button>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <p class="form-hint">{{ t('agents.opencodeRemoteHint') }}</p>
+                <div class="form-group">
+                  <label>{{ t('agents.opencodeAddress') }}</label>
+                  <input
+                    v-model="proxyCreateForm.opencode.address"
+                    type="text"
+                    class="form-input"
+                    :placeholder="t('agents.opencodeAddressPlaceholder')"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>{{ t('agents.opencodePort') }}</label>
+                  <input
+                    v-model.number="proxyCreateForm.opencode.port"
+                    type="number"
+                    min="1"
+                    max="65535"
+                    class="form-input"
+                    :placeholder="t('agents.opencodePortPlaceholder')"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>{{ t('agents.opencodePassword') }}</label>
+                  <input
+                    v-model="proxyCreateForm.opencode.password"
+                    type="password"
+                    class="form-input"
+                    :placeholder="t('agents.opencodePasswordPlaceholder')"
+                    autocomplete="off"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>{{ t('agents.opencodeModel') }}</label>
+                  <select v-model="proxyCreateForm.opencode.model" class="form-input">
+                    <option value="">{{ t('agents.opencodeUseServerDefault') }}</option>
+                    <option v-for="m in opencodeFreeModels" :key="m.id" :value="m.id">
+                      {{ m.label }}{{ m.free ? ' (Free)' : '' }}
+                    </option>
+                  </select>
+                </div>
+              </template>
             </template>
             <p v-if="proxyCreateError" class="form-error">{{ proxyCreateError }}</p>
             <div class="modal-footer-actions">
@@ -384,6 +452,28 @@
                 {{ proxyCreateSaving ? t('common.loading') : t('agents.create') }}
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 删除智能体确认弹窗 -->
+    <transition name="fade">
+      <div v-if="showDeleteConfirm" class="modal-backdrop" @click.self="showDeleteConfirm = false">
+        <div class="modal-content card-glass modal-confirm">
+          <p class="modal-confirm-text">{{ t('agents.deleteAgentConfirm') }}</p>
+          <p v-if="deleteTargetAgent" class="modal-confirm-name">{{ deleteTargetAgent.name }}</p>
+          <label class="modal-confirm-checkbox">
+            <input type="checkbox" v-model="deleteWorkspaceDir" />
+            <span>{{ t('agents.deleteAgentAlsoDeleteDir') }}</span>
+          </label>
+          <div class="modal-footer-actions">
+            <button type="button" class="btn-secondary" @click="showDeleteConfirm = false">
+              {{ t('common.cancel') }}
+            </button>
+            <button type="button" class="btn-primary danger" :disabled="deleteAgentSaving" @click="doDeleteAgent">
+              {{ deleteAgentSaving ? t('common.loading') : t('agents.deleteAgent') }}
+            </button>
           </div>
         </div>
       </div>
@@ -420,6 +510,10 @@ export default {
     const agentTab = ref('local');
     const showCreateModal = ref(false);
     const showCreateProxyModal = ref(false);
+    const showDeleteConfirm = ref(false);
+    const deleteTargetAgent = ref(null);
+    const deleteAgentSaving = ref(false);
+    const deleteWorkspaceDir = ref(false);
     const config = ref(null);
     const agentIconOptions = AGENT_ICONS;
     const createForm = ref({
@@ -443,8 +537,9 @@ export default {
         endpoint: '',
       },
       openclawx: { baseUrl: '', apiKey: '' },
-      opencode: { address: '', port: 4096, username: '', password: '', model: '' },
+      opencode: { mode: 'local', address: '', port: 4096, username: '', password: '', model: '', workingDirectory: '' },
     });
+    const opencodeFreeModels = ref([]);
     const proxyCreateError = ref('');
     const proxyCreateSaving = ref(false);
 
@@ -651,12 +746,14 @@ export default {
         } else if (runnerType === 'opencode') {
           const oc = proxyCreateForm.value.opencode;
           const portNum = typeof oc?.port === 'number' ? oc.port : parseInt(String(oc?.port || ''), 10);
+          const mode = oc?.mode === 'local' ? 'local' : 'remote';
           updateBody.opencode = {
-            address: (oc?.address || '').trim(),
+            mode,
+            address: mode === 'remote' ? (oc?.address || '').trim() : undefined,
             port: Number.isFinite(portNum) && portNum > 0 ? portNum : 4096,
-            username: (oc?.username || '').trim() || undefined,
             password: (oc?.password || '').trim() || undefined,
             model: (oc?.model || '').trim() || undefined,
+            workingDirectory: (oc?.workingDirectory || '').trim() || undefined,
           };
         }
         await agentConfigAPI.updateAgent(id, updateBody);
@@ -671,10 +768,65 @@ export default {
       }
     }
 
+    async function fetchOpencodeFreeModels() {
+      if (opencodeFreeModels.value.length > 0) return;
+      try {
+        const res = await configAPI.getOpencodeFreeModels();
+        if (res?.data?.success && Array.isArray(res.data.data)) opencodeFreeModels.value = res.data.data;
+      } catch (_) {}
+    }
+    const hasElectronFolderPicker = computed(() => typeof window !== 'undefined' && !!window.electronAPI?.showOpenDirectoryDialog);
+    async function pickOpencodeWorkingDirectory() {
+      if (!window.electronAPI?.showOpenDirectoryDialog) return;
+      const path = await window.electronAPI.showOpenDirectoryDialog({ title: '选择 OpenCode 工作目录' });
+      if (path) proxyCreateForm.value.opencode.workingDirectory = path;
+    }
+    watch(
+      () => proxyCreateForm.value.runnerType === 'opencode',
+      (isOpencode) => { if (isOpencode) fetchOpencodeFreeModels(); },
+      { immediate: true }
+    );
+
+    function openDeleteConfirm(agent) {
+      if (agent?.isDefault) return;
+      deleteTargetAgent.value = agent;
+      deleteWorkspaceDir.value = false;
+      showDeleteConfirm.value = true;
+    }
+    async function doDeleteAgent() {
+      const agent = deleteTargetAgent.value;
+      if (!agent?.id || agent.isDefault) {
+        showDeleteConfirm.value = false;
+        deleteTargetAgent.value = null;
+        return;
+      }
+      deleteAgentSaving.value = true;
+      try {
+        const params = deleteWorkspaceDir.value ? { deleteWorkspaceDir: 'true' } : {};
+        await agentConfigAPI.deleteAgent(agent.id, params);
+        showDeleteConfirm.value = false;
+        deleteTargetAgent.value = null;
+        await loadAgents();
+      } catch (e) {
+        console.error('Delete agent failed', e);
+      } finally {
+        deleteAgentSaving.value = false;
+      }
+    }
+
     onMounted(loadAgents);
 
     return {
       t,
+      opencodeFreeModels,
+      hasElectronFolderPicker,
+      pickOpencodeWorkingDirectory,
+      showDeleteConfirm,
+      deleteTargetAgent,
+      deleteAgentSaving,
+      deleteWorkspaceDir,
+      openDeleteConfirm,
+      doDeleteAgent,
       agents,
       loading,
       agentTab,
@@ -904,6 +1056,34 @@ export default {
   overflow-y: auto;
 }
 
+.agent-card-wrap {
+  position: relative;
+}
+
+.agent-card-delete {
+  position: absolute;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.agent-card-delete:hover {
+  background: var(--color-danger-bg, rgba(220, 53, 69, 0.15));
+  color: var(--color-danger, #dc3545);
+}
+
 .agent-card {
   display: flex;
   flex-direction: column;
@@ -1075,6 +1255,42 @@ export default {
   overflow: hidden;
 }
 
+.modal-content.modal-confirm {
+  max-width: 360px;
+}
+.modal-confirm .modal-confirm-text {
+  margin: 0 0 var(--spacing-sm) 0;
+  color: var(--color-text-primary);
+  padding: var(--spacing-lg) var(--spacing-lg) 0;
+}
+.modal-confirm .modal-confirm-name {
+  margin: 0 0 var(--spacing-lg) 0;
+  padding: 0 var(--spacing-lg);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.modal-confirm .modal-confirm-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: 0 0 var(--spacing-md) 0;
+  padding: 0 var(--spacing-lg);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 0.9em;
+}
+.modal-confirm .modal-footer-actions {
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--glass-border);
+}
+.btn-primary.danger {
+  background: var(--color-danger, #dc3545);
+  color: white;
+}
+.btn-primary.danger:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -1116,6 +1332,33 @@ export default {
   margin-bottom: var(--spacing-xs);
   font-weight: 500;
   color: var(--color-text-primary);
+}
+
+.form-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+.form-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+  font-weight: 400;
+}
+.form-radio input { margin: 0; }
+
+.form-input-with-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+.form-input-with-btn .form-input {
+  flex: 1;
+  min-width: 0;
+}
+.form-input-with-btn .btn-pick-folder {
+  flex-shrink: 0;
 }
 
 .form-input {

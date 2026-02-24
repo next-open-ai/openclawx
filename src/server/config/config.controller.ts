@@ -1,4 +1,5 @@
 import { Controller, Get, Put, Body, Param, Query } from '@nestjs/common';
+import { OPENCODE_FREE_MODELS } from '../../core/agent/proxy/adapters/opencode-free-models.js';
 import { ConfigService, AppConfig } from './config.service.js';
 
 @Controller('config')
@@ -49,6 +50,15 @@ export class ConfigController {
         return {
             success: true,
             data: models,
+        };
+    }
+
+    /** OpenCode 免费/推荐模型列表，供代理配置界面下拉选择（本地/远程模式默认模型） */
+    @Get('opencode-free-models')
+    getOpencodeFreeModels() {
+        return {
+            success: true,
+            data: OPENCODE_FREE_MODELS,
         };
     }
 }

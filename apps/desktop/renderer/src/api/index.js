@@ -28,7 +28,8 @@ export const agentConfigAPI = {
     getAgent: (id) => apiClient.get(`/agent-config/${id}`),
     createAgent: (body) => apiClient.post('/agent-config', body),
     updateAgent: (id, body) => apiClient.put(`/agent-config/${id}`, body),
-    deleteAgent: (id) => apiClient.delete(`/agent-config/${id}`),
+    /** deleteWorkspaceDir: true 时同时删除工作区磁盘目录；默认仅删数据库中的工作区相关数据 */
+    deleteAgent: (id, params) => apiClient.delete(`/agent-config/${id}`, { params: params || {} }),
 };
 
 // Skills API
@@ -75,6 +76,8 @@ export const configAPI = {
     getProviders: () => apiClient.get('/config/providers'),
     getProviderSupport: () => apiClient.get('/config/provider-support'),
     getModels: (provider, type) => apiClient.get(`/config/providers/${encodeURIComponent(provider)}/models`, { params: type ? { type } : {} }),
+    /** OpenCode 免费/推荐模型列表，供代理配置界面下拉选择 */
+    getOpencodeFreeModels: () => apiClient.get('/config/opencode-free-models'),
 };
 
 // Auth API（登录）

@@ -22,6 +22,7 @@
  */
 import { createOpencodeClient } from "@opencode-ai/sdk";
 import type { DesktopAgentConfig } from "../../../config/desktop-config.js";
+import { ensureLocalOpencodeRunning } from "./opencode-local-runner.js";
 import type {
     IAgentProxyAdapter,
     RunAgentStreamCallbacks,
@@ -64,21 +65,27 @@ export interface ResolvedOpenCodeConfig {
 
 function getOpenCodeConfig(config: DesktopAgentConfig): ResolvedOpenCodeConfig | null {
     const oc = config.opencode;
-    if (!oc?.address?.trim() || oc?.port == null) return null;
-    const address = String(oc.address).trim().replace(/^https?:\/\//, "");
+    if (oc?.port == null) return null;
     const port = Number(oc.port);
-    if (!address || Number.isNaN(port) || port <= 0) return null;
+    if (Number.isNaN(port) || port <= 0) return null;
+    const mode = oc.mode === "local" || oc.mode === "remote" ? oc.mode : "remote";
+    const address =
+        mode === "local"
+            ? "127.0.0.1"
+            : (oc.address != null && String(oc.address).trim()) || "";
+    if (mode === "remote" && !address) return null;
+    const normalizedAddress = address.replace(/^https?:\/\//, "");
     const selfPort = getSelfGatewayPort();
-    if (selfPort != null && port === selfPort && isLoopback(address)) {
+    if (selfPort != null && port === selfPort && isLoopback(normalizedAddress)) {
         throw new Error(
             "OpenCode 地址不能指向本机当前 Gateway 端口（" +
-                address +
+                normalizedAddress +
                 ":" +
                 port +
                 "），否则会造成请求死锁。"
         );
     }
-    const baseUrl = `http://${address}:${port}`.replace(/\/$/, "");
+    const baseUrl = `http://${normalizedAddress}:${port}`.replace(/\/$/, "");
     const username = (oc.username != null && String(oc.username).trim())
         ? String(oc.username).trim()
         : DEFAULT_SERVER_USERNAME;
@@ -303,7 +310,14 @@ export const opencodeAdapter: IAgentProxyAdapter = {
     async runStream(options, config, callbacks): Promise<void> {
         const oc = getOpenCodeConfig(config);
         if (!oc) {
-            throw new Error("OpenCode adapter: missing opencode.address or opencode.port in agent config");
+            throw new Error("OpenCode adapter: missing opencode.port or (remote 模式下缺少 address) in agent config");
+        }
+        if (config.opencode?.mode === "local" && config.opencode.port != null) {
+            await ensureLocalOpencodeRunning(
+                Number(config.opencode.port),
+                config.opencode.model?.trim() || undefined,
+                config.opencode.workingDirectory?.trim() || undefined
+            );
         }
 
         const hasPassword = Boolean(oc.password?.trim());
@@ -431,7 +445,14 @@ export const opencodeAdapter: IAgentProxyAdapter = {
     async runCollect(options, config): Promise<string> {
         const oc = getOpenCodeConfig(config);
         if (!oc) {
-            throw new Error("OpenCode adapter: missing opencode.address or opencode.port in agent config");
+            throw new Error("OpenCode adapter: missing opencode.port or (remote 模式下缺少 address) in agent config");
+        }
+        if (config.opencode?.mode === "local" && config.opencode.port != null) {
+            await ensureLocalOpencodeRunning(
+                Number(config.opencode.port),
+                config.opencode.model?.trim() || undefined,
+                config.opencode.workingDirectory?.trim() || undefined
+            );
         }
 
         const hasPassword = oc.password != null && String(oc.password).trim() !== "";
