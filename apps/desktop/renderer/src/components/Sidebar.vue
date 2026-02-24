@@ -162,19 +162,16 @@ export default {
 }
 
 .nav-item.active {
-  background: var(--color-bg-elevated);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.22) 0%, rgba(118, 75, 162, 0.16) 100%);
   color: var(--color-accent-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(102, 126, 234, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(102, 126, 234, 0.4);
 }
 
-.nav-item.active::after {
-  content: '';
-  position: absolute;
-  left: -8px;
-  width: 3px;
-  height: 18px;
-  background: var(--color-accent-primary);
-  border-radius: 0 3px 3px 0;
+.nav-item.active:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.28) 0%, rgba(118, 75, 162, 0.2) 100%);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-color: rgba(102, 126, 234, 0.5);
 }
 
 .nav-icon {
