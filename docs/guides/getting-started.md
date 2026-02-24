@@ -58,6 +58,7 @@ openbot gateway --port 38080
 2. 打开「终端」（应用程序 → 实用工具 → 终端），执行（路径按你实际放置位置修改）：
    ```bash
    xattr -c /Applications/OpenClawX.app
+   #或者
    find /Applications/OpenClawX.app -exec xattr -c {} \; 2>/dev/null
    ```
    若系统支持递归可简化为：`xattr -cr /Applications/OpenClawX.app`

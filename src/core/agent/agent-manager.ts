@@ -370,6 +370,22 @@ For downloads, provide either a direct URL or a selector to click.`;
         return this.sessions.get(compositeKey);
     }
 
+    /** 按业务 sessionId 查找一个 Session（取最近活跃的），用于 agent.cancel 等 */
+    public getSessionBySessionId(sessionId: string): AgentSession | undefined {
+        const prefix = sessionId + COMPOSITE_KEY_SEP;
+        let bestKey: string | undefined;
+        let bestAt = 0;
+        for (const key of this.sessions.keys()) {
+            if (!key.startsWith(prefix)) continue;
+            const at = this.sessionLastActiveAt.get(key) ?? 0;
+            if (at >= bestAt) {
+                bestAt = at;
+                bestKey = key;
+            }
+        }
+        return bestKey != null ? this.sessions.get(bestKey) : undefined;
+    }
+
     /** 删除一个 Agent Session（传入复合 key）；关闭前将本 session 最新 compaction summary 写入向量库 */
     public async deleteSession(compositeKey: string): Promise<boolean> {
         await persistStoredCompactionForSession(

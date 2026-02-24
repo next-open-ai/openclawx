@@ -347,7 +347,7 @@ export default {
     startConversation: 'Start a Conversation',
     startConversationHint: 'Send a message to begin chatting with the agent',
     placeholder: 'Type your message... (Shift+Enter for new line)',
-    placeholderOpenCode: 'Type a message or use OpenCode commands: //init, //undo, //redo, //share, //help',
+    placeholderOpenCode: 'Type a message or use OpenCode commands: /init, /undo, /redo, /share, /help',
     thinking: 'Thinking...',
     sessionsPanel: 'Sessions',
     showSessions: 'Show sessions',

@@ -37,6 +37,11 @@ export const openclawxAdapter: IAgentProxyAdapter = {
         const body = { sessionId: options.sessionId, message: options.message, agentId: options.agentId };
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        const userSignal = options.signal;
+        if (userSignal) {
+            if (userSignal.aborted) controller.abort();
+            else userSignal.addEventListener("abort", () => controller.abort(), { once: true });
+        }
         try {
             const res = await fetch(url, {
                 method: "POST",

@@ -28,19 +28,20 @@ import type {
     RunAgentStreamCallbacks,
 } from "../types.js";
 
-const REQUEST_TIMEOUT_MS = 120_000; // 单次请求超时（prompt 等），服务端可能等模型生成较久
+/** 单次请求超时。init 会分析项目并生成 AGENTS.md，大项目可能较久，故设 5 分钟 */
+const REQUEST_TIMEOUT_MS = 300_000;
 
 /** 仅在使用自定义 fetch（带密码）时用作 Basic 认证用户名 */
 const DEFAULT_SERVER_USERNAME = "opencode";
 
-/** //help 的说明文案 */
-const OPENCODE_HELP_TEXT = `**OpenCode 指令**（在消息开头输入，如 \`//init\`）
+/** /help 的说明文案 */
+const OPENCODE_HELP_TEXT = `**OpenCode 指令**（在消息开头输入，如 \`/init\`）
 
-- **//init** — 分析当前项目并创建 AGENTS.md，便于 OpenCode 理解项目结构
-- **//undo** — 撤销上一步修改
-- **//redo** — 重做已撤销的修改
-- **//share** — 分享当前会话，获取分享链接
-- **//help** — 显示本说明
+- **/init** — 分析当前项目并创建 AGENTS.md，便于 OpenCode 理解项目结构
+- **/undo** — 撤销上一步修改
+- **/redo** — 重做已撤销的修改
+- **/share** — 分享当前会话，获取分享链接
+- **/help** — 显示本说明
 
 直接输入普通内容将作为对话发送给 OpenCode。`;
 
@@ -113,10 +114,23 @@ function buildAuthHeaders(oc: ResolvedOpenCodeConfig): Record<string, string> {
 
 /**
  * 在 Node/undici 下带 body 的请求需要 duplex，SDK 默认 fetch 未设置。无密码时用此 fetch 仅补 duplex。
+ * @param externalSignal 用户中止时传入，与超时合并
  */
-function createDuplexFetch(timeoutMs: number): typeof fetch {
+function createDuplexFetch(timeoutMs: number, externalSignal?: AbortSignal): typeof fetch {
     return (input: RequestInfo | URL, init?: RequestInit) => {
-        const signal = init?.signal ?? AbortSignal.timeout(timeoutMs);
+        let signal: AbortSignal = init?.signal ?? AbortSignal.timeout(timeoutMs);
+        if (externalSignal) {
+            if (externalSignal.aborted) signal = externalSignal;
+            else {
+                const c = new AbortController();
+                const tid = setTimeout(() => c.abort(), timeoutMs);
+                externalSignal.addEventListener("abort", () => {
+                    clearTimeout(tid);
+                    c.abort();
+                }, { once: true });
+                signal = c.signal;
+            }
+        }
         if (input instanceof Request) {
             const method = input.method.toUpperCase();
             const hasBody = input.body != null || ["POST", "PUT", "PATCH"].includes(method);
@@ -143,13 +157,27 @@ function createDuplexFetch(timeoutMs: number): typeof fetch {
 
 /**
  * 仅当用户配置了密码时使用：创建带 HTTP Basic 的 fetch，并满足 Node/undici 对带 body 请求的 duplex 要求。
+ * @param externalSignal 用户中止时传入，与超时合并
  */
 function createAuthFetch(
     authHeaders: Record<string, string>,
-    timeoutMs: number
+    timeoutMs: number,
+    externalSignal?: AbortSignal
 ): typeof fetch {
     return (input: RequestInfo | URL, init?: RequestInit) => {
-        const signal = init?.signal ?? AbortSignal.timeout(timeoutMs);
+        let signal: AbortSignal = init?.signal ?? AbortSignal.timeout(timeoutMs);
+        if (externalSignal) {
+            if (externalSignal.aborted) signal = externalSignal;
+            else {
+                const c = new AbortController();
+                const tid = setTimeout(() => c.abort(), timeoutMs);
+                externalSignal.addEventListener("abort", () => {
+                    clearTimeout(tid);
+                    c.abort();
+                }, { once: true });
+                signal = c.signal;
+            }
+        }
         if (input instanceof Request) {
             const cloned = input.clone();
             const headers = new Headers(cloned.headers);
@@ -190,11 +218,13 @@ function setCachedSessionId(channelSessionId: string, opencodeSessionId: string)
     opencodeSessionCache.set(channelSessionId, opencodeSessionId);
 }
 
-/** 解析消息：若以 // 开头则返回 { command, args }，否则返回 null */
+/** 解析消息：若以 / 或 // 开头则返回 { command, args }，否则返回 null。支持常用 /command 形式。 */
 function parseSlashCommand(message: string): { command: string; args: string } | null {
     const trimmed = message.trim();
-    if (!trimmed.startsWith("//")) return null;
-    const rest = trimmed.slice(2).trim();
+    const isSlash = trimmed.startsWith("/");
+    if (!isSlash) return null;
+    const rest = trimmed.startsWith("//") ? trimmed.slice(2).trim() : trimmed.slice(1).trim();
+    if (!rest) return null;
     const space = rest.indexOf(" ");
     const command = space >= 0 ? rest.slice(0, space).toLowerCase() : rest.toLowerCase();
     const args = space >= 0 ? rest.slice(space + 1).trim() : "";
@@ -244,6 +274,23 @@ function logSdkResponse(api: string, res: unknown): void {
     console.log(`[OpenCode] SDK ${api} 返回:`, JSON.stringify(safeForLog(res), null, 2));
 }
 
+/** 将 SDK/API 抛出的错误转为可读字符串，避免 [object Object] */
+function formatErrorMessage(err: unknown): string {
+    if (err instanceof Error) return err.message;
+    const o = err as { error?: Array<{ message?: string }>; message?: string; data?: { message?: string } };
+    if (Array.isArray(o?.error) && o.error.length > 0 && typeof o.error[0]?.message === "string") {
+        return o.error[0].message;
+    }
+    if (typeof o?.data?.message === "string") return o.data.message;
+    if (typeof o?.message === "string") return o.message;
+    if (typeof err === "string") return err;
+    try {
+        return JSON.stringify(err);
+    } catch {
+        return "未知错误";
+    }
+}
+
 /** 从多种可能的 API 响应结构中取出 parts 或纯文本 */
 function extractPartsOrText(res: unknown): string {
     const data = (res as any)?.data ?? res;
@@ -254,6 +301,21 @@ function extractPartsOrText(res: unknown): string {
     if (typeof data?.text === "string") return data.text;
     if (typeof data?.message === "string") return data.message;
     return "";
+}
+
+/** 从 command 类接口返回中优先取 type=text 的 part 作为主回复，避免被 reasoning 等淹没；无则退回 partsToText */
+function extractCommandReplyText(res: unknown): string {
+    const data = (res as any)?.data ?? res;
+    if (!data) return "";
+    const parts = data?.info?.parts ?? data?.parts;
+    if (!Array.isArray(parts)) {
+        if (typeof data?.content === "string") return data.content;
+        if (typeof data?.text === "string") return data.text;
+        return "";
+    }
+    const textPart = parts.find((p: { type?: string }) => p?.type === "text");
+    if (textPart && (typeof (textPart as any).text === "string")) return (textPart as any).text.trim();
+    return partsToText(parts);
 }
 
 const POLL_INTERVAL_MS = 1500;
@@ -321,9 +383,10 @@ export const opencodeAdapter: IAgentProxyAdapter = {
         }
 
         const hasPassword = Boolean(oc.password?.trim());
+        const userSignal = options.signal;
         const fetchImpl = hasPassword
-            ? (createAuthFetch(buildAuthHeaders(oc), REQUEST_TIMEOUT_MS) as any)
-            : createDuplexFetch(REQUEST_TIMEOUT_MS);
+            ? (createAuthFetch(buildAuthHeaders(oc), REQUEST_TIMEOUT_MS, userSignal) as any)
+            : createDuplexFetch(REQUEST_TIMEOUT_MS, userSignal);
         const client = createOpencodeClient({
             baseUrl: oc.baseUrl,
             fetch: fetchImpl,
@@ -358,25 +421,56 @@ export const opencodeAdapter: IAgentProxyAdapter = {
                 }
 
                 if (command === "init") {
-                    const initRes = await (client.session as any).init({
-                        path: { id: sessionId },
-                        body: {}, // 使用 OpenCode 服务端默认模型
-                    });
-                    logSdkResponse("session.init", initRes);
-                    const msg = "已初始化项目并生成 AGENTS.md。OpenCode 已分析当前项目结构。";
-                    if (msg) callbacks.onChunk(msg);
+                    try {
+                        const initRes = await (client.session as any).command({
+                            path: { id: sessionId },
+                            body: { command: "init", arguments: args || "" },
+                        });
+                        logSdkResponse("session.command(init)", initRes);
+                        const text = extractCommandReplyText(initRes) || "执行成功：已初始化项目并生成 AGENTS.md。";
+                        callbacks.onChunk(text);
+                    } catch (initErr: unknown) {
+                        console.warn("[OpenCode] init failed:", initErr);
+                        const msg = formatErrorMessage(initErr);
+                        const isAbort = msg.includes("aborted") || msg.includes("AbortError");
+                        callbacks.onChunk(isAbort ? "执行失败：请求已取消或超时。" : `执行失败：${msg}`);
+                    }
                     callbacks.onDone();
                     return;
                 }
 
                 if (command === "undo" || command === "redo") {
-                    const cmdRes = await (client.session as any).command({
-                        path: { id: sessionId },
-                        body: { command, arguments: args || "" }, // 不传 model，用服务端默认
-                    });
-                    logSdkResponse("session.command(undo/redo)", cmdRes);
-                    const text = extractPartsOrText(cmdRes) || "已执行。";
-                    callbacks.onChunk(text);
+                    try {
+                        if (command === "redo") {
+                            const unrevertRes = await (client.session as any).unrevert({
+                                path: { id: sessionId },
+                            });
+                            logSdkResponse("session.unrevert(redo)", unrevertRes);
+                            callbacks.onChunk("已重做。");
+                        } else {
+                            const listRes = await (client.session as any).messages({
+                                path: { id: sessionId },
+                            });
+                            const list = (listRes as any)?.data ?? listRes;
+                            const items = Array.isArray(list) ? list : [];
+                            const lastAssistant = [...items].reverse().find((m: { info?: { role?: string } }) => m?.info?.role === "assistant");
+                            const messageID = lastAssistant?.info?.id;
+                            if (!messageID) {
+                                callbacks.onChunk("没有可撤销的助手消息。");
+                                callbacks.onDone();
+                                return;
+                            }
+                            await (client.session as any).revert({
+                                path: { id: sessionId },
+                                body: { messageID },
+                            });
+                            logSdkResponse("session.revert(undo)", { messageID });
+                            callbacks.onChunk("已撤销。");
+                        }
+                    } catch (undoRedoErr: unknown) {
+                        console.warn("[OpenCode] undo/redo failed:", undoRedoErr);
+                        callbacks.onChunk(`执行失败：${formatErrorMessage(undoRedoErr)}`);
+                    }
                     callbacks.onDone();
                     return;
                 }
@@ -385,55 +479,126 @@ export const opencodeAdapter: IAgentProxyAdapter = {
                     const shareRes = await (client.session as any).share({ path: { id: sessionId } });
                     logSdkResponse("session.share", shareRes);
                     const data = (shareRes as any).data ?? shareRes;
-                    const url = data?.shareURL ?? data?.shareUrl ?? data?.url ?? "";
-                    const msg = url ? `分享链接：${url}` : "分享完成（请查看 OpenCode 返回的链接）。";
-                    if (msg) callbacks.onChunk(msg);
+                    const url = (data?.share as { url?: string })?.url ?? data?.shareURL ?? data?.shareUrl ?? data?.url ?? "";
+                    callbacks.onChunk(url ? `分享链接：${url}` : "分享完成（请查看 OpenCode 返回的链接）。");
                     callbacks.onDone();
                     return;
                 }
 
-                // 其他未单独处理的 //xxx 当作普通指令发给 OpenCode command
-                const cmdRes = await (client.session as any).command({
-                    path: { id: sessionId },
-                    body: { command, arguments: args || "" }, // 不传 model，用服务端默认
-                });
-                logSdkResponse("session.command(//xxx)", cmdRes);
-                const text = extractPartsOrText(cmdRes) || "已执行。";
-                callbacks.onChunk(text);
+                // 其他未单独处理的 /xxx 当作普通指令发给 OpenCode command
+                try {
+                    const cmdRes = await (client.session as any).command({
+                        path: { id: sessionId },
+                        body: { command, arguments: args || "", agent: "build" },
+                    });
+                    logSdkResponse("session.command(/xxx)", cmdRes);
+                    const text = extractCommandReplyText(cmdRes) || "已执行。";
+                    callbacks.onChunk(text);
+                } catch (cmdErr: unknown) {
+                    console.warn("[OpenCode] command failed:", cmdErr);
+                    callbacks.onChunk(`执行失败：${formatErrorMessage(cmdErr)}`);
+                }
                 callbacks.onDone();
                 return;
             }
 
-            // 普通对话：服务端可能返回 204/关闭连接或长时间不返回，需在失败/超时时 fallback 到轮询
+            // 普通对话：使用 promptAsync + event 流式接收 message.part.updated（delta）与 session.idle 结束
             sessionId = await ensureSession();
-            let text = "";
+            const opencodeSessionId = sessionId;
+
+            const subscribeResult = await (client.event as any).subscribe({
+                signal: userSignal,
+            });
+            const eventStream = subscribeResult?.stream;
+            if (!eventStream || typeof eventStream[Symbol.asyncIterator] !== "function") {
+                throw new Error("OpenCode event.subscribe() 未返回可迭代 stream");
+            }
+
             try {
-                const promptRes = await (client.session as any).prompt({
-                    path: { id: sessionId },
-                    body: { parts: [{ type: "text", text: options.message }] }, // 不传 model，用 OpenCode 服务端默认
+                await (client.session as any).promptAsync({
+                    path: { id: opencodeSessionId },
+                    body: { parts: [{ type: "text", text: options.message }] },
                 });
-                logSdkResponse("session.prompt", promptRes);
-                text = extractPartsOrText(promptRes);
             } catch (promptErr: unknown) {
-                const msg = promptErr instanceof Error ? promptErr.message : String(promptErr);
-                const cause = promptErr instanceof Error ? (promptErr as Error & { cause?: { code?: string } })?.cause : undefined;
-                const isClosedOrTimeout =
-                    msg.includes("fetch failed") ||
-                    msg.includes("other side closed") ||
-                    msg.includes("aborted due to timeout") ||
-                    msg.includes("TimeoutError") ||
-                    cause?.code === "UND_ERR_SOCKET";
-                if (isClosedOrTimeout) {
-                    console.warn("[OpenCode] session.prompt 请求被关闭或超时，改为轮询 messages 获取回复:", msg);
-                    text = await pollForAssistantMessage(client.session as any, sessionId);
-                } else {
-                    throw promptErr;
+                callbacks.onChunk(`请求失败：${formatErrorMessage(promptErr)}`);
+                callbacks.onDone();
+                return;
+            }
+
+            // 取刚发送的用户消息 ID，流式时只转发助手消息的 part，避免把用户问题当助手内容回显
+            let userMessageID: string | null = null;
+            try {
+                const listRes = await (client.session as any).messages({ path: { id: opencodeSessionId } });
+                const list = (listRes as any)?.data ?? listRes;
+                if (Array.isArray(list) && list.length > 0) {
+                    // 列表可能是新→旧或旧→新，取「最后一条 user」为刚发的
+                    for (let i = list.length - 1; i >= 0; i--) {
+                        const item = list[i] as { info?: { role?: string; id?: string } };
+                        if (item?.info?.role === "user" && item?.info?.id) {
+                            userMessageID = item.info.id;
+                            break;
+                        }
+                    }
+                    if (userMessageID == null) {
+                        for (let i = 0; i < list.length; i++) {
+                            const item = list[i] as { info?: { role?: string; id?: string } };
+                            if (item?.info?.role === "user" && item?.info?.id) {
+                                userMessageID = item.info.id;
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (_) {
+                // 忽略，仅用于过滤用户 part
+            }
+
+            let hadAnyChunk = false;
+            let lastTextLength = 0;
+            try {
+                for await (const event of eventStream) {
+                    if (userSignal?.aborted) break;
+                    const ev = event as {
+                        type?: string;
+                        properties?: {
+                            sessionID?: string;
+                            part?: { type?: string; sessionID?: string; messageID?: string; text?: string };
+                            delta?: string;
+                            info?: { role?: string; id?: string };
+                        };
+                    };
+                    const info = ev.properties?.info as { sessionID?: string; role?: string; id?: string } | undefined;
+                    if (ev.type === "message.updated" && info?.sessionID === opencodeSessionId && info?.role === "user" && info?.id) {
+                        userMessageID = info.id;
+                    }
+                    if (ev.type === "message.part.updated" && ev.properties?.part?.sessionID === opencodeSessionId && ev.properties.part.type === "text") {
+                        const part = ev.properties.part;
+                        if (userMessageID != null && part.messageID === userMessageID) continue; // 跳过用户消息的 part，只转发助手的
+                        const delta = ev.properties.delta;
+                        const fullText = typeof part?.text === "string" ? part.text : "";
+                        if (typeof delta === "string" && delta) {
+                            hadAnyChunk = true;
+                            callbacks.onChunk(delta);
+                            lastTextLength += delta.length; // 避免后续 fullText 再发一遍造成重复
+                        } else if (fullText.length > lastTextLength) {
+                            hadAnyChunk = true;
+                            callbacks.onChunk(fullText.slice(lastTextLength));
+                            lastTextLength = fullText.length;
+                        }
+                    }
+                    if (ev.type === "session.idle" && ev.properties?.sessionID === opencodeSessionId) {
+                        break;
+                    }
+                }
+            } catch (streamErr: unknown) {
+                if ((streamErr as Error)?.name !== "AbortError") {
+                    console.warn("[OpenCode] event stream error:", streamErr);
                 }
             }
-            if (!text) {
-                text = await pollForAssistantMessage(client.session as any, sessionId);
+            if (!hadAnyChunk) {
+                const fallback = await pollForAssistantMessage(client.session as any, opencodeSessionId);
+                if (fallback) callbacks.onChunk(fallback);
             }
-            callbacks.onChunk(text || "（暂无回复或请求超时）");
             callbacks.onDone();
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
@@ -487,39 +652,65 @@ export const opencodeAdapter: IAgentProxyAdapter = {
             if (command === "help") return OPENCODE_HELP_TEXT.trim();
 
             if (command === "init") {
-                const initRes = await (client.session as any).init({
-                    path: { id: sessionId },
-                    body: {}, // 使用 OpenCode 服务端默认模型
-                });
-                logSdkResponse("session.init (runCollect)", initRes);
-                return "已初始化项目并生成 AGENTS.md。";
+                try {
+                    const initRes = await (client.session as any).command({
+                        path: { id: sessionId },
+                        body: { command: "init", arguments: args || "" },
+                    });
+                    logSdkResponse("session.command(init) runCollect", initRes);
+                    return extractCommandReplyText(initRes) || "执行成功：已初始化项目并生成 AGENTS.md。";
+                } catch (e: unknown) {
+                    console.warn("[OpenCode] init failed (runCollect):", e);
+                    const msg = formatErrorMessage(e);
+                    const isAbort = msg.includes("aborted") || msg.includes("AbortError");
+                    return isAbort ? "执行失败：请求已取消或超时。" : `执行失败：${msg}`;
+                }
             }
 
             if (command === "undo" || command === "redo") {
-                const cmdRes = await (client.session as any).command({
-                    path: { id: sessionId },
-                    body: { command, arguments: args || "" }, // 不传 model，用服务端默认
-                });
-                logSdkResponse("session.command(undo/redo) runCollect", cmdRes);
-                const data = (cmdRes as any).data ?? cmdRes;
-                return partsToText(data?.parts).trim() || "(无文本回复)";
+                try {
+                    if (command === "redo") {
+                        await (client.session as any).unrevert({ path: { id: sessionId } });
+                        logSdkResponse("session.unrevert(redo) runCollect", {});
+                        return "已重做。";
+                    }
+                    const listRes = await (client.session as any).messages({
+                        path: { id: sessionId },
+                    });
+                    const list = (listRes as any)?.data ?? listRes;
+                    const items = Array.isArray(list) ? list : [];
+                    const lastAssistant = [...items].reverse().find((m: { info?: { role?: string } }) => m?.info?.role === "assistant");
+                    const messageID = lastAssistant?.info?.id;
+                    if (!messageID) return "没有可撤销的助手消息。";
+                    await (client.session as any).revert({
+                        path: { id: sessionId },
+                        body: { messageID },
+                    });
+                    logSdkResponse("session.revert(undo) runCollect", { messageID });
+                    return "已撤销。";
+                } catch (e: unknown) {
+                    return `执行失败：${formatErrorMessage(e)}`;
+                }
             }
 
             if (command === "share") {
                 const shareRes = await (client.session as any).share({ path: { id: sessionId } });
                 logSdkResponse("session.share (runCollect)", shareRes);
                 const data = (shareRes as any).data ?? shareRes;
-                const url = data?.shareURL ?? data?.shareUrl ?? data?.url ?? "";
+                const url = (data?.share as { url?: string })?.url ?? data?.shareURL ?? data?.shareUrl ?? data?.url ?? "";
                 return url ? `分享链接：${url}` : "分享完成。";
             }
 
-            const cmdRes = await (client.session as any).command({
-                path: { id: sessionId },
-                body: { command, arguments: args || "" }, // 不传 model，用服务端默认
-            });
-            logSdkResponse("session.command(//xxx) runCollect", cmdRes);
-            const data = (cmdRes as any).data ?? cmdRes;
-            return partsToText(data?.parts).trim() || "(无文本回复)";
+            try {
+                const cmdRes = await (client.session as any).command({
+                    path: { id: sessionId },
+                    body: { command, arguments: args || "", agent: "build" },
+                });
+                logSdkResponse("session.command(/xxx) runCollect", cmdRes);
+                return extractCommandReplyText(cmdRes) || "已执行。";
+            } catch (e: unknown) {
+                return `执行失败：${formatErrorMessage(e)}`;
+            }
         }
 
         sessionId = await ensureSession();

@@ -41,8 +41,28 @@
             :content-parts="message.contentParts"
           />
 
-          <!-- Streaming Message: Only show if there is actual content or active tools to show -->
-          <div v-if="(isStreaming || toolExecutions.length > 0) && (currentMessage || toolExecutions.length > 0)" class="streaming-message">
+          <!-- Executing placeholder: show as soon as streaming starts, before any content -->
+          <div v-if="isStreaming && !currentMessage && toolExecutions.length === 0" class="streaming-placeholder">
+            <div class="message-avatar">
+              <span class="avatar-icon">
+                <IconAssistantAvatar />
+              </span>
+            </div>
+            <div class="message-content">
+              <div class="message-header">
+                <span class="message-role">{{ t('chat.assistant') }}</span>
+                <span class="typing-label">{{ t('chat.thinking') }}</span>
+              </div>
+              <div class="typing-indicator">
+                <span class="dot" aria-hidden="true"></span>
+                <span class="dot" aria-hidden="true"></span>
+                <span class="dot" aria-hidden="true"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Streaming Message: when there is actual content or active tools -->
+          <div v-else-if="(isStreaming || toolExecutions.length > 0) && (currentMessage || toolExecutions.length > 0)" class="streaming-message">
             <ChatMessage
               :role="'assistant'"
               :content="currentMessage || (toolExecutions.length > 0 ? t('chat.thinking') : '')"
@@ -159,6 +179,7 @@ import { agentConfigAPI } from '@/api';
 import ChatMessage from '@/components/ChatMessage.vue';
 import ChatSessionsPanel from '@/components/ChatSessionsPanel.vue';
 import ToolExecutionCard from '@/components/ToolExecutionCard.vue';
+import IconAssistantAvatar from '@/components/icons/IconAssistantAvatar.vue';
 
 const STORAGE_KEY_LAST_AGENT = 'openbot.lastSelectedAgentId';
 
@@ -168,6 +189,7 @@ export default {
     ChatMessage,
     ChatSessionsPanel,
     ToolExecutionCard,
+    IconAssistantAvatar,
   },
   setup() {
     const route = useRoute();
@@ -376,6 +398,9 @@ export default {
 
     watch(() => messages.value.length, scrollToBottom);
     watch(() => currentMessage.value, scrollToBottom);
+    watch(isStreaming, (streaming) => {
+      if (streaming) nextTick(scrollToBottom);
+    });
 
     // 智能安装：从智能体配置跳转过来时预填输入框
     watch(
@@ -580,6 +605,100 @@ export default {
 
 .streaming-message {
   opacity: 0.9;
+}
+
+/* 发送后、首包前：助手位「正在执行」占位 + 动画 */
+.streaming-placeholder {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  align-items: flex-start;
+  animation: slideInUp 0.35s ease-out;
+}
+
+.streaming-placeholder .message-avatar {
+  flex-shrink: 0;
+}
+
+.streaming-placeholder .avatar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  color: #fff;
+}
+
+.streaming-placeholder .message-content {
+  flex: 1;
+  max-width: 80%;
+  min-width: 0;
+  padding-left: var(--spacing-sm);
+}
+
+.streaming-placeholder .message-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.streaming-placeholder .message-role {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.streaming-placeholder .typing-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.streaming-placeholder .typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-lg);
+  min-height: 48px;
+  width: fit-content;
+}
+
+.streaming-placeholder .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent-primary);
+  opacity: 0.85;
+  animation: typingBounce 1.4s ease-in-out infinite both;
+}
+
+.streaming-placeholder .dot:nth-child(1) { animation-delay: 0s; }
+.streaming-placeholder .dot:nth-child(2) { animation-delay: 0.16s; }
+.streaming-placeholder .dot:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes typingBounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.85;
+  }
+  30% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
 }
 
 .input-area {

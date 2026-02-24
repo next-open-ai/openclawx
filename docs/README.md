@@ -24,6 +24,7 @@ docs/
 │   └── skills.md               # 技能系统
 ├── reference/                  # 参考
 │   └── faq.md                  # 常见问题
+├── release-notes.md            # 发布说明
 └── channel-streaming-design.md # 通道流式设计（开发/设计参考）
 ```
 
@@ -72,6 +73,7 @@ docs/
 | 文档 | 说明 |
 |------|------|
 | [常见问题](reference/faq.md) | 安装失败、端口占用、通道不回复等 FAQ |
+| [发布说明](release-notes.md) | 各版本功能更新与问题修复记录 |
 
 ---
 

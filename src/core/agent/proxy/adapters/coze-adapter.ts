@@ -179,6 +179,11 @@ export const cozeAdapter: IAgentProxyAdapter = {
         };
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        const userSignal = options.signal;
+        if (userSignal) {
+            if (userSignal.aborted) controller.abort();
+            else userSignal.addEventListener("abort", () => controller.abort(), { once: true });
+        }
         try {
             console.log(`[Coze] POST ${url} (stream=true)`);
             const res = await fetch(url, {

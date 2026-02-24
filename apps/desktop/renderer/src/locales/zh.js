@@ -347,7 +347,7 @@ export default {
     startConversation: '开始对话',
     startConversationHint: '发送一条消息即可与 Agent 开始聊天',
     placeholder: '输入消息…（Shift+Enter 换行）',
-    placeholderOpenCode: '输入消息，或使用 //init、//undo、//redo、//share、//help 等 OpenCode 指令',
+    placeholderOpenCode: '输入消息，或使用 /init、/undo、/redo、/share、/help 等 OpenCode 指令',
     thinking: '思考中…',
     sessionsPanel: '会话列表',
     showSessions: '显示会话列表',

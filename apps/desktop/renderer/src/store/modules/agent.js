@@ -150,9 +150,11 @@ export const useAgentStore = defineStore('agent', {
         async cancelCurrentTurn() {
             if (!this.currentSession?.id || !this.isStreaming) return;
             try {
-                await socketService.cancelAgent(this.currentSession.id);
+                await socketService.cancelAgent(this.currentSession.id, this.currentSession.agentId);
             } catch (error) {
                 console.error('Failed to cancel agent turn:', error);
+            } finally {
+                this.isStreaming = false;
             }
         },
 

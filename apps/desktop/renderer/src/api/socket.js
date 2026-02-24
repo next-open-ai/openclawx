@@ -140,9 +140,13 @@ class SocketService {
 
     /**
      * Abort the current agent turn for the given session.
+     * @param {string} sessionId
+     * @param {string} [agentId] - 当前会话智能体，便于后端定位 local/proxy 会话
      */
-    async cancelAgent(sessionId) {
-        return this.call('agent.cancel', { sessionId }, 10000);
+    async cancelAgent(sessionId, agentId) {
+        const params = { sessionId };
+        if (agentId) params.agentId = agentId;
+        return this.call('agent.cancel', params, 10000);
     }
 
     async unsubscribeFromSession() {

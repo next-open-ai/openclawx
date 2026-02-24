@@ -19,7 +19,7 @@ export async function runForChannelStream(
     if (!adapter) {
         throw new Error(`No AgentProxy adapter registered for type: "${runnerType}"`);
     }
-    await adapter.runStream({ ...options, agentId }, config, callbacks);
+    await adapter.runStream({ ...options, agentId, signal: options.signal }, config, callbacks);
 }
 
 export async function runForChannelCollect(options: RunAgentForChannelOptions): Promise<string> {

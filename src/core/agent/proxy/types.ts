@@ -7,6 +7,8 @@ export interface RunAgentForChannelOptions {
     sessionId: string;
     message: string;
     agentId: string;
+    /** When aborted (e.g. user clicked stop), adapters should stop the run. */
+    signal?: AbortSignal;
 }
 
 export interface RunAgentStreamCallbacks {

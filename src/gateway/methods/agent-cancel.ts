@@ -1,20 +1,34 @@
 import type { GatewayClient } from "../types.js";
 import { agentManager } from "../../core/agent/agent-manager.js";
+import { abortProxyRun } from "../proxy-run-abort.js";
+
+const COMPOSITE_KEY_SEP = "::";
 
 /**
  * Handle agent.cancel: abort the current turn for the given session.
- * Uses pi-coding-agent's session.abort() to stop the running agent and wait until idle.
+ * - Proxy agents: abort in-flight run via registered AbortController.
+ * - Local agent: uses pi-coding-agent's session.abort().
  */
 export async function handleAgentCancel(
     client: GatewayClient,
-    params: { sessionId?: string }
+    params: { sessionId?: string; agentId?: string }
 ): Promise<{ status: string }> {
     const sessionId = params?.sessionId ?? client.sessionId;
     if (!sessionId) {
         throw new Error("No session ID available");
     }
 
-    const session = agentManager.getSession(sessionId);
+    const agentId = params?.agentId ?? client.agentId ?? "default";
+
+    if (abortProxyRun(sessionId, agentId)) {
+        return { status: "aborted" };
+    }
+
+    const compositeKey = sessionId + COMPOSITE_KEY_SEP + agentId;
+    let session = agentManager.getSession(compositeKey);
+    if (!session) {
+        session = agentManager.getSessionBySessionId(sessionId);
+    }
     if (!session) {
         return { status: "no_session" };
     }

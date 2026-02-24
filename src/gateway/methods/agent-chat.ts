@@ -5,6 +5,7 @@ import { getSessionCurrentAgentResolver, getSessionCurrentAgentUpdater } from ".
 import { send, createEvent } from "../utils.js";
 import { connectedClients } from "../clients.js";
 import { getDesktopConfig, loadDesktopAgentConfig } from "../../core/config/desktop-config.js";
+import { registerProxyRunAbort } from "../proxy-run-abort.js";
 
 const COMPOSITE_KEY_SEP = "::";
 
@@ -85,12 +86,21 @@ async function handleAgentChatInner(
 
     // 代理智能体（Coze / OpenClawX / OpenCode）：走 AgentProxy 统一入口，流式结果通过 WebSocket 推给客户端
     if (isProxyAgent) {
+        const { signal, unregister } = registerProxyRunAbort(targetSessionId, currentAgentId);
+        const finishAndUnregister = () => {
+            unregister();
+            broadcastToSession(targetSessionId, createEvent("turn_end", { sessionId: targetSessionId, content: "" }));
+            broadcastToSession(targetSessionId, createEvent("message_complete", { sessionId: targetSessionId, content: "" }));
+            broadcastToSession(targetSessionId, createEvent("agent_end", { sessionId: targetSessionId }));
+            broadcastToSession(targetSessionId, createEvent("conversation_end", { sessionId: targetSessionId }));
+        };
         try {
             await runForChannelStream(
                 {
                     sessionId: targetSessionId,
                     message,
                     agentId: currentAgentId,
+                    signal,
                 },
                 {
                     onChunk(delta: string) {
@@ -101,24 +111,22 @@ async function handleAgentChatInner(
                         broadcastToSession(targetSessionId, createEvent("message_complete", { sessionId: targetSessionId, content: "" }));
                     },
                     onDone() {
-                        // 与本地 agent 一致：先 turn_end / message_complete，再 agent_end / conversation_end，保证前端正确落库并允许再次输入
-                        broadcastToSession(targetSessionId, createEvent("turn_end", { sessionId: targetSessionId, content: "" }));
-                        broadcastToSession(targetSessionId, createEvent("message_complete", { sessionId: targetSessionId, content: "" }));
-                        broadcastToSession(targetSessionId, createEvent("agent_end", { sessionId: targetSessionId }));
-                        broadcastToSession(targetSessionId, createEvent("conversation_end", { sessionId: targetSessionId }));
+                        finishAndUnregister();
                     },
                 }
             );
             return { status: "completed", sessionId: targetSessionId };
         } catch (error: any) {
-            console.error(`Error in agent chat (proxy ${runnerType}):`, error);
-            const errMsg = error?.message || String(error);
-            broadcastToSession(
-                targetSessionId,
-                createEvent("agent.chunk", { text: `请求失败：${errMsg}`, sessionId: targetSessionId }),
-            );
-            broadcastToSession(targetSessionId, createEvent("agent_end", { sessionId: targetSessionId }));
-            broadcastToSession(targetSessionId, createEvent("conversation_end", { sessionId: targetSessionId }));
+            const isAbort = error?.name === "AbortError" || (typeof error?.message === "string" && error.message.includes("abort"));
+            if (!isAbort) console.error(`Error in agent chat (proxy ${runnerType}):`, error);
+            finishAndUnregister();
+            if (!isAbort) {
+                const errMsg = error?.message || String(error);
+                broadcastToSession(
+                    targetSessionId,
+                    createEvent("agent.chunk", { text: `请求失败：${errMsg}`, sessionId: targetSessionId }),
+                );
+            }
             return { status: "completed", sessionId: targetSessionId };
         }
     }
