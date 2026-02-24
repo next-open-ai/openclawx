@@ -242,6 +242,7 @@
               <select v-model="proxyCreateForm.runnerType" class="form-input">
                 <option value="coze">{{ t('agents.runnerTypeCoze') }}</option>
                 <option value="openclawx">{{ t('agents.runnerTypeOpenclawx') }}</option>
+                <option value="opencode">{{ t('agents.runnerTypeOpencode') }}</option>
               </select>
             </div>
             <template v-if="proxyCreateForm.runnerType === 'coze'">
@@ -322,6 +323,58 @@
                 />
               </div>
             </template>
+            <template v-if="proxyCreateForm.runnerType === 'opencode'">
+              <p class="form-hint">{{ t('agents.opencodeHint') }}</p>
+              <div class="form-group">
+                <label>{{ t('agents.opencodeAddress') }}</label>
+                <input
+                  v-model="proxyCreateForm.opencode.address"
+                  type="text"
+                  class="form-input"
+                  :placeholder="t('agents.opencodeAddressPlaceholder')"
+                />
+              </div>
+              <div class="form-group">
+                <label>{{ t('agents.opencodePort') }}</label>
+                <input
+                  v-model.number="proxyCreateForm.opencode.port"
+                  type="number"
+                  min="1"
+                  max="65535"
+                  class="form-input"
+                  :placeholder="t('agents.opencodePortPlaceholder')"
+                />
+              </div>
+              <div class="form-group">
+                <label>{{ t('agents.opencodeUsername') }}</label>
+                <input
+                  v-model="proxyCreateForm.opencode.username"
+                  type="text"
+                  class="form-input"
+                  :placeholder="t('agents.opencodeUsernamePlaceholder')"
+                />
+              </div>
+              <div class="form-group">
+                <label>{{ t('agents.opencodePassword') }}</label>
+                <input
+                  v-model="proxyCreateForm.opencode.password"
+                  type="password"
+                  class="form-input"
+                  :placeholder="t('agents.opencodePasswordPlaceholder')"
+                  autocomplete="off"
+                />
+              </div>
+              <div class="form-group">
+                <label>{{ t('agents.opencodeModel') }}</label>
+                <input
+                  v-model="proxyCreateForm.opencode.model"
+                  type="text"
+                  class="form-input"
+                  :placeholder="t('agents.opencodeModelPlaceholder')"
+                />
+              </div>
+              <p class="form-hint">{{ t('agents.opencodeHint') }}</p>
+            </template>
             <p v-if="proxyCreateError" class="form-error">{{ proxyCreateError }}</p>
             <div class="modal-footer-actions">
               <button type="button" class="btn-secondary" @click="showCreateProxyModal = false">
@@ -390,6 +443,7 @@ export default {
         endpoint: '',
       },
       openclawx: { baseUrl: '', apiKey: '' },
+      opencode: { address: '', port: 4096, username: '', password: '', model: '' },
     });
     const proxyCreateError = ref('');
     const proxyCreateSaving = ref(false);
@@ -398,7 +452,7 @@ export default {
       const list = Array.isArray(agents.value) ? agents.value : [];
       return list.filter((a) => {
         const rt = a?.runnerType;
-        return rt !== 'coze' && rt !== 'openclawx';
+        return rt !== 'coze' && rt !== 'openclawx' && rt !== 'opencode';
       });
     });
 
@@ -406,7 +460,7 @@ export default {
       const list = Array.isArray(agents.value) ? agents.value : [];
       return list.filter((a) => {
         const rt = a?.runnerType;
-        return rt === 'coze' || rt === 'openclawx';
+        return rt === 'coze' || rt === 'openclawx' || rt === 'opencode';
       });
     });
 
@@ -414,6 +468,7 @@ export default {
       const rt = agent?.runnerType;
       if (rt === 'coze') return t('agents.runnerTypeCoze');
       if (rt === 'openclawx') return t('agents.runnerTypeOpenclawx');
+      if (rt === 'opencode') return t('agents.runnerTypeOpencode');
       return rt || '—';
     }
 
@@ -538,6 +593,7 @@ export default {
             endpoint: '',
           },
           openclawx: { baseUrl: '', apiKey: '' },
+          opencode: { address: '', port: 4096, username: '', password: '', model: '' },
         };
       }
     });
@@ -591,6 +647,16 @@ export default {
           updateBody.openclawx = {
             baseUrl: (proxyCreateForm.value.openclawx?.baseUrl || '').trim() || undefined,
             apiKey: (proxyCreateForm.value.openclawx?.apiKey || '').trim() || undefined,
+          };
+        } else if (runnerType === 'opencode') {
+          const oc = proxyCreateForm.value.opencode;
+          const portNum = typeof oc?.port === 'number' ? oc.port : parseInt(String(oc?.port || ''), 10);
+          updateBody.opencode = {
+            address: (oc?.address || '').trim(),
+            port: Number.isFinite(portNum) && portNum > 0 ? portNum : 4096,
+            username: (oc?.username || '').trim() || undefined,
+            password: (oc?.password || '').trim() || undefined,
+            model: (oc?.model || '').trim() || undefined,
           };
         }
         await agentConfigAPI.updateAgent(id, updateBody);

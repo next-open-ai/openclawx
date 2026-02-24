@@ -33,6 +33,7 @@
         "@nestjs/platform-express": "^10.3.0",
         "@nestjs/platform-socket.io": "^10.3.0",
         "@nestjs/websockets": "^10.3.0",
+        "@opencode-ai/sdk": "^1.2.10",
         "@sinclair/typebox": "^0.34.41",
         "adm-zip": "^0.5.16",
         "agent-browser": "^0.8.5",

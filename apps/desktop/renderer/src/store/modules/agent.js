@@ -228,8 +228,9 @@ export const useAgentStore = defineStore('agent', {
         },
 
         handleAgentChunk(data) {
-            // Safety: Ensure we have a session selected
+            // Safety: Ensure we have a session selected and chunk belongs to current session
             if (!this.currentSession) return;
+            if (data?.sessionId != null && data.sessionId !== this.currentSession?.id) return;
 
             // Auto-start streaming if not active (handles multi-turn agent responses)
             if (!this.isStreaming) {

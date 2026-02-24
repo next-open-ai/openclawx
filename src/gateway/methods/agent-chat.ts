@@ -77,13 +77,13 @@ async function handleAgentChatInner(
     }
 
     const runnerType = agentConfig?.runnerType ?? "local";
-    const isProxyAgent = runnerType === "coze" || runnerType === "openclawx";
+    const isProxyAgent = runnerType === "coze" || runnerType === "openclawx" || runnerType === "opencode";
 
     if (isProxyAgent) {
         console.log(`[agent.chat] Using proxy agent (${runnerType}) for session=${targetSessionId}, agentId=${currentAgentId}`);
     }
 
-    // 代理智能体（Coze / OpenClawX）：走 AgentProxy 统一入口，流式结果通过 WebSocket 推给客户端
+    // 代理智能体（Coze / OpenClawX / OpenCode）：走 AgentProxy 统一入口，流式结果通过 WebSocket 推给客户端
     if (isProxyAgent) {
         try {
             await runForChannelStream(
@@ -94,13 +94,16 @@ async function handleAgentChatInner(
                 },
                 {
                     onChunk(delta: string) {
-                        broadcastToSession(targetSessionId, createEvent("agent.chunk", { text: delta }));
+                        broadcastToSession(targetSessionId, createEvent("agent.chunk", { text: delta, sessionId: targetSessionId }));
                     },
                     onTurnEnd() {
                         broadcastToSession(targetSessionId, createEvent("turn_end", { sessionId: targetSessionId, content: "" }));
                         broadcastToSession(targetSessionId, createEvent("message_complete", { sessionId: targetSessionId, content: "" }));
                     },
                     onDone() {
+                        // 与本地 agent 一致：先 turn_end / message_complete，再 agent_end / conversation_end，保证前端正确落库并允许再次输入
+                        broadcastToSession(targetSessionId, createEvent("turn_end", { sessionId: targetSessionId, content: "" }));
+                        broadcastToSession(targetSessionId, createEvent("message_complete", { sessionId: targetSessionId, content: "" }));
                         broadcastToSession(targetSessionId, createEvent("agent_end", { sessionId: targetSessionId }));
                         broadcastToSession(targetSessionId, createEvent("conversation_end", { sessionId: targetSessionId }));
                     },
@@ -109,7 +112,14 @@ async function handleAgentChatInner(
             return { status: "completed", sessionId: targetSessionId };
         } catch (error: any) {
             console.error(`Error in agent chat (proxy ${runnerType}):`, error);
-            throw error;
+            const errMsg = error?.message || String(error);
+            broadcastToSession(
+                targetSessionId,
+                createEvent("agent.chunk", { text: `请求失败：${errMsg}`, sessionId: targetSessionId }),
+            );
+            broadcastToSession(targetSessionId, createEvent("agent_end", { sessionId: targetSessionId }));
+            broadcastToSession(targetSessionId, createEvent("conversation_end", { sessionId: targetSessionId }));
+            return { status: "completed", sessionId: targetSessionId };
         }
     }
 

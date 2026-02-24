@@ -88,6 +88,7 @@ export async function startGatewayServer(port: number = 38080): Promise<{
     port: number;
     close: () => Promise<void>;
 }> {
+    process.env.PORT = String(port);
     await ensureDesktopConfigInitialized();
     console.log(`Starting gateway server on port ${port}...`);
 

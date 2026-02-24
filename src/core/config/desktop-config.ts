@@ -98,8 +98,8 @@ interface DesktopConfigJson {
 /** MCP 服务器配置（与 core/mcp 类型一致，避免 core/config 依赖 core/mcp 实现） */
 export type DesktopMcpServerConfig = import("../mcp/index.js").McpServerConfig;
 
-/** Agent 执行器类型：local=本机 pi-coding-agent，coze/openclawx=远程代理 */
-export type AgentRunnerType = "local" | "coze" | "openclawx";
+/** Agent 执行器类型：local=本机 pi-coding-agent，coze/openclawx/opencode=远程代理 */
+export type AgentRunnerType = "local" | "coze" | "openclawx" | "opencode";
 
 /** Coze 站点：国内站 api.coze.cn / 国际站 api.coze.com，凭证不通用 */
 export type CozeRegion = "cn" | "com";
@@ -136,6 +136,26 @@ export interface AgentOpenClawXConfig {
     apiKey?: string;
 }
 
+/** OpenCode 代理配置：仅对接 [OpenCode 官方 Server API](https://opencode.ai/docs/server)（Session/Message + HTTP Basic） */
+export interface AgentOpenCodeConfig {
+    /** 地址（主机名或 IP） */
+    address: string;
+    /** 端口（opencode serve 默认 4096） */
+    port: number;
+    /** HTTP Basic 认证密码（见 OPENCODE_SERVER_PASSWORD） */
+    password?: string;
+    /** HTTP Basic 认证用户名（默认 opencode） */
+    username?: string;
+    /** @deprecated 仅保留向后兼容，产品仅支持官方 Server API */
+    apiStyle?: "server" | "openai";
+    /** @deprecated 仅保留向后兼容 */
+    path?: string;
+    /** @deprecated 仅保留向后兼容 */
+    streamPath?: string;
+    /** 请求体中的 model 字段；可选。不填时用 OpenCode 服务端默认（如 opencode/minimax-m2.5-free、opencode/glm-5-free） */
+    model?: string;
+}
+
 interface AgentItem {
     id: string;
     name?: string;
@@ -154,6 +174,8 @@ interface AgentItem {
     coze?: AgentCozeConfig;
     /** OpenClawX 代理配置，当 runnerType 为 openclawx 时使用 */
     openclawx?: AgentOpenClawXConfig;
+    /** OpenCode 代理配置，当 runnerType 为 opencode 时使用 */
+    opencode?: AgentOpenCodeConfig;
     /** 是否使用经验（长记忆）；默认 true */
     useLongMemory?: boolean;
 }
@@ -310,6 +332,8 @@ export interface DesktopAgentConfig {
     coze?: CozeResolvedConfig;
     /** OpenClawX 代理配置 */
     openclawx?: AgentOpenClawXConfig;
+    /** OpenCode 代理配置 */
+    opencode?: AgentOpenCodeConfig;
     /** 是否使用经验（长记忆）；默认 true */
     useLongMemory?: boolean;
 }
@@ -426,6 +450,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
     let runnerType: AgentRunnerType = "local";
     let coze: CozeResolvedConfig | undefined;
     let openclawx: AgentOpenClawXConfig | undefined;
+    let opencode: AgentOpenCodeConfig | undefined;
     if (existsSync(agentsPath)) {
         try {
             const rawAgents = await readFile(agentsPath, "utf-8");
@@ -433,7 +458,11 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
             const agentsList = Array.isArray(dataAgents.agents) ? dataAgents.agents : [];
             const agentRow = agentsList.find((a) => a.id === resolvedAgentId);
             if (agentRow) {
-                if (agentRow.runnerType === "coze" || agentRow.runnerType === "openclawx") {
+                if (
+                    agentRow.runnerType === "coze" ||
+                    agentRow.runnerType === "openclawx" ||
+                    agentRow.runnerType === "opencode"
+                ) {
                     runnerType = agentRow.runnerType;
                 }
                 if (agentRow.coze) {
@@ -473,6 +502,29 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
                         apiKey: agentRow.openclawx.apiKey?.trim(),
                     };
                 }
+                if (agentRow.opencode?.address != null && agentRow.opencode?.port != null) {
+                    const addr = String(agentRow.opencode.address).trim();
+                    const port = Number(agentRow.opencode.port);
+                    if (addr && !Number.isNaN(port) && port > 0) {
+                        const raw = agentRow.opencode;
+                        const apiStyle = raw.apiStyle === "openai" ? "openai" : "server";
+                        opencode = {
+                            address: addr,
+                            port,
+                            password:
+                                raw.password != null ? String(raw.password).trim() : undefined,
+                            username:
+                                raw.username != null ? String(raw.username).trim() || undefined : undefined,
+                            apiStyle,
+                            path: raw.path != null ? String(raw.path).trim() || undefined : undefined,
+                            streamPath:
+                                raw.streamPath != null
+                                    ? String(raw.streamPath).trim() || undefined
+                                    : undefined,
+                            model: raw.model != null ? String(raw.model).trim() || undefined : undefined,
+                        };
+                    }
+                }
             }
         } catch {
             // ignore
@@ -489,6 +541,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
         runnerType,
         coze,
         openclawx,
+        opencode,
         useLongMemory,
     };
 }

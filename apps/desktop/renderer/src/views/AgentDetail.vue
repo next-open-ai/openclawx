@@ -143,15 +143,22 @@
             <p class="form-hint">{{ t('agents.proxyConfigHint') }}</p>
             <div class="form-group">
               <label>{{ t('agents.runnerType') }}</label>
-              <template v-if="agent?.runnerType === 'coze' || agent?.runnerType === 'openclawx'">
+              <template v-if="agent?.runnerType === 'coze' || agent?.runnerType === 'openclawx' || agent?.runnerType === 'opencode'">
                 <p class="form-runner-type-fixed">
-                  {{ agent?.runnerType === 'coze' ? t('agents.runnerTypeCoze') : t('agents.runnerTypeOpenclawx') }}
+                  {{
+                    agent?.runnerType === 'coze'
+                      ? t('agents.runnerTypeCoze')
+                      : agent?.runnerType === 'openclawx'
+                        ? t('agents.runnerTypeOpenclawx')
+                        : t('agents.runnerTypeOpencode')
+                  }}
                 </p>
               </template>
               <select v-else v-model="proxyForm.runnerType" class="form-input">
                 <option value="local">{{ t('agents.runnerTypeLocal') }}</option>
                 <option value="coze">{{ t('agents.runnerTypeCoze') }}</option>
                 <option value="openclawx">{{ t('agents.runnerTypeOpenclawx') }}</option>
+                <option value="opencode">{{ t('agents.runnerTypeOpencode') }}</option>
               </select>
             </div>
             <template v-if="proxyForm.runnerType === 'coze'">
@@ -229,6 +236,57 @@
                   class="form-input"
                   :placeholder="t('agents.openclawxApiKeyPlaceholder')"
                   autocomplete="off"
+                />
+              </div>
+            </template>
+            <template v-if="proxyForm.runnerType === 'opencode'">
+              <p class="form-hint">{{ t('agents.opencodeHint') }}</p>
+              <div class="form-group">
+                <label>{{ t('agents.opencodeAddress') }}</label>
+                <input
+                  v-model="proxyForm.opencode.address"
+                  type="text"
+                  class="form-input"
+                  :placeholder="t('agents.opencodeAddressPlaceholder')"
+                />
+              </div>
+              <div class="form-group">
+                <label>{{ t('agents.opencodePort') }}</label>
+                <input
+                  v-model.number="proxyForm.opencode.port"
+                  type="number"
+                  min="1"
+                  max="65535"
+                  class="form-input"
+                  :placeholder="t('agents.opencodePortPlaceholder')"
+                />
+              </div>
+              <div class="form-group">
+                <label>{{ t('agents.opencodeUsername') }}</label>
+                <input
+                  v-model="proxyForm.opencode.username"
+                  type="text"
+                  class="form-input"
+                  :placeholder="t('agents.opencodeUsernamePlaceholder')"
+                />
+              </div>
+              <div class="form-group">
+                <label>{{ t('agents.opencodePassword') }}</label>
+                <input
+                  v-model="proxyForm.opencode.password"
+                  type="password"
+                  class="form-input"
+                  :placeholder="t('agents.opencodePasswordPlaceholder')"
+                  autocomplete="off"
+                />
+              </div>
+              <div class="form-group">
+                <label>{{ t('agents.opencodeModel') }}</label>
+                <input
+                  v-model="proxyForm.opencode.model"
+                  type="text"
+                  class="form-input"
+                  :placeholder="t('agents.opencodeModelPlaceholder')"
                 />
               </div>
             </template>
@@ -548,7 +606,7 @@ export default {
     const activeTab = ref('config');
     const isProxyAgent = computed(() => {
       const a = agent.value;
-      return a && (a.runnerType === 'coze' || a.runnerType === 'openclawx');
+      return a && (a.runnerType === 'coze' || a.runnerType === 'openclawx' || a.runnerType === 'opencode');
     });
     const tabs = computed(() => {
       const list = [{ id: 'config', label: t('agents.basicConfig'), icon: '⚙️' }];
@@ -575,6 +633,7 @@ export default {
         endpoint: '',
       },
       openclawx: { baseUrl: '', apiKey: '' },
+      opencode: { address: '', port: 4096, username: '', password: '', model: '' },
     });
     const configRef = ref({});
     const configuredModelsList = ref([]);
@@ -780,7 +839,10 @@ export default {
           const ep = (coze?.endpoint ?? '').trim();
           const endpoint = (ep === defaultCn || ep === defaultCom) ? '' : ep;
           proxyForm.value = {
-            runnerType: agent.value.runnerType === 'coze' || agent.value.runnerType === 'openclawx' ? agent.value.runnerType : 'local',
+            runnerType:
+              agent.value.runnerType === 'coze' || agent.value.runnerType === 'openclawx' || agent.value.runnerType === 'opencode'
+                ? agent.value.runnerType
+                : 'local',
             coze: {
               region: cozeRegion,
               cn: cnCreds,
@@ -790,6 +852,13 @@ export default {
             openclawx: {
               baseUrl: agent.value.openclawx?.baseUrl ?? '',
               apiKey: agent.value.openclawx?.apiKey ?? '',
+            },
+            opencode: {
+              address: agent.value.opencode?.address ?? '',
+              port: agent.value.opencode?.port ?? 4096,
+              username: agent.value.opencode?.username ?? '',
+              password: agent.value.opencode?.password ?? '',
+              model: agent.value.opencode?.model ?? '',
             },
           };
           const raw = agent.value.mcpServers;
@@ -804,6 +873,7 @@ export default {
             runnerType: 'local',
             coze: { region: 'com', cn: { botId: '', apiKey: '' }, com: { botId: '', apiKey: '' }, endpoint: '' },
             openclawx: { baseUrl: '', apiKey: '' },
+            opencode: { address: '', port: 4096, username: '', password: '', model: '' },
           };
           mcpServers.value = [];
         }
@@ -816,6 +886,7 @@ export default {
             runnerType: 'local',
             coze: { region: 'com', cn: { botId: '', apiKey: '' }, com: { botId: '', apiKey: '' }, endpoint: '' },
             openclawx: { baseUrl: '', apiKey: '' },
+            opencode: { address: '', port: 4096, username: '', password: '', model: '' },
           };
           mcpServers.value = [];
         } else {
@@ -861,9 +932,20 @@ export default {
             baseUrl: (proxyForm.value.openclawx.baseUrl || '').trim(),
             apiKey: (proxyForm.value.openclawx.apiKey || '').trim() || undefined,
           };
+        } else if (proxyForm.value.runnerType === 'opencode') {
+          const oc = proxyForm.value.opencode;
+          const portNum = typeof oc.port === 'number' ? oc.port : parseInt(String(oc.port || ''), 10);
+          payload.opencode = {
+            address: (oc.address || '').trim(),
+            port: Number.isFinite(portNum) && portNum > 0 ? portNum : 4096,
+            username: (oc.username || '').trim() || undefined,
+            password: (oc.password || '').trim() || undefined,
+            model: (oc.model || '').trim() || undefined,
+          };
         } else {
           payload.coze = undefined;
           payload.openclawx = undefined;
+          payload.opencode = undefined;
         }
         await agentConfigAPI.updateAgent(agent.value.id, payload);
         if (!agent.value.isDefault) {
@@ -880,6 +962,7 @@ export default {
           runnerType: payload.runnerType,
           coze: payload.coze,
           openclawx: payload.openclawx,
+          opencode: payload.opencode,
         };
       } catch (e) {
         console.error('Save config failed', e);

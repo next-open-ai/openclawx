@@ -119,7 +119,7 @@
             v-model="inputMessage"
             @keydown.enter.exact.prevent="sendMessage"
             @keydown.enter.shift.exact="inputMessage += '\n'"
-            :placeholder="t('chat.placeholder')"
+            :placeholder="messagePlaceholder"
             class="message-input"
             rows="5"
             :disabled="isStreaming"
@@ -194,6 +194,14 @@ export default {
       }
       const raw = session.agentId;
       return raw != null ? String(raw) : 'default';
+    });
+
+    /** 当前选中的智能体为 OpenCode 代理时，显示指令占位提示 */
+    const messagePlaceholder = computed(() => {
+      const id = effectiveSelectedAgentId.value;
+      const agent = (agents.value || []).find((a) => String(a.id) === id);
+      if (agent?.runnerType === 'opencode') return t('chat.placeholderOpenCode');
+      return t('chat.placeholder');
     });
 
     function loadAgents() {
@@ -496,6 +504,7 @@ export default {
       toolExecutions,
       streamContentParts,
       inputMessage,
+      messagePlaceholder,
       messagesContainer,
       agentListBarRef,
       canScrollAgentLeft,

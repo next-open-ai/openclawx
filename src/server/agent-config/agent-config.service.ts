@@ -11,8 +11,8 @@ const WORKSPACE_NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
 /** 缺省智能体 ID / 工作空间名，不可删除；对应目录 ~/.openbot/workspace/default */
 export const DEFAULT_AGENT_ID = 'default';
 
-/** 执行器类型：local=本机，coze/openclawx=远程代理 */
-export type AgentRunnerType = 'local' | 'coze' | 'openclawx';
+/** 执行器类型：local=本机，coze/openclawx/opencode=远程代理 */
+export type AgentRunnerType = 'local' | 'coze' | 'openclawx' | 'opencode';
 
 /** Coze 站点：cn=国内 api.coze.cn，com=国际 api.coze.com，凭证不通用 */
 export type CozeRegion = 'cn' | 'com';
@@ -36,6 +36,20 @@ export interface AgentOpenClawXConfig {
     apiKey?: string;
 }
 
+/** OpenCode 代理配置：按官方 Server API 或 OpenAI 兼容端点 */
+export interface AgentOpenCodeConfig {
+    address: string;
+    port: number;
+    password?: string;
+    /** Basic 认证用户名（默认 opencode） */
+    username?: string;
+    /** @deprecated 仅保留向后兼容，产品仅支持官方 Server API */
+    apiStyle?: "server" | "openai";
+    path?: string;
+    streamPath?: string;
+    model?: string;
+}
+
 /**
  * 智能体列表与配置使用文件存储（~/.openbot/desktop/agents.json），不使用 SQLite。
  * 会话与消息历史使用 SQLite；Skills、工作空间文档为目录文件管理。
@@ -56,12 +70,14 @@ export interface AgentConfigItem {
     systemPrompt?: string;
     /** 智能体图标标识（前端预设图标 id，如 default、star、code 等） */
     icon?: string;
-    /** 执行器类型：local=本机，coze/openclawx=远程代理 */
+    /** 执行器类型：local=本机，coze/openclawx/opencode=远程代理 */
     runnerType?: AgentRunnerType;
     /** Coze 代理配置（runnerType 为 coze 时使用） */
     coze?: AgentCozeConfig;
     /** OpenClawX 代理配置（runnerType 为 openclawx 时使用） */
     openclawx?: AgentOpenClawXConfig;
+    /** OpenCode 代理配置（runnerType 为 opencode 时使用） */
+    opencode?: AgentOpenCodeConfig;
     /** 是否使用经验（长记忆）：memory_recall / save_experience；默认 true */
     useLongMemory?: boolean;
 }
@@ -217,6 +233,7 @@ export class AgentConfigService {
                 | 'runnerType'
                 | 'coze'
                 | 'openclawx'
+                | 'opencode'
                 | 'useLongMemory'
             >
         >,
@@ -296,6 +313,7 @@ export class AgentConfigService {
             }
         }
         if (updates.openclawx !== undefined) agent.openclawx = updates.openclawx;
+        if (updates.opencode !== undefined) agent.opencode = updates.opencode;
         if (updates.useLongMemory !== undefined) agent.useLongMemory = updates.useLongMemory;
         await this.writeAgentsFile(file);
         return { ...agent, isDefault: agent.id === DEFAULT_AGENT_ID };
