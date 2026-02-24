@@ -26,12 +26,27 @@
   - 仅转发助手消息的 part，过滤用户消息 part，避免用户问题被回显；发送 delta 时更新已发送长度，避免整段重复显示。
 
 - **斜杠指令**
-  - 支持常用 **`/command`** 形式：除原有 `//init` 外，可使用 `/init`、`/help`、`/undo`、`/redo`、`/share` 等。
-  - `/init` 改为通过 `session.command({ command: "init", arguments })` 调用，不再依赖 `session.init` 的 messageID/providerID/modelID，避免参数校验报错。
-  - 指令返回优先展示 `type === "text"` 的主回复，并保证至少返回一条默认文案，避免「执行成功但无返回」的情况。
+  - 统一使用 **`/command`** 形式：`/init`、`/help`、`/undo`、`/redo`、`/share` 等（输入框占位与说明已同步）。
+  - `/init` 通过 `session.command({ command: "init", arguments })` 调用；失败时展示「执行失败」及原因，成功时展示「执行成功」或接口返回文案；单次请求超时调整为 5 分钟，避免大项目分析被过早中断。
+  - `/undo`、`/redo` 改为使用 SDK 的 `session.revert` / `session.unrevert`，不再走 `session.command`，避免服务端 `command3.agent` 未定义报错；无可撤销消息时提示「没有可撤销的助手消息」。
+  - `/share` 返回的分享链接会从接口 `data.share.url` 取出并回显到对话（如「分享链接：https://opncd.ai/share/xxx」）。
+  - 指令执行失败时统一调用 `onDone()` 并展示可读错误信息，避免前端一直处于“执行中”状态。
 
 - **错误展示**
-  - OpenCode 相关错误统一经 `formatErrorMessage` 处理，避免前端显示 `[object Object]`，改为可读的错误信息。
+  - OpenCode 相关错误统一经 `formatErrorMessage` 处理（含 `err.data?.message`），避免前端显示 `[object Object]`，改为可读的错误信息。
+
+### 桌面端 UI
+
+- **对话页**
+  - 发送消息后、首包返回前，助手位置显示「思考中…」及三点跳动动画，表示正在执行。
+  - 智能体选择区：容器与芯片样式优化（玻璃态、主题色高光）；左右滑动箭头改为圆形按钮与 SVG 图标，hover 时高亮。
+  - 清除对话记录按钮从顶部右侧移至**顶部左侧**（与会话列表切换、标题同一行）。
+- **主菜单（左侧边栏）**
+  - 选中项去掉左侧竖条标记；选中态改为渐变背景、细边框与柔和阴影，风格与整体统一。
+- **智能体列表页**
+  - 左侧第一个 Tab 文案由「本地智能体」改为「**智能体**」；两个 Tab（智能体 / 代理智能体）字体加大（`font-size: var(--font-size-base)`），与页面风格一致。
+- **智能体详情（代理智能体）**
+  - 基本配置中移除「模型配置」与「是否使用经验（长记忆）」两项，仅保留图标、显示名、工作空间、描述与保存；左侧「基本配置」「代理配置」Tab 字体加大。
 
 ### 其他
 

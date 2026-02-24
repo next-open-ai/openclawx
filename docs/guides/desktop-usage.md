@@ -27,7 +27,7 @@ OpenClawX Desktop 提供图形界面：会话、智能体、技能、任务、�
 ## 主要功能入口
 
 - **Dashboard**：概览与快捷入口  
-- **智能体（Agents）**：新建/编辑智能体，选择执行方式（本机 / Coze / OpenClawX）、模型、工作区  
+- **智能体（Agents）**：新建/编辑智能体，选择执行方式（本机 / Coze / OpenClawX / OpenCode）、模型、工作区  
 - **会话（Sessions）**：历史会话与继续对话  
 - **技能（Skills）**：查看与管理已加载技能  
 - **任务（Tasks）**：任务列表与执行结果  
@@ -45,8 +45,9 @@ OpenClawX Desktop 提供图形界面：会话、智能体、技能、任务、�
   - **本机（local）**：使用当前模型的 pi-coding-agent 与 Skills
   - **Coze**：代理至 Coze 国内/国际站，需配置站点、Bot ID、Access Token
   - **OpenClawX**：代理至其他 OpenClawX 实例，需配置 baseUrl、可选 API Key
+  - **OpenCode**：代理至 OpenCode 官方 Server（本地需先运行 `opencode serve`），支持 `/init`、`/undo`、`/redo`、`/share`、`/help` 等斜杠指令
 
-通道使用的默认智能体也可设为 Coze 或 OpenClawX 代理。详见 [代理模式与多节点协作](../features/proxy-mode.md) 与 [智能体配置](../configuration/agents.md)。
+通道使用的默认智能体也可设为 Coze、OpenClawX 或 OpenCode 代理。详见 [代理模式与多节点协作](../features/proxy-mode.md) 与 [智能体配置](../configuration/agents.md)。
 
 ---
 

@@ -84,6 +84,6 @@ openbot gateway --port 38080
 
 - [安装与部署](installation.md)：环境要求、npm/Docker/Desktop 详细步骤。
 - [CLI 使用](cli-usage.md)：更多命令、技能路径、开机自启。
-- [智能体配置](../configuration/agents.md)：本机 / Coze / OpenClawX 执行方式。
+- [智能体配置](../configuration/agents.md)：本机 / Coze / OpenClawX / OpenCode 执行方式。
 
 [← 返回文档首页](../README.md)

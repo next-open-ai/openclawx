@@ -64,9 +64,10 @@ docs/
 | **长期记忆** | 向量存储（Vectra）+ 本地嵌入，支持经验总结与会话压缩（compaction） |
 | **多端接入** | CLI、WebSocket 网关、Electron 桌面端，同一套 Agent 核心；各端技术栈见下方「各端技术栈」 |
 | **多通道接入** | 飞书、钉钉、Telegram 等 IM 通道，Gateway 根据配置注册；入站经统一格式进 Agent，回复经通道回传 |
-| **代理模式** | 智能体执行方式可选 **本机** / **Coze** / **OpenClawX**；本机使用当前模型与 Skills，代理则将对话转发至对应平台 |
+| **代理模式** | 智能体执行方式可选 **本机** / **Coze** / **OpenClawX** / **OpenCode**；本机使用当前模型与 Skills，代理则将对话转发至对应平台 |
 | **Coze 接入** | 支持 Coze 国内站（api.coze.cn）与国际站（api.coze.com）；按站点分别配置 Bot ID 与 Access Token（PAT/OAuth/JWT），桌面端与通道均可选用 Coze 智能体 |
 | **OpenClawX 多节点协作** | 可将智能体代理到另一台 OpenClawX 实例（baseUrl + 可选 API Key），实现多节点分工、负载与协作 |
+| **OpenCode 代理** | 可将智能体代理至 [OpenCode](https://opencode.ai/) 官方 Server（本地 `opencode serve` 或远程）；支持流式回复、斜杠指令 `/init`、`/undo`、`/redo`、`/share`、`/help`，与 TUI 使用方式一致 |
 | **MCP（规划中）** | 为降低 Token 消耗与大模型幻觉，后续将支持 MCP（Model Context Protocol） |
 
 ---
@@ -95,7 +96,8 @@ docs/
 │  AgentManager   │    │  server-api/*               │    │  Vectra + 嵌入       │
 │  执行方式:      │    │  Agents · Skills · Tasks    │    │  compaction 扩展     │
 │  local/coze/    │    │  Auth · Users · Workspace   │    │  sql.js              │
-│  openclawx(代理)│    │                             │    │                     │
+│  openclawx/     │    │                             │    │                     │
+│  opencode(代理) │    │                             │    │                     │
 │  pi-coding-agent│    │                             │    │                     │
 │  pi-ai 多模型   │    │                             │    │                     │
 └────────┬────────┘    └─────────────────────────────┘    └─────────────────────┘
@@ -111,7 +113,7 @@ docs/
 - **WebSocket Gateway**（`src/gateway/`）：单进程内嵌 Nest，对外提供 WebSocket（JSON-RPC）与 HTTP；按 path 分流：`/server-api` 走 Nest、`/ws` 为 Agent 对话、`/ws/voice`/`/sse`/`/channel` 为扩展占位，其余为静态资源。根据配置注册**飞书、钉钉、Telegram** 等通道，入站消息经统一格式进入 Agent，回复经该通道发回对应平台。供 Web/移动端连接；支持以开机/登录自启方式常驻（Linux cron、macOS LaunchAgent、Windows 计划任务）。
 - **Desktop 后端**（`src/server/`）：NestJS HTTP API，即 **server-api**；可被 Gateway 内嵌或独立监听（默认端口 38081）。会话、智能体配置、技能、任务、工作区、鉴权等由本模块提供。
 - **Desktop**：Electron 包一层 Vue 前端 + 上述后端；通过 Gateway 或直连 Desktop 后端与 Agent 通信。
-- **Agent 核心**：统一由 `AgentManager` 管理会话、技能注入与工具注册；**执行方式**可为 **local**（本机 pi-coding-agent + Skills）、**coze**（代理至 Coze 国内/国际站）、**openclawx**（代理至其他 OpenClawX 节点，多节点协作）。记忆与 compaction 作为扩展参与 system prompt 与经验写入。
+- **Agent 核心**：统一由 `AgentManager` 管理会话、技能注入与工具注册；**执行方式**可为 **local**（本机 pi-coding-agent + Skills）、**coze**（代理至 Coze 国内/国际站）、**openclawx**（代理至其他 OpenClawX 节点，多节点协作）、**opencode**（代理至 OpenCode 官方 Server，支持流式与 `/init`、`/undo`、`/redo`、`/share`、`/help` 等指令）。记忆与 compaction 作为扩展参与 system prompt 与经验写入。
 
 ## 各端技术栈
 
@@ -351,6 +353,7 @@ openclawx gateway --port 38080
 | **local** | 本机执行，使用当前模型的 pi-coding-agent 与 Skills | 默认；无需额外配置 |
 | **coze** | 代理至 Coze 平台 | 在桌面端「智能体 → 编辑 → 执行方式」选 Coze；**站点**选国内(cn)或国际(com)；分别填写该站点的 **Bot ID**、**Access Token**（PAT / OAuth 2.0 / JWT 等）。`agents.json` 中对应智能体为 `"execution": "coze"`，并含 `coze.region`、`coze.cn` / `coze.com`（botId、apiKey） |
 | **openclawx** | 代理至其他 OpenClawX 实例（多节点） | 执行方式选 OpenClawX；填写目标实例 **baseUrl**（如 `http://另一台机器:38080`）、可选 **API Key**。`agents.json` 中为 `"execution": "openclawx"`，含 `openclawx.baseUrl`、`openclawx.apiKey`（可选） |
+| **opencode** | 代理至 OpenCode 官方 Server | 执行方式选 OpenCode；本地模式需先在本机运行 `opencode serve`（默认 4096 端口），填写端口；远程模式填写地址与端口。可选密码、工作目录、默认模型。支持 `/init`、`/undo`、`/redo`、`/share`、`/help` 等斜杠指令，分享链接会回显到对话中 |
 
 - **入口**：桌面端「设置」→「智能体」中新建/编辑智能体时可选择执行方式；通道使用的默认智能体也可设为 Coze 或 OpenClawX 代理。
 - **多节点**：多台机器各跑一个 OpenClawX Gateway，将部分智能体指向对方 baseUrl，即可实现分工、专机专用或负载均衡。
@@ -378,6 +381,7 @@ openclawx gateway --port 38080
 | **MCP** | 规划中：支持 MCP 协议，降低 Token 消耗与大模型幻觉，与 Skill 自我发现/迭代形成互补 |
 | **Coze 生态** | **已支持**：智能体执行方式可选 coze，按站点（国内 cn / 国际 com）配置 Bot ID 与 Access Token，桌面端与通道均可使用 |
 | **OpenClawX 多节点** | **已支持**：执行方式可选 openclawx，通过 baseUrl（及可选 apiKey）将对话代理到另一 OpenClawX 实例，实现多节点协作与负载分工 |
+| **OpenCode 代理** | **已支持**：执行方式可选 opencode，对接 OpenCode 官方 Server（本地 `opencode serve` 或远程）；流式回复、`/init`/`/undo`/`/redo`/`/share`/`/help` 等指令，分享链接回显；失败时展示「执行失败」提示 |
 
 文档与发布节奏后续更新。
 

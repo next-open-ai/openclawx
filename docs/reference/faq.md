@@ -40,8 +40,8 @@ A：保存通道配置后需**重启 Gateway** 才会注册通道；并检查对
 
 ## 通道与代理
 
-**Q：通道使用的智能体可以选 Coze 或 OpenClawX 吗？**  
-A：可以。在「设置 → 智能体」中配置执行方式为 coze 或 openclawx 的智能体，并在通道配置或 defaultAgentId 中指定该智能体即可。
+**Q：通道使用的智能体可以选 Coze、OpenClawX 或 OpenCode 吗？**  
+A：可以。在「设置 → 智能体」中配置执行方式为 coze、openclawx 或 opencode 的智能体，并在通道配置或 defaultAgentId 中指定该智能体即可。
 
 **Q：多节点协作如何配置？**  
 A：在另一台机器启动 OpenClawX Gateway，本机在智能体配置中选择执行方式为 OpenClawX，填写对方 baseUrl（及可选 apiKey）即可。详见 [代理模式与多节点协作](../features/proxy-mode.md)。
