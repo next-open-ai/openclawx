@@ -95,53 +95,6 @@
               />
               <p class="form-hint">{{ t('agents.agentDescriptionHint') }}</p>
             </div>
-            <div class="form-group form-group-switch">
-              <label class="switch-label">
-                <input
-                  v-model="configForm.useLongMemory"
-                  type="checkbox"
-                  class="form-checkbox"
-                />
-                <span>{{ t('agents.useLongMemory') }}</span>
-              </label>
-              <p class="form-hint">{{ t('agents.useLongMemoryHint') }}</p>
-            </div>
-            <!-- 模型配置：从已配置的模型列表中选择，选项为 供应商 / 模型名，选中后显示供应商及模型 ID -->
-            <div class="config-section model-section">
-              <h3 class="config-section-title">{{ t('agents.modelConfig') }}</h3>
-              <p class="form-hint">{{ t('agents.modelConfigHint') }}</p>
-              <div v-if="modelConfigLoading" class="loading-state small">
-                <div class="spinner"></div>
-                <p>{{ t('common.loading') }}</p>
-              </div>
-              <template v-else>
-                <p v-if="configuredModelsList.length === 0" class="form-hint form-hint-warn">
-                  {{ t('agents.noConfiguredModels') }}
-                </p>
-                <template v-else>
-                  <div class="form-group">
-                    <label>{{ t('agents.selectConfiguredModel') }}</label>
-                    <select v-model="selectedConfiguredModelKey" class="form-input" @change="onConfiguredModelSelect">
-                      <option value="">—</option>
-                      <option
-                        v-for="item in configuredModelsList"
-                        :key="optionValueFor(item)"
-                        :value="optionValueFor(item)"
-                      >
-                        {{ getConfiguredModelOptionLabel(item) }}
-                      </option>
-                    </select>
-                  </div>
-                  <div v-if="selectedModelItem" class="form-group model-current-display">
-                    <span class="label">{{ t('agents.currentProvider') }}：</span>
-                    <span class="value">{{ getProviderDisplayName(selectedModelItem.provider) }}</span>
-                    <span class="sep">，</span>
-                    <span class="label">{{ t('agents.currentModelId') }}：</span>
-                    <span class="value"><code>{{ selectedModelItem.modelId }}</code></span>
-                  </div>
-                </template>
-              </template>
-            </div>
             <button class="btn-primary" :disabled="configSaving" @click="saveConfig">
               {{ configSaving ? t('common.loading') : t('agents.saveConfig') }}
             </button>
@@ -709,7 +662,7 @@ export default {
     });
 
     const agentIconOptions = AGENT_ICONS;
-    const configForm = ref({ name: '', systemPrompt: '', icon: AGENT_ICON_DEFAULT, useLongMemory: true });
+    const configForm = ref({ name: '', systemPrompt: '', icon: AGENT_ICON_DEFAULT });
     const configSaving = ref(false);
 
     const modelForm = ref({ provider: '', model: '' });
@@ -912,7 +865,6 @@ export default {
             name: agent.value.name,
             systemPrompt: agent.value.systemPrompt ?? '',
             icon: agent.value.icon || AGENT_ICON_DEFAULT,
-            useLongMemory: agent.value.useLongMemory !== false,
           };
           modelForm.value = {
             provider: agent.value.provider ?? '',
@@ -964,7 +916,7 @@ export default {
             : [];
         } else if (agentId.value === 'default') {
           agent.value = { ...MAIN_AGENT_FALLBACK };
-          configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT, useLongMemory: true };
+          configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
           modelForm.value = { provider: '', model: '' };
           proxyForm.value = {
             runnerType: 'local',
@@ -977,7 +929,7 @@ export default {
       } catch (e) {
         if (agentId.value === 'default') {
           agent.value = { ...MAIN_AGENT_FALLBACK };
-          configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT, useLongMemory: true };
+          configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
           modelForm.value = { provider: '', model: '' };
           proxyForm.value = {
             runnerType: 'local',
@@ -1001,14 +953,9 @@ export default {
         if (!agent.value.isDefault) {
           payload.name = configForm.value.name || agent.value.workspace;
         }
-        payload.provider = modelForm.value.provider || undefined;
-        payload.model = modelForm.value.model || undefined;
-        const item = selectedModelItem.value;
-        if (item && item.modelItemCode) payload.modelItemCode = item.modelItemCode;
         payload.mcpServers = mcpServers.value;
         payload.systemPrompt = configForm.value.systemPrompt?.trim() || undefined;
         payload.icon = configForm.value.icon || undefined;
-        payload.useLongMemory = configForm.value.useLongMemory;
         payload.runnerType = proxyForm.value.runnerType;
         if (proxyForm.value.runnerType === 'coze') {
           const c = proxyForm.value.coze;
@@ -1052,12 +999,8 @@ export default {
         }
         agent.value = {
           ...agent.value,
-          provider: modelForm.value.provider,
-          model: modelForm.value.model,
-          modelItemCode: item?.modelItemCode ?? agent.value.modelItemCode,
           systemPrompt: payload.systemPrompt,
           icon: payload.icon,
-          useLongMemory: payload.useLongMemory,
           runnerType: payload.runnerType,
           coze: payload.coze,
           openclawx: payload.openclawx,
@@ -1496,7 +1439,7 @@ export default {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
   border: none;
   border-radius: var(--radius-md);
   background: transparent;
@@ -1504,6 +1447,7 @@ export default {
   text-align: left;
   cursor: pointer;
   transition: var(--transition-fast);
+  font-size: var(--font-size-base);
 }
 
 .tab-btn:hover {
@@ -1517,7 +1461,12 @@ export default {
 }
 
 .tab-icon {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
+}
+
+.tab-label {
+  font-size: var(--font-size-base);
+  font-weight: 500;
 }
 
 .detail-content {

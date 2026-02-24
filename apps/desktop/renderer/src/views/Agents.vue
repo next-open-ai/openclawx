@@ -930,9 +930,9 @@ export default {
 .agents-tab-btn {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   padding: var(--spacing-md) var(--spacing-lg);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
   font-weight: 500;
   color: var(--color-text-secondary);
   background: transparent;
@@ -944,12 +944,14 @@ export default {
 }
 
 .agents-tab-btn .tab-icon {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   line-height: 1;
 }
 
 .agents-tab-btn .tab-label {
   flex: 1;
+  font-size: var(--font-size-base);
+  font-weight: 500;
 }
 
 .agents-tab-btn.active {

@@ -126,7 +126,7 @@ export default {
   agents: {
     title: '智能体',
     subtitle: '每个智能体拥有独立工作空间，创建后不可修改工作空间名',
-    localAgents: '本地智能体',
+    localAgents: '智能体',
     proxyAgents: '代理智能体',
     localAgentsHint: '使用本机模型与 Skills，与以前一样配置。',
     proxyAgentsHint: '将对话代理到 Coze、OpenClawX、OpenCode 等平台，主要配置代理类型与凭证。',

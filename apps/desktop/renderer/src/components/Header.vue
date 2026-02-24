@@ -10,6 +10,22 @@
       >
         {{ sessionsPanelVisible ? '‹' : '›' }}
       </button>
+      <!-- 对话页：清除当前会话对话记录（放在顶部左侧，仅图标） -->
+      <button
+        v-if="isChatRoute && hasCurrentChatSession"
+        type="button"
+        class="header-btn clear-conversation-btn"
+        :title="t('sessions.clearConversation')"
+        :disabled="clearMessagesLoading"
+        @click="onClearConversation"
+      >
+        <span class="clear-conversation-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z"/>
+            <path d="M10 11v6M14 11v6"/>
+          </svg>
+        </span>
+      </button>
       <!-- 跳转会话管理页入口：暂时不显示，可从侧栏「日志」进入 -->
       <button
         v-if="false && isChatRoute"
@@ -24,22 +40,6 @@
     </div>
     <div class="header-right">
       <div class="header-actions">
-        <!-- 对话页：清除当前会话对话记录（仅图标，悬停显示「清除对话」提示） -->
-        <button
-          v-if="isChatRoute && hasCurrentChatSession"
-          type="button"
-          class="header-btn clear-conversation-btn"
-          :title="t('sessions.clearConversation')"
-          :disabled="clearMessagesLoading"
-          @click="onClearConversation"
-        >
-          <span class="clear-conversation-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z"/>
-              <path d="M10 11v6M14 11v6"/>
-            </svg>
-          </span>
-        </button>
         <!-- Dashboard Button -->
         <router-link to="/dashboard" class="header-btn dashboard-btn" :title="t('nav.dashboard')" active-class="active">
           <span class="btn-icon">📊</span>

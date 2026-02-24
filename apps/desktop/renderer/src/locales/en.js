@@ -126,7 +126,7 @@ export default {
   agents: {
     title: 'Agents',
     subtitle: 'Each agent has its own workspace; workspace name cannot be changed after creation',
-    localAgents: 'Local agents',
+    localAgents: 'Agents',
     proxyAgents: 'Proxy agents',
     localAgentsHint: 'Use local model and Skills; configure as before.',
     proxyAgentsHint: 'Proxy conversations to Coze, OpenClawX, OpenCode, etc.; configure proxy type and credentials.',
