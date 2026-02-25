@@ -1,6 +1,6 @@
 # OpenClawX
 
-基于自已的OpenBot重构而来
+基于自已的OpenBot重构而来，你们的关注或***star***是我坚持的动力 ：）
 
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
