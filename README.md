@@ -77,7 +77,8 @@ docs/
 | **Coze 接入** | 支持 Coze 国内站（api.coze.cn）与国际站（api.coze.com）；按站点分别配置 Bot ID 与 Access Token（PAT/OAuth/JWT），桌面端与通道均可选用 Coze 智能体 |
 | **OpenClawX 多节点协作** | 可将智能体代理到另一台 OpenClawX 实例（baseUrl + 可选 API Key），实现多节点分工、负载与协作 |
 | **OpenCode 代理** | 可将智能体代理至 [OpenCode](https://opencode.ai/) 官方 Server（本地 `opencode serve` 或远程）；支持流式回复、斜杠指令 `/init`、`/undo`、`/redo`、`/share`、`/help`，与 TUI 使用方式一致 |
-| **MCP（规划中）** | 为降低 Token 消耗与大模型幻觉，后续将支持 MCP（Model Context Protocol） |
+| **MCP** | 已支持 [MCP](https://modelcontextprotocol.io/)（Model Context Protocol）：智能体可配置 stdio/SSE 两种连接方式，按智能体绑定 MCP 服务器，会话内自动加载对应工具，降低 Token 消耗与大模型幻觉 |
+| **RPA（影刀）** | 通过 MCP 可接入影刀 RPA：在智能体 MCP 配置中添加 [yingdao-mcp-server](https://www.npmjs.com/package/yingdao-mcp-server)（命令 `npx -y yingdao-mcp-server`，可选 env 如 `RPA_MODEL`、`SHADOWBOT_PATH`、`USER_FOLDER`），即可在对话中调用影刀自动化能力 |
 
 ---
 
@@ -394,7 +395,8 @@ openclawx gateway --port 38080
 
 | 方向 | 说明 |
 |------|------|
-| **MCP** | 规划中：支持 MCP 协议，降低 Token 消耗与大模型幻觉，与 Skill 自我发现/迭代形成互补 |
+| **MCP** | **已支持**：智能体可配置 MCP 服务器（stdio 本地进程 / SSE 远程），会话内自动加载 MCP 工具；支持标准 JSON 配置格式（含服务器名称、command/args/env 或 url/headers），与 Skill 形成互补 |
+| **RPA（影刀）** | **已支持**：通过 MCP 接入影刀 RPA（如 yingdao-mcp-server），在智能体配置中添加对应 MCP 即可在对话中调用影刀自动化 |
 | **Coze 生态** | **已支持**：智能体执行方式可选 coze，按站点（国内 cn / 国际 com）配置 Bot ID 与 Access Token，桌面端与通道均可使用 |
 | **OpenClawX 多节点** | **已支持**：执行方式可选 openclawx，通过 baseUrl（及可选 apiKey）将对话代理到另一 OpenClawX 实例，实现多节点协作与负载分工 |
 | **OpenCode 代理** | **已支持**：执行方式可选 opencode，对接 OpenCode 官方 Server（本地 `opencode serve` 或远程）；流式回复、`/init`/`/undo`/`/redo`/`/share`/`/help` 等指令，分享链接回显；失败时展示「执行失败」提示 |

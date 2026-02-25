@@ -134,7 +134,10 @@ For downloads, provide either a direct URL or a selector to click.`;
 - **save_experience**: Store summaries in long-term memory. **At the end of each round of conversation** (after you have finished replying to the user), briefly summarize the main outcomes, conclusions, or reusable points and call \`save_experience\` with that summary.
 - **memory_recall**: Retrieve relevant memories by semantic search. **When the user asks about past work, decisions, dates, people, preferences, todos, complex tasks, scheduled tasks, or anything that may need past experience**, call \`memory_recall\` first with a suitable query, then answer using the recalled content. Do not inject any history or memory into your replies unless you have just retrieved it via \`memory_recall\` for that question.`;
 
+        const terminologyNote =
+            "【术语】本系统中「智能体」「助手」「专家」均指同一概念（Agent），可互换使用。用户说切换助手/专家或提到某个助手/专家时，即指切换或使用对应智能体。";
         const parts = [
+            terminologyNote,
             "You are a helpful assistant. When users ask about skills, explain what skills are available.",
             browserToolDesc,
             skillsBlock,

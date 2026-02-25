@@ -4,7 +4,25 @@
 
 ---
 
-## [0.8.18] - 当前
+## [0.8.26] - 当前
+
+### MCP 与 RPA（影刀）
+
+- **MCP 支持**
+  - 智能体已支持 [MCP](https://modelcontextprotocol.io/)（Model Context Protocol）：可为每个智能体配置多台 MCP 服务器（stdio 本地进程或 SSE 远程），会话创建时自动加载对应工具。
+  - 配置方式：桌面端智能体详情 → MCP 配置 Tab；支持标准 JSON 格式（`mcpServers` 为对象，key 为服务器名称，value 为 command/args/env 或 url/headers），可单条表单编辑也可整段 JSON 编辑后应用。
+  - 保存后通过「配置更新即生效」机制，下次使用该智能体对话时会自动用新配置重建会话，无需重启应用。
+
+- **RPA（影刀）**
+  - 通过 MCP 可接入影刀 RPA：在智能体 MCP 配置中添加 [yingdao-mcp-server](https://www.npmjs.com/package/yingdao-mcp-server)（如命令 `npx -y yingdao-mcp-server`，环境变量可选 `RPA_MODEL`、`SHADOWBOT_PATH`、`USER_FOLDER` 等），即可在对话中调用影刀自动化能力。
+
+### 其他
+
+- npm 打包已包含 `presets` 目录，通过 npm 安装后预装智能体与技能可正常合并到本地配置（需在包目录下执行或设置 `OPENBOT_PRESETS_DIR`）。
+
+---
+
+## [0.8.18]
 
 ### 智能体与工作区
 
