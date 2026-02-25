@@ -200,17 +200,48 @@ npm link   # 或 npm install -g . 本地全局安装
 
 ## 1.2 Docker 部署
 
-适用于：在服务器或容器环境中运行 **Gateway**，供 Web/其他客户端连接。
+适用于：在服务器或容器环境中运行 **Gateway**，供 Web/其他客户端连接。编排文件位于仓库 `deploy/` 目录。
 
-> **说明**：Docker 镜像与编排正在规划中，当前推荐使用 npm 全局安装后执行 `openbot gateway` 部署网关。
+### 方式一：使用 CI 构建的镜像（推荐生产）
 
-规划中的使用方式示例：
+镜像由 Drone CI（`.drone.yml`）构建并推送到镜像仓库。使用预构建镜像启动服务，暴露端口 **38080**：
 
 ```bash
-# 示例（以实际仓库/镜像名为准）
-# docker pull next-open-ai/openclawx
-# docker run -p 38080:38080 -e OPENAI_API_KEY=xxx next-open-ai/openclawx gateway
+# 在 deploy 目录下执行
+cd deploy
+docker compose up -d
+
+# 或从仓库根目录指定 compose 文件
+docker compose -f deploy/docker-compose.yaml up -d
 ```
+
+默认使用镜像 `ccr.ccs.tencentyun.com/windwithlife/openclawx:latest`。若需指定版本，可修改 `deploy/docker-compose.yaml` 中 `image` 的 tag（如 `0.8.28` 或 CI 生成的 `build-ci-openbot-<BUILD_NUMBER>`）。
+
+### 方式二：本地构建并运行（开发/无 CI 时）
+
+不依赖镜像仓库，在本地从源码构建镜像并启动：
+
+```bash
+# 在仓库根目录执行（构建上下文为仓库根）
+docker compose -f deploy/docker-compose-dev.yaml up --build -d
+
+# 或在 deploy 目录下
+cd deploy
+docker compose -f docker-compose-dev.yaml up --build -d
+```
+
+构建完成后服务同样监听 **38080** 端口，镜像名为 `openclawx:dev`，容器名为 `openclawx-dev`。
+
+### 配置与数据持久化
+
+- Gateway 默认从容器内 `~/.openbot/desktop/` 读取配置（智能体、模型、通道等）。若需持久化或预置配置，可在 compose 中挂载宿主机目录，例如在 `deploy/docker-compose.yaml` 或 `deploy/docker-compose-dev.yaml` 的 `openclawx` 服务下增加：
+
+  ```yaml
+  volumes:
+    - ./openbot-desktop:/root/.openbot/desktop
+  ```
+
+- API Key 等敏感信息也可通过环境变量传入（若 CLI/桌面端支持从环境变量读取），在 compose 的 `environment` 中配置即可。
 
 ---
 

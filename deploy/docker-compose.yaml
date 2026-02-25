@@ -1,0 +1,15 @@
+# 使用 Drone CI/CD 构建的镜像启动 OpenClawX Gateway
+# 镜像来源：.drone.yml 推送到 ccr.ccs.tencentyun.com/windwithlife/openclawx
+# 可用标签：latest、具体版本（如 0.8.28）或 build-ci-openbot-${DRONE_BUILD_NUMBER}
+
+services:
+  openclawx:
+    image: ccr.ccs.tencentyun.com/windwithlife/openclawx:latest
+    container_name: openclawx
+    ports:
+      - "38080:38080"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    # 与 Dockerfile 一致：node dist/cli/cli.js gateway --port 38080
+    command: ["gateway", "--port", "38080"]

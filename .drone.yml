@@ -25,13 +25,14 @@ steps:
     settings:
       dockerfile: ./deploy/Dockerfile
       use_cache: true
-      repo: ccr.ccs.tencentyun.com/windwithlife/openbot
+      repo: ccr.ccs.tencentyun.com/windwithlife/openclawx
       registry: https://ccr.ccs.tencentyun.com
       username: 100008098144
       password: password7&
       # 更多变量参考https://docs.drone.io/pipeline/environment/reference/
       tags:
         - ${DRONE_TAG=latest}
+        - ${DRONE_TAG=0.8.28}
         - build-ci-openbot-${DRONE_BUILD_NUMBER}
 
   - name: 部署到集群-dron8s方式x
@@ -40,9 +41,9 @@ steps:
       yaml: ./deploy/deployment.yaml
       kubeconfig:
         from_secret: kubeconfig-zyq
-      app_name: openbot
+      app_name: openclawx
       path_name: /
-      image_name: ccr.ccs.tencentyun.com/windwithlife/openbot
+      image_name: ccr.ccs.tencentyun.com/windwithlife/openclawx
       soa_gateway: bot.zhangyongqiao.com
       soa_gateway_cert: api-default-secret
 
