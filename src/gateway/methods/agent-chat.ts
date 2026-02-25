@@ -212,14 +212,17 @@ async function handleAgentChatInner(
             });
         } else if (event.type === "message_end") {
             const msg = (event as any).message;
+            // 仅当未收到过任何 text_delta 时才发整段内容，避免与前面已推送的 delta 重复导致前端显示两遍
             if (msg?.role === "assistant" && msg?.content && Array.isArray(msg.content)) {
                 const text = msg.content
                     .filter((c: any) => c?.type === "text" && typeof c.text === "string")
                     .map((c: any) => c.text)
                     .join("");
                 if (text) {
+                    if (!hasReceivedAnyChunk) {
+                        broadcastToSession(targetSessionId, createEvent("agent.chunk", { text }));
+                    }
                     hasReceivedAnyChunk = true;
-                    broadcastToSession(targetSessionId, createEvent("agent.chunk", { text }));
                 }
             }
             if (msg?.errorMessage) {

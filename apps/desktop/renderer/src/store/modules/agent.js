@@ -244,6 +244,8 @@ export const useAgentStore = defineStore('agent', {
 
             const text = data.text || '';
             if (!text) return;
+            // 若后端误将整段内容再发一次（与当前已累积内容完全相同），则不再追加，避免最后一轮显示两遍
+            if (this.currentMessage.length > 0 && text === this.currentMessage) return;
             this.currentMessage += text;
 
             const parts = this.currentStreamParts;
