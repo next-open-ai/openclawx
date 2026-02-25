@@ -25,6 +25,7 @@
 | **功能说明** | [代理模式与多节点](docs/features/proxy-mode.md) | Coze 接入、OpenClawX 多节点协作 |
 | | [技能系统](docs/features/skills.md) | Agent Skills 规范与扩展 |
 | **参考** | [常见问题](docs/reference/faq.md) | 安装失败、端口占用、通道不回复等 FAQ |
+| | [发布说明](docs/release-notes.md) | 各版本功能更新与问题修复记录 |
 
 <details>
 <summary><strong>📂 文档树结构</strong></summary>
@@ -32,6 +33,7 @@
 ```
 docs/
 ├── README.md                   → 文档入口与导航
+├── release-notes.md            → 发布说明
 ├── guides/                     → 使用指南
 │   ├── getting-started.md      快速开始
 │   ├── installation.md         安装与部署
@@ -51,6 +53,13 @@ docs/
 ```
 
 </details>
+
+### 常见问题（简要）
+
+- **Windows 安装失败 / 无法运行？**  
+  - **Desktop 安装包**：若安装或启动报错（如缺少运行库、闪退），请安装 [Visual C++ Redistributable](https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist)（选 x64）；若为杀毒/安全软件拦截，可尝试加入排除项或暂时关闭后重试。  
+  - **npm 全局安装**：Windows 上若因 `node-llama-cpp` 等原生依赖安装失败，可使用 `npm install -g @next-open-ai/openclawx --ignore-scripts` 跳过可选原生模块，对 CLI/Gateway/Desktop 常规使用无影响；长记忆需单独配置在线 RAG 或本地环境。  
+- 更多问题（macOS 安装包「已损坏」、端口占用、通道不回复等）见 **[常见问题](docs/reference/faq.md)**；版本变更见 **[发布说明](docs/release-notes.md)**。
 
 ---
 
@@ -167,6 +176,13 @@ npm -v    # 能正常输出版本号
 ```bash
 # 全局安装（测试过 node 版本：20/22；24 太新，部分库需本地编译环境）
 npm install -g @next-open-ai/openclawx
+```
+#### ***如果是在windows上安装最新版本（v0.8.0以上版本），可能会因为node-llama-cpp无法安装，可以采用如下安装命令跳过它的安装，对当前系统使用无影响***
+```bash
+# 跳过预下载脚本
+npm install -g @next-open-ai/openclawx --ignore-scripts
+# 尝试手工安装跳过的预下载(这一步失败了也不影响正常使用)
+npm run postinstall --if-present
 ```
 
 安装后可直接使用 `openbot` 命令（见下方「使用方式」）。若需从源码构建再安装：

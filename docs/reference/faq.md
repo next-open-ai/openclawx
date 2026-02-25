@@ -13,6 +13,11 @@ A：需要 Node.js ≥ 20。推荐 20 或 22；24 较新，部分依赖可能需
 **Q：macOS 安装包提示「已损坏、无法打开」？**  
 A：未做 Apple 公证时，系统可能加「隔离」属性。在终端执行：`xattr -cr /Applications/OpenClawX.app`（路径按实际修改），然后重新打开。
 
+**Q：Windows 安装失败或无法运行？**  
+A：  
+- **Desktop 安装包**：若安装或启动报错（如缺少运行库、闪退），请安装 [Visual C++ Redistributable](https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist)（选 x64）。若被杀毒/安全软件拦截，可尝试将安装目录加入排除项或暂时关闭后重试。  
+- **npm 全局安装**：若因 `node-llama-cpp` 等原生依赖安装失败，可使用 `npm install -g @next-open-ai/openclawx --ignore-scripts` 跳过可选原生模块，对 CLI/Gateway/Desktop 常规使用无影响；长记忆需在设置中配置在线 RAG 或具备本地编译环境。
+
 ---
 
 ## 配置与 API Key
