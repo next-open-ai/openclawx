@@ -413,6 +413,15 @@ For downloads, provide either a direct URL or a selector to click.`;
         }
     }
 
+    /** 按 agentId 删除该智能体下所有 Session（配置更新后使旧会话失效，下次请求会用新配置建新会话） */
+    public async deleteSessionsByAgentId(agentId: string): Promise<void> {
+        const suffix = COMPOSITE_KEY_SEP + agentId;
+        const keysToProcess = Array.from(this.sessions.keys()).filter((k) => k.endsWith(suffix));
+        for (const key of keysToProcess) {
+            await this.deleteSession(key);
+        }
+    }
+
     public clearAll(): void {
         this.sessions.clear();
         this.sessionLastActiveAt.clear();

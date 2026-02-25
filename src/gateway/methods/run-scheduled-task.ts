@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import { agentManager } from "../../core/agent/agent-manager.js";
 import { loadDesktopAgentConfig } from "../../core/config/desktop-config.js";
+import { consumePendingAgentReload } from "../../core/config/agent-reload-pending.js";
 
 export interface RunScheduledTaskBody {
     sessionId: string;
@@ -64,6 +65,9 @@ export async function handleRunScheduledTask(
     }
 
     const COMPOSITE_KEY_SEP = "::";
+    if (await consumePendingAgentReload(sessionAgentId)) {
+        await agentManager.deleteSessionsByAgentId(sessionAgentId);
+    }
     try {
         const session = await agentManager.getOrCreateSession(sessionId, {
             agentId: sessionAgentId,

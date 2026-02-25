@@ -4,6 +4,7 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import { homedir } from 'os';
 import type { McpServerConfig, McpServersStandardFormat } from '../../core/mcp/index.js';
+import { addPendingAgentReload } from '../../core/config/agent-reload-pending.js';
 import { DatabaseService } from '../database/database.service.js';
 import { WorkspaceService } from '../workspace/workspace.service.js';
 
@@ -335,6 +336,7 @@ export class AgentConfigService {
         if (updates.opencode !== undefined) agent.opencode = updates.opencode;
         if (updates.useLongMemory !== undefined) agent.useLongMemory = updates.useLongMemory;
         await this.writeAgentsFile(file);
+        await addPendingAgentReload(id).catch(() => {});
         return { ...agent, isDefault: agent.id === DEFAULT_AGENT_ID };
     }
 

@@ -5,6 +5,7 @@ import { getSessionCurrentAgentResolver, getSessionCurrentAgentUpdater } from ".
 import { send, createEvent } from "../utils.js";
 import { connectedClients } from "../clients.js";
 import { getDesktopConfig, loadDesktopAgentConfig } from "../../core/config/desktop-config.js";
+import { consumePendingAgentReload } from "../../core/config/agent-reload-pending.js";
 import { registerProxyRunAbort } from "../proxy-run-abort.js";
 
 const COMPOSITE_KEY_SEP = "::";
@@ -139,6 +140,9 @@ async function handleAgentChatInner(
     const effectiveTargetAgentId = sessionType === "system" ? targetAgentId : currentAgentId;
 
     const { maxAgentSessions } = getDesktopConfig();
+    if (await consumePendingAgentReload(currentAgentId)) {
+        await agentManager.deleteSessionsByAgentId(currentAgentId);
+    }
     let session;
     try {
         session = await agentManager.getOrCreateSession(targetSessionId, {
