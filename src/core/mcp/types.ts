@@ -26,6 +26,26 @@ export interface McpServerConfigSse {
 /** 单条 MCP 服务器配置（由调用方在创建 Session 时传入，与 Skill 类似） */
 export type McpServerConfig = McpServerConfigStdio | McpServerConfigSse;
 
+/**
+ * 标准 JSON 格式中的单条 MCP 配置（无 transport，由 command/url 推断）。
+ * 与 Claude/Anthropic 等生态常用格式一致。
+ */
+export interface McpServerConfigStandardEntry {
+    /** stdio：可执行命令 */
+    command?: string;
+    /** stdio：命令行参数 */
+    args?: string[];
+    /** stdio：环境变量 */
+    env?: Record<string, string>;
+    /** sse：远程服务地址 */
+    url?: string;
+    /** sse：请求头 */
+    headers?: Record<string, string>;
+}
+
+/** 标准 JSON 格式：mcpServers 为对象，key 为服务器名称 */
+export type McpServersStandardFormat = Record<string, McpServerConfigStandardEntry>;
+
 /** MCP 协议中 Tool 的 inputSchema 为 JSON Schema 对象 */
 export interface McpToolInputSchema {
     type?: string;

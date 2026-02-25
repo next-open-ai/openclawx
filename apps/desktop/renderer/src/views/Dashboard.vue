@@ -120,7 +120,7 @@
           <div class="info-list">
             <div class="info-item">
               <span class="info-tag badge-info">Update</span>
-              <span class="info-text">OpenBot v1.2 is now available with new skills.</span>
+              <span class="info-text">OpenClawX v1.2 is now available with new skills.</span>
             </div>
              <div class="info-item">
               <span class="info-tag badge-success">Tip</span>

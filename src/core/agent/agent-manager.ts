@@ -29,7 +29,7 @@ function toCompositeKey(sessionId: string, agentId: string): string {
     return sessionId + COMPOSITE_KEY_SEP + agentId;
 }
 import { createMcpToolsForSession } from "../mcp/index.js";
-import type { McpServerConfig } from "../mcp/index.js";
+import type { McpServerConfig, McpServersStandardFormat } from "../mcp/index.js";
 import { registerBuiltInApiProviders } from "@mariozechner/pi-ai/dist/providers/register-builtins.js";
 import { getOpenbotAgentDir, getOpenbotWorkspaceDir, ensureDefaultAgentDir } from "./agent-dir.js";
 import { formatSkillsForPrompt } from "./skills.js";
@@ -229,7 +229,7 @@ For downloads, provide either a direct URL or a selector to click.`;
         apiKey?: string;
         maxSessions?: number;
         targetAgentId?: string;
-        mcpServers?: McpServerConfig[];
+        mcpServers?: McpServerConfig[] | McpServersStandardFormat;
         /** 自定义系统提示词（来自 agent 配置），会与技能等一起组成最终 systemPrompt */
         systemPrompt?: string;
         /** 是否使用长记忆（memory_recall/save_experience）；默认 true */

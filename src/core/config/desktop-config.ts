@@ -97,6 +97,8 @@ interface DesktopConfigJson {
 
 /** MCP 服务器配置（与 core/mcp 类型一致，避免 core/config 依赖 core/mcp 实现） */
 export type DesktopMcpServerConfig = import("../mcp/index.js").McpServerConfig;
+/** MCP 标准 JSON 格式（key 为服务器名称），存储与 UI 可读写 */
+export type DesktopMcpServersStandardFormat = import("../mcp/index.js").McpServersStandardFormat;
 
 /** Agent 执行器类型：local=本机 pi-coding-agent，coze/openclawx/opencode=远程代理 */
 export type AgentRunnerType = "local" | "coze" | "openclawx" | "opencode";
@@ -174,8 +176,8 @@ interface AgentItem {
     model?: string;
     /** 匹配 config.configuredModels 中的 modelItemCode，优先于 provider/model */
     modelItemCode?: string;
-    /** MCP 服务器列表，创建 Session 时传入（与 Skill 类似） */
-    mcpServers?: DesktopMcpServerConfig[];
+    /** MCP 配置：数组（含 transport）或标准 JSON 对象（key 为名称），创建 Session 时归一化使用 */
+    mcpServers?: DesktopMcpServerConfig[] | DesktopMcpServersStandardFormat;
     /** 自定义系统提示词，与技能等一起组成最终 systemPrompt */
     systemPrompt?: string;
     /** 执行器类型，缺省 local */
@@ -332,8 +334,8 @@ export interface DesktopAgentConfig {
     apiKey?: string;
     /** 工作区名，来自 agents.json 的 agent.workspace 或 agent.id */
     workspace?: string;
-    /** MCP 服务器配置，创建 Session 时传入 */
-    mcpServers?: DesktopMcpServerConfig[];
+    /** MCP 服务器配置（数组或标准对象格式），创建 Session 时传入并归一化 */
+    mcpServers?: DesktopMcpServerConfig[] | DesktopMcpServersStandardFormat;
     /** 自定义系统提示词，会与技能等一起组成最终 systemPrompt */
     systemPrompt?: string;
     /** 执行器类型，缺省 local */
@@ -412,7 +414,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
         }
     }
     let workspaceName: string = resolvedAgentId;
-    let mcpServers: DesktopMcpServerConfig[] | undefined;
+    let mcpServers: DesktopMcpServerConfig[] | DesktopMcpServersStandardFormat | undefined;
     let systemPrompt: string | undefined;
     let useLongMemory: boolean = true;
 
@@ -425,8 +427,10 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
             if (agent) {
                 if (agent.workspace) workspaceName = agent.workspace;
                 else if (agent.id) workspaceName = agent.id;
-                if (agent.mcpServers && Array.isArray(agent.mcpServers)) {
-                    mcpServers = agent.mcpServers;
+                if (agent.mcpServers != null) {
+                    if (Array.isArray(agent.mcpServers) || (typeof agent.mcpServers === "object" && !Array.isArray(agent.mcpServers))) {
+                        mcpServers = agent.mcpServers;
+                    }
                 }
                 if (agent.systemPrompt && typeof agent.systemPrompt === "string") {
                     systemPrompt = agent.systemPrompt.trim();

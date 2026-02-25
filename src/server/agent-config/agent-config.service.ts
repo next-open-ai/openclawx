@@ -3,7 +3,7 @@ import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { homedir } from 'os';
-import type { McpServerConfig } from '../../core/mcp/index.js';
+import type { McpServerConfig, McpServersStandardFormat } from '../../core/mcp/index.js';
 import { DatabaseService } from '../database/database.service.js';
 import { WorkspaceService } from '../workspace/workspace.service.js';
 
@@ -75,8 +75,8 @@ export interface AgentConfigItem {
     modelItemCode?: string;
     /** 是否为系统缺省智能体（主智能体），不可删除 */
     isDefault?: boolean;
-    /** MCP 服务器配置列表，创建 Session 时传入（与 Skill 类似） */
-    mcpServers?: McpServerConfig[];
+    /** MCP 配置：数组（含 transport）或标准 JSON 对象（key 为服务器名称），创建 Session 时归一化使用 */
+    mcpServers?: McpServerConfig[] | McpServersStandardFormat;
     /** 自定义系统提示词，会与技能等一起组成最终 systemPrompt */
     systemPrompt?: string;
     /** 智能体图标标识（前端预设图标 id，如 default、star、code 等） */

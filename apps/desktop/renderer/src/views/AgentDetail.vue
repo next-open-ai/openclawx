@@ -373,28 +373,39 @@
 
             <div class="mcp-list">
               <div
-                v-for="(item, index) in mcpServers"
-                :key="index"
+                v-for="(entry, name) in mcpServers"
+                :key="name"
                 class="mcp-item card-glass"
               >
-                <span class="mcp-item-badge" :class="item.transport === 'sse' ? 'badge-remote' : 'badge-local'">
-                  {{ item.transport === 'sse' ? t('agents.mcpTransportSse') : t('agents.mcpTransportStdio') }}
+                <span class="mcp-item-badge" :class="entry.url ? 'badge-remote' : 'badge-local'">
+                  {{ entry.url ? t('agents.mcpTransportSse') : t('agents.mcpTransportStdio') }}
                 </span>
-                <span class="mcp-item-text">{{ mcpServerDisplayText(item) }}</span>
+                <span class="mcp-item-name">{{ name }}</span>
+                <span class="mcp-item-text">{{ mcpServerDisplayText(entry) }}</span>
                 <div class="mcp-item-actions">
-                  <button type="button" class="link-btn" @click="startEditMcp(index)">
+                  <button type="button" class="link-btn" @click="startEditMcp(name)">
                     {{ t('common.edit') }}
                   </button>
-                  <button type="button" class="link-btn danger" @click="removeMcpServer(index)">
+                  <button type="button" class="link-btn danger" @click="removeMcpServer(name)">
                     {{ t('common.delete') }}
                   </button>
                 </div>
               </div>
             </div>
 
-            <div v-if="mcpFormVisible || mcpEditingIndex >= 0" class="mcp-form card-glass">
-              <h3 class="config-section-title">{{ mcpEditingIndex >= 0 ? t('agents.editMcpServer') : t('agents.addMcpServer') }}</h3>
+            <div v-if="mcpFormVisible || mcpEditingKey !== null" class="mcp-form card-glass">
+              <h3 class="config-section-title">{{ mcpEditingKey !== null ? t('agents.editMcpServer') : t('agents.addMcpServer') }}</h3>
 
+              <div class="form-group">
+                <label class="form-label">{{ t('agents.mcpServerName') }}</label>
+                <input
+                  v-model="mcpForm.name"
+                  type="text"
+                  class="form-input"
+                  :placeholder="t('agents.mcpServerNamePlaceholder')"
+                  :readonly="mcpEditingKey !== null"
+                />
+              </div>
               <div class="form-group">
                 <label class="form-label">{{ t('agents.mcpTransportType') }}</label>
                 <div class="mcp-transport-tabs">
@@ -440,6 +451,15 @@
                     :placeholder="t('agents.mcpArgsPlaceholder')"
                   />
                 </div>
+                <div class="form-group">
+                  <label class="form-label">{{ t('agents.mcpEnv') }}</label>
+                  <textarea
+                    v-model="mcpForm.envStr"
+                    class="form-input form-textarea"
+                    rows="3"
+                    :placeholder="t('agents.mcpEnvPlaceholder')"
+                  />
+                </div>
               </template>
               <template v-else>
                 <div class="form-group">
@@ -468,13 +488,31 @@
                   {{ t('common.cancel') }}
                 </button>
                 <button type="button" class="btn-primary" @click="saveMcpServer">
-                  {{ mcpEditingIndex >= 0 ? t('agents.saveMcpServer') : t('agents.addMcpServer') }}
+                  {{ mcpEditingKey !== null ? t('agents.saveMcpServer') : t('agents.addMcpServer') }}
                 </button>
               </div>
             </div>
             <button v-else type="button" class="btn-secondary btn-add-mcp" @click="openAddMcp">
               {{ t('agents.addMcpServer') }}
             </button>
+
+            <div class="mcp-json-section card-glass">
+              <h3 class="config-section-title">{{ t('agents.mcpStandardJson') }}</h3>
+              <p class="form-hint">{{ t('agents.mcpStandardJsonHint') }}</p>
+              <textarea
+                v-model="mcpStandardJsonString"
+                class="form-input form-textarea mcp-json-textarea"
+                rows="12"
+                spellcheck="false"
+              />
+              <p v-if="mcpJsonError" class="form-hint form-hint-warn">{{ mcpJsonError }}</p>
+              <div class="mcp-form-actions">
+                <button type="button" class="btn-primary" @click="applyMcpJson">
+                  {{ t('agents.mcpApplyJson') }}
+                </button>
+              </div>
+            </div>
+
             <p class="form-hint mcp-save-hint">{{ t('agents.mcpSaveHint') }}</p>
             <div class="mcp-save-row">
               <button class="btn-primary" :disabled="configSaving" @click="saveConfig">
@@ -702,92 +740,106 @@ export default {
     const canDeleteWorkspaceSkill = computed(() => agent.value && !agent.value.isDefault && agent.value.workspace !== 'default');
     const renderedSkillContent = computed(() => (skillDetailContent.value ? marked(skillDetailContent.value) : ''));
 
-    /** MCP 服务器列表（与 Skill 类似，配到智能体；创建 Session 时传入） */
-    const mcpServers = ref([]);
+    /** MCP 配置：标准 JSON 对象，key 为服务器名称 */
+    const mcpServers = ref({});
     const mcpForm = ref({
+      name: '',
       transport: 'stdio',
       command: '',
       argsStr: '',
+      envStr: '',
       url: '',
       headersStr: '',
     });
-    const mcpEditingIndex = ref(-1);
+    const mcpEditingKey = ref(null);
     const mcpFormError = ref('');
-    /** 是否正在显示「添加」表单（点击添加按钮后为 true，保存/取消后为 false） */
     const mcpFormVisible = ref(false);
+    const mcpJsonError = ref('');
 
-    function normalizeMcpItem(item) {
-      if (!item || typeof item !== 'object') return null;
-      if (item.transport === 'sse') {
-        const url = (item.url || '').trim();
-        if (!url) return null;
-        let headers = item.headers;
-        if (typeof item.headers === 'string') {
-          try {
-            headers = item.headers.trim() ? JSON.parse(item.headers) : undefined;
-          } catch {
-            headers = undefined;
-          }
+    /** 将后端返回的 array 转为标准对象（无名称时用 MCP Server 1, 2...） */
+    function arrayToMcpStandardFormat(arr) {
+      if (!Array.isArray(arr) || arr.length === 0) return {};
+      const out = {};
+      arr.forEach((s, i) => {
+        const name = `MCP Server ${i + 1}`;
+        if (s.transport === 'sse') {
+          out[name] = { url: s.url, headers: s.headers };
+        } else {
+          out[name] = { command: s.command, args: s.args, env: s.env };
         }
-        return { transport: 'sse', url, headers };
-      }
-      const cmd = (item.command || '').trim();
-      const args = Array.isArray(item.args) ? item.args : (typeof item.args === 'string' ? item.args.split(/[\s,]+/).filter(Boolean) : []);
-      return { transport: 'stdio', command: cmd, args };
+      });
+      return out;
     }
-    function mcpServerDisplayText(item) {
-      if (!item) return '';
-      if (item.transport === 'sse') return item.url || '';
-      const cmd = item.command || '';
-      const a = (item.args || []).join(' ');
+
+    function mcpServerDisplayText(entry) {
+      if (!entry || typeof entry !== 'object') return '';
+      if (typeof entry.url === 'string' && entry.url.trim()) return entry.url.trim();
+      const cmd = (entry.command || '').trim();
+      const a = Array.isArray(entry.args) ? entry.args.join(' ') : '';
       return a ? `${cmd} ${a}`.trim() : cmd;
     }
+
     function getDefaultMcpForm() {
       return {
+        name: '',
         transport: 'stdio',
         command: '',
         argsStr: '',
+        envStr: '',
         url: '',
         headersStr: '',
       };
     }
+
     function openAddMcp() {
-      mcpEditingIndex.value = -1;
+      mcpEditingKey.value = null;
       mcpForm.value = getDefaultMcpForm();
       mcpFormError.value = '';
       mcpFormVisible.value = true;
     }
-    function startEditMcp(index) {
-      const item = mcpServers.value[index];
-      if (!item) return;
-      mcpEditingIndex.value = index;
-      if (item.transport === 'sse') {
+
+    function startEditMcp(name) {
+      const entry = mcpServers.value[name];
+      if (!entry) return;
+      mcpEditingKey.value = name;
+      if (typeof entry.url === 'string' && entry.url.trim()) {
         mcpForm.value = {
+          name,
           transport: 'sse',
           command: '',
           argsStr: '',
-          url: item.url || '',
-          headersStr: item.headers && typeof item.headers === 'object' ? JSON.stringify(item.headers, null, 0) : '',
+          envStr: '',
+          url: entry.url || '',
+          headersStr: entry.headers && typeof entry.headers === 'object' ? JSON.stringify(entry.headers, null, 2) : '',
         };
       } else {
         mcpForm.value = {
+          name,
           transport: 'stdio',
-          command: item.command || '',
-          argsStr: (item.args || []).join(' '),
+          command: (entry.command || '').trim(),
+          argsStr: Array.isArray(entry.args) ? entry.args.join(' ') : '',
+          envStr: entry.env && typeof entry.env === 'object' ? JSON.stringify(entry.env, null, 2) : '',
           url: '',
           headersStr: '',
         };
       }
       mcpFormError.value = '';
     }
+
     function cancelMcpForm() {
-      mcpEditingIndex.value = -1;
+      mcpEditingKey.value = null;
       mcpForm.value = getDefaultMcpForm();
       mcpFormError.value = '';
       mcpFormVisible.value = false;
     }
+
     function saveMcpServer() {
       mcpFormError.value = '';
+      const name = (mcpForm.value.name || '').trim();
+      if (!name) {
+        mcpFormError.value = t('agents.mcpServerNameRequired');
+        return;
+      }
       if (mcpForm.value.transport === 'sse') {
         const url = (mcpForm.value.url || '').trim();
         if (!url) {
@@ -805,11 +857,14 @@ export default {
             return;
           }
         }
-        const newItem = { transport: 'sse', url, headers };
-        if (mcpEditingIndex.value >= 0) {
-          mcpServers.value = mcpServers.value.map((s, i) => (i === mcpEditingIndex.value ? newItem : s));
+        const newEntry = { url, headers };
+        if (mcpEditingKey.value !== null && mcpEditingKey.value !== name) {
+          const next = { ...mcpServers.value };
+          delete next[mcpEditingKey.value];
+          next[name] = newEntry;
+          mcpServers.value = next;
         } else {
-          mcpServers.value = [...mcpServers.value, newItem];
+          mcpServers.value = { ...mcpServers.value, [name]: newEntry };
         }
       } else {
         const cmd = (mcpForm.value.command || '').trim();
@@ -819,19 +874,71 @@ export default {
         }
         const argsStr = (mcpForm.value.argsStr || '').trim();
         const args = argsStr ? argsStr.split(/[\s,]+/).filter(Boolean) : [];
-        const newItem = { transport: 'stdio', command: cmd, args };
-        if (mcpEditingIndex.value >= 0) {
-          mcpServers.value = mcpServers.value.map((s, i) => (i === mcpEditingIndex.value ? newItem : s));
+        let env;
+        const envStr = (mcpForm.value.envStr || '').trim();
+        if (envStr) {
+          try {
+            env = JSON.parse(envStr);
+            if (typeof env !== 'object' || env === null) env = undefined;
+          } catch {
+            mcpFormError.value = t('agents.mcpEnvInvalidJson');
+            return;
+          }
+        }
+        const newEntry = { command: cmd, args: args.length ? args : undefined, env };
+        if (mcpEditingKey.value !== null && mcpEditingKey.value !== name) {
+          const next = { ...mcpServers.value };
+          delete next[mcpEditingKey.value];
+          next[name] = newEntry;
+          mcpServers.value = next;
         } else {
-          mcpServers.value = [...mcpServers.value, newItem];
+          mcpServers.value = { ...mcpServers.value, [name]: newEntry };
         }
       }
       cancelMcpForm();
     }
-    function removeMcpServer(index) {
-      mcpServers.value = mcpServers.value.filter((_, i) => i !== index);
-      if (mcpEditingIndex.value === index) cancelMcpForm();
-      else if (mcpEditingIndex.value > index) mcpEditingIndex.value -= 1;
+
+    function removeMcpServer(name) {
+      const next = { ...mcpServers.value };
+      delete next[name];
+      mcpServers.value = next;
+      if (mcpEditingKey.value === name)       cancelMcpForm();
+      syncMcpJsonString();
+    }
+
+    const mcpStandardJsonString = ref('');
+
+    function syncMcpJsonString() {
+      try {
+        mcpStandardJsonString.value = JSON.stringify({ mcpServers: mcpServers.value }, null, 2);
+      } catch {
+        mcpStandardJsonString.value = '{}';
+      }
+    }
+
+    /** 移除 JSON 中的尾随逗号（标准 JSON 不支持，但用户常写）以便解析 */
+    function parseJsonAllowTrailingComma(str) {
+      let s = (str || '{}').trim();
+      // 去掉 ,} 和 ,] 形式的尾随逗号（可多次）
+      while (s.replace(/,(\s*[}\]])/g, '$1') !== s) {
+        s = s.replace(/,(\s*[}\]])/g, '$1');
+      }
+      return JSON.parse(s);
+    }
+
+    function applyMcpJson() {
+      mcpJsonError.value = '';
+      try {
+        const parsed = parseJsonAllowTrailingComma(mcpStandardJsonString.value);
+        if (!parsed || typeof parsed !== 'object' || parsed.mcpServers == null || typeof parsed.mcpServers !== 'object' || Array.isArray(parsed.mcpServers)) {
+          mcpJsonError.value = t('agents.mcpJsonApplyError');
+          return;
+        }
+        mcpServers.value = parsed.mcpServers;
+        syncMcpJsonString();
+      } catch {
+        mcpJsonError.value = t('agents.mcpJsonApplyError');
+      }
     }
 
     function getProviderDisplayName(providerId) {
@@ -911,9 +1018,16 @@ export default {
             },
           };
           const raw = agent.value.mcpServers;
-          mcpServers.value = Array.isArray(raw)
-            ? raw.map(normalizeMcpItem).filter((m) => m && (m.transport === 'sse' ? (m.url || '').trim() : (m.command || '').trim()))
-            : [];
+          if (raw != null && typeof raw === 'object' && !Array.isArray(raw)) {
+            mcpServers.value = { ...raw };
+          } else if (Array.isArray(raw)) {
+            mcpServers.value = arrayToMcpStandardFormat(
+              raw.filter((m) => m && (m.transport === 'sse' ? (m.url || '').trim() : (m.command || '').trim()))
+            );
+          } else {
+            mcpServers.value = {};
+          }
+          syncMcpJsonString();
         } else if (agentId.value === 'default') {
           agent.value = { ...MAIN_AGENT_FALLBACK };
           configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
@@ -924,7 +1038,8 @@ export default {
             openclawx: { baseUrl: '', apiKey: '' },
             opencode: { mode: 'local', address: '', port: 4096, username: '', password: '', model: '', workingDirectory: '' },
           };
-          mcpServers.value = [];
+          mcpServers.value = {};
+          syncMcpJsonString();
         }
       } catch (e) {
         if (agentId.value === 'default') {
@@ -937,7 +1052,8 @@ export default {
             openclawx: { baseUrl: '', apiKey: '' },
             opencode: { mode: 'local', address: '', port: 4096, username: '', password: '', model: '', workingDirectory: '' },
           };
-          mcpServers.value = [];
+          mcpServers.value = {};
+          syncMcpJsonString();
         } else {
           agent.value = null;
         }
@@ -1308,7 +1424,7 @@ export default {
       mcpServers,
       mcpForm,
       mcpFormVisible,
-      mcpEditingIndex,
+      mcpEditingKey,
       mcpFormError,
       mcpServerDisplayText,
       openAddMcp,
@@ -1316,6 +1432,9 @@ export default {
       cancelMcpForm,
       saveMcpServer,
       removeMcpServer,
+      mcpStandardJsonString,
+      applyMcpJson,
+      mcpJsonError,
     };
   },
 };
@@ -2011,6 +2130,15 @@ export default {
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
+.mcp-item-name {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .mcp-item-badge.badge-local {
   background: rgba(59, 130, 246, 0.2);
   color: var(--color-accent-primary);
@@ -2101,6 +2229,20 @@ export default {
 }
 .btn-add-mcp {
   margin-bottom: var(--spacing-md);
+}
+.mcp-json-section {
+  margin-top: var(--spacing-lg);
+  padding: var(--spacing-lg);
+}
+.mcp-json-section .config-section-title {
+  margin-bottom: var(--spacing-sm);
+}
+.mcp-json-textarea {
+  width: 100%;
+  min-height: 200px;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-sm);
+  margin: var(--spacing-sm) 0;
 }
 .mcp-save-hint {
   margin-top: var(--spacing-md);
