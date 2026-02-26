@@ -65,7 +65,7 @@ openbot gateway --port 38080
 3. 之后像普通应用一样打开 OpenClawX 即可，无需再右键或重复操作。
 
 
-（见 [桌面端使用](desktop-usage.md)）。
+对话中可使用 **`//` 指令** 快速查询或切换智能体（如 `//select` 列列表、`//名称` 切换、`//` 切回主智能体），详见 [桌面端使用](desktop-usage.md#对话内切换智能体-指令)。
 
 ---
 
@@ -74,7 +74,7 @@ openbot gateway --port 38080
 0. 打开安装的桌面程序或者打开网关服务 **打开Gateway**（`openbot gateway`）。
 1. 在 **设置 → 通道** 中启用对应通道并填写凭证（飞书 App ID/Secret、钉钉 Client ID/Secret、Telegram Bot Token）。
 2. 保存后 **重启 Gateway**（`openbot gateway`）或者打开桌面程序。
-3. 在对应 IM 内 @ 机器人或与机器人对话即可。
+3. 在对应 IM 内 @ 机器人或与机器人对话即可。对话中同样支持 **`//` 指令** 查询与切换当前会话的智能体（如 `//select`、`//名称`、`//`）。
 
 详见 [通道配置](../configuration/channels.md)。
 

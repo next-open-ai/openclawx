@@ -59,7 +59,7 @@ Open `http://localhost:38080` or connect clients to `ws://localhost:38080` and u
   ```
   Then open the app as usual.
 
-See [Desktop usage](desktop-usage.md).
+In chat you can use **`//` commands** to list or switch agents (e.g. `//select`, `//name`, `//` to switch back to default). See [Desktop usage → Switching agents in chat](desktop-usage.md#switching-agents-in-chat-commands).
 
 ---
 
@@ -68,7 +68,7 @@ See [Desktop usage](desktop-usage.md).
 1. Start the desktop app or run **Gateway** (`openbot gateway`).
 2. In **Settings → Channels**, enable the channel and fill credentials (Feishu App ID/Secret, DingTalk Client ID/Secret, Telegram Bot Token).
 3. Save and **restart Gateway** (or the desktop app).
-4. In the IM app, @ the bot or start a chat.
+4. In the IM app, @ the bot or start a chat. The same **`//` commands** work in channel conversations to list or switch the session’s agent.
 
 See [Channel configuration](../configuration/channels.md).
 

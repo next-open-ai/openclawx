@@ -131,7 +131,7 @@ For downloads, provide either a direct URL or a selector to click.`;
         const experienceMemoryDesc = `
 ## Long-term memory
 
-- **save_experience**: Store summaries in long-term memory. **At the end of each round of conversation** (after you have finished replying to the user), briefly summarize the main outcomes, conclusions, or reusable points and call \`save_experience\` with that summary.
+- **save_experience**: Store summaries in long-term memory. **Call at most once per conversation**, and **only after all tasks are fully completed** (as the last step before ending your reply). **Do not call it for very simple dialogue tasks** (e.g. single-turn Q&A, greetings, trivial questions). When you do call it, briefly summarize the main outcomes, conclusions, or reusable points in one \`save_experience\` call.
 - **memory_recall**: Retrieve relevant memories by semantic search. **When the user asks about past work, decisions, dates, people, preferences, todos, complex tasks, scheduled tasks, or anything that may need past experience**, call \`memory_recall\` first with a suitable query, then answer using the recalled content. Do not inject any history or memory into your replies unless you have just retrieved it via \`memory_recall\` for that question.`;
 
         const terminologyNote =

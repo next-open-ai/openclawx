@@ -1,3 +1,4 @@
+import { nextTick } from 'vue';
 import { defineStore } from 'pinia';
 import { agentAPI, usageAPI } from '@/api';
 import socketService from '@/api/socket';
@@ -325,47 +326,50 @@ export const useAgentStore = defineStore('agent', {
         /** agent_end：整轮对话真正结束，落库消息并允许再次输入。同步后端 session（含 agentId），便于对话内 switch_agent 后前端展示最新智能体。 */
         handleConversationEnd(data) {
             if (data?.sessionId !== this.currentSession?.id) return;
-            const content = this.currentMessage || data.content || '';
-            if (content || this.toolExecutions.length > 0) {
-                const assistantMessage = {
-                    id: Date.now().toString(),
-                    role: 'assistant',
-                    content,
-                    timestamp: Date.now(),
-                    toolCalls: [...this.toolExecutions],
-                    contentParts: [...this.currentStreamParts],
-                };
-                this.messages.push(assistantMessage);
-                agentAPI.appendMessage(this.currentSession.id, 'assistant', content, {
-                    toolCalls: assistantMessage.toolCalls,
-                    contentParts: assistantMessage.contentParts,
-                }).catch(() => {});
-            }
-            this.currentMessage = '';
-            this.currentStreamParts = [];
-            this.isStreaming = false;
-            this.toolExecutions = [];
+            // 延迟到 nextTick 再快照，避免 conversation_end 先于同 tick 的 agent_chunk 到达导致提交不完整内容、界面“闪一下消失”
+            nextTick(() => {
+                const content = this.currentMessage || data.content || '';
+                if (content || this.toolExecutions.length > 0) {
+                    const assistantMessage = {
+                        id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+                        role: 'assistant',
+                        content,
+                        timestamp: Date.now(),
+                        toolCalls: [...this.toolExecutions],
+                        contentParts: this.currentStreamParts.map((p) => (p.type === 'text' ? { type: 'text', content: String(p.content ?? '') } : { type: 'tool', toolId: p.toolId })),
+                    };
+                    this.messages.push(assistantMessage);
+                    agentAPI.appendMessage(this.currentSession.id, 'assistant', content, {
+                        toolCalls: assistantMessage.toolCalls,
+                        contentParts: assistantMessage.contentParts,
+                    }).catch(() => {});
+                }
+                this.currentMessage = '';
+                this.currentStreamParts = [];
+                this.isStreaming = false;
+                this.toolExecutions = [];
 
-            // 同步当前 session（含 agentId），对话内 switch_agent 后前端展示最新智能体
-            const sessionId = this.currentSession?.id;
-            if (sessionId) {
-                agentAPI.getSession(sessionId)
-                    .then((res) => {
-                        const session = res?.data?.data ?? res?.data;
-                        if (session && this.currentSession?.id === sessionId) {
-                            this.currentSession = session;
-                            const idx = this.sessions.findIndex((s) => s.id === sessionId);
-                            if (idx >= 0) {
-                                this.sessions = this.sessions.map((s, i) => (i === idx ? { ...s, ...session } : s));
+                // 同步当前 session（含 agentId），对话内 switch_agent 后前端展示最新智能体
+                const sessionId = this.currentSession?.id;
+                if (sessionId) {
+                    agentAPI.getSession(sessionId)
+                        .then((res) => {
+                            const session = res?.data?.data ?? res?.data;
+                            if (session && this.currentSession?.id === sessionId) {
+                                this.currentSession = session;
+                                const idx = this.sessions.findIndex((s) => s.id === sessionId);
+                                if (idx >= 0) {
+                                    this.sessions = this.sessions.map((s, i) => (i === idx ? { ...s, ...session } : s));
+                                }
+                                if (socketService.currentSessionId === sessionId && session.agentId !== undefined) {
+                                    socketService.connectToSession(sessionId, session.agentId, session.type ?? 'chat').catch(() => {});
+                                }
                             }
-                            if (socketService.currentSessionId === sessionId && session.agentId !== undefined) {
-                                socketService.connectToSession(sessionId, session.agentId, session.type ?? 'chat').catch(() => {});
-                            }
-                        }
-                    })
-                    .catch(() => {});
-            }
-            this.agentListRefreshTrigger += 1;
+                        })
+                        .catch(() => {});
+                }
+                this.agentListRefreshTrigger += 1;
+            });
         },
     },
 });

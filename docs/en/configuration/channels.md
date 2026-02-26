@@ -14,6 +14,8 @@ OpenClawX supports **channels** to connect the agent to Feishu, DingTalk, and Te
 
 Each session uses the channel’s **defaultAgentId**. Configure under **Settings → Channels**; **restart the gateway** after changes.
 
+**Switching agents in chat:** In Feishu, DingTalk, and Telegram conversations, the same **`//` commands** work to list and switch the current session’s agent (e.g. `//select`, `//name`, `//` to switch back to default). Same behavior as Desktop and Web; see [Desktop usage → Switching agents in chat](../guides/desktop-usage.md#switching-agents-in-chat-commands).
+
 ---
 
 ## Feishu

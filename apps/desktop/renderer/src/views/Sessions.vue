@@ -5,6 +5,15 @@
         <h2 class="view-title">{{ t('nav.sessions') }}</h2>
         <p class="view-subtitle">{{ sessions.length }} {{ t('sessions.totalSessions') }}</p>
       </div>
+      <button
+        type="button"
+        class="btn-refresh"
+        :disabled="sessionsLoading"
+        :title="t('common.refresh') || 'Refresh'"
+        @click="refreshSessions"
+      >
+        {{ sessionsLoading ? '…' : '↻' }}
+      </button>
     </div>
 
     <div v-if="sessions.length === 0" class="empty-state card-glass">
@@ -182,7 +191,7 @@
 </template>
 
 <script>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAgentStore } from '@/store/modules/agent';
 import { useI18n } from '@/composables/useI18n';
@@ -199,6 +208,23 @@ export default {
     const historySession = ref(null);
     const historyMessages = ref(null);
     const historyLoading = ref(false);
+    const sessionsLoading = ref(false);
+
+    async function refreshSessions() {
+      sessionsLoading.value = true;
+      try {
+        await agentStore.fetchSessions();
+      } finally {
+        sessionsLoading.value = false;
+      }
+    }
+
+    onMounted(() => {
+      refreshSessions();
+    });
+    onActivated(() => {
+      refreshSessions();
+    });
 
     const sessions = computed(() => agentStore.sessions);
     const sortedSessions = computed(() => {
@@ -299,7 +325,9 @@ export default {
       if (!confirm(t('sessions.clearHistoryConfirm'))) return;
       try {
         await agentAPI.clearSessionMessages(historySession.value.id);
-        historyMessages.value = [];
+        // 从服务端重新拉取该会话历史，确保展示与数据库一致（避免只清内存未落库时界面误以为已清空）
+        const res = await agentAPI.getHistory(historySession.value.id);
+        historyMessages.value = res?.data?.data ?? res?.data ?? [];
         await agentStore.fetchSessions();
         if (historySession.value) {
           const updated = agentStore.sessions.find((s) => s.id === historySession.value.id);
@@ -322,6 +350,8 @@ export default {
       t,
       sessions,
       sortedSessions,
+      sessionsLoading,
+      refreshSessions,
       formatDate,
       formatDateTime,
       getSessionTitle,
@@ -360,6 +390,26 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-xl);
+}
+
+.btn-refresh {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+.btn-refresh:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+}
+.btn-refresh:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .view-title {

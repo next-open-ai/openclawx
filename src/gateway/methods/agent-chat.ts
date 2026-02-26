@@ -2,6 +2,7 @@ import type { GatewayClient, AgentChatParams } from "../types.js";
 import { agentManager } from "../../core/agent/agent-manager.js";
 import { runForChannelStream } from "../../core/agent/proxy/index.js";
 import { getSessionCurrentAgentResolver, getSessionCurrentAgentUpdater } from "../../core/session-current-agent.js";
+import { preprocessInboundMessage } from "../../core/inbound-message-preprocess.js";
 import { send, createEvent } from "../utils.js";
 import { connectedClients } from "../clients.js";
 import { getDesktopConfig, loadDesktopAgentConfig } from "../../core/config/desktop-config.js";
@@ -53,15 +54,29 @@ async function handleAgentChatInner(
 ): Promise<{ status: string; sessionId: string }> {
     const { targetAgentId } = params;
     const sessionType = params.sessionType ?? client.sessionType ?? "chat";
-    // 当前 agent：请求传入 > 已存（DB）> 连接/默认
     const resolveCurrentAgent = getSessionCurrentAgentResolver();
     const storedAgentId = resolveCurrentAgent?.(targetSessionId);
     const clientAgentId = params.agentId ?? client.agentId ?? "default";
-    let currentAgentId = params.agentId ?? storedAgentId ?? clientAgentId ?? "default";
-    if (params.agentId) {
-        getSessionCurrentAgentUpdater()?.(targetSessionId, params.agentId);
-        currentAgentId = params.agentId;
+    const initialAgentId = params.agentId ?? storedAgentId ?? clientAgentId ?? "default";
+
+    const { message: preprocessedMessage, agentId: preprocessedAgentId, directResponse } = await preprocessInboundMessage({
+        sessionId: targetSessionId,
+        message: message.trim(),
+        currentAgentId: initialAgentId,
+    });
+    getSessionCurrentAgentUpdater()?.(targetSessionId, preprocessedAgentId);
+
+    if (directResponse != null && directResponse !== "") {
+        broadcastToSession(targetSessionId, createEvent("agent.chunk", { text: directResponse, sessionId: targetSessionId }));
+        broadcastToSession(targetSessionId, createEvent("turn_end", { sessionId: targetSessionId, content: "" }));
+        broadcastToSession(targetSessionId, createEvent("message_complete", { sessionId: targetSessionId, content: "" }));
+        broadcastToSession(targetSessionId, createEvent("agent_end", { sessionId: targetSessionId }));
+        broadcastToSession(targetSessionId, createEvent("conversation_end", { sessionId: targetSessionId }));
+        return { status: "completed", sessionId: targetSessionId };
     }
+
+    message = preprocessedMessage;
+    let currentAgentId = preprocessedAgentId;
     console.log(
         `[agent.chat] session=${targetSessionId} resolved agentId=${currentAgentId} (params=${params.agentId ?? "—"}, stored=${storedAgentId ?? "—"}, client=${client.agentId ?? "—"})`
     );

@@ -41,6 +41,13 @@ A: **Restart the gateway** after saving channel config. Check credentials and de
 
 ---
 
+## Chat and agents
+
+**Q: How do I list or switch the current agent in chat?**  
+A: In Desktop, Web, or any channel (Feishu, DingTalk, Telegram), type `//`-prefixed commands: `//select` lists agents, `//name` or `//id` switches to that agent, `//` or `// ` switches back to the default agent. See [Desktop usage → Switching agents in chat](../guides/desktop-usage.md#switching-agents-in-chat-commands).
+
+---
+
 ## Channels and proxy
 
 **Q: Can channel default agent be Coze / OpenClawX / OpenCode?**  

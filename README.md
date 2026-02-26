@@ -19,7 +19,7 @@
 | **入门** | [快速开始](docs/zh/guides/getting-started.md) | 5 分钟跑通：安装、首次对话、桌面/通道入口 |
 | | [安装与部署](docs/zh/guides/installation.md) | npm、Docker、Desktop 安装包及环境要求 |
 | **使用指南** | [CLI 使用](docs/zh/guides/cli-usage.md) | 命令行对话、登录、模型与技能、开机自启 |
-| | [桌面端使用](docs/zh/guides/desktop-usage.md) | Desktop 安装与启动、智能体/会话/技能/设置 |
+| | [桌面端使用](docs/zh/guides/desktop-usage.md) | Desktop 安装与启动、智能体/会话/技能/设置；对话内 `//` 指令查询与切换智能体 |
 | | [Web 与 Gateway](docs/zh/guides/gateway-web.md) | 启动网关、端口与路径、Web 端连接 |
 | | [使用场景](docs/zh/guides/usage-scenarios.md) | 整理下载目录、创建/切换智能体、安装技能、MCP、定时任务等 |
 | **配置** | [配置概览](docs/zh/configuration/config-overview.md) | 配置目录、config.json 与 agents.json |

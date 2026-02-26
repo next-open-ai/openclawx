@@ -4,6 +4,8 @@
 import type { UnifiedMessage, UnifiedReply, IChannel, IOutboundTransport, StreamSink } from "./types.js";
 import { runAgentAndCollectReply, runAgentAndStreamReply } from "./run-agent.js";
 import { getChannelSessionPersistence, persistChannelUserMessage, persistChannelAssistantMessage } from "./session-persistence.js";
+import { preprocessInboundMessage } from "../../core/inbound-message-preprocess.js";
+import { getSessionCurrentAgentUpdater } from "../../core/session-current-agent.js";
 
 const STREAM_THROTTLE_MS = 280;
 
@@ -71,11 +73,32 @@ export async function handleChannelMessage(
         return;
     }
 
-    // 与 Web/Desktop 统一：通道会话入库并追加用户消息（用 currentAgentId）
+    const rawMessage = msg.messageText?.trim() ?? "";
+    const { message: messageText, agentId: effectiveAgentId, directResponse } = await preprocessInboundMessage({
+        sessionId,
+        message: rawMessage,
+        currentAgentId,
+    });
+    getSessionCurrentAgentUpdater()?.(sessionId, effectiveAgentId);
+
+    if (directResponse != null && directResponse !== "") {
+        await persistChannelUserMessage(sessionId, {
+            agentId: effectiveAgentId,
+            title: rawMessage.slice(0, 50) || undefined,
+            messageText: rawMessage,
+        });
+        persistChannelAssistantMessage(sessionId, directResponse);
+        const reply: UnifiedReply = { text: directResponse };
+        await outbound.send(threadId, reply);
+        await msg.ack?.(reply);
+        return;
+    }
+
+    // 与 Web/Desktop 统一：通道会话入库并追加用户消息（用预处理后的 agentId 与消息）
     await persistChannelUserMessage(sessionId, {
-        agentId: currentAgentId,
-        title: msg.messageText?.trim().slice(0, 50) || undefined,
-        messageText: msg.messageText?.trim() || "",
+        agentId: effectiveAgentId,
+        title: messageText.slice(0, 50) || undefined,
+        messageText,
     });
 
     const useStream = typeof (outbound as IOutboundTransport).sendStream === "function";
@@ -97,7 +120,7 @@ export async function handleChannelMessage(
         }, STREAM_THROTTLE_MS);
         try {
             await runAgentAndStreamReply(
-                { sessionId, message: msg.messageText, agentId: currentAgentId },
+                { sessionId, message: messageText, agentId: effectiveAgentId },
                 {
                     onChunk(delta) {
                         accumulated += delta;
@@ -131,8 +154,8 @@ export async function handleChannelMessage(
     try {
         replyText = await runAgentAndCollectReply({
             sessionId,
-            message: msg.messageText,
-            agentId: currentAgentId,
+            message: messageText,
+            agentId: effectiveAgentId,
         });
     } catch (err) {
         console.error("[ChannelCore] runAgent failed:", err);

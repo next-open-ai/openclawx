@@ -49,6 +49,29 @@ Channels can use any configured agent as their default. See [Proxy mode](../feat
 
 ---
 
+## Switching agents in chat: `//` commands
+
+In **Desktop, Web, and all channels** (Feishu, DingTalk, Telegram), you can use `//`-prefixed commands in the conversation to query or switch the current session’s agent without opening Settings.
+
+| Input | Description |
+|-------|-------------|
+| `//` or `// ` (space) | Switch back to the **default (main) agent**; shows “Switched to main agent.” |
+| `//select` | List available agents (name and id) and how to switch; does not run the agent |
+| `//name` or `//id` | Switch to the given agent (by name or id); if not found, switch to default and show a message |
+| `//name(id)` | Same as above; supports “name(id)” format |
+| `//agent name  then your message` | Switch to that agent, then send “then your message” as the user message to it |
+
+**Examples** (in any chat):
+
+- Type `//select` → see the list of available agents  
+- Type `//` → switch back to the main agent  
+- Type `//Code Assistant` → switch to the “Code Assistant” agent  
+- Type `//Code Assistant help me write a sort function` → switch to Code Assistant and send “help me write a sort function”
+
+Switching and list display are handled by the Gateway and **do not** send the `//` command to the agent, so they do not trigger extra replies or skill summaries.
+
+---
+
 ## Channel configuration
 
 Under **Settings → Channels**, enable and configure Feishu, DingTalk, Telegram. **Restart Gateway** after saving. See [Channel configuration](../configuration/channels.md).

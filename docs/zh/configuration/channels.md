@@ -14,6 +14,8 @@ OpenClawX 支持通过**通道**将 Agent 对接到飞书、钉钉、Telegram。
 
 同一会话（如一个 chat_id / conversationId）对应一个 Agent Session，由通道配置中的 **defaultAgentId** 指定使用的智能体。
 
+**对话内切换智能体**：在飞书、钉钉、Telegram 的对话中，同样支持使用 **`//` 指令** 查询与切换当前会话的智能体（如 `//select` 列出智能体、`//名称` 或 `//id` 切换、`//` 切回主智能体）。与桌面端、Web 端行为一致，详见 [桌面端使用 → 对话内切换智能体：// 指令](../guides/desktop-usage.md#对话内切换智能体-指令)。
+
 ---
 
 ## 配置位置

@@ -3,7 +3,7 @@
     "publishConfig": {
         "access": "public"
     },
-    "version": "0.8.28",
+    "version": "0.8.32",
     "description": "OpenClawX - A professional desktop application for managing and executing AI agents with real-time chat, session management, and skills browsing.",
     "type": "module",
     "main": "dist/index.js",
