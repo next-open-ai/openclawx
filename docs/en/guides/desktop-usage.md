@@ -1,0 +1,71 @@
+# Desktop usage
+
+OpenClawX Desktop provides a UI for sessions, agents, skills, tasks, workspace, settings, and channel config. In this system, “agent”, “assistant”, and “expert” mean the same thing and can be used interchangeably.
+
+---
+
+## How to start
+
+| Method | Notes |
+|--------|-------|
+| **Installer** | Install OpenClawX and configure API Key and default model in the UI |
+
+**macOS (unsigned build):** If the app is reported as damaged, run in Terminal:
+
+```bash
+xattr -cr /Applications/OpenClawX.app
+```
+
+Desktop, Web, and CLI share the same config (`~/.openbot/desktop/`) and agent core.
+
+---
+
+## Main areas
+
+- **Dashboard**: Overview and shortcuts  
+- **Agents**: Create/edit agents, set execution (local / Coze / OpenClawX / OpenCode), model, workspace  
+- **Sessions**: History and continue chat  
+- **Skills**: View and manage loaded skills  
+- **Tasks**: Task list and run history  
+- **Workspace**: Workspace directory and files  
+- **Settings**: Default model, API Key, **Channels** (Feishu, DingTalk, Telegram), etc.
+
+For **usage scenarios** (organize downloads, create/switch agents, install skills, MCP, scheduled tasks), see [Usage scenarios](usage-scenarios.md).
+
+---
+
+## Agents and execution
+
+Under **Settings → Agents** you can:
+
+- Set the **default agent**
+- Create/edit agents and choose **execution**:
+  - **Local**: pi-coding-agent and Skills on this machine
+  - **Coze**: Proxy to Coze (region, Bot ID, Access Token)
+  - **OpenClawX**: Proxy to another OpenClawX instance (baseUrl, optional apiKey)
+  - **OpenCode**: Proxy to [OpenCode](https://opencode.ai/) (local `opencode serve` or remote)
+
+Channels can use any configured agent as their default. See [Proxy mode](../features/proxy-mode.md) and [Agent configuration](../configuration/agents.md).
+
+---
+
+## Channel configuration
+
+Under **Settings → Channels**, enable and configure Feishu, DingTalk, Telegram. **Restart Gateway** after saving. See [Channel configuration](../configuration/channels.md).
+
+---
+
+## Long memory (RAG) and local embedding
+
+Agent long memory uses text embeddings. Desktop prefers an **online RAG model** if configured; otherwise it may use a **local model**. If local GGUF is unavailable in Electron, configure an online RAG model in Settings.
+
+---
+
+## Next steps
+
+- [Usage scenarios](usage-scenarios.md)
+- [Web and Gateway](gateway-web.md)
+- [Config overview](../configuration/config-overview.md)
+- [Proxy mode](../features/proxy-mode.md)
+
+[← Back to index](../README.md)

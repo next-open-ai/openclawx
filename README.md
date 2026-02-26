@@ -8,48 +8,50 @@
 
 ---
 
-## 📚 文档导航
+## 📚 文档导航 (Documentation)
 
-完整使用说明请进入 **[使用文档入口](docs/README.md)**。文档结构如下：
+**文档 (Documentation):** [中文 (Chinese)](docs/zh/README.md) · [English](docs/en/README.md)
+
+完整使用说明请进入上述链接。中文文档结构如下：
 
 | 分类 | 文档 | 说明 |
 |------|------|------|
-| **入门** | [快速开始](docs/guides/getting-started.md) | 5 分钟跑通：安装、首次对话、桌面/通道入口 |
-| | [安装与部署](docs/guides/installation.md) | npm、Docker、Desktop 安装包及环境要求 |
-| **使用指南** | [CLI 使用](docs/guides/cli-usage.md) | 命令行对话、登录、模型与技能、开机自启 |
-| | [桌面端使用](docs/guides/desktop-usage.md) | Desktop 安装与启动、智能体/会话/技能/设置 |
-| | [Web 与 Gateway](docs/guides/gateway-web.md) | 启动网关、端口与路径、Web 端连接 |
-| **配置** | [配置概览](docs/configuration/config-overview.md) | 配置目录、config.json 与 agents.json |
-| | [智能体配置](docs/configuration/agents.md) | 本机/Coze/OpenClawX 执行方式与模型 |
-| | [通道配置](docs/configuration/channels.md) | 飞书、钉钉、Telegram 启用与配置项 |
-| **功能说明** | [代理模式与多节点](docs/features/proxy-mode.md) | Coze 接入、OpenClawX 多节点协作 |
-| | [技能系统](docs/features/skills.md) | Agent Skills 规范与扩展 |
-| **参考** | [常见问题](docs/reference/faq.md) | 安装失败、端口占用、通道不回复等 FAQ |
-| | [发布说明](docs/release-notes.md) | 各版本功能更新与问题修复记录 |
+| **入门** | [快速开始](docs/zh/guides/getting-started.md) | 5 分钟跑通：安装、首次对话、桌面/通道入口 |
+| | [安装与部署](docs/zh/guides/installation.md) | npm、Docker、Desktop 安装包及环境要求 |
+| **使用指南** | [CLI 使用](docs/zh/guides/cli-usage.md) | 命令行对话、登录、模型与技能、开机自启 |
+| | [桌面端使用](docs/zh/guides/desktop-usage.md) | Desktop 安装与启动、智能体/会话/技能/设置 |
+| | [Web 与 Gateway](docs/zh/guides/gateway-web.md) | 启动网关、端口与路径、Web 端连接 |
+| | [使用场景](docs/zh/guides/usage-scenarios.md) | 整理下载目录、创建/切换智能体、安装技能、MCP、定时任务等 |
+| **配置** | [配置概览](docs/zh/configuration/config-overview.md) | 配置目录、config.json 与 agents.json |
+| | [智能体配置](docs/zh/configuration/agents.md) | 本机/Coze/OpenClawX 执行方式与模型 |
+| | [通道配置](docs/zh/configuration/channels.md) | 飞书、钉钉、Telegram 启用与配置项 |
+| **功能说明** | [代理模式与多节点](docs/zh/features/proxy-mode.md) | Coze 接入、OpenClawX 多节点协作 |
+| | [技能系统](docs/zh/features/skills.md) | Agent Skills 规范与扩展 |
+| **参考** | [常见问题](docs/zh/reference/faq.md) | 安装失败、端口占用、通道不回复等 FAQ |
+| | [发布说明](docs/zh/release-notes.md) | 各版本功能更新与问题修复记录 |
 
 <details>
-<summary><strong>📂 文档树结构</strong></summary>
+<summary><strong>📂 文档树结构 (Doc structure)</strong></summary>
 
 ```
 docs/
-├── README.md                   → 文档入口与导航
-├── release-notes.md            → 发布说明
-├── guides/                     → 使用指南
-│   ├── getting-started.md      快速开始
-│   ├── installation.md         安装与部署
-│   ├── cli-usage.md            CLI 使用
-│   ├── desktop-usage.md        桌面端使用
-│   └── gateway-web.md          Web 与 Gateway
-├── configuration/              → 配置说明
-│   ├── config-overview.md      配置概览
-│   ├── agents.md              智能体配置
-│   └── channels.md            通道配置（飞书/钉钉/Telegram）
-├── features/                   → 功能说明
-│   ├── proxy-mode.md          代理模式与多节点协作
-│   └── skills.md              技能系统
-├── reference/                  → 参考
-│   └── faq.md                 常见问题
-└── channel-streaming-design.md 通道流式设计（开发参考）
+├── README.md                   → 语言切换入口 (Language switcher)
+├── zh/                         → 中文文档 (Chinese)
+│   ├── README.md               文档入口与导航
+│   ├── release-notes.md        发布说明
+│   ├── guides/                 使用指南
+│   ├── configuration/          配置说明
+│   ├── features/               功能说明
+│   ├── reference/              参考
+│   └── channel-streaming-design.md
+└── en/                         → 英文文档 (English)
+    ├── README.md               Index and navigation
+    ├── release-notes.md        Release notes
+    ├── guides/                 Guides
+    ├── configuration/          Configuration
+    ├── features/                Features
+    ├── reference/              Reference
+    └── channel-streaming-design.md
 ```
 
 </details>
@@ -59,7 +61,7 @@ docs/
 - **Windows 安装失败 / 无法运行？**  
   - **Desktop 安装包**：若安装或启动报错（如缺少运行库、闪退），请安装 [Visual C++ Redistributable](https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist)（选 x64）；若为杀毒/安全软件拦截，可尝试加入排除项或暂时关闭后重试。  
   - **npm 全局安装**：Windows 上若因 `node-llama-cpp` 等原生依赖安装失败，可使用 `npm install -g @next-open-ai/openclawx --ignore-scripts` 跳过可选原生模块，对 CLI/Gateway/Desktop 常规使用无影响；长记忆需单独配置在线 RAG 或本地环境。  
-- 更多问题（macOS 安装包「已损坏」、端口占用、通道不回复等）见 **[常见问题](docs/reference/faq.md)**；版本变更见 **[发布说明](docs/release-notes.md)**。
+- 更多问题（macOS 安装包「已损坏」、端口占用、通道不回复等）见 **[常见问题](docs/zh/reference/faq.md)**；版本变更见 **[发布说明](docs/zh/release-notes.md)**。
 
 ---
 
