@@ -28,8 +28,8 @@ import type {
     RunAgentStreamCallbacks,
 } from "../types.js";
 
-/** 单次请求超时。init 会分析项目并生成 AGENTS.md，大项目可能较久，故设 5 分钟 */
-const REQUEST_TIMEOUT_MS = 300_000;
+/** 单次请求与事件流超时。长任务（如 init 分析大项目、多轮工具调用）可能较久，故设 15 分钟 */
+const REQUEST_TIMEOUT_MS = 15 * 60 * 1000; // 15 min
 
 /** 仅在使用自定义 fetch（带密码）时用作 Basic 认证用户名 */
 const DEFAULT_SERVER_USERNAME = "opencode";
@@ -319,7 +319,8 @@ function extractCommandReplyText(res: unknown): string {
 }
 
 const POLL_INTERVAL_MS = 1500;
-const POLL_TIMEOUT_MS = 90_000;
+/** 流式回退轮询超时。长任务若事件流提前断开，需给服务端足够时间生成完整回复 */
+const POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10 min
 
 /**
  * 服务端 POST /session/{id}/message 返回 204，助手回复异步生成。轮询 session.messages() 取最新 assistant 消息的文本。
@@ -555,9 +556,13 @@ export const opencodeAdapter: IAgentProxyAdapter = {
 
             let hadAnyChunk = false;
             let lastTextLength = 0;
+            let eventCount = 0;
+            // 非 text 部分按 (messageID, partType) 记录上次已下发的完整内容，避免同一 part 多次相同事件导致前端重复显示
+            const lastEmittedNonText = new Map<string, string>();
             try {
                 for await (const event of eventStream) {
                     if (userSignal?.aborted) break;
+                    eventCount++;
                     const ev = event as {
                         type?: string;
                         properties?: {
@@ -567,35 +572,61 @@ export const opencodeAdapter: IAgentProxyAdapter = {
                             info?: { role?: string; id?: string };
                         };
                     };
+                    // 日志：长任务排查时可见 OpenCode 下发了哪些事件类型与 part 类型，便于确认是否有中间状态未回显
+                    if (ev.type !== "message.part.updated" || (ev.properties?.part?.type !== "text")) {
+                        const partType = ev.properties?.part?.type ?? "(no part)";
+                        console.log(`[OpenCode] event #${eventCount} type=${ev.type} part.type=${partType}`);
+                    }
                     const info = ev.properties?.info as { sessionID?: string; role?: string; id?: string } | undefined;
                     if (ev.type === "message.updated" && info?.sessionID === opencodeSessionId && info?.role === "user" && info?.id) {
                         userMessageID = info.id;
                     }
-                    if (ev.type === "message.part.updated" && ev.properties?.part?.sessionID === opencodeSessionId && ev.properties.part.type === "text") {
+                    if (ev.type === "message.part.updated" && ev.properties?.part?.sessionID === opencodeSessionId) {
                         const part = ev.properties.part;
-                        if (userMessageID != null && part.messageID === userMessageID) continue; // 跳过用户消息的 part，只转发助手的
+                        if (userMessageID != null && part.messageID === userMessageID) continue; // 跳过用户消息的 part
+                        const partType = part.type ?? "";
                         const delta = ev.properties.delta;
                         const fullText = typeof part?.text === "string" ? part.text : "";
-                        if (typeof delta === "string" && delta) {
-                            hadAnyChunk = true;
-                            callbacks.onChunk(delta);
-                            lastTextLength += delta.length; // 避免后续 fullText 再发一遍造成重复
-                        } else if (fullText.length > lastTextLength) {
-                            hadAnyChunk = true;
-                            callbacks.onChunk(fullText.slice(lastTextLength));
-                            lastTextLength = fullText.length;
+                        if (partType === "text") {
+                            if (typeof delta === "string" && delta) {
+                                hadAnyChunk = true;
+                                callbacks.onChunk(delta);
+                                lastTextLength += delta.length;
+                            } else if (fullText.length > lastTextLength) {
+                                hadAnyChunk = true;
+                                callbacks.onChunk(fullText.slice(lastTextLength));
+                                lastTextLength = fullText.length;
+                            }
+                        } else {
+                            // 非 text（如 reasoning、tool_call 等）：向前端回显简短状态；相同 part 相同内容只发一次，避免重复
+                            const key = `${part.messageID ?? ""}-${partType}`;
+                            if (fullText && fullText.trim()) {
+                                const formatted = `\n\n---\n${partType}: ${fullText.slice(0, 500)}${fullText.length > 500 ? "…" : ""}\n---\n\n`;
+                                if (lastEmittedNonText.get(key) === formatted) continue;
+                                lastEmittedNonText.set(key, formatted);
+                                hadAnyChunk = true;
+                                callbacks.onChunk(formatted);
+                            } else if (partType) {
+                                // [tool]/[step-start]/[step-finish] 等无正文：每次事件都发（无法区分“同一事件重复”与“多次不同 tool/step”，故不做去重）
+                                hadAnyChunk = true;
+                                callbacks.onChunk(`\n[${partType}]\n`);
+                            }
                         }
                     }
                     if (ev.type === "session.idle" && ev.properties?.sessionID === opencodeSessionId) {
+                        console.log(`[OpenCode] session.idle after ${eventCount} events, hadAnyChunk=${hadAnyChunk}`);
                         break;
                     }
                 }
             } catch (streamErr: unknown) {
+                const errMsg = streamErr instanceof Error ? streamErr.message : String(streamErr);
                 if ((streamErr as Error)?.name !== "AbortError") {
-                    console.warn("[OpenCode] event stream error:", streamErr);
+                    console.warn(`[OpenCode] event stream error after ${eventCount} events, hadAnyChunk=${hadAnyChunk}:`, errMsg);
                 }
+                // 流提前断开（如超时、网络）：若已有部分内容已下发，前端能看到；若 hadAnyChunk 为 false 则下面轮询补全
             }
             if (!hadAnyChunk) {
+                console.log("[OpenCode] no chunks from stream, falling back to pollForAssistantMessage");
                 const fallback = await pollForAssistantMessage(client.session as any, opencodeSessionId);
                 if (fallback) callbacks.onChunk(fallback);
             }

@@ -273,7 +273,19 @@ export default {
   background: transparent;
 }
 
-/* Deep selections for markdown content */
+/* Deep selections for markdown content - 对话内统一为正文字号，避免 reasoning/--- 等被解析成标题导致字体过大 */
+.message-body :deep(h1),
+.message-body :deep(h2),
+.message-body :deep(h3),
+.message-body :deep(h4),
+.message-body :deep(h5),
+.message-body :deep(h6) {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  line-height: 1.5;
+  margin: 0.5em 0 0.25em 0;
+}
+
 .message-body :deep(p) {
   margin-bottom: var(--spacing-sm);
 }
@@ -314,6 +326,17 @@ export default {
 .step-thought {
   margin-bottom: var(--spacing-md);
   color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+.step-thought :deep(h1),
+.step-thought :deep(h2),
+.step-thought :deep(h3),
+.step-thought :deep(h4),
+.step-thought :deep(h5),
+.step-thought :deep(h6) {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin: 0.5em 0 0.25em 0;
 }
 .step-thought :deep(ul),
 .step-thought :deep(ol) {
