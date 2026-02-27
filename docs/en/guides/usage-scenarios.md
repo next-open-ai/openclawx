@@ -52,12 +52,23 @@ This page describes common scenarios on Desktop and Web/Gateway with step-by-ste
 
 ---
 
+## Scenario 7: Create a Bilibili (B站) download assistant and download a video
+
+**Goal:** Ask the main agent to create an assistant that downloads Bilibili videos to the local machine, switch to it, then send a video URL and have it download the file (e.g. using browser + bash/you-get).
+
+**Steps:** (1) In chat, say e.g. “Create an expert that can download B站 videos and save them locally; name it B站助手 (Bilibili assistant).” (2) The agent calls **create_agent** (name “B站助手”, workspace e.g. `bilibili-assistant`, system prompt for B站 download + browser automation). (3) Say “Yes” or “Switch to B站助手”; the agent calls **switch_agent**. (4) Send a Bilibili video URL, e.g. “Download this B站 video: https://www.bilibili.com/video/BV1xx411c7mD”. (5) The new assistant uses **browser** to open the page and get info, and **bash** to install/run a download tool (e.g. `you-get`) and save the video to its workspace directory. (6) Check the reply for title, quality, file path, and the file on disk.
+
+**Tip:** Download depends on local tools (e.g. Python, `you-get`); the agent may run `pip install you-get` in chat. Files are saved under the assistant’s workspace (e.g. `~/.openbot/workspace/bilibili-assistant/`).
+
+---
+
 ## Quick reference
 
 | Scenario | Main entry | Depends on |
 |----------|------------|------------|
 | Organize Downloads | Chat + Local file assistant | Preinstalled file assistant |
 | Create/switch agent | Chat + create_agent / switch_agent | Gateway tools |
+| Bilibili download assistant | Chat + create_agent + switch_agent + browser/bash | Browser, you-get (or similar) |
 | Install skill for agent | Chat + install_skill | Local agent, skill URL |
 | Find + install skill | Chat + find-skills + install_skill | find-skills, local agent |
 | Add MCP | Settings → Agent → MCP | — |

@@ -7,6 +7,10 @@ import { SseTransport } from "./sse.js";
 export interface TransportOptions {
     initTimeoutMs?: number;
     requestTimeoutMs?: number;
+    /** stdio：初始化失败时的重试次数（默认 1） */
+    initRetries?: number;
+    /** stdio：初始化重试间隔毫秒（默认 3000） */
+    initRetryDelayMs?: number;
 }
 
 /**
@@ -17,7 +21,12 @@ export function createTransport(
     options?: TransportOptions,
 ): IMcpTransport {
     if (config.transport === "stdio") {
-        return new StdioTransport(config as McpServerConfigStdio, options);
+        return new StdioTransport(config as McpServerConfigStdio, {
+            initTimeoutMs: options?.initTimeoutMs,
+            requestTimeoutMs: options?.requestTimeoutMs,
+            initRetries: options?.initRetries,
+            initRetryDelayMs: options?.initRetryDelayMs,
+        });
     }
     if (config.transport === "sse") {
         return new SseTransport(config as McpServerConfigSse, options);

@@ -10,6 +10,10 @@ import type { McpServerConfig } from "./types.js";
 export interface McpClientOptions {
     initTimeoutMs?: number;
     requestTimeoutMs?: number;
+    /** stdio：初始化失败时的重试次数（默认 1） */
+    initRetries?: number;
+    /** stdio：初始化重试间隔毫秒（默认 3000） */
+    initRetryDelayMs?: number;
 }
 
 export class McpClient {
@@ -27,6 +31,8 @@ export class McpClient {
             this.transport = createTransport(configOrTransport as McpServerConfig, {
                 initTimeoutMs: options.initTimeoutMs,
                 requestTimeoutMs: options.requestTimeoutMs,
+                initRetries: options.initRetries,
+                initRetryDelayMs: options.initRetryDelayMs,
             });
         }
     }

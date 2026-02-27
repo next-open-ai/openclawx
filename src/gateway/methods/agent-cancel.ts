@@ -1,6 +1,7 @@
 import type { GatewayClient } from "../types.js";
 import { agentManager } from "../../core/agent/agent-manager.js";
 import { abortProxyRun } from "../proxy-run-abort.js";
+import { clearSessionStreamSubscription } from "./agent-chat.js";
 
 const COMPOSITE_KEY_SEP = "::";
 
@@ -21,9 +22,11 @@ export async function handleAgentCancel(
     const agentId = params?.agentId ?? client.agentId ?? "default";
 
     if (abortProxyRun(sessionId, agentId)) {
+        clearSessionStreamSubscription(sessionId);
         return { status: "aborted" };
     }
 
+    clearSessionStreamSubscription(sessionId);
     const compositeKey = sessionId + COMPOSITE_KEY_SEP + agentId;
     let session = agentManager.getSession(compositeKey);
     if (!session) {

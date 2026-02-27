@@ -58,6 +58,7 @@ import {
     setAgentListProvider,
     setCreateAgentProvider,
 } from "../core/session-current-agent.js";
+import { SessionOutlet, setSessionOutlet } from "../core/session-outlet/index.js";
 import { AgentsService } from "../server/agents/agents.service.js";
 import { AgentConfigService } from "../server/agent-config/agent-config.service.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -117,6 +118,8 @@ export async function startGatewayServer(port: number = 38080): Promise<{
     } catch (e) {
         console.warn("[Gateway] Channel session persistence / session-agent bridge unavailable:", e);
     }
+
+    setSessionOutlet(new SessionOutlet());
 
     const gatewayExpress = express();
 

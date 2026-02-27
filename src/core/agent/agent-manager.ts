@@ -331,7 +331,10 @@ For downloads, provide either a direct URL or a selector to click.`;
         };
 
         const useLongMemory = options.useLongMemory !== false;
-        const mcpTools = await createMcpToolsForSession({ mcpServers: options.mcpServers });
+        const mcpTools = await createMcpToolsForSession({
+            mcpServers: options.mcpServers,
+            sessionId,
+        });
         const customTools = [
             createBrowserTool(sessionWorkspaceDir),
             createSaveExperienceTool(sessionId),

@@ -25,17 +25,21 @@ export {
     mcpConfigKey,
 } from "./config.js";
 export { McpClient } from "./client.js";
-export { getMcpToolDefinitions, shutdownMcpClients } from "./operator.js";
+export { getMcpToolDefinitions, shutdownMcpClients, type GetMcpToolDefinitionsOptions } from "./operator.js";
 export { mcpToolToToolDefinition, mcpToolsToToolDefinitions } from "./adapter.js";
 
 /**
  * 根据会话选项中的 mcpServers 配置，返回该会话可用的 MCP 工具（ToolDefinition 数组）。
  * 支持数组或标准 JSON 对象格式；在 AgentManager.getOrCreateSession 中调用，并入 customTools。
+ * 若提供 sessionId，MCP 连接/重试进度将经全局 sendSessionMessage 以系统消息推送。
  */
 export async function createMcpToolsForSession(options: {
     mcpServers?: McpServerConfig[] | McpServersStandardFormat;
+    sessionId?: string;
 }): Promise<ToolDefinition[]> {
     const configs = resolveMcpServersForSession(options.mcpServers);
     if (configs.length === 0) return [];
-    return getMcpToolDefinitions(configs);
+    return getMcpToolDefinitions(configs, {
+        sessionId: options.sessionId,
+    });
 }

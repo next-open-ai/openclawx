@@ -13,6 +13,10 @@ export interface StdioTransportOptions {
     initTimeoutMs?: number;
     /** 单次请求超时（毫秒） */
     requestTimeoutMs?: number;
+    /** 初始化失败时的重试次数（不含首次，默认 1，即最多 2 次尝试） */
+    initRetries?: number;
+    /** 初始化重试间隔（毫秒，默认 3000） */
+    initRetryDelayMs?: number;
 }
 
 export class StdioTransport {
@@ -20,6 +24,8 @@ export class StdioTransport {
     private config: McpServerConfigStdio;
     private initTimeoutMs: number;
     private requestTimeoutMs: number;
+    private initRetries: number;
+    private initRetryDelayMs: number;
     private nextId = 1;
     private pending = new Map<number | string, { resolve: (r: JsonRpcResponse) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
     private buffer = "";
@@ -28,6 +34,8 @@ export class StdioTransport {
         this.config = config;
         this.initTimeoutMs = options.initTimeoutMs ?? 10_000;
         this.requestTimeoutMs = options.requestTimeoutMs ?? 30_000;
+        this.initRetries = options.initRetries ?? 1;
+        this.initRetryDelayMs = options.initRetryDelayMs ?? 3_000;
     }
 
     /** 启动子进程并完成 MCP initialize 握手 */
@@ -58,7 +66,23 @@ export class StdioTransport {
             this.process = null;
         });
 
-        await this.initialize();
+        const maxAttempts = 1 + this.initRetries;
+        let lastErr: Error | null = null;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                await this.initialize();
+                lastErr = null;
+                break;
+            } catch (e) {
+                lastErr = e instanceof Error ? e : new Error(String(e));
+                const isTransient = lastErr.message.includes("timeout") || lastErr.message.includes("MCP process exited");
+                if (!isTransient || attempt >= maxAttempts) {
+                    throw lastErr;
+                }
+                console.warn(`[mcp stdio] initialize 超时或失败，${this.initRetryDelayMs}ms 后重试 (${attempt}/${maxAttempts}):`, lastErr.message);
+                await new Promise((r) => setTimeout(r, this.initRetryDelayMs));
+            }
+        }
     }
 
     private flushLines(): void {
