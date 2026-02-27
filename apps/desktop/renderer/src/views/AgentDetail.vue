@@ -116,6 +116,18 @@
                   </select>
                   <p class="form-hint">{{ t('agents.webSearchProviderHint') }}</p>
                 </div>
+                <div class="form-group">
+                  <label>{{ t('agents.webSearchMaxResultTokens') }}</label>
+                  <input
+                    v-model.number="webSearchForm.maxResultTokens"
+                    type="number"
+                    min="0"
+                    step="1000"
+                    class="form-input"
+                    :placeholder="'64000'"
+                  />
+                  <p class="form-hint">{{ t('agents.webSearchMaxResultTokensHint') }}</p>
+                </div>
               </template>
             </div>
             <button class="btn-primary" :disabled="configSaving" @click="saveConfig">
@@ -414,6 +426,19 @@
                   </button>
                 </div>
               </div>
+            </div>
+
+            <div class="form-group mcp-max-result-tokens-row">
+              <label class="form-label">{{ t('agents.mcpMaxResultTokens') }}</label>
+              <select v-model="mcpMaxResultTokensForm" class="form-input">
+                <option value="">{{ t('agents.mcpMaxResultTokensNoLimit') }}</option>
+                <option value="8000">8K</option>
+                <option value="16000">16K</option>
+                <option value="32000">32K</option>
+                <option value="48000">48K</option>
+                <option value="64000">64K</option>
+              </select>
+              <p class="form-hint">{{ t('agents.mcpMaxResultTokensHint') }}</p>
             </div>
 
             <div v-if="mcpFormVisible || mcpEditingKey !== null" class="mcp-form card-glass">
@@ -724,7 +749,7 @@ export default {
 
     const agentIconOptions = AGENT_ICONS;
     const configForm = ref({ name: '', systemPrompt: '', icon: AGENT_ICON_DEFAULT });
-    const webSearchForm = ref({ enabled: false, provider: 'duck-duck-scrape' });
+    const webSearchForm = ref({ enabled: false, provider: 'duck-duck-scrape', maxResultTokens: 64000 });
     const configSaving = ref(false);
 
     const modelForm = ref({ provider: '', model: '' });
@@ -779,6 +804,8 @@ export default {
     const mcpFormError = ref('');
     const mcpFormVisible = ref(false);
     const mcpJsonError = ref('');
+    /** MCP 单次返回最大 token，可选，不填则不限制 */
+    const mcpMaxResultTokensForm = ref('');
 
     /** 将后端返回的 array 转为标准对象（无名称时用 MCP Server 1, 2...） */
     function arrayToMcpStandardFormat(arr) {
@@ -1000,7 +1027,9 @@ export default {
           webSearchForm.value = {
             enabled: !!agent.value.webSearch?.enabled,
             provider: agent.value.webSearch?.provider === 'brave' ? 'brave' : 'duck-duck-scrape',
+            maxResultTokens: agent.value.webSearch?.maxResultTokens ?? 64000,
           };
+          mcpMaxResultTokensForm.value = agent.value.mcpMaxResultTokens != null && agent.value.mcpMaxResultTokens > 0 ? String(agent.value.mcpMaxResultTokens) : '';
           modelForm.value = {
             provider: agent.value.provider ?? '',
             model: agent.value.model ?? '',
@@ -1059,7 +1088,8 @@ export default {
         } else if (agentId.value === 'default') {
           agent.value = { ...MAIN_AGENT_FALLBACK };
           configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
-          webSearchForm.value = { enabled: false, provider: 'duck-duck-scrape' };
+          webSearchForm.value = { enabled: false, provider: 'duck-duck-scrape', maxResultTokens: 64000 };
+          mcpMaxResultTokensForm.value = '';
           modelForm.value = { provider: '', model: '' };
           proxyForm.value = {
             runnerType: 'local',
@@ -1074,7 +1104,8 @@ export default {
         if (agentId.value === 'default') {
           agent.value = { ...MAIN_AGENT_FALLBACK };
           configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
-          webSearchForm.value = { enabled: false, provider: 'duck-duck-scrape' };
+          webSearchForm.value = { enabled: false, provider: 'duck-duck-scrape', maxResultTokens: 64000 };
+          mcpMaxResultTokensForm.value = '';
           modelForm.value = { provider: '', model: '' };
           proxyForm.value = {
             runnerType: 'local',
@@ -1083,7 +1114,8 @@ export default {
             opencode: { mode: 'local', address: '', port: 4096, username: '', password: '', model: '', workingDirectory: '' },
           };
           mcpServers.value = {};
-          webSearchForm.value = { enabled: false, provider: 'duck-duck-scrape' };
+          webSearchForm.value = { enabled: false, provider: 'duck-duck-scrape', maxResultTokens: 64000 };
+          mcpMaxResultTokensForm.value = '';
           syncMcpJsonString();
         } else {
           agent.value = null;
@@ -1101,10 +1133,16 @@ export default {
           payload.name = configForm.value.name || agent.value.workspace;
         }
         payload.mcpServers = mcpServers.value;
+        payload.mcpMaxResultTokens =
+          (mcpMaxResultTokensForm.value !== '' && mcpMaxResultTokensForm.value != null)
+            ? (parseInt(mcpMaxResultTokensForm.value, 10) || undefined)
+            : undefined;
         payload.systemPrompt = configForm.value.systemPrompt?.trim() || undefined;
         payload.icon = configForm.value.icon || undefined;
+        const wsMax = webSearchForm.value.maxResultTokens;
+        const wsMaxNum = wsMax == null || wsMax === '' || wsMax === 0 ? undefined : (Number(wsMax) || 64000);
         payload.webSearch = webSearchForm.value.enabled
-          ? { enabled: true, provider: webSearchForm.value.provider }
+          ? { enabled: true, provider: webSearchForm.value.provider, maxResultTokens: wsMaxNum }
           : undefined;
         payload.runnerType = proxyForm.value.runnerType;
         if (proxyForm.value.runnerType === 'coze') {
@@ -1151,6 +1189,7 @@ export default {
           ...agent.value,
           systemPrompt: payload.systemPrompt,
           icon: payload.icon,
+          mcpMaxResultTokens: payload.mcpMaxResultTokens,
           webSearch: payload.webSearch,
           runnerType: payload.runnerType,
           coze: payload.coze,
@@ -1471,6 +1510,7 @@ export default {
       mcpStandardJsonString,
       applyMcpJson,
       mcpJsonError,
+      mcpMaxResultTokensForm,
     };
   },
 };

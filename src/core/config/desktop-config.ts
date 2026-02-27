@@ -188,6 +188,8 @@ interface AgentItem {
     modelItemCode?: string;
     /** MCP 配置：数组（含 transport）或标准 JSON 对象（key 为名称），创建 Session 时归一化使用 */
     mcpServers?: DesktopMcpServerConfig[] | DesktopMcpServersStandardFormat;
+    /** MCP 单次返回最大 token；超过则从尾部裁剪；不配置则不限制 */
+    mcpMaxResultTokens?: number;
     /** 自定义系统提示词，与技能等一起组成最终 systemPrompt */
     systemPrompt?: string;
     /** 执行器类型，缺省 local */
@@ -200,10 +202,12 @@ interface AgentItem {
     opencode?: AgentOpenCodeConfig;
     /** 是否使用经验（长记忆）；默认 true */
     useLongMemory?: boolean;
-    /** 在线搜索：是否启用 web_search 工具；启用时可指定 provider */
+    /** 在线搜索：是否启用 web_search 工具；启用时可指定 provider、maxResultTokens */
     webSearch?: {
         enabled?: boolean;
         provider?: "brave" | "duck-duck-scrape";
+        /** 单次搜索返回最大 token；超过则从尾部裁剪；不配置则不限制；前端默认 64K */
+        maxResultTokens?: number;
     };
 }
 
@@ -351,6 +355,8 @@ export interface DesktopAgentConfig {
     workspace?: string;
     /** MCP 服务器配置（数组或标准对象格式），创建 Session 时传入并归一化 */
     mcpServers?: DesktopMcpServerConfig[] | DesktopMcpServersStandardFormat;
+    /** MCP 单次返回最大 token；超过则从尾部裁剪；不配置则不限制 */
+    mcpMaxResultTokens?: number;
     /** 自定义系统提示词，会与技能等一起组成最终 systemPrompt */
     systemPrompt?: string;
     /** 执行器类型，缺省 local */
@@ -371,6 +377,8 @@ export interface DesktopAgentConfig {
         timeoutSeconds: number;
         cacheTtlMinutes: number;
         maxResults: number;
+        /** 单次搜索返回最大 token；超过则从尾部裁剪；不配置则不限制 */
+        maxResultTokens?: number;
     };
 }
 
@@ -439,6 +447,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
     }
     let workspaceName: string = resolvedAgentId;
     let mcpServers: DesktopMcpServerConfig[] | DesktopMcpServersStandardFormat | undefined;
+    let mcpMaxResultTokens: number | undefined;
     let systemPrompt: string | undefined;
     let useLongMemory: boolean = true;
 
@@ -451,6 +460,9 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
             if (agent) {
                 if (agent.workspace) workspaceName = agent.workspace;
                 else if (agent.id) workspaceName = agent.id;
+                if (agent.mcpMaxResultTokens != null && typeof agent.mcpMaxResultTokens === "number" && agent.mcpMaxResultTokens > 0) {
+                    mcpMaxResultTokens = agent.mcpMaxResultTokens;
+                }
                 if (agent.mcpServers != null) {
                     if (Array.isArray(agent.mcpServers) || (typeof agent.mcpServers === "object" && !Array.isArray(agent.mcpServers))) {
                         mcpServers = agent.mcpServers;
@@ -605,6 +617,10 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
                             (process.env.BRAVE_API_KEY && process.env.BRAVE_API_KEY.trim() ? process.env.BRAVE_API_KEY.trim() : undefined);
                         if (!braveKey) preferredProvider = "duck-duck-scrape";
                     }
+                    const maxResultTokens =
+                        agentRow.webSearch?.maxResultTokens != null && typeof agentRow.webSearch?.maxResultTokens === "number" && agentRow.webSearch.maxResultTokens > 0
+                            ? agentRow.webSearch.maxResultTokens
+                            : undefined;
                     webSearch = {
                         enabled: true,
                         provider: preferredProvider,
@@ -612,6 +628,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
                         timeoutSeconds,
                         cacheTtlMinutes,
                         maxResults,
+                        maxResultTokens,
                     };
                 }
             }
@@ -626,6 +643,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
         apiKey: apiKey ?? undefined,
         workspace: workspaceName,
         mcpServers,
+        mcpMaxResultTokens,
         systemPrompt,
         runnerType,
         coze,

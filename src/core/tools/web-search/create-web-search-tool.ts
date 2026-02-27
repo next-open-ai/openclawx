@@ -1,6 +1,7 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { getWebSearchProvider } from "./providers/index.js";
+import { truncateTextToMaxTokens } from "../truncate-result.js";
 
 const WebSearchSchema = Type.Object({
     query: Type.String({
@@ -34,6 +35,8 @@ export interface WebSearchToolOptions {
     timeoutSeconds?: number;
     cacheTtlMinutes?: number;
     maxResults?: number;
+    /** 单次搜索返回内容最大 token；超过则从尾部裁剪并打日志；不配置则不限制 */
+    maxResultTokens?: number;
 }
 
 const WEB_SEARCH_NOOP_MESSAGE =
@@ -93,10 +96,14 @@ export function createWebSearchTool(options: WebSearchToolOptions): ToolDefiniti
                 const lines = result.results.map(
                     (r, i) => `${i + 1}. ${r.title}\n   ${r.url}${r.description ? `\n   ${r.description}` : ""}`,
                 );
-                const text =
+                let text =
                     (result.cached ? "[缓存] " : "") +
                     `搜索「${result.query}」共 ${result.count} 条（${result.provider}${result.tookMs != null ? `, ${result.tookMs}ms` : ""}）：\n\n` +
                     (lines.length ? lines.join("\n\n") : "未找到结果。");
+                const maxResultTokens = options.maxResultTokens;
+                if (typeof maxResultTokens === "number" && maxResultTokens > 0) {
+                    text = truncateTextToMaxTokens(text, maxResultTokens, "web_search");
+                }
                 return {
                     content: [{ type: "text" as const, text }],
                     details: { query: result.query, count: result.count, provider: result.provider },

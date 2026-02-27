@@ -51,6 +51,8 @@ export interface GetMcpToolDefinitionsOptions {
     initRetryDelayMs?: number;
     /** 会话 ID，用于经全局 sendSessionMessage 推送 MCP 进度系统消息 */
     sessionId?: string;
+    /** 单次 MCP 工具返回最大 token；超过则从尾部裁剪并打日志；不配置则不限制 */
+    maxResultTokens?: number;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -135,7 +137,12 @@ export async function getMcpToolDefinitions(
             try {
                 const tools = await client.listTools();
                 const serverId = `mcp${i}`;
-                const definitions = mcpToolsToToolDefinitions(tools, client, serverId);
+                const definitions = mcpToolsToToolDefinitions(
+                    tools,
+                    client,
+                    serverId,
+                    options.maxResultTokens,
+                );
                 allTools.push(...definitions);
                 toolsListed = true;
                 break;

@@ -78,6 +78,8 @@ export interface AgentConfigItem {
     isDefault?: boolean;
     /** MCP 配置：数组（含 transport）或标准 JSON 对象（key 为服务器名称），创建 Session 时归一化使用 */
     mcpServers?: McpServerConfig[] | McpServersStandardFormat;
+    /** MCP 单次返回最大 token；不配置则不限制 */
+    mcpMaxResultTokens?: number;
     /** 自定义系统提示词，会与技能等一起组成最终 systemPrompt */
     systemPrompt?: string;
     /** 智能体图标标识（前端预设图标 id，如 default、star、code 等） */
@@ -92,10 +94,11 @@ export interface AgentConfigItem {
     opencode?: AgentOpenCodeConfig;
     /** 是否使用经验（长记忆）：memory_recall / save_experience；默认 true */
     useLongMemory?: boolean;
-    /** 在线搜索：启用后该智能体拥有 web_search 工具；可选默认 provider */
+    /** 在线搜索：启用后该智能体拥有 web_search 工具；可选默认 provider、maxResultTokens（前端默认 64K） */
     webSearch?: {
         enabled?: boolean;
         provider?: 'brave' | 'duck-duck-scrape';
+        maxResultTokens?: number;
     };
 }
 
@@ -253,6 +256,7 @@ export class AgentConfigService {
                 | 'model'
                 | 'modelItemCode'
                 | 'mcpServers'
+                | 'mcpMaxResultTokens'
                 | 'systemPrompt'
                 | 'icon'
                 | 'runnerType'
@@ -285,6 +289,7 @@ export class AgentConfigService {
         if (updates.model !== undefined) agent.model = updates.model;
         if (updates.modelItemCode !== undefined) agent.modelItemCode = updates.modelItemCode;
         if (updates.mcpServers !== undefined) agent.mcpServers = updates.mcpServers;
+        if (updates.mcpMaxResultTokens !== undefined) agent.mcpMaxResultTokens = updates.mcpMaxResultTokens;
         if (updates.systemPrompt !== undefined) agent.systemPrompt = updates.systemPrompt?.trim() || undefined;
         if (updates.icon !== undefined) agent.icon = updates.icon?.trim() || undefined;
         if (updates.runnerType !== undefined) agent.runnerType = updates.runnerType;
@@ -350,6 +355,10 @@ export class AgentConfigService {
                               updates.webSearch.provider === 'brave' || updates.webSearch.provider === 'duck-duck-scrape'
                                   ? updates.webSearch.provider
                                   : 'duck-duck-scrape',
+                          maxResultTokens:
+                              updates.webSearch.maxResultTokens != null && typeof updates.webSearch.maxResultTokens === 'number' && updates.webSearch.maxResultTokens > 0
+                                  ? updates.webSearch.maxResultTokens
+                                  : undefined,
                       }
                     : undefined;
         }

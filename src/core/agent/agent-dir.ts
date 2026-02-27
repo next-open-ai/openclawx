@@ -19,6 +19,15 @@ export function getOpenbotWorkspaceDir(): string {
 }
 
 /**
+ * 获取 openbot 扩展（插件）目录（默认 ~/.openbot/plugins）
+ * 可通过环境变量 OPENBOT_PLUGINS_DIR 覆盖
+ * openbot extension install 会在此目录下维护 package.json 与 node_modules
+ */
+export function getOpenbotPluginsDir(): string {
+    return process.env.OPENBOT_PLUGINS_DIR ?? join(homedir(), ".openbot", "plugins");
+}
+
+/**
  * 确保 agent 目录存在，并创建默认配置文件
  */
 export function ensureDefaultAgentDir(agentDir: string): void {

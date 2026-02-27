@@ -44,7 +44,7 @@ export class AgentConfigController {
             body: Partial<
                 Pick<
                     AgentConfigItem,
-                    'name' | 'provider' | 'model' | 'modelItemCode' | 'mcpServers' | 'systemPrompt' | 'icon' | 'runnerType' | 'coze' | 'openclawx' | 'opencode'
+                    'name' | 'provider' | 'model' | 'modelItemCode' | 'mcpServers' | 'mcpMaxResultTokens' | 'systemPrompt' | 'icon' | 'runnerType' | 'coze' | 'openclawx' | 'opencode' | 'useLongMemory' | 'webSearch'
                 >
             >,
     ) {

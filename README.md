@@ -27,6 +27,7 @@
 | | [通道配置](docs/zh/configuration/channels.md) | 飞书、钉钉、Telegram 启用与配置项 |
 | **功能说明** | [代理模式与多节点](docs/zh/features/proxy-mode.md) | Coze 接入、OpenClawX 多节点协作 |
 | | [技能系统](docs/zh/features/skills.md) | Agent Skills 规范与扩展 |
+| | [插件与扩展](docs/zh/features/plugins.md) | 扩展安装与编写、openbot extension 命令、用户手册 |
 | **参考** | [常见问题](docs/zh/reference/faq.md) | 安装失败、端口占用、通道不回复等 FAQ |
 | | [发布说明](docs/zh/release-notes.md) | 各版本功能更新与问题修复记录 |
 
@@ -81,6 +82,7 @@ docs/
 | **OpenCode 代理** | 可将智能体代理至 [OpenCode](https://opencode.ai/) 官方 Server（本地 `opencode serve` 或远程）；支持流式回复、斜杠指令 `/init`、`/undo`、`/redo`、`/share`、`/help`，与 TUI 使用方式一致；**0 Token 消耗**，适合 OpenCode 侧大量代码与长上下文能力 |
 | **MCP** | 已支持 [MCP](https://modelcontextprotocol.io/)（Model Context Protocol）：智能体可配置 stdio/SSE 两种连接方式，按智能体绑定 MCP 服务器，会话内自动加载对应工具，降低 Token 消耗与大模型幻觉 |
 | **RPA（影刀）** | 通过 MCP 可接入影刀 RPA：在智能体 MCP 配置中添加 [yingdao-mcp-server](https://www.npmjs.com/package/yingdao-mcp-server)（命令 `npx -y yingdao-mcp-server`，可选 env 如 `RPA_MODEL`、`SHADOWBOT_PATH`、`USER_FOLDER`），即可在对话中调用影刀自动化能力 |
+| **插件支持** | 通过 `openbot extension install/list/uninstall` 在 `~/.openbot/plugins` 安装 npm 包形式扩展；扩展默认导出 `(pi) => void`，通过 `pi.registerTool` 注册新工具；详见 [插件与扩展](docs/zh/features/plugins.md) |
 
 ---
 
@@ -126,6 +128,10 @@ docs/
 - **Desktop 后端**（`src/server/`）：NestJS HTTP API，即 **server-api**；可被 Gateway 内嵌或独立监听（默认端口 38081）。会话、智能体配置、技能、任务、工作区、鉴权等由本模块提供。
 - **Desktop**：Electron 包一层 Vue 前端 + 上述后端；通过 Gateway 或直连 Desktop 后端与 Agent 通信。
 - **Agent 核心**：统一由 `AgentManager` 管理会话、技能注入与工具注册；**执行方式**可为 **local**（本机 pi-coding-agent + Skills）、**coze**（代理至 Coze 国内/国际站）、**openclawx**（代理至其他 OpenClawX 节点，多节点协作）、**opencode**（代理至 OpenCode 官方 Server，支持流式与 `/init`、`/undo`、`/redo`、`/share`、`/help` 等指令）。记忆与 compaction 作为扩展参与 system prompt 与经验写入。
+
+### 插件支持（Extensions）
+
+扩展以 npm 包形式安装到 **`~/.openbot/plugins`**（可通过环境变量 `OPENBOT_PLUGINS_DIR` 覆盖）。使用 **`openbot extension install &lt;pkg&gt;`** 安装、**`openbot extension list`** 查看、**`openbot extension uninstall &lt;pkg&gt;`** 卸载。扩展包需**默认导出一个函数** `(pi) => void`（或 `() => (pi) => void`），在函数内通过 **`pi.registerTool`** 注册新工具，即可在会话中被模型调用。仓库内示例：`examples/plugins/openclawx-demo-extension`；完整说明与用户手册见 [插件与扩展](docs/zh/features/plugins.md)。
 
 ## 各端技术栈
 

@@ -1,0 +1,7 @@
+{
+  "name": "openclawx-demo-extension",
+  "version": "1.0.0",
+  "description": "Demo OpenClawX extension: registers a demo_echo tool",
+  "main": "index.cjs",
+  "keywords": ["openclawx-extension", "openbot-extension"]
+}

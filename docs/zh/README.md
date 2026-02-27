@@ -24,7 +24,8 @@ docs/zh/                        # 中文文档
 │   └── channels.md             # 通道配置（飞书 / 钉钉 / Telegram）
 ├── features/                   # 功能说明
 │   ├── proxy-mode.md          # 代理模式与多节点协作
-│   └── skills.md               # 技能系统
+│   ├── skills.md               # 技能系统
+│   └── plugins.md              # 插件与扩展（安装、编写、用户手册）
 ├── reference/                  # 参考
 │   └── faq.md                  # 常见问题
 ├── release-notes.md            # 发布说明
@@ -69,6 +70,7 @@ docs/zh/                        # 中文文档
 |------|------|
 | [代理模式与多节点协作](features/proxy-mode.md) | Coze、OpenClawX、OpenCode 代理与配置要点 |
 | [技能系统](features/skills.md) | Agent Skills 规范、内置技能、安装与扩展 |
+| [插件与扩展](features/plugins.md) | 扩展目录、CLI 命令、编写约定与用户手册 |
 
 ---
 

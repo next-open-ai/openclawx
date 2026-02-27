@@ -36,10 +36,13 @@ export { mcpToolToToolDefinition, mcpToolsToToolDefinitions } from "./adapter.js
 export async function createMcpToolsForSession(options: {
     mcpServers?: McpServerConfig[] | McpServersStandardFormat;
     sessionId?: string;
+    /** 单次 MCP 工具返回最大 token；不配置则不限制 */
+    mcpMaxResultTokens?: number;
 }): Promise<ToolDefinition[]> {
     const configs = resolveMcpServersForSession(options.mcpServers);
     if (configs.length === 0) return [];
     return getMcpToolDefinitions(configs, {
         sessionId: options.sessionId,
+        maxResultTokens: options.mcpMaxResultTokens,
     });
 }

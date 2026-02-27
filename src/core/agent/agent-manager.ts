@@ -4,6 +4,7 @@ import {
     DefaultResourceLoader,
     ModelRegistry,
     SessionManager as CoreSessionManager,
+    SettingsManager,
     createReadTool,
     createWriteTool,
     createEditTool,
@@ -16,6 +17,7 @@ import type { AgentSession } from "@mariozechner/pi-coding-agent";
 import { join } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
 import { createCompactionMemoryExtensionFactory } from "../memory/compaction-extension.js";
+import { loadExtensionFactories } from "../extensions/index.js";
 import { addMemory } from "../memory/index.js";
 import {
     persistStoredCompactionForSession,
@@ -34,9 +36,20 @@ import { registerBuiltInApiProviders } from "@mariozechner/pi-ai/dist/providers/
 import { getOpenbotAgentDir, getOpenbotWorkspaceDir, ensureDefaultAgentDir } from "./agent-dir.js";
 import { formatSkillsForPrompt } from "./skills.js";
 import type { Skill } from "./skills.js";
+import {
+    createTokenUsageLogExtensionFactory,
+    setTokenUsageInitialStats,
+} from "./token-usage-log-extension.js";
 
 // Ensure all built-in providers are registered
 registerBuiltInApiProviders();
+
+/** 粗略按字符估算 token（中英混合约 1/3，纯英文约 1/4） */
+function estTokensFromChars(chars: number): number {
+    return Math.ceil(chars / 3);
+}
+
+const TOKEN_USAGE_LOG_PREFIX = "[token-usage]";
 
 export interface AgentManagerOptions {
     agentDir?: string;
@@ -169,10 +182,19 @@ For downloads, provide either a direct URL or a selector to click.`;
             agentDir: this.agentDir,
             noSkills: true, // Disable SDK's built-in skills logic to take full control
             additionalSkillPaths: this.resolveSkillPaths(workspaceDir),
-            extensionFactories:
-                sessionId && onUpdateLatestCompaction
-                    ? [createCompactionMemoryExtensionFactory(sessionId, onUpdateLatestCompaction)]
-                    : [],
+            extensionFactories: (() => {
+                const compositeKeyForLoader =
+                    sessionId && identity?.agentId
+                        ? sessionId + COMPOSITE_KEY_SEP + identity.agentId
+                        : "";
+                const tokenLog = createTokenUsageLogExtensionFactory(compositeKeyForLoader);
+                const base =
+                    sessionId && onUpdateLatestCompaction
+                        ? [createCompactionMemoryExtensionFactory(sessionId, onUpdateLatestCompaction)]
+                        : [];
+                const pluginFactories = loadExtensionFactories();
+                return [tokenLog, ...base, ...pluginFactories];
+            })(),
             systemPromptOverride: (base) => {
                 const loadedSkills = loader.getSkills().skills;
                 const basePrompt = this.buildSystemPrompt(loadedSkills);
@@ -233,6 +255,8 @@ For downloads, provide either a direct URL or a selector to click.`;
         maxSessions?: number;
         targetAgentId?: string;
         mcpServers?: McpServerConfig[] | McpServersStandardFormat;
+        /** MCP 单次返回最大 token；不配置则不限制 */
+        mcpMaxResultTokens?: number;
         /** 自定义系统提示词（来自 agent 配置），会与技能等一起组成最终 systemPrompt */
         systemPrompt?: string;
         /** 是否使用长记忆（memory_recall/save_experience）；默认 true */
@@ -245,6 +269,8 @@ For downloads, provide either a direct URL or a selector to click.`;
             timeoutSeconds?: number;
             cacheTtlMinutes?: number;
             maxResults?: number;
+            /** 单次搜索返回最大 token；不配置则不限制；前端默认 64K */
+            maxResultTokens?: number;
         };
     } = {}): Promise<AgentSession> {
         const agentId = options.agentId ?? "default";
@@ -343,6 +369,7 @@ For downloads, provide either a direct URL or a selector to click.`;
         const mcpTools = await createMcpToolsForSession({
             mcpServers: options.mcpServers,
             sessionId,
+            mcpMaxResultTokens: options.mcpMaxResultTokens,
         });
         const webSearchTool =
             options.webSearch?.enabled === true ? createWebSearchTool(options.webSearch) : null;
@@ -361,9 +388,61 @@ For downloads, provide either a direct URL or a selector to click.`;
             ...mcpTools,
         ];
 
+        // 分类打印 token 占用估算（字符数 + 估算 token），便于分析超长请求来源
+        try {
+            const loadedSkills = loader.getSkills().skills;
+            const shortSkills = loadedSkills.map((s) => ({
+                ...s,
+                description:
+                    s.description.length <= MAX_SKILL_DESC_IN_PROMPT
+                        ? s.description
+                        : s.description.slice(0, MAX_SKILL_DESC_IN_PROMPT) + "…",
+            }));
+            const skillsBlock = formatSkillsForPrompt(shortSkills);
+            const basePrompt = this.buildSystemPrompt(loadedSkills);
+            const withCustom =
+                options.systemPrompt?.trim()
+                    ? options.systemPrompt.trim() + "\n\n" + basePrompt
+                    : basePrompt;
+            const sessionIdentity = { agentId, workspace: workspaceName };
+            const withIdentity =
+                sessionIdentity?.agentId
+                    ? `[Session identity] You are the agent with ID: ${sessionIdentity.agentId}, workspace: ${sessionIdentity.workspace || sessionIdentity.agentId}. When asked which agent you are, answer according to this identity.\n\n` + withCustom
+                    : withCustom;
+            const systemPromptChars = withIdentity.length;
+            const toolsDefs = [
+                ...Object.values(coreTools),
+                ...customTools,
+            ].map((t: { name?: string; description?: string; parameters?: unknown }) => ({
+                name: t?.name ?? "",
+                description: typeof t?.description === "string" ? t.description : "",
+                parameters: t?.parameters ?? {},
+            }));
+            const toolsJsonChars = JSON.stringify(toolsDefs).length;
+            const systemPromptEstTokens = estTokensFromChars(systemPromptChars);
+            const skillsBlockEstTokens = estTokensFromChars(skillsBlock.length);
+            const toolsDefsEstTokens = estTokensFromChars(toolsJsonChars);
+            console.log(
+                `${TOKEN_USAGE_LOG_PREFIX} session create (${compositeKey}) | systemPrompt chars=${systemPromptChars} estTokens=${systemPromptEstTokens} | skillsBlock chars=${skillsBlock.length} estTokens=${skillsBlockEstTokens} | toolsDefs chars=${toolsJsonChars} estTokens=${toolsDefsEstTokens}`
+            );
+            setTokenUsageInitialStats(compositeKey, {
+                systemPromptEstTokens,
+                skillsBlockEstTokens,
+                toolsDefsEstTokens,
+            });
+            console.log(
+                `${TOKEN_USAGE_LOG_PREFIX} compaction (SDK): 触发条件 contextTokens > contextWindow - reserveTokens (默认 16384)；保留最近 keepRecentTokens (默认 20000)。配置见 pi 文档 settings.json 或传入 settingsManager。`
+            );
+        } catch (e) {
+            console.warn(`${TOKEN_USAGE_LOG_PREFIX} session create log failed:`, e);
+        }
+
         const { session } = await createAgentSession({
             agentDir: this.agentDir,
             sessionManager: CoreSessionManager.inMemory(),
+            settingsManager: SettingsManager.inMemory({
+                compaction: { enabled: true, reserveTokens: 16384, keepRecentTokens: 20000 },
+            }),
             authStorage,
             modelRegistry,
             cwd: sessionWorkspaceDir,

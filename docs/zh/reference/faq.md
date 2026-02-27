@@ -60,6 +60,13 @@ A：在另一台机器启动 OpenClawX Gateway，本机在智能体配置中选�
 
 ---
 
+## 对话与 Token / 上下文长度
+
+**Q：报错 400，提示「This model's maximum context length is 131072 tokens. However, you requested 220743 tokens」？**  
+A：表示本次请求里 **messages** 总 token 数超过了模型上限，超出的全是输入侧（对话历史 + 系统提示 + 工具定义等）。常见原因是**同一会话历史过长**：多轮对话且每轮工具返回（如 akshare 表格、长文本）被完整保留，下次请求时整段历史再次发给 API。**立即可做**：新建一个会话再问同样问题，若不再报错即可确认；长对话场景建议定期新建会话或复制结论后新开会话。详细分析与缓解措施见 [上下文长度与 Token 超限分析](context-length-and-tokens.md)。
+
+---
+
 ## 下一步
 
 - [快速开始](../guides/getting-started.md)

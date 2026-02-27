@@ -1,0 +1,7 @@
+{
+  "name": "plugins-root-fixture",
+  "private": true,
+  "dependencies": {
+    "mock-ext": "1.0.0"
+  }
+}

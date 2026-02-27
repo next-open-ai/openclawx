@@ -239,6 +239,7 @@ async function handleAgentChatInner(
                 maxSessions: maxAgentSessions,
                 targetAgentId: effectiveTargetAgentId,
                 mcpServers: agentConfig?.mcpServers,
+                mcpMaxResultTokens: agentConfig?.mcpMaxResultTokens,
                 systemPrompt: agentConfig?.systemPrompt,
                 useLongMemory: agentConfig?.useLongMemory,
                 webSearch: agentConfig?.webSearch,

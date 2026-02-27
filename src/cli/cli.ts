@@ -21,6 +21,7 @@ import {
     serviceUninstall,
     serviceStop,
 } from "./service.js";
+import { installExtension, listExtensions, uninstallExtension } from "./extension-cmd.js";
 
 const require = createRequire(import.meta.url);
 const PKG = require("../../package.json") as { version: string };
@@ -265,6 +266,38 @@ configCmd
     .action(async () => {
         await syncDesktopConfigToModelsJson();
         console.log("[openbot] Synced desktop providers to agent models.json");
+    });
+
+// Extension: 在 ~/.openbot/plugins 下通过 npm 包安装/列出/卸载扩展，Server 运行时从该目录加载
+const extensionCmd = program
+    .command("extension")
+    .description("Install, list, or uninstall extensions (npm packages in ~/.openbot/plugins)");
+
+extensionCmd
+    .command("install <pkg>")
+    .description("Install an extension package (e.g. openbot extension install my-extension)")
+    .action((pkg: string) => {
+        installExtension(pkg);
+    });
+
+extensionCmd
+    .command("list")
+    .description("List installed extensions")
+    .action(() => {
+        const list = listExtensions();
+        if (list.length === 0) {
+            console.log("No extensions installed. Run: openbot extension install <package>");
+            return;
+        }
+        console.log("Installed extensions:\n");
+        console.table(list.map((r) => ({ Package: r.name, Spec: r.spec })));
+    });
+
+extensionCmd
+    .command("uninstall <pkg>")
+    .description("Uninstall an extension package")
+    .action((pkg: string) => {
+        uninstallExtension(pkg);
     });
 
 (async () => {
