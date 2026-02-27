@@ -31,31 +31,7 @@
 | **参考** | [常见问题](docs/zh/reference/faq.md) | 安装失败、端口占用、通道不回复等 FAQ |
 | | [发布说明](docs/zh/release-notes.md) | 各版本功能更新与问题修复记录 |
 
-<details>
-<summary><strong>📂 文档树结构 (Doc structure)</strong></summary>
 
-```
-docs/
-├── README.md                   → 语言切换入口 (Language switcher)
-├── zh/                         → 中文文档 (Chinese)
-│   ├── README.md               文档入口与导航
-│   ├── release-notes.md        发布说明
-│   ├── guides/                 使用指南
-│   ├── configuration/          配置说明
-│   ├── features/               功能说明
-│   ├── reference/              参考
-│   └── channel-streaming-design.md
-└── en/                         → 英文文档 (English)
-    ├── README.md               Index and navigation
-    ├── release-notes.md        Release notes
-    ├── guides/                 Guides
-    ├── configuration/          Configuration
-    ├── features/                Features
-    ├── reference/              Reference
-    └── channel-streaming-design.md
-```
-
-</details>
 
 ### 常见问题（简要）
 
@@ -82,7 +58,7 @@ docs/
 | **OpenCode 代理** | 可将智能体代理至 [OpenCode](https://opencode.ai/) 官方 Server（本地 `opencode serve` 或远程）；支持流式回复、斜杠指令 `/init`、`/undo`、`/redo`、`/share`、`/help`，与 TUI 使用方式一致；**0 Token 消耗**，适合 OpenCode 侧大量代码与长上下文能力 |
 | **MCP** | 已支持 [MCP](https://modelcontextprotocol.io/)（Model Context Protocol）：智能体可配置 stdio/SSE 两种连接方式，按智能体绑定 MCP 服务器，会话内自动加载对应工具，降低 Token 消耗与大模型幻觉 |
 | **RPA（影刀）** | 通过 MCP 可接入影刀 RPA：在智能体 MCP 配置中添加 [yingdao-mcp-server](https://www.npmjs.com/package/yingdao-mcp-server)（命令 `npx -y yingdao-mcp-server`，可选 env 如 `RPA_MODEL`、`SHADOWBOT_PATH`、`USER_FOLDER`），即可在对话中调用影刀自动化能力 |
-| **插件支持** | 通过 `openbot extension install/list/uninstall` 在 `~/.openbot/plugins` 安装 npm 包形式扩展；扩展默认导出 `(pi) => void`，通过 `pi.registerTool` 注册新工具；详见 [插件与扩展](docs/zh/features/plugins.md) |
+| **插件支持** | 通过 `openbot extension install/list/uninstall` 在 `~/.openbot/plugins` 安装 npm 包形式扩展；详见 [插件与扩展](docs/zh/features/plugins.md) |
 
 ---
 
