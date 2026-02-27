@@ -2,6 +2,8 @@
 
 通过 **WebSocket 网关** 使用 OpenClawX：先启动网关，再通过 Web 客户端或第三方 IM 通道连接。
 
+**配置与访问地址**：可使用 **`http://localhost:38080`**（本机）或 **`http://你的IP:38080`**（局域网/远程）进行配置与使用。WebSocket 使用 `ws://` 同 host/端口（如 `ws://localhost:38080` 或 `ws://你的IP:38080`）；HTTP 接口（如 `/server-api`、`/health`）及静态资源均通过上述 HTTP 地址访问。
+
 ---
 
 ## 启动网关
@@ -32,7 +34,8 @@ openbot gateway --port 38080
 
 ## 客户端连接
 
-- 连接地址：`ws://localhost:38080`（或你指定的 host/端口）
+- **HTTP / 配置与使用**：`http://localhost:38080` 或 `http://你的IP:38080`（访问 server-api、健康检查、静态资源等）。
+- **WebSocket 连接**：`ws://localhost:38080` 或 `ws://你的IP:38080`（或你指定的 host/端口）。
 - 协议：JSON-RPC over WebSocket
 - 常用方法：`connect`、`agent.chat`、`agent.cancel`、`subscribe_session`、`unsubscribe_session` 等
 

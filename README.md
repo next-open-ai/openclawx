@@ -316,6 +316,8 @@ openbot "总结一下当前有哪些技能"
 
 通过 **WebSocket 网关** 使用 OpenBot：先启动网关，再通过 Web 客户端连接。
 
+**配置与访问地址**：可使用 **`http://localhost:38080`**（本机）或 **`http://你的IP:38080`**（局域网/远程）进行配置与使用；WebSocket 为 `ws://` 同 host/端口，HTTP 接口（如 `/server-api`、`/health`）与静态资源均通过上述地址访问。
+
 ```bash
 # 启动网关（默认端口 38080）
 openclawx gateway --port 38080
@@ -323,7 +325,7 @@ openclawx gateway --port 38080
 
 若需网关开机/登录自启，可执行 `openbot service install`（支持 Linux / macOS / Windows）；移除自启用 `openbot service uninstall`，停止当前网关用 `openbot service stop`。
 
-客户端连接 `ws://localhost:38080`，使用 JSON-RPC 调用 `connect`、`agent.chat`、`agent.cancel` 等（详见下方「Gateway API 简述」）。  
+客户端连接 `ws://localhost:38080`（或 `ws://你的IP:38080`），使用 JSON-RPC 调用 `connect`、`agent.chat`、`agent.cancel` 等（详见下方「Gateway API 简述」）。  
 前端可自行实现或使用仓库内 Web 示例（若有）。
 
 ---

@@ -2,6 +2,8 @@
 
 Use OpenClawX via the **WebSocket gateway**: start the gateway, then connect with a Web client or IM channels.
 
+**Configuration and access URL**: You can use **`http://localhost:38080`** (local) or **`http://yourIP:38080`** (LAN/remote) for configuration and use. WebSocket uses the same host/port with `ws://` (e.g. `ws://localhost:38080` or `ws://yourIP:38080`); HTTP endpoints (e.g. `/server-api`, `/health`) and static assets are served at the same HTTP base URL.
+
 ---
 
 ## Start the gateway
@@ -30,7 +32,8 @@ For auto-start on boot: `openbot service install`; to remove: `openbot service u
 
 ## Client connection
 
-- URL: `ws://localhost:38080` (or your host/port)
+- **HTTP / configuration and use**: `http://localhost:38080` or `http://yourIP:38080` (server-api, health check, static assets).
+- **WebSocket**: `ws://localhost:38080` or `ws://yourIP:38080` (or your host/port).
 - Protocol: JSON-RPC over WebSocket
 - Methods: `connect`, `agent.chat`, `agent.cancel`, `subscribe_session`, `unsubscribe_session`, etc.
 
