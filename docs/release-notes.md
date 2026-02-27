@@ -4,7 +4,32 @@
 
 ---
 
-## [0.8.26] - 当前
+## [0.8.32] - 当前
+
+### 会话消息与 MCP
+
+- **会话消息统一出口（session-outlet）**
+  - 引入 `session-outlet` 模块：Gateway 启动时通过 `setSessionOutlet(outlet)` 注入全局出口，各模块仅需 `sessionId` + 消息即可经 `sendSessionMessage(sessionId, message)` 发送会话级系统消息，无需透传 outlet。
+  - 通道、Desktop、Web 等端注册消费者后，可统一接收 `turn_end`、`agent_end`、`mcp.progress` 等系统消息；对话内 `//` 指令执行结果也经该出口以系统消息推送。
+
+- **MCP 进度推送**
+  - MCP 层不再透传 `sessionOutlet`：`getMcpToolDefinitions` 仅接收 `sessionId`，在连接/重试等进度时直接调用全局 `sendSessionMessage(sessionId, { type: "system", code: "mcp.progress", payload })`，与 Gateway 注入的出口解耦。
+
+### 其他
+
+- 问题修复与依赖更新。
+
+---
+
+## [0.8.28]
+
+### 其他
+
+- 问题修复与稳定性改进；Docker 与 CI 构建可用该版本 tag。
+
+---
+
+## [0.8.26]
 
 ### MCP 与 RPA（影刀）
 

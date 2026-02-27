@@ -75,10 +75,10 @@ docs/
 | **长期记忆** | 向量存储（Vectra）+ 本地嵌入，支持经验总结与会话压缩（compaction） |
 | **多端接入** | CLI、WebSocket 网关、Electron 桌面端，同一套 Agent 核心；各端技术栈见下方「各端技术栈」 |
 | **多通道接入** | 飞书、钉钉、Telegram 等 IM 通道，Gateway 根据配置注册；入站经统一格式进 Agent，回复经通道回传 |
-| **代理模式** | 智能体执行方式可选 **本机** / **Coze** / **OpenClawX** / **OpenCode**；本机使用当前模型与 Skills，代理则将对话转发至对应平台 |
-| **Coze 接入** | 支持 Coze 国内站（api.coze.cn）与国际站（api.coze.com）；按站点分别配置 Bot ID 与 Access Token（PAT/OAuth/JWT），桌面端与通道均可选用 Coze 智能体 |
-| **OpenClawX 多节点协作** | 可将智能体代理到另一台 OpenClawX 实例（baseUrl + 可选 API Key），实现多节点分工、负载与协作 |
-| **OpenCode 代理** | 可将智能体代理至 [OpenCode](https://opencode.ai/) 官方 Server（本地 `opencode serve` 或远程）；支持流式回复、斜杠指令 `/init`、`/undo`、`/redo`、`/share`、`/help`，与 TUI 使用方式一致 |
+| **代理模式** | 智能体执行方式可选 **本机** / **Coze** / **OpenClawX** / **OpenCode**；本机使用当前模型与 Skills，**代理模式下本机 0 Token 消耗**，推理与消息处理在对方平台完成 |
+| **Coze 接入** | 支持 Coze 国内站（api.coze.cn）与国际站（api.coze.com）；按站点分别配置 Bot ID 与 Access Token（PAT/OAuth/JWT），桌面端与通道均可选用 Coze 智能体；**0 Token 消耗**，适合 Coze 侧大量消息与长对话场景 |
+| **OpenClawX 多节点协作** | 可将智能体代理到另一台 OpenClawX 实例（baseUrl + 可选 API Key），实现多节点分工、负载与协作；本机 0 Token 消耗 |
+| **OpenCode 代理** | 可将智能体代理至 [OpenCode](https://opencode.ai/) 官方 Server（本地 `opencode serve` 或远程）；支持流式回复、斜杠指令 `/init`、`/undo`、`/redo`、`/share`、`/help`，与 TUI 使用方式一致；**0 Token 消耗**，适合 OpenCode 侧大量代码与长上下文能力 |
 | **MCP** | 已支持 [MCP](https://modelcontextprotocol.io/)（Model Context Protocol）：智能体可配置 stdio/SSE 两种连接方式，按智能体绑定 MCP 服务器，会话内自动加载对应工具，降低 Token 消耗与大模型幻觉 |
 | **RPA（影刀）** | 通过 MCP 可接入影刀 RPA：在智能体 MCP 配置中添加 [yingdao-mcp-server](https://www.npmjs.com/package/yingdao-mcp-server)（命令 `npx -y yingdao-mcp-server`，可选 env 如 `RPA_MODEL`、`SHADOWBOT_PATH`、`USER_FOLDER`），即可在对话中调用影刀自动化能力 |
 
@@ -217,7 +217,7 @@ docker compose up -d
 docker compose -f deploy/docker-compose.yaml up -d
 ```
 
-默认使用镜像 `ccr.ccs.tencentyun.com/windwithlife/openclawx:latest`。若需指定版本，可修改 `deploy/docker-compose.yaml` 中 `image` 的 tag（如 `0.8.28` 或 CI 生成的 `build-ci-openbot-<BUILD_NUMBER>`）。
+默认使用镜像 `ccr.ccs.tencentyun.com/windwithlife/openclawx:latest`。若需指定版本，可修改 `deploy/docker-compose.yaml` 中 `image` 的 tag（如 `0.8.32`、`0.8.28`、`0.8.26` 或 CI 生成的 `build-ci-openbot-<BUILD_NUMBER>`）。
 
 ### 方式二：本地构建并运行（开发/无 CI 时）
 
@@ -396,7 +396,7 @@ openclawx gateway --port 38080
 
 ### 2.4.1 代理模式与多节点协作
 
-智能体除在本机运行（**local**）外，可配置为**代理模式**，将对话转发至 Coze 或另一台 OpenClawX，实现生态接入与多节点协作。
+智能体除在本机运行（**local**）外，可配置为**代理模式**，将对话转发至 Coze、OpenCode 或另一台 OpenClawX，实现生态接入与多节点协作。**代理智能体为本机 0 Token 消耗模式**：推理与消息处理均在对方平台完成，本机仅做转发与展示，不占用本机模型 API 的 Token。特别适合 **Coze**、**OpenCode** 等具备大量消息、长上下文或代码协作能力的平台，在桌面端与通道中直接使用其能力而无需消耗本机配额。
 
 | 模式 | 说明 | 配置要点 |
 |------|------|----------|
