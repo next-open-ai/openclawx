@@ -4,7 +4,36 @@ This document records feature updates and fixes for OpenClawX.
 
 ---
 
-## [0.8.32] – current
+## [0.8.38] – current
+
+### Web search (web_search)
+
+- **Multiple web search providers**
+  - New **web search** tool (`web_search`) for agents: the model can call it during chat to fetch up-to-date information (e.g. news, weather, definitions).
+  - Supported providers: **DuckDuckGo** (default, no API key, via duck-duck-scrape); **Brave Search** (requires Brave API key in Settings → General or env `BRAVE_API_KEY`).
+  - Per-agent toggle and provider choice in Agent detail → Basic config; Brave API key in Settings → General.
+  - When the selected provider is unavailable (e.g. Brave chosen but no key), the tool is still registered in **no-op mode**: the model can call it and receives a clear message guiding the user to configure or switch provider.
+
+### Other
+
+- Bug fixes and dependency updates.
+
+---
+
+## [0.8.36]
+
+### MCP and configuration
+
+- **MCP loading**: Improved MCP server loading and tool registration; session creation is more stable and observable; connection/retry progress is sent through the shared outlet for the UI.
+- **Configuration**: Better handling of agent and global config read/write and validation; MCP and other options save and apply more consistently.
+
+### Other
+
+- Bug fixes and dependency updates.
+
+---
+
+## [0.8.32]
 
 ### Session outlet and MCP
 

@@ -30,6 +30,7 @@ export const localAdapter: IAgentProxyAdapter = {
             mcpServers: config.mcpServers,
             systemPrompt: config.systemPrompt,
             useLongMemory: config.useLongMemory,
+            webSearch: config.webSearch,
         });
 
         let resolveDone: () => void;
@@ -76,6 +77,7 @@ export const localAdapter: IAgentProxyAdapter = {
             mcpServers: config.mcpServers,
             systemPrompt: config.systemPrompt,
             useLongMemory: config.useLongMemory,
+            webSearch: config.webSearch,
         });
 
         const chunks: string[] = [];

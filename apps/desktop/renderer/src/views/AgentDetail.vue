@@ -95,6 +95,29 @@
               />
               <p class="form-hint">{{ t('agents.agentDescriptionHint') }}</p>
             </div>
+            <div class="form-group">
+              <h3 class="form-subtitle">{{ t('agents.webSearchTitle') }}</h3>
+              <div class="form-row checkbox-row">
+                <input
+                  id="web-search-enabled"
+                  v-model="webSearchForm.enabled"
+                  type="checkbox"
+                  class="form-checkbox"
+                />
+                <label for="web-search-enabled">{{ t('agents.webSearchEnabled') }}</label>
+              </div>
+              <p class="form-hint">{{ t('agents.webSearchEnabledHint') }}</p>
+              <template v-if="webSearchForm.enabled">
+                <div class="form-group">
+                  <label>{{ t('agents.webSearchProvider') }}</label>
+                  <select v-model="webSearchForm.provider" class="form-input">
+                    <option value="duck-duck-scrape">{{ t('agents.webSearchProviderDuckDuckScrape') }}</option>
+                    <option value="brave">{{ t('agents.webSearchProviderBrave') }}</option>
+                  </select>
+                  <p class="form-hint">{{ t('agents.webSearchProviderHint') }}</p>
+                </div>
+              </template>
+            </div>
             <button class="btn-primary" :disabled="configSaving" @click="saveConfig">
               {{ configSaving ? t('common.loading') : t('agents.saveConfig') }}
             </button>
@@ -701,6 +724,7 @@ export default {
 
     const agentIconOptions = AGENT_ICONS;
     const configForm = ref({ name: '', systemPrompt: '', icon: AGENT_ICON_DEFAULT });
+    const webSearchForm = ref({ enabled: false, provider: 'duck-duck-scrape' });
     const configSaving = ref(false);
 
     const modelForm = ref({ provider: '', model: '' });
@@ -973,6 +997,10 @@ export default {
             systemPrompt: agent.value.systemPrompt ?? '',
             icon: agent.value.icon || AGENT_ICON_DEFAULT,
           };
+          webSearchForm.value = {
+            enabled: !!agent.value.webSearch?.enabled,
+            provider: agent.value.webSearch?.provider === 'brave' ? 'brave' : 'duck-duck-scrape',
+          };
           modelForm.value = {
             provider: agent.value.provider ?? '',
             model: agent.value.model ?? '',
@@ -1031,6 +1059,7 @@ export default {
         } else if (agentId.value === 'default') {
           agent.value = { ...MAIN_AGENT_FALLBACK };
           configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
+          webSearchForm.value = { enabled: false, provider: 'duck-duck-scrape' };
           modelForm.value = { provider: '', model: '' };
           proxyForm.value = {
             runnerType: 'local',
@@ -1045,6 +1074,7 @@ export default {
         if (agentId.value === 'default') {
           agent.value = { ...MAIN_AGENT_FALLBACK };
           configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
+          webSearchForm.value = { enabled: false, provider: 'duck-duck-scrape' };
           modelForm.value = { provider: '', model: '' };
           proxyForm.value = {
             runnerType: 'local',
@@ -1053,6 +1083,7 @@ export default {
             opencode: { mode: 'local', address: '', port: 4096, username: '', password: '', model: '', workingDirectory: '' },
           };
           mcpServers.value = {};
+          webSearchForm.value = { enabled: false, provider: 'duck-duck-scrape' };
           syncMcpJsonString();
         } else {
           agent.value = null;
@@ -1072,6 +1103,9 @@ export default {
         payload.mcpServers = mcpServers.value;
         payload.systemPrompt = configForm.value.systemPrompt?.trim() || undefined;
         payload.icon = configForm.value.icon || undefined;
+        payload.webSearch = webSearchForm.value.enabled
+          ? { enabled: true, provider: webSearchForm.value.provider }
+          : undefined;
         payload.runnerType = proxyForm.value.runnerType;
         if (proxyForm.value.runnerType === 'coze') {
           const c = proxyForm.value.coze;
@@ -1117,6 +1151,7 @@ export default {
           ...agent.value,
           systemPrompt: payload.systemPrompt,
           icon: payload.icon,
+          webSearch: payload.webSearch,
           runnerType: payload.runnerType,
           coze: payload.coze,
           openclawx: payload.openclawx,
@@ -1378,6 +1413,7 @@ export default {
       activeTab,
       tabs,
       configForm,
+      webSearchForm,
       agentIconOptions,
       configSaving,
       saveConfig,
@@ -1999,6 +2035,19 @@ export default {
 .form-hint-warn {
   color: var(--color-warning, #b8860b);
   margin: var(--spacing-xs) 0 0 0;
+}
+
+.form-subtitle {
+  margin: var(--spacing-lg) 0 var(--spacing-sm) 0;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.form-row.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
 }
 
 .form-group-switch .switch-label {

@@ -88,6 +88,30 @@
           </div>
 
           <div class="settings-group">
+            <h3>{{ t('settings.webSearchTitle') }}</h3>
+            <p class="form-hint settings-group-desc">{{ t('settings.webSearchDesc') }}</p>
+            <div class="form-group">
+              <label>{{ t('settings.webSearchBraveApiKey') }}</label>
+              <input
+                v-model="webSearchBraveApiKey"
+                type="password"
+                class="input"
+                :placeholder="t('settings.webSearchBraveApiKeyPlaceholder')"
+                autocomplete="off"
+              />
+              <p class="form-hint">{{ t('settings.webSearchBraveApiKeyHint') }}</p>
+              <button
+                type="button"
+                class="btn-primary btn-sm"
+                :disabled="webSearchSaving"
+                @click="saveWebSearchConfig"
+              >
+                {{ webSearchSaving ? t('common.loading') : t('common.save') }}
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-group">
             <h3>{{ t('settings.theme') }}</h3>
             <div class="form-group">
               <label>{{ t('settings.themeDescription') }}</label>
@@ -970,6 +994,7 @@ export default {
       if (tab === 'general') {
         await settingsStore.loadConfig();
         loadAgentConfig();
+        webSearchBraveApiKey.value = settingsStore.config?.tools?.webSearch?.providers?.brave?.apiKey ?? '';
       }
       if (tab === 'agent') {
         await settingsStore.loadConfig();
@@ -989,6 +1014,8 @@ export default {
       }
     });
     const localConfig = ref({ memory: {} });
+    const webSearchBraveApiKey = ref('');
+    const webSearchSaving = ref(false);
     const agentList = ref([]);
     const modelConfigSubTab = ref('provider');
     const localProviderConfig = ref({});
@@ -1337,6 +1364,33 @@ export default {
       };
       await settingsStore.updateConfig({ rag });
       alert(t('common.saved'));
+    }
+
+    async function saveWebSearchConfig() {
+      webSearchSaving.value = true;
+      try {
+        const current = settingsStore.config || {};
+        const currentTools = current.tools || {};
+        const currentWebSearch = currentTools.webSearch || {};
+        const currentProviders = currentWebSearch.providers || {};
+        const trimmed = (webSearchBraveApiKey.value || '').trim();
+        const tools = {
+          ...currentTools,
+          webSearch: {
+            ...currentWebSearch,
+            providers: {
+              ...currentProviders,
+              brave: trimmed ? { apiKey: trimmed } : undefined,
+            },
+          },
+        };
+        await settingsStore.updateConfig({ tools });
+        alert(t('common.saved'));
+      } catch (e) {
+        console.error('Save web search config failed', e);
+      } finally {
+        webSearchSaving.value = false;
+      }
     }
 
     function initChannelsTab() {

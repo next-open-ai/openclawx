@@ -10,3 +10,4 @@ export {
     createSaveBookmarkTool,
     createAddBookmarkTagTool,
 } from "./bookmark-tool.js";
+export { createWebSearchTool } from "./web-search/index.js";

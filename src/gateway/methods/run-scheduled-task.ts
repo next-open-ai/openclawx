@@ -78,6 +78,7 @@ export async function handleRunScheduledTask(
             mcpServers: agentConfig?.mcpServers,
             systemPrompt: agentConfig?.systemPrompt,
             useLongMemory: agentConfig?.useLongMemory,
+            webSearch: agentConfig?.webSearch,
         });
         let assistantContent = "";
         let turnPromptTokens = 0;

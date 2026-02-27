@@ -241,6 +241,7 @@ async function handleAgentChatInner(
                 mcpServers: agentConfig?.mcpServers,
                 systemPrompt: agentConfig?.systemPrompt,
                 useLongMemory: agentConfig?.useLongMemory,
+                webSearch: agentConfig?.webSearch,
             });
         } catch (err: any) {
             const msg = err?.message ?? String(err);

@@ -93,6 +93,16 @@ interface DesktopConfigJson {
     };
     /** 通道配置：飞书、Telegram 等 */
     channels?: ChannelsConfig;
+    /** 工具全局配置：在线搜索等 */
+    tools?: {
+        webSearch?: {
+            defaultProvider?: "brave" | "duck-duck-scrape";
+            timeoutSeconds?: number;
+            cacheTtlMinutes?: number;
+            maxResults?: number;
+            providers?: { brave?: { apiKey?: string } };
+        };
+    };
 }
 
 /** MCP 服务器配置（与 core/mcp 类型一致，避免 core/config 依赖 core/mcp 实现） */
@@ -190,6 +200,11 @@ interface AgentItem {
     opencode?: AgentOpenCodeConfig;
     /** 是否使用经验（长记忆）；默认 true */
     useLongMemory?: boolean;
+    /** 在线搜索：是否启用 web_search 工具；启用时可指定 provider */
+    webSearch?: {
+        enabled?: boolean;
+        provider?: "brave" | "duck-duck-scrape";
+    };
 }
 
 interface AgentsFile {
@@ -348,6 +363,15 @@ export interface DesktopAgentConfig {
     opencode?: AgentOpenCodeConfig;
     /** 是否使用经验（长记忆）；默认 true */
     useLongMemory?: boolean;
+    /** 在线搜索：解析后的运行时配置，仅当 runnerType 为 local 时用于注册 web_search 工具 */
+    webSearch?: {
+        enabled: boolean;
+        provider: "brave" | "duck-duck-scrape";
+        apiKey?: string;
+        timeoutSeconds: number;
+        cacheTtlMinutes: number;
+        maxResults: number;
+    };
 }
 
 /**
@@ -465,6 +489,18 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
     let coze: CozeResolvedConfig | undefined;
     let openclawx: AgentOpenClawXConfig | undefined;
     let opencode: AgentOpenCodeConfig | undefined;
+    const tw = config.tools?.webSearch;
+    const timeoutSeconds = typeof tw?.timeoutSeconds === "number" && tw.timeoutSeconds > 0 ? tw.timeoutSeconds : 15;
+    const cacheTtlMinutes = typeof tw?.cacheTtlMinutes === "number" && tw.cacheTtlMinutes >= 0 ? tw.cacheTtlMinutes : 5;
+    const maxResultsRaw = typeof tw?.maxResults === "number" ? tw.maxResults : 5;
+    const maxResults = Math.min(10, Math.max(1, maxResultsRaw));
+    let webSearch: DesktopAgentConfig["webSearch"] = {
+        enabled: false,
+        provider: "duck-duck-scrape",
+        timeoutSeconds,
+        cacheTtlMinutes,
+        maxResults,
+    };
     if (existsSync(agentsPath)) {
         try {
             const rawAgents = await readFile(agentsPath, "utf-8");
@@ -553,6 +589,31 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
                         }
                     }
                 }
+                if (agentRow.webSearch?.enabled === true) {
+                    let preferredProvider: "brave" | "duck-duck-scrape" =
+                        agentRow.webSearch?.provider === "brave" || agentRow.webSearch?.provider === "duck-duck-scrape"
+                            ? agentRow.webSearch.provider
+                            : tw?.defaultProvider === "brave" || tw?.defaultProvider === "duck-duck-scrape"
+                                ? tw.defaultProvider!
+                                : "duck-duck-scrape";
+                    let braveKey: string | undefined;
+                    if (preferredProvider === "brave") {
+                        braveKey =
+                            (typeof tw?.providers?.brave?.apiKey === "string" && tw.providers.brave.apiKey.trim()
+                                ? tw.providers.brave.apiKey.trim()
+                                : undefined) ??
+                            (process.env.BRAVE_API_KEY && process.env.BRAVE_API_KEY.trim() ? process.env.BRAVE_API_KEY.trim() : undefined);
+                        if (!braveKey) preferredProvider = "duck-duck-scrape";
+                    }
+                    webSearch = {
+                        enabled: true,
+                        provider: preferredProvider,
+                        apiKey: preferredProvider === "brave" ? braveKey : undefined,
+                        timeoutSeconds,
+                        cacheTtlMinutes,
+                        maxResults,
+                    };
+                }
             }
         } catch {
             // ignore
@@ -571,6 +632,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
         openclawx,
         opencode,
         useLongMemory,
+        webSearch,
     };
 }
 

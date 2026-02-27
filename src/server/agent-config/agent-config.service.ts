@@ -92,6 +92,11 @@ export interface AgentConfigItem {
     opencode?: AgentOpenCodeConfig;
     /** 是否使用经验（长记忆）：memory_recall / save_experience；默认 true */
     useLongMemory?: boolean;
+    /** 在线搜索：启用后该智能体拥有 web_search 工具；可选默认 provider */
+    webSearch?: {
+        enabled?: boolean;
+        provider?: 'brave' | 'duck-duck-scrape';
+    };
 }
 
 interface AgentsFile {
@@ -255,6 +260,7 @@ export class AgentConfigService {
                 | 'openclawx'
                 | 'opencode'
                 | 'useLongMemory'
+                | 'webSearch'
             >
         >,
     ): Promise<AgentConfigItem> {
@@ -335,6 +341,18 @@ export class AgentConfigService {
         if (updates.openclawx !== undefined) agent.openclawx = updates.openclawx;
         if (updates.opencode !== undefined) agent.opencode = updates.opencode;
         if (updates.useLongMemory !== undefined) agent.useLongMemory = updates.useLongMemory;
+        if (updates.webSearch !== undefined) {
+            agent.webSearch =
+                updates.webSearch && (updates.webSearch.enabled || updates.webSearch.provider)
+                    ? {
+                          enabled: !!updates.webSearch.enabled,
+                          provider:
+                              updates.webSearch.provider === 'brave' || updates.webSearch.provider === 'duck-duck-scrape'
+                                  ? updates.webSearch.provider
+                                  : 'duck-duck-scrape',
+                      }
+                    : undefined;
+        }
         await this.writeAgentsFile(file);
         await addPendingAgentReload(id).catch(() => {});
         return { ...agent, isDefault: agent.id === DEFAULT_AGENT_ID };

@@ -21,7 +21,7 @@ import {
     persistStoredCompactionForSession,
     persistStoredCompactionForBusinessSession,
 } from "../memory/persist-compaction-on-close.js";
-import { createBrowserTool, createSaveExperienceTool, createMemoryRecallTool, createInstallSkillTool, createSwitchAgentTool, createListAgentsTool, createCreateAgentTool, createGetBookmarkTagsTool, createSaveBookmarkTool, createAddBookmarkTagTool } from "../tools/index.js";
+import { createBrowserTool, createSaveExperienceTool, createMemoryRecallTool, createInstallSkillTool, createSwitchAgentTool, createListAgentsTool, createCreateAgentTool, createGetBookmarkTagsTool, createSaveBookmarkTool, createAddBookmarkTagTool, createWebSearchTool } from "../tools/index.js";
 
 /** Agent Session 缓存 key：sessionId + "::" + agentId，同一业务 session 下不同 agent 各自一个 Core Session */
 const COMPOSITE_KEY_SEP = "::";
@@ -237,6 +237,15 @@ For downloads, provide either a direct URL or a selector to click.`;
         systemPrompt?: string;
         /** 是否使用长记忆（memory_recall/save_experience）；默认 true */
         useLongMemory?: boolean;
+        /** 在线搜索：启用时注册 web_search 工具 */
+        webSearch?: {
+            enabled: boolean;
+            provider: "brave" | "duck-duck-scrape";
+            apiKey?: string;
+            timeoutSeconds?: number;
+            cacheTtlMinutes?: number;
+            maxResults?: number;
+        };
     } = {}): Promise<AgentSession> {
         const agentId = options.agentId ?? "default";
         const compositeKey = toCompositeKey(sessionId, agentId);
@@ -335,6 +344,8 @@ For downloads, provide either a direct URL or a selector to click.`;
             mcpServers: options.mcpServers,
             sessionId,
         });
+        const webSearchTool =
+            options.webSearch?.enabled === true ? createWebSearchTool(options.webSearch) : null;
         const customTools = [
             createBrowserTool(sessionWorkspaceDir),
             createSaveExperienceTool(sessionId),
@@ -346,6 +357,7 @@ For downloads, provide either a direct URL or a selector to click.`;
             createGetBookmarkTagsTool(),
             createSaveBookmarkTool(),
             createAddBookmarkTagTool(),
+            ...(webSearchTool ? [webSearchTool] : []),
             ...mcpTools,
         ];
 

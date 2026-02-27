@@ -75,6 +75,16 @@ export interface AppConfig {
     };
     /** 通道配置：飞书、Telegram 等 token/key */
     channels?: ChannelsConfig;
+    /** 工具相关：在线搜索等，Brave API Key 存于 providers.brave.apiKey */
+    tools?: {
+        webSearch?: {
+            defaultProvider?: 'brave' | 'duck-duck-scrape';
+            providers?: { brave?: { apiKey?: string } };
+            timeoutSeconds?: number;
+            cacheTtlMinutes?: number;
+            maxResults?: number;
+        };
+    };
 }
 
 @Injectable()
