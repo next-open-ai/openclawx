@@ -62,6 +62,36 @@ This page describes common scenarios on Desktop and Web/Gateway with step-by-ste
 
 ---
 
+## Scenario 8: Use OpenCode with slash commands
+
+**Goal:** Proxy an agent to the [OpenCode](https://opencode.ai/) server so you can use OpenCode's coding features and slash commands (`/init`, `/undo`, `/share`, etc.) in Desktop/Web chat with zero local token usage.
+
+**Steps and details:** (1) **Local mode:** Install OpenCode (e.g. `curl -fsSL https://opencode.ai/install | bash` or `npm install -g opencode-ai`), then run `opencode serve` (default port 4096). **Remote mode:** Use an existing OpenCode server address and port. (2) In OpenClawX: **Settings → Agents** → create or edit an agent → set execution to **OpenCode**; choose local or remote and fill port or address. See [Agent configuration](../configuration/agents.md) and [Proxy mode](../features/proxy-mode.md). (3) In chat with that agent you can use `/init` (analyze project, create AGENTS.md), `/undo`, `/redo`, `/share` (get share link), `/help`. See [OpenCode docs](https://opencode.ai/docs) and [Share](https://opencode.ai/docs/share).
+
+**Official and config:** [opencode.ai](https://opencode.ai/) / [opencode.ai/docs](https://opencode.ai/docs). In OpenClawX: **Settings → Agents**; [Agent configuration](../configuration/agents.md).
+
+---
+
+## Scenario 9: Connect RPA (YingDao) via MCP
+
+**Goal:** Add the YingDao RPA MCP server to an agent so the agent can run RPA flows (e.g. open apps, fill forms, scrape pages) from chat.
+
+**Steps and details:** (1) The [yingdao-mcp-server](https://www.npmjs.com/package/yingdao-mcp-server) npm package exposes RPA as MCP tools. (2) In OpenClawX: **Settings → Agents** → open the agent → **MCP** tab → Add: Name e.g. "YingDao RPA", connection **stdio**, command `npx`, args `["-y", "yingdao-mcp-server"]`, optional env (e.g. `RPA_MODEL`, `SHADOWBOT_PATH`, `USER_FOLDER`). Save; new sessions for that agent will load the MCP. (3) In chat, use natural language to trigger RPA. See [Agent configuration](../configuration/agents.md) and [package docs](https://www.npmjs.com/package/yingdao-mcp-server).
+
+**Official and config:** [yingdao-mcp-server on npm](https://www.npmjs.com/package/yingdao-mcp-server). In OpenClawX: **Settings → Agents** → agent → **MCP** tab.
+
+---
+
+## Scenario 10: Connect Coze (China or international) Bot
+
+**Goal:** Proxy an agent to [Coze](https://www.coze.com) (China or international site) so Desktop/Web/channels use your Coze Bot with zero local token usage.
+
+**Steps and details:** (1) On [Coze China](https://www.coze.cn) or [Coze International](https://www.coze.com), get **Bot ID** and **Access Token** (PAT, OAuth, or JWT). China and international credentials are not interchangeable. (2) In OpenClawX: **Settings → Agents** → set execution to **Coze**; choose region **China (cn)** or **International (com)** and fill Bot ID and Access Token. (3) For channels, set this Coze agent as default in **Settings → Channel configuration**. See [Agent configuration](../configuration/agents.md), [Proxy mode](../features/proxy-mode.md), [Channel configuration](../configuration/channels.md).
+
+**Official and config:** Coze China [www.coze.cn](https://www.coze.cn), International [www.coze.com](https://www.coze.com). In OpenClawX: **Settings → Agents**; [Agent configuration](../configuration/agents.md).
+
+---
+
 ## Quick reference
 
 | Scenario | Main entry | Depends on |
@@ -73,6 +103,9 @@ This page describes common scenarios on Desktop and Web/Gateway with step-by-ste
 | Find + install skill | Chat + find-skills + install_skill | find-skills, local agent |
 | Add MCP | Settings → Agent → MCP | — |
 | Scheduled task for agent | Tasks → New → choose workspace | Gateway, task scheduler |
+| Use OpenCode with slash commands | Settings → Agents (OpenCode) + /init, /undo, /share in chat | Local or remote OpenCode server |
+| RPA (YingDao) via MCP | Settings → Agent → MCP (yingdao-mcp-server) | Node/npx, yingdao-mcp-server |
+| Coze China/International Bot | Settings → Agents (Coze) + region and Bot ID/Token | Coze Bot and credentials |
 
 ---
 
@@ -80,7 +113,9 @@ This page describes common scenarios on Desktop and Web/Gateway with step-by-ste
 
 - [Desktop usage](desktop-usage.md)
 - [Web and Gateway](gateway-web.md)
-- [Agent configuration](../configuration/agents.md)
+- [Agent configuration](../configuration/agents.md): execution (local/Coze/OpenClawX/OpenCode), MCP, workspace
+- [Proxy mode and multi-node](../features/proxy-mode.md): Coze, OpenCode proxy
+- [Channel configuration](../configuration/channels.md): default agent per channel
 - [Skills system](../features/skills.md)
 
 [← Back to index](../README.md)

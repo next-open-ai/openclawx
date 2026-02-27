@@ -251,6 +251,122 @@
 
 ---
 
+## 场景八：对接 OpenCode 并用斜杠指令开发
+
+**目标**：将智能体代理至 [OpenCode](https://opencode.ai/) 官方 Server，在桌面/Web 对话中使用 OpenCode 的编码能力与斜杠指令（如 `/init`、`/undo`、`/share`），实现「本机 0 Token」的代码分析与协作。
+
+**适用**：桌面端、Web 端；本机已安装并可运行 OpenCode（本地模式），或可访问远程 OpenCode Server。
+
+### 对接方式与细节
+
+1. **安装 OpenCode（本地模式时）**  
+   在本机安装 OpenCode CLI，例如：
+   - 官方安装脚本：`curl -fsSL https://opencode.ai/install | bash`
+   - 或 npm：`npm install -g opencode-ai`
+   - 安装与使用说明见 OpenCode 官方文档：[opencode.ai/docs](https://opencode.ai/docs)
+
+2. **启动 OpenCode Server**  
+   - **本地模式**：在终端执行 `opencode serve`（默认端口 4096）。可设置环境变量 `OPENCODE_SERVER_PASSWORD` 作为 HTTP Basic 密码。
+   - **远程模式**：使用他人或团队已部署的 OpenCode Server，记下地址与端口（及密码若有）。
+
+3. **在 OpenClawX 中配置智能体**  
+   - 打开 **设置 → 智能体**，新建或编辑一个智能体。
+   - **执行方式** 选择 **OpenCode**。
+   - **模式**：选「本地」则填写端口（如 4096）、可选密码、工作目录、默认模型；选「远程」则填写服务器地址与端口。
+   - 保存后，该智能体在对话中的请求会转发至 OpenCode Server，回复以流式返回。
+   - 配置字段说明见 [智能体配置](../configuration/agents.md#opencode)，整体代理逻辑见 [代理模式与多节点协作](../features/proxy-mode.md#opencode-代理)。
+
+4. **在对话中使用斜杠指令**  
+   选择该 OpenCode 智能体并发送消息时，可使用与 OpenCode TUI 一致的斜杠指令：
+   - **`/init`**：分析当前项目并生成 `AGENTS.md`，便于 OpenCode 理解项目结构（需在 OpenCode 侧配置工作目录）。
+   - **`/undo`**、**`/redo`**：撤销/重做上一步代码变更。
+   - **`/share`**：生成当前对话的分享链接并回显到对话中；详见 [OpenCode 分享文档](https://opencode.ai/docs/share)。
+   - **`/help`**：查看指令说明。
+
+5. **验证**  
+   选择该智能体、新建会话，发送「分析一下这个项目」或「/init」（若界面支持输入斜杠指令），应收到 OpenCode 的流式回复；执行 `/share` 后对话中应出现分享链接。
+
+**官方与配置入口**：
+- OpenCode 官网与文档：[opencode.ai](https://opencode.ai/) / [opencode.ai/docs](https://opencode.ai/docs)
+- OpenClawX 内配置入口：**设置 → 智能体** → 执行方式选 OpenCode；详见 [智能体配置](../configuration/agents.md)。
+
+---
+
+## 场景九：通过 MCP 对接 RPA（影刀）在对话中执行自动化
+
+**目标**：为某个智能体配置影刀 RPA 的 MCP 服务，使该智能体在对话中能调用影刀执行流程（如打开应用、填表、爬取页面等），实现「对话即自动化」。
+
+**适用**：桌面端；本机可运行 Node.js 与 `npx`，网络可访问 npm；已安装或可自动拉取 [yingdao-mcp-server](https://www.npmjs.com/package/yingdao-mcp-server)。
+
+### 对接方式与细节
+
+1. **了解影刀 MCP 服务**  
+   - 影刀 RPA 通过 [yingdao-mcp-server](https://www.npmjs.com/package/yingdao-mcp-server) 暴露 MCP 协议，OpenClawX 以 **stdio** 方式启动该进程，会话内即可调用其提供的工具。
+   - npm 包页与使用说明：[yingdao-mcp-server on npm](https://www.npmjs.com/package/yingdao-mcp-server)。
+
+2. **在 OpenClawX 中为智能体添加 MCP 服务器**  
+   - 打开 **设置 → 智能体**，进入要接入 RPA 的智能体详情。
+   - 切换到 **「MCP 配置」** Tab。
+   - 点击「添加」或「新增」，填写：
+     - **名称**：如「影刀 RPA」。
+     - **连接方式**：**stdio**。
+     - **命令**：`npx`。
+     - **参数**：`["-y", "yingdao-mcp-server"]`（`-y` 表示无交互安装）。
+     - **环境变量**（可选）：如 `RPA_MODEL`、`SHADOWBOT_PATH`、`USER_FOLDER` 等，按影刀/该 MCP 包文档配置。
+   - 保存后，**配置即生效**：下次使用该智能体创建或继续会话时，Gateway 会启动该 MCP 进程并注入工具。
+
+3. **在对话中触发 RPA**  
+   选择该智能体并发送自然语言指令，例如：
+   - 「用影刀打开 Excel 并汇总当前文件夹下的 CSV」
+   - 「执行影刀里的「登录并导出报表」流程」
+   智能体会解析意图并调用 MCP 暴露的影刀工具，将执行结果返回对话。
+
+4. **验证与排错**  
+   - 若调用失败，请确认：本机可执行 `npx -y yingdao-mcp-server`、环境变量（若有）已正确填写在 MCP 的 **env** 中。
+   - 可在 **设置 → 智能体 → 该智能体 → MCP 配置** 中检查命令与参数是否与上述一致；详见 [智能体配置 - MCP](../configuration/agents.md) 与 [场景五：手工为某个智能体新增 MCP 能力](#场景五手工为某个智能体新增-mcp-能力)。
+
+**官方与配置入口**：
+- 影刀 RPA MCP 服务（npm）：[yingdao-mcp-server](https://www.npmjs.com/package/yingdao-mcp-server)
+- OpenClawX 内配置入口：**设置 → 智能体** → 选择智能体 → **MCP 配置** Tab；详见 [智能体配置](../configuration/agents.md)。
+
+---
+
+## 场景十：对接 Coze 并使用国内/国际站 Bot
+
+**目标**：将智能体代理至 Coze 平台（国内站或国际站），在桌面/Web/通道对话中使用已在 Coze 上配置好的 Bot，实现「本机 0 Token」、由 Coze 完成推理与回复。
+
+**适用**：桌面端、Web 端、飞书/钉钉/Telegram 等通道；需在 Coze 平台创建 Bot 并获取凭证。
+
+### 对接方式与细节
+
+1. **在 Coze 平台创建 Bot 并获取凭证**  
+   - **国内站**（api.coze.cn）：登录 [Coze 国内站](https://www.coze.cn)（或 [coze.cn](https://coze.cn)），创建/打开 Bot，在「发布」或「API」相关页面获取 **Bot ID** 与 **Access Token**（PAT、OAuth 2.0 或 JWT 等，以平台当前说明为准）。
+   - **国际站**（api.coze.com）：登录 [Coze 国际站](https://www.coze.com)，同样获取 Bot ID 与 Access Token。
+   - 国内站与国际站**凭证不通用**，需分别配置；站点选择在 OpenClawX 中通过「区域」区分。
+
+2. **在 OpenClawX 中配置 Coze 智能体**  
+   - 打开 **设置 → 智能体**，新建或编辑一个智能体。
+   - **执行方式** 选择 **Coze**。
+   - **区域**：选择 **国内**（cn）或 **国际**（com），与你在 Coze 上使用的站点一致。
+   - **国内站**：在「国内站」区块填写 **Bot ID**、**Access Token**（apiKey）。
+   - **国际站**：在「国际站」区块填写 **Bot ID**、**Access Token**（apiKey）。
+   - 若只使用一个站点，只需填写当前区域对应的一组；保存后该智能体对话会转发至所选站点的 Coze API。
+   - 配置结构说明见 [智能体配置](../configuration/agents.md#coze)，整体代理逻辑见 [代理模式与多节点协作](../features/proxy-mode.md#coze-接入)。
+
+3. **在桌面/Web 或通道中使用**  
+   - 在对话入口选择该 Coze 智能体，发送消息即可由 Coze Bot 回复。
+   - 通道（飞书/钉钉/Telegram）可将**默认智能体**设为该 Coze 智能体：在 **设置 → 通道配置** 中为对应通道指定 defaultAgentId，详见 [通道配置](../configuration/channels.md)。
+
+4. **验证**  
+   选择该智能体并发送一条测试消息，应收到 Coze Bot 的回复；若 401/403，请检查 Bot ID 与 Access Token 是否与 Coze 平台当前展示一致、区域是否选对。
+
+**官方与配置入口**：
+- Coze 国内站：[www.coze.cn](https://www.coze.cn) / [coze.cn](https://coze.cn)（以平台实际域名为准）
+- Coze 国际站：[www.coze.com](https://www.coze.com)
+- OpenClawX 内配置入口：**设置 → 智能体** → 执行方式选 Coze，填写对应站点 Bot ID 与 Access Token；详见 [智能体配置](../configuration/agents.md)、[代理模式与多节点协作](../features/proxy-mode.md)。
+
+---
+
 ## 场景与入口对照
 
 | 场景             | 主要入口           | 依赖                     |
@@ -262,6 +378,9 @@
 | 智能化新增技能   | 对话 + find-skills + install_skill | find-skills、本机智能体  |
 | 手工新增 MCP     | 设置 → 智能体 → MCP 配置 | 无                       |
 | 绑定智能体定时任务 | 任务 → 新建 → 选工作区/智能体 | Gateway、任务调度        |
+| 对接 OpenCode 并用斜杠指令开发 | 设置 → 智能体（执行方式 OpenCode）+ 对话中 /init、/undo、/share 等 | 本机或远程 OpenCode Server |
+| 通过 MCP 对接 RPA（影刀） | 设置 → 智能体 → MCP 配置（yingdao-mcp-server）+ 对话触发 | Node/npx、影刀 MCP 包     |
+| 对接 Coze 使用国内/国际站 Bot | 设置 → 智能体（执行方式 Coze）+ 区域与 Bot ID/Token | Coze 平台 Bot 与凭证     |
 
 ---
 
@@ -269,7 +388,9 @@
 
 - [桌面端使用](desktop-usage.md)：启动方式、智能体/技能/任务入口
 - [Web 与 Gateway](gateway-web.md)：启动网关、连接方式
-- [智能体配置](../configuration/agents.md)：执行方式、MCP 与工作区
+- [智能体配置](../configuration/agents.md)：执行方式（本机/Coze/OpenClawX/OpenCode）、MCP 与工作区
+- [代理模式与多节点协作](../features/proxy-mode.md)：Coze、OpenCode 代理配置要点
+- [通道配置](../configuration/channels.md)：飞书/钉钉/Telegram 默认智能体
 - [技能系统](../features/skills.md)：技能规范、加载路径与安装
 
 [← 返回文档首页](../README.md)

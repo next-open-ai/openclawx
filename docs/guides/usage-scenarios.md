@@ -204,6 +204,36 @@
 
 ---
 
+## 场景八：对接 OpenCode 并用斜杠指令开发
+
+**目标**：将智能体代理至 [OpenCode](https://opencode.ai/) 官方 Server，在桌面/Web 对话中使用 OpenCode 的编码能力与斜杠指令（如 `/init`、`/undo`、`/share`），实现「本机 0 Token」的代码分析与协作。**适用**：桌面端、Web 端；本机或远程 OpenCode Server。
+
+**对接方式与细节**：(1) 本地模式安装 OpenCode（如 `curl -fsSL https://opencode.ai/install | bash` 或 `npm install -g opencode-ai`），运行 `opencode serve`（默认端口 4096）；远程模式使用已部署 Server。 (2) **设置 → 智能体** → 执行方式选 **OpenCode**，填端口或地址；详见 [智能体配置](../configuration/agents.md)、[代理模式与多节点协作](../features/proxy-mode.md)。 (3) 对话中支持 `/init`、`/undo`、`/redo`、`/share`、`/help`；详见 [opencode.ai/docs](https://opencode.ai/docs)、[分享](https://opencode.ai/docs/share)。
+
+**官方与配置**：[opencode.ai](https://opencode.ai/) / [opencode.ai/docs](https://opencode.ai/docs)；OpenClawX **设置 → 智能体**。
+
+---
+
+## 场景九：通过 MCP 对接 RPA（影刀）在对话中执行自动化
+
+**目标**：为智能体配置影刀 RPA 的 MCP 服务，在对话中调用影刀执行流程。**适用**：桌面端；本机可运行 `npx`。
+
+**对接方式与细节**：(1) 使用 [yingdao-mcp-server](https://www.npmjs.com/package/yingdao-mcp-server)。 (2) **设置 → 智能体** → 该智能体 → **MCP 配置** → 添加：名称「影刀 RPA」，stdio，命令 `npx`，参数 `["-y", "yingdao-mcp-server"]`，可选 env（如 `RPA_MODEL`、`SHADOWBOT_PATH`）。 (3) 对话中用自然语言触发 RPA。详见 [智能体配置](../configuration/agents.md)。
+
+**官方与配置**：[yingdao-mcp-server](https://www.npmjs.com/package/yingdao-mcp-server)；**设置 → 智能体** → MCP 配置。
+
+---
+
+## 场景十：对接 Coze 并使用国内/国际站 Bot
+
+**目标**：将智能体代理至 Coze（国内/国际站），在桌面/Web/通道中使用 Coze Bot，本机 0 Token。**适用**：桌面端、Web 端、通道；需在 Coze 创建 Bot 并获取凭证。
+
+**对接方式与细节**：(1) 国内站 [coze.cn](https://www.coze.cn)、国际站 [coze.com](https://www.coze.com) 获取 Bot ID 与 Access Token；两站凭证不通用。 (2) **设置 → 智能体** → 执行方式 **Coze**，区域选国内(cn)/国际(com)，填写对应 Bot ID 与 Token。 (3) 通道可在 **设置 → 通道配置** 指定该智能体为默认。详见 [智能体配置](../configuration/agents.md)、[代理模式与多节点协作](../features/proxy-mode.md)、[通道配置](../configuration/channels.md)。
+
+**官方与配置**：Coze 国内 [www.coze.cn](https://www.coze.cn)、国际 [www.coze.com](https://www.coze.com)；OpenClawX **设置 → 智能体**。
+
+---
+
 ## 场景与入口对照
 
 | 场景             | 主要入口           | 依赖                     |
@@ -214,6 +244,9 @@
 | 智能化新增技能   | 对话 + find-skills + install_skill | find-skills、本机智能体  |
 | 手工新增 MCP     | 设置 → 智能体 → MCP 配置 | 无                       |
 | 绑定智能体定时任务 | 任务 → 新建 → 选工作区/智能体 | Gateway、任务调度        |
+| 对接 OpenCode 并用斜杠指令开发 | 设置 → 智能体（OpenCode）+ 对话 /init、/share 等 | 本机或远程 OpenCode Server |
+| 通过 MCP 对接 RPA（影刀） | 设置 → 智能体 → MCP 配置（yingdao-mcp-server） | Node/npx、影刀 MCP 包     |
+| 对接 Coze 使用国内/国际站 Bot | 设置 → 智能体（Coze）+ 区域与 Bot ID/Token | Coze 平台 Bot 与凭证     |
 
 ---
 
@@ -221,7 +254,9 @@
 
 - [桌面端使用](desktop-usage.md)：启动方式、智能体/技能/任务入口
 - [Web 与 Gateway](gateway-web.md)：启动网关、连接方式
-- [智能体配置](../configuration/agents.md)：执行方式、MCP 与工作区
+- [智能体配置](../configuration/agents.md)：执行方式（本机/Coze/OpenClawX/OpenCode）、MCP 与工作区
+- [代理模式与多节点协作](../features/proxy-mode.md)：Coze、OpenCode 代理配置要点
+- [通道配置](../configuration/channels.md)：飞书/钉钉/Telegram 默认智能体
 - [技能系统](../features/skills.md)：技能规范、加载路径与安装
 
 [← 返回文档首页](../README.md)
