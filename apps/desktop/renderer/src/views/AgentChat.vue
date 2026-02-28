@@ -414,17 +414,39 @@ export default {
       }
     };
 
-    const scrollToBottom = async () => {
-      await nextTick();
-      if (messagesContainer.value) {
-        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
-      }
+    // 防抖 + 布局稳定后再滚；始终滚到最新一条（打开会话、发消息、流式回复均能看到最新）；二次对齐仅当高度确实增加时再滚，避免收尾抖动
+    let scrollToBottomTimer = null;
+    const scrollToBottom = () => {
+      if (scrollToBottomTimer) clearTimeout(scrollToBottomTimer);
+      scrollToBottomTimer = setTimeout(() => {
+        scrollToBottomTimer = null;
+        nextTick().then(() => {
+          return new Promise((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(resolve));
+          });
+        }).then(() => {
+          const el = messagesContainer.value;
+          if (!el) return;
+          el.scrollTop = el.scrollHeight;
+          const heightAfterFirst = el.scrollHeight;
+          // 仅当晚布局导致高度增加时再滚一次，避免无谓的收尾抖动
+          setTimeout(() => {
+            if (el.scrollHeight > heightAfterFirst) {
+              el.scrollTop = el.scrollHeight;
+            }
+          }, 150);
+        });
+      }, 50);
     };
 
     watch(() => messages.value.length, scrollToBottom);
     watch(() => currentMessage.value, scrollToBottom);
     watch(isStreaming, (streaming) => {
-      if (streaming) nextTick(scrollToBottom);
+      if (streaming) scrollToBottom();
+    });
+    // 切换会话时也要滚到底部（仅 length 可能不变，需依赖 session id）
+    watch(() => currentSession.value?.id, () => {
+      if (messages.value.length) scrollToBottom();
     });
 
     // 智能安装：从智能体配置跳转过来时预填输入框

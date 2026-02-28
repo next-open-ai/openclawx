@@ -201,11 +201,25 @@ export default {
   display: flex;
   gap: var(--spacing-md);
   padding: var(--spacing-lg);
-  animation: slideInUp 0.3s ease-out;
 }
 
+/* 用户消息：短距上滑，减少与滚动不同步的抖动 */
 .message-user {
   flex-direction: row-reverse;
+  animation: slideInUpShort 0.2s ease-out;
+}
+/* 助手消息：仅透明度，避免 translateY 与底部滚动冲突 */
+.message-assistant {
+  animation: messageFadeIn 0.2s ease-out;
+}
+
+@keyframes slideInUpShort {
+  from { opacity: 0.7; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes messageFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .message-avatar {
