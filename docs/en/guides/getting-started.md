@@ -64,7 +64,7 @@ In chat you can use **`//` commands** to list or switch agents (e.g. `//select`,
 ## 5. Channels (Feishu / DingTalk / Telegram)
 
 1. Start the desktop app or run **Gateway** (`openbot gateway`).
-2. In **Settings → Channels**, enable the channel and fill credentials (Feishu App ID/Secret, DingTalk Client ID/Secret, Telegram Bot Token).
+2. In **Settings → Channels**, enable the channel and fill credentials (Feishu App ID/Secret, DingTalk Client ID/Secret, Telegram Bot Token; WeChat uses optional puppet and scan-to-login—older WeChat accounts tend to work better).
 3. Save and **restart Gateway** (or the desktop app).
 4. In the IM app, @ the bot or start a chat. The same **`//` commands** work in channel conversations to list or switch the session’s agent.
 

@@ -24,7 +24,7 @@
 | | [使用场景](docs/zh/guides/usage-scenarios.md) | 整理下载目录、创建/切换智能体、B站下载助手、安装技能、MCP、定时任务等 |
 | **配置** | [配置概览](docs/zh/configuration/config-overview.md) | 配置目录、config.json 与 agents.json |
 | | [智能体配置](docs/zh/configuration/agents.md) | 本机/Coze/OpenClawX 执行方式与模型 |
-| | [通道配置](docs/zh/configuration/channels.md) | 飞书、钉钉、Telegram 启用与配置项 |
+| | [通道配置](docs/zh/configuration/channels.md) | 飞书、钉钉、Telegram、微信启用与配置项 |
 | **功能说明** | [代理模式与多节点](docs/zh/features/proxy-mode.md) | Coze 接入、OpenClawX 多节点协作 |
 | | [技能系统](docs/zh/features/skills.md) | Agent Skills 规范与扩展 |
 | | [插件与扩展](docs/zh/features/plugins.md) | 扩展安装与编写、openbot extension 命令、用户手册 |
@@ -51,7 +51,7 @@
 | **浏览器自动化** | 内置 [agent-browser](https://www.npmjs.com/package/agent-browser)，可导航、填表、截图与数据抓取 |
 | **长期记忆** | 向量存储（Vectra）+ 本地嵌入，支持经验总结与会话压缩（compaction） |
 | **多端接入** | CLI、WebSocket 网关、Electron 桌面端，同一套 Agent 核心；各端技术栈见下方「各端技术栈」 |
-| **多通道接入** | 飞书、钉钉、Telegram 等 IM 通道，Gateway 根据配置注册；入站经统一格式进 Agent，回复经通道回传 |
+| **多通道接入** | 飞书、钉钉、Telegram、微信等 IM 通道，Gateway 根据配置注册；入站经统一格式进 Agent，回复经通道回传 |
 | **代理模式** | 智能体执行方式可选 **本机** / **Coze** / **OpenClawX** / **OpenCode**；本机使用当前模型与 Skills，**代理模式下本机 0 Token 消耗**，推理与消息处理在对方平台完成 |
 | **Coze 接入** | 支持 Coze 国内站（api.coze.cn）与国际站（api.coze.com）；按站点分别配置 Bot ID 与 Access Token（PAT/OAuth/JWT），桌面端与通道均可选用 Coze 智能体；**0 Token 消耗**，适合 Coze 侧大量消息与长对话场景 |
 | **OpenClawX 多节点协作** | 可将智能体代理到另一台 OpenClawX 实例（baseUrl + 可选 API Key），实现多节点分工、负载与协作；本机 0 Token 消耗 |
@@ -100,7 +100,7 @@
 ```
 
 - **CLI**：直接调用 Agent 核心，单次提示或批量脚本；可启动 Gateway（`openbot gateway`）及配置开机自启（`openbot service install/uninstall`）。
-- **WebSocket Gateway**（`src/gateway/`）：单进程内嵌 Nest，对外提供 WebSocket（JSON-RPC）与 HTTP；按 path 分流：`/server-api` 走 Nest、`/ws` 为 Agent 对话、`/ws/voice`/`/sse`/`/channel` 为扩展占位，其余为静态资源。根据配置注册**飞书、钉钉、Telegram** 等通道，入站消息经统一格式进入 Agent，回复经该通道发回对应平台。供 Web/移动端连接；支持以开机/登录自启方式常驻（Linux cron、macOS LaunchAgent、Windows 计划任务）。
+- **WebSocket Gateway**（`src/gateway/`）：单进程内嵌 Nest，对外提供 WebSocket（JSON-RPC）与 HTTP；按 path 分流：`/server-api` 走 Nest、`/ws` 为 Agent 对话、`/ws/voice`/`/sse`/`/channel` 为扩展占位，其余为静态资源。根据配置注册**飞书、钉钉、Telegram、微信**等通道，入站消息经统一格式进入 Agent，回复经该通道发回对应平台。供 Web/移动端连接；支持以开机/登录自启方式常驻（Linux cron、macOS LaunchAgent、Windows 计划任务）。
 - **Desktop 后端**（`src/server/`）：NestJS HTTP API，即 **server-api**；可被 Gateway 内嵌或独立监听（默认端口 38081）。会话、智能体配置、技能、任务、工作区、鉴权等由本模块提供。
 - **Desktop**：Electron 包一层 Vue 前端 + 上述后端；通过 Gateway 或直连 Desktop 后端与 Agent 通信。
 - **Agent 核心**：统一由 `AgentManager` 管理会话、技能注入与工具注册；**执行方式**可为 **local**（本机 pi-coding-agent + Skills）、**coze**（代理至 Coze 国内/国际站）、**openclawx**（代理至其他 OpenClawX 节点，多节点协作）、**opencode**（代理至 OpenCode 官方 Server，支持流式与 `/init`、`/undo`、`/redo`、`/share`、`/help` 等指令）。记忆与 compaction 作为扩展参与 system prompt 与经验写入。
@@ -114,7 +114,7 @@
 | 端 | 技术 |
 |------|------|
 | **CLI** | Node.js 20+、TypeScript 5.7、Commander（gateway/login/config/service）；`openbot` 入口，配置 `~/.openbot/desktop`，支持开机自启 |
-| **WebSocket Gateway** | JSON-RPC over WebSocket，默认 38080；单进程内嵌 Nest，path 分流（/server-api、/ws、/channel 等）；连接管理、通道（飞书/钉钉/Telegram） |
+| **WebSocket Gateway** | JSON-RPC over WebSocket，默认 38080；单进程内嵌 Nest，path 分流（/server-api、/ws、/channel 等）；连接管理、通道（飞书/钉钉/Telegram/微信） |
 | **Agent 核心** | pi-coding-agent、pi-ai 多模型；执行方式 local/coze/openclawx；工具 read/write/bash/browser 等，SKILL.md 技能注入 |
 | **Desktop 后端** | NestJS 10、Express、Socket.io，前缀 `server-api`；sql.js；Agents·Skills·Config·Auth·Workspace·Tasks |
 | **Desktop 前端** | Electron 28、Vue 3、Pinia、Vite 5；Dashboard、Agents、Sessions、Skills、Settings、Tasks、Workspace |
@@ -257,7 +257,7 @@ docker compose -f docker-compose-dev.yaml up --build -d
 
 # 二、使用方式
 
-按**使用端**划分：CLI、Web、Desktop；另支持**飞书、钉钉、Telegram** 等通道（见 2.4）；后续将支持 iOS、Android 等。
+按**使用端**划分：CLI、Web、Desktop；另支持**飞书、钉钉、Telegram、微信**等通道（见 2.4）；后续将支持 iOS、Android 等。
 
 ## 2.1 CLI
 
@@ -358,6 +358,7 @@ openclawx gateway --port 38080
 | **飞书** | WebSocket 事件订阅（im.message.receive_v1） | 开放 API + 流式卡片更新 | `channel:feishu:<chat_id>` |
 | **钉钉** | dingtalk-stream SDK（Stream 模式） | sessionWebhook POST | `channel:dingtalk:<conversationId>` |
 | **Telegram** | 长轮询 getUpdates | sendMessage / editMessageText 流式更新 | `channel:telegram:<chat_id>` |
+| **微信** | Wechaty（Web/UOS 协议）扫码登录 | say 一次性发送（不支持流式） | `channel:wechat:<thread_id>` |
 
 ### 飞书
 
@@ -383,6 +384,16 @@ openclawx gateway --port 38080
 - **会话与 Agent**：同一 Telegram 会话（chat_id）对应一个 Agent Session（`channel:telegram:<chat_id>`），由通道配置中的 `defaultAgentId` 指定智能体。
 
 **配置**：enabled、botToken、defaultAgentId。**用法**：通过 [@BotFather](https://t.me/BotFather) 获取 Bot Token；OpenClawX **设置 → 通道** 启用 Telegram 并填写 Bot Token → 保存后**重启 Gateway**。在 Telegram 内与机器人对话即可。也可编辑 `config.json` 中 `channels.telegram`。
+
+### 微信
+
+**说明**：微信通道基于 **Wechaty**（Web/UOS 协议），通过扫码登录个人微信账号接收与发送消息。不支持流式（微信无法编辑已发消息），回复在 agent_end 后一次性发送。支持单聊、群聊。
+
+- **会话与 Agent**：同一微信会话（单聊为联系人 id、群聊为群 id）对应一个 Agent Session（`channel:wechat:<thread_id>`），由通道配置中的 `defaultAgentId` 指定智能体。
+- **使用方式**：OpenClawX **设置 → 通道** 勾选「启用微信」，可选填写 **puppet**（如 `wechaty-puppet-wechat4u`，不填则使用 Wechaty 默认）；保存后**重启 Gateway**。启动后在设置页或通过 `/server-api/wechat/qrcode` 获取二维码，使用**微信扫码登录**。登录成功后即可在微信内与机器人对话。对话中同样支持 **`//` 指令** 查询与切换智能体。
+- **账号说明**：微信对第三方协议有风控限制，**注册较早、使用时间较长的微信号** 相对更容易登录成功；新注册或存在风控的账号可能无法登录或易被限制，建议优先使用老号尝试。
+
+**配置**：enabled、puppet、defaultAgentId。也可直接编辑 `~/.openbot/desktop/config.json` 中 `channels.wechat`。
 
 未配置或未启用某通道时，Gateway 会跳过该通道启动；若已启用但必填项为空，控制台会提示到「设置 → 通道」检查。
 
@@ -411,6 +422,7 @@ openclawx gateway --port 38080
 | **飞书** | 已支持，见上文「2.4 通道支持」。 |
 | **钉钉** | 已支持，见上文「2.4 通道支持」。 |
 | **Telegram** | 已支持，见上文「2.4 通道支持」。 |
+| **微信** | 已支持，见上文「2.4 通道支持」（Wechaty 扫码登录；注册较早的微信号相对更易成功）。 |
 | **iOS** | 规划中 |
 | **Android** | 规划中 |
 

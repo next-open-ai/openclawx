@@ -74,9 +74,9 @@ openbot gateway --port 38080
 ---
 
 
-## 5. 通道入口（飞书 / 钉钉 / Telegram）
-0. 打开安装的桌面程序或者打开网关服务 **打开Gateway**（`openbot gateway`）。
-1. 在 **设置 → 通道** 中启用对应通道并填写凭证（飞书 App ID/Secret、钉钉 Client ID/Secret、Telegram Bot Token）。
+## 5. 通道入口（飞书 / 钉钉 / Telegram / 微信）
+0. 打开安装的桌面程序或者打开网关服务 **打开 Gateway**（`openbot gateway`）。
+1. 在 **设置 → 通道** 中启用对应通道并填写凭证（飞书 App ID/Secret、钉钉 Client ID/Secret、Telegram Bot Token、微信可选 puppet 等；微信需扫码登录，注册较早的微信号相对更易成功）。
 2. 保存后 **重启 Gateway**（`openbot gateway`）或者打开桌面程序。
 3. 在对应 IM 内 @ 机器人或与机器人对话即可。对话中同样支持 **`//` 指令** 查询与切换当前会话的智能体（如 `//select`、`//名称`、`//`）。
 

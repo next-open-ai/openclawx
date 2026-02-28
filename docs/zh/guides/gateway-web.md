@@ -51,7 +51,7 @@ openbot gateway --port 38080
 
 ## 通道与网关
 
-飞书、钉钉、Telegram 等通道在 Gateway 启动时根据配置注册：入站消息经统一格式进入 Agent，回复经该通道发回。启用通道后需**重启 Gateway** 生效。详见 [通道配置](../configuration/channels.md)。
+飞书、钉钉、Telegram、微信等通道在 Gateway 启动时根据配置注册：入站消息经统一格式进入 Agent，回复经该通道发回。启用通道后需**重启 Gateway** 生效。详见 [通道配置](../configuration/channels.md)。
 
 ---
 

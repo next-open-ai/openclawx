@@ -21,7 +21,7 @@ docs/zh/                        # 中文文档
 ├── configuration/              # 配置说明
 │   ├── config-overview.md      # 配置概览
 │   ├── agents.md               # 智能体配置
-│   └── channels.md             # 通道配置（飞书 / 钉钉 / Telegram）
+│   └── channels.md             # 通道配置（飞书 / 钉钉 / Telegram / 微信）
 ├── features/                   # 功能说明
 │   ├── proxy-mode.md          # 代理模式与多节点协作
 │   ├── skills.md               # 技能系统
@@ -60,7 +60,7 @@ docs/zh/                        # 中文文档
 |------|------|
 | [配置概览](configuration/config-overview.md) | 配置目录、config.json 与 agents.json 位置与作用 |
 | [智能体配置](configuration/agents.md) | 本机/Coze/OpenClawX/OpenCode 执行方式、模型与工作区 |
-| [通道配置](configuration/channels.md) | 飞书、钉钉、Telegram 的启用与配置项 |
+| [通道配置](configuration/channels.md) | 飞书、钉钉、Telegram、微信的启用与配置项 |
 
 ---
 

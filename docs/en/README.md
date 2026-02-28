@@ -21,7 +21,7 @@ docs/en/                        # English documentation
 ├── configuration/              # Configuration
 │   ├── config-overview.md      # Config overview
 │   ├── agents.md                # Agent configuration
-│   └── channels.md             # Channel config (Feishu, DingTalk, Telegram)
+│   └── channels.md             # Channel config (Feishu, DingTalk, Telegram, WeChat)
 ├── features/                   # Features
 │   ├── proxy-mode.md           # Proxy mode and multi-node
 │   └── skills.md               # Skills system
@@ -59,7 +59,7 @@ docs/en/                        # English documentation
 |----------|-------------|
 | [Config Overview](configuration/config-overview.md) | Config directory, config.json and agents.json |
 | [Agent Configuration](configuration/agents.md) | Local/Coze/OpenClawX/OpenCode execution, model and workspace |
-| [Channel Configuration](configuration/channels.md) | Feishu, DingTalk, Telegram enable and config |
+| [Channel Configuration](configuration/channels.md) | Feishu, DingTalk, Telegram, WeChat enable and config |
 
 ---
 

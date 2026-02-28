@@ -47,7 +47,7 @@ For **usage scenarios** (organize downloads, create/switch agents, install skill
 
 ## Channels and gateway
 
-Feishu, DingTalk, Telegram register when the gateway starts. Inbound messages are normalized and sent to the agent; replies are sent back via the channel. **Restart the gateway** after changing channel config. See [Channel configuration](../configuration/channels.md).
+Feishu, DingTalk, Telegram, WeChat register when the gateway starts. Inbound messages are normalized and sent to the agent; replies are sent back via the channel. **Restart the gateway** after changing channel config. See [Channel configuration](../configuration/channels.md).
 
 ---
 
