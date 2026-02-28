@@ -39,6 +39,7 @@
             :timestamp="message.timestamp"
             :tool-calls="message.toolCalls"
             :content-parts="message.contentParts"
+            :is-error="!!message.isError"
           />
 
           <!-- Executing placeholder: show as soon as streaming starts, before any content -->
@@ -61,8 +62,8 @@
             </div>
           </div>
 
-          <!-- Streaming Message: when there is actual content or active tools -->
-          <div v-else-if="(isStreaming || toolExecutions.length > 0) && (currentMessage || toolExecutions.length > 0)" class="streaming-message">
+          <!-- Streaming Message: 仅当流式内容尚未并入列表时显示（有 streamingMessageId 时已在 v-for 中展示，避免完成时 DOM 先删后增导致闪烁） -->
+          <div v-else-if="(isStreaming || toolExecutions.length > 0) && (currentMessage || toolExecutions.length > 0) && !streamingMessageId" class="streaming-message">
             <ChatMessage
               :role="'assistant'"
               :content="currentMessage || (toolExecutions.length > 0 ? t('chat.thinking') : '')"
@@ -76,15 +77,17 @@
 
       <!-- Input Area -->
       <div class="input-area">
-        <!-- 智能体选择区：常驻展示，点击切换；排满一行时左右显示滑动触发点 -->
-        <div class="agent-bar-wrap">
-          <div class="agent-bar-label">
-            <span class="agent-bar-label-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-            </span>
-            <span>{{ t('chat.selectAgent') }}</span>
-          </div>
-          <div class="agent-list-scroll-wrap">
+        <!-- 智能体选择区：可收起以留出对话空间，右下角浮动按钮切换 -->
+        <transition name="agent-bar-slide">
+          <div v-show="agentBarVisible" class="agent-bar-wrap">
+          <div class="agent-bar-inner">
+            <div class="agent-bar-label" :title="t('chat.selectAgent')">
+              <span class="agent-bar-label-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 11h6m-3-3v6"/></svg>
+              </span>
+              <span class="agent-bar-label-text">{{ t('chat.selectAgent') }}</span>
+            </div>
+            <div class="agent-list-scroll-wrap">
             <button
               type="button"
               class="agent-scroll-trigger agent-scroll-left"
@@ -137,7 +140,9 @@
               <svg class="agent-scroll-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
             </button>
           </div>
-        </div>
+          </div>
+          </div>
+        </transition>
         <div class="input-container">
           <textarea
             v-model="inputMessage"
@@ -169,6 +174,19 @@
           </button>
         </div>
       </div>
+      <!-- 右下角浮动按钮：展开/收起智能体选择区 -->
+      <button
+        v-if="!isSystemSession"
+        type="button"
+        class="agent-bar-float-btn"
+        :class="{ collapsed: !agentBarVisible }"
+        :title="agentBarVisible ? t('chat.hideAgentBar') : t('chat.showAgentBar')"
+        aria-label="展开/收起智能体选择"
+        @click="toggleAgentBar"
+      >
+        <svg v-if="agentBarVisible" class="float-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 9l-7 7-7-7"/></svg>
+        <svg v-else class="float-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 11h6m-3-3v6"/></svg>
+      </button>
     </div>
   </div>
 </template>
@@ -204,6 +222,8 @@ export default {
 
     const sessionsPanelVisible = computed(() => uiStore.sessionsPanelVisible);
     const toggleSessionsPanel = () => uiStore.toggleSessionsPanel();
+    const agentBarVisible = computed(() => uiStore.agentBarVisible);
+    const toggleAgentBar = () => uiStore.toggleAgentBar();
 
     const agents = ref([]);
     const selectedAgentId = ref('default');
@@ -328,6 +348,7 @@ export default {
     const isSystemSession = computed(() => currentSession.value?.type === 'system');
     const messages = computed(() => agentStore.messages);
     const isStreaming = computed(() => agentStore.isStreaming);
+    const streamingMessageId = computed(() => agentStore.streamingMessageId);
     const currentMessage = computed(() => agentStore.currentMessage);
     const toolExecutions = computed(() => agentStore.toolExecutions);
     const streamContentParts = computed(() => {
@@ -529,6 +550,7 @@ export default {
       isSystemSession,
       messages,
       isStreaming,
+      streamingMessageId,
       currentMessage,
       toolExecutions,
       streamContentParts,
@@ -544,6 +566,8 @@ export default {
       selectedAgentId,
       effectiveSelectedAgentId,
       onAgentChipClick,
+      agentBarVisible,
+      toggleAgentBar,
       createNewSession,
       selectSession,
       onDeleteSession,
@@ -570,6 +594,7 @@ export default {
 }
 
 .chat-container {
+  position: relative;
   flex: 1 1 0%;
   min-width: 0;
   min-height: 0;
@@ -713,13 +738,23 @@ export default {
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
-/* 智能体选择区：主题化容器 + 炫酷芯片 + 箭头 */
+/* 智能体选择区：紧凑高度 + 可收起 */
+.agent-bar-slide-enter-active,
+.agent-bar-slide-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease, margin 0.2s ease;
+}
+.agent-bar-slide-enter-from,
+.agent-bar-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+  margin-bottom: 0 !important;
+}
 .agent-bar-wrap {
-  margin-bottom: var(--spacing-md);
-  padding: var(--spacing-md) var(--spacing-lg);
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
   background: linear-gradient(145deg, rgba(102, 126, 234, 0.06) 0%, var(--color-bg-tertiary) 50%, rgba(118, 75, 162, 0.04) 100%);
   border: 1px solid rgba(102, 126, 234, 0.12);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-xl);
   box-shadow: 0 4px 20px rgba(102, 126, 234, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   position: relative;
 }
@@ -736,41 +771,53 @@ export default {
   mask-composite: exclude;
   pointer-events: none;
 }
-.agent-bar-label {
+/* 单行布局：标签与芯片同一行，减少占高 */
+.agent-bar-inner {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  gap: 10px;
+  min-height: 40px;
+}
+.agent-bar-label {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.agent-bar-label-text {
+  opacity: 0.95;
 }
 .agent-bar-label-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   color: var(--color-accent-primary);
   opacity: 0.95;
 }
 .agent-bar-label-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 .agent-list-scroll-wrap {
+  flex: 1 1 0;
+  min-width: 0;
   position: relative;
   display: flex;
   align-items: center;
-  min-height: 52px;
-  gap: 4px;
+  min-height: 40px;
+  gap: 2px;
 }
 .agent-scroll-trigger {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -786,8 +833,8 @@ export default {
   transition: opacity 0.25s ease, color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 .agent-scroll-trigger .agent-scroll-icon {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
 }
 .agent-scroll-trigger.agent-scroll-right {
   margin-left: 0;
@@ -811,11 +858,11 @@ export default {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 52px;
+  gap: 8px;
+  min-height: 40px;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 6px 6px;
+  padding: 4px 4px;
   scrollbar-width: thin;
   scroll-behavior: smooth;
 }
@@ -830,14 +877,14 @@ export default {
   background: rgba(0, 0, 0, 0.04);
   border-radius: 6px;
 }
-/* 智能体芯片：玻璃态 + 主题高亮 */
+/* 智能体芯片：紧凑尺寸 */
 .agent-chip {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  border-radius: 16px;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 12px;
   border: 1px solid rgba(102, 126, 234, 0.12);
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.4) 100%);
   backdrop-filter: blur(10px);
@@ -851,7 +898,7 @@ export default {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 1px;
   background: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, transparent 50%, rgba(102, 126, 234, 0.08) 100%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -886,9 +933,9 @@ export default {
 }
 .agent-chip-icon {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 12px;
+  width: 26px;
+  height: 26px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -913,27 +960,27 @@ export default {
   box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.5), 0 4px 16px rgba(251, 191, 36, 0.28);
 }
 .agent-icon-svg {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
 }
 .agent-chip-name {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 140px;
+  max-width: 120px;
   transition: color 0.2s ease;
 }
 .agent-chip-badge {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-secondary);
-  padding: 3px 8px;
-  border-radius: 8px;
+  padding: 2px 6px;
+  border-radius: 6px;
   background: rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
 }
@@ -947,20 +994,63 @@ export default {
 }
 .agent-chip-check {
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--color-accent-primary) 0%, var(--color-accent-secondary) 100%);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: 4px;
+  margin-left: 2px;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
 }
 .agent-chip-check svg {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
+}
+
+/* 输入框上方居中浮动按钮：展开/收起智能体选择区 */
+.agent-bar-float-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 8.5rem;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(102, 126, 234, 0.25);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--color-accent-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2), 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+.agent-bar-float-btn:hover {
+  background: linear-gradient(145deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.1) 100%);
+  box-shadow: 0 6px 24px rgba(102, 126, 234, 0.3), 0 1px 0 rgba(255, 255, 255, 0.4) inset;
+  transform: translateX(-50%) scale(1.06);
+}
+.agent-bar-float-btn:active {
+  transform: translateX(-50%) scale(0.98);
+}
+.agent-bar-float-btn.collapsed {
+  color: var(--color-text-secondary);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.45) 100%);
+}
+.agent-bar-float-btn.collapsed:hover {
+  color: var(--color-accent-primary);
+  background: linear-gradient(145deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.08) 100%);
+}
+.float-btn-icon {
+  width: 22px;
+  height: 22px;
 }
 .agent-chip.active.is-default .agent-chip-check {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
@@ -999,6 +1089,16 @@ html[data-theme="dark"] .agent-scroll-trigger.visible:hover,
 html:not([data-theme]) .agent-scroll-trigger.visible:hover {
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(118, 75, 162, 0.18) 100%);
   box-shadow: 0 4px 16px rgba(102, 126, 234, 0.35);
+}
+html[data-theme="dark"] .agent-bar-float-btn,
+html:not([data-theme]) .agent-bar-float-btn {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border-color: rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
+}
+html[data-theme="dark"] .agent-bar-float-btn.collapsed,
+html:not([data-theme]) .agent-bar-float-btn.collapsed {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
 }
 
 .input-container {

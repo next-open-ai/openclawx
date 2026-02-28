@@ -110,8 +110,8 @@ export type DesktopMcpServerConfig = import("../mcp/index.js").McpServerConfig;
 /** MCP 标准 JSON 格式（key 为服务器名称），存储与 UI 可读写 */
 export type DesktopMcpServersStandardFormat = import("../mcp/index.js").McpServersStandardFormat;
 
-/** Agent 执行器类型：local=本机 pi-coding-agent，coze/openclawx/opencode=远程代理 */
-export type AgentRunnerType = "local" | "coze" | "openclawx" | "opencode";
+/** Agent 执行器类型：local=本机 pi-coding-agent，coze/openclawx/opencode=远程代理，claude_code=本机 Claude Code CLI */
+export type AgentRunnerType = "local" | "coze" | "openclawx" | "opencode" | "claude_code";
 
 /** Coze 站点：国内站 api.coze.cn / 国际站 api.coze.com，凭证不通用 */
 export type CozeRegion = "cn" | "com";
@@ -150,6 +150,12 @@ export interface AgentOpenClawXConfig {
 
 /** OpenCode 启动模式：local=由本应用按需启动本机服务；remote=连接已运行的远端服务 */
 export type OpenCodeServerMode = "local" | "remote";
+
+/** Claude Code CLI 代理配置（当 runnerType 为 claude_code 时使用） */
+export interface AgentClaudeCodeConfig {
+    /** 工作目录：Claude Code CLI 执行时的 cwd；留空则使用该智能体工作区路径 */
+    workingDirectory?: string;
+}
 
 /** OpenCode 代理配置：仅对接 [OpenCode 官方 Server API](https://opencode.ai/docs/server)（Session/Message + HTTP Basic） */
 export interface AgentOpenCodeConfig {
@@ -200,6 +206,8 @@ interface AgentItem {
     openclawx?: AgentOpenClawXConfig;
     /** OpenCode 代理配置，当 runnerType 为 opencode 时使用 */
     opencode?: AgentOpenCodeConfig;
+    /** Claude Code CLI 代理配置，当 runnerType 为 claude_code 时使用 */
+    claudeCode?: AgentClaudeCodeConfig;
     /** 是否使用经验（长记忆）；默认 true */
     useLongMemory?: boolean;
     /** 在线搜索：是否启用 web_search 工具；启用时可指定 provider、maxResultTokens */
@@ -367,6 +375,8 @@ export interface DesktopAgentConfig {
     openclawx?: AgentOpenClawXConfig;
     /** OpenCode 代理配置 */
     opencode?: AgentOpenCodeConfig;
+    /** Claude Code CLI 代理配置 */
+    claudeCode?: AgentClaudeCodeConfig;
     /** 是否使用经验（长记忆）；默认 true */
     useLongMemory?: boolean;
     /** 在线搜索：解析后的运行时配置，仅当 runnerType 为 local 时用于注册 web_search 工具 */
@@ -501,6 +511,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
     let coze: CozeResolvedConfig | undefined;
     let openclawx: AgentOpenClawXConfig | undefined;
     let opencode: AgentOpenCodeConfig | undefined;
+    let claudeCode: AgentClaudeCodeConfig | undefined;
     const tw = config.tools?.webSearch;
     const timeoutSeconds = typeof tw?.timeoutSeconds === "number" && tw.timeoutSeconds > 0 ? tw.timeoutSeconds : 15;
     const cacheTtlMinutes = typeof tw?.cacheTtlMinutes === "number" && tw.cacheTtlMinutes >= 0 ? tw.cacheTtlMinutes : 5;
@@ -523,9 +534,17 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
                 if (
                     agentRow.runnerType === "coze" ||
                     agentRow.runnerType === "openclawx" ||
-                    agentRow.runnerType === "opencode"
+                    agentRow.runnerType === "opencode" ||
+                    agentRow.runnerType === "claude_code"
                 ) {
                     runnerType = agentRow.runnerType;
+                }
+                if (agentRow.runnerType === "claude_code") {
+                    const wd = agentRow.claudeCode?.workingDirectory;
+                    claudeCode = {
+                        workingDirectory:
+                            typeof wd === "string" && wd.trim() ? wd.trim() : undefined,
+                    };
                 }
                 if (agentRow.coze) {
                     const row = agentRow.coze as AgentCozeConfig & { botId?: string; apiKey?: string };
@@ -649,6 +668,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
         coze,
         openclawx,
         opencode,
+        claudeCode,
         useLongMemory,
         webSearch,
     };

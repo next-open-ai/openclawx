@@ -167,7 +167,7 @@ async function handleAgentChatInner(
         }
 
         const runnerType = agentConfig?.runnerType ?? "local";
-        const isProxyAgent = runnerType === "coze" || runnerType === "openclawx" || runnerType === "opencode";
+        const isProxyAgent = runnerType === "coze" || runnerType === "openclawx" || runnerType === "opencode" || runnerType === "claude_code";
 
         if (isProxyAgent) {
         console.log(`[agent.chat] Using proxy agent (${runnerType}) for session=${targetSessionId}, agentId=${currentAgentId}`);

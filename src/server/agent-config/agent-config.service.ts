@@ -14,8 +14,8 @@ const WORKSPACE_NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
 /** 缺省智能体 ID / 工作空间名，不可删除；对应目录 ~/.openbot/workspace/default */
 export const DEFAULT_AGENT_ID = 'default';
 
-/** 执行器类型：local=本机，coze/openclawx/opencode=远程代理 */
-export type AgentRunnerType = 'local' | 'coze' | 'openclawx' | 'opencode';
+/** 执行器类型：local=本机，coze/openclawx/opencode=远程代理，claude_code=本机 Claude Code CLI */
+export type AgentRunnerType = 'local' | 'coze' | 'openclawx' | 'opencode' | 'claude_code';
 
 /** Coze 站点：cn=国内 api.coze.cn，com=国际 api.coze.com，凭证不通用 */
 export type CozeRegion = 'cn' | 'com';
@@ -92,6 +92,8 @@ export interface AgentConfigItem {
     openclawx?: AgentOpenClawXConfig;
     /** OpenCode 代理配置（runnerType 为 opencode 时使用） */
     opencode?: AgentOpenCodeConfig;
+    /** Claude Code 代理配置（runnerType 为 claude_code 时使用）：工作目录等 */
+    claudeCode?: { workingDirectory?: string };
     /** 是否使用经验（长记忆）：memory_recall / save_experience；默认 true */
     useLongMemory?: boolean;
     /** 在线搜索：启用后该智能体拥有 web_search 工具；可选默认 provider、maxResultTokens（前端默认 64K） */
@@ -263,6 +265,7 @@ export class AgentConfigService {
                 | 'coze'
                 | 'openclawx'
                 | 'opencode'
+                | 'claudeCode'
                 | 'useLongMemory'
                 | 'webSearch'
             >
@@ -345,6 +348,7 @@ export class AgentConfigService {
         }
         if (updates.openclawx !== undefined) agent.openclawx = updates.openclawx;
         if (updates.opencode !== undefined) agent.opencode = updates.opencode;
+        if (updates.claudeCode !== undefined) agent.claudeCode = updates.claudeCode;
         if (updates.useLongMemory !== undefined) agent.useLongMemory = updates.useLongMemory;
         if (updates.webSearch !== undefined) {
             agent.webSearch =

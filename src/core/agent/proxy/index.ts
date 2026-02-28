@@ -8,11 +8,13 @@ import { localAdapter } from "./adapters/local-adapter.js";
 import { cozeAdapter } from "./adapters/coze-adapter.js";
 import { openclawxAdapter } from "./adapters/openclawx-adapter.js";
 import { opencodeAdapter } from "./adapters/opencode-adapter.js";
+import { claudeCodeAdapter } from "./adapters/claude-code-adapter.js";
 
 registerAgentProxyAdapter(localAdapter);
 registerAgentProxyAdapter(cozeAdapter);
 registerAgentProxyAdapter(openclawxAdapter);
 registerAgentProxyAdapter(opencodeAdapter);
+registerAgentProxyAdapter(claudeCodeAdapter);
 
 export { runForChannelStream, runForChannelCollect } from "./run-for-channel.js";
 export { registerAgentProxyAdapter, getAgentProxyAdapter, listAgentProxyAdapterTypes } from "./registry.js";

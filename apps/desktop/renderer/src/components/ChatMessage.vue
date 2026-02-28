@@ -1,5 +1,5 @@
 <template>
-  <div class="chat-message" :class="`message-${role}`">
+  <div class="chat-message" :class="[`message-${role}`, { 'message-error': isError }]">
     <div class="message-avatar">
       <span class="avatar-icon">
         <IconAssistantAvatar v-if="role !== 'user'" />
@@ -9,6 +9,7 @@
     <div class="message-content">
       <div class="message-header">
         <span class="message-role">{{ roleLabel }}</span>
+        <span v-if="isError" class="message-error-badge">{{ errorLabel }}</span>
         <span class="message-time">{{ formatTime(timestamp) }}</span>
       </div>
       
@@ -29,6 +30,10 @@
         </div>
       </div>
 
+      <!-- 错误消息：纯文本展示，不解析 markdown -->
+      <div v-else-if="isError && content" class="message-body message-body-error">
+        <p class="message-error-text">{{ content }}</p>
+      </div>
       <!-- Legacy/Fallback rendering -- only if content exists -->
       <div v-else-if="renderedContent && renderedContent.trim() !== ''" class="message-body">
         <div v-html="renderedContent"></div>
@@ -92,12 +97,17 @@ export default {
       type: Array,
       default: () => null,
     },
+    isError: {
+      type: Boolean,
+      default: false,
+    },
   },
   setup(props) {
     const { t } = useI18n();
     const roleLabel = computed(() =>
       props.role === 'user' ? t('chat.you') : t('chat.assistant')
     );
+    const errorLabel = computed(() => t('chat.replyFailed'));
     const renderedContent = computed(() => {
       try {
         return marked.parse(props.content || '');
@@ -175,6 +185,7 @@ export default {
 
     return {
       roleLabel,
+      errorLabel,
       renderedContent,
       renderMarkdown,
       getTool,
@@ -271,6 +282,24 @@ export default {
 .message-body.has-steps {
   padding: 0;
   background: transparent;
+}
+
+/* 回复失败等错误消息样式 */
+.chat-message.message-error .message-content .message-header .message-error-badge {
+  margin-left: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-error, #dc2626);
+}
+.message-body-error {
+  border-left: 3px solid var(--color-error, #dc2626);
+  background: rgba(220, 38, 38, 0.06) !important;
+}
+.message-body-error .message-error-text {
+  margin: 0;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Deep selections for markdown content - 对话内统一为正文字号，避免 reasoning/--- 等被解析成标题导致字体过大 */

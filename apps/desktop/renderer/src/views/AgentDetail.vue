@@ -141,14 +141,16 @@
             <p class="form-hint">{{ t('agents.proxyConfigHint') }}</p>
             <div class="form-group">
               <label>{{ t('agents.runnerType') }}</label>
-              <template v-if="agent?.runnerType === 'coze' || agent?.runnerType === 'openclawx' || agent?.runnerType === 'opencode'">
+              <template v-if="agent?.runnerType === 'coze' || agent?.runnerType === 'openclawx' || agent?.runnerType === 'opencode' || agent?.runnerType === 'claude_code'">
                 <p class="form-runner-type-fixed">
                   {{
                     agent?.runnerType === 'coze'
                       ? t('agents.runnerTypeCoze')
                       : agent?.runnerType === 'openclawx'
                         ? t('agents.runnerTypeOpenclawx')
-                        : t('agents.runnerTypeOpencode')
+                        : agent?.runnerType === 'opencode'
+                          ? t('agents.runnerTypeOpencode')
+                          : t('agents.runnerTypeClaudeCode')
                   }}
                 </p>
               </template>
@@ -157,6 +159,7 @@
                 <option value="coze">{{ t('agents.runnerTypeCoze') }}</option>
                 <option value="openclawx">{{ t('agents.runnerTypeOpenclawx') }}</option>
                 <option value="opencode">{{ t('agents.runnerTypeOpencode') }}</option>
+                <option value="claude_code">{{ t('agents.runnerTypeClaudeCode') }}</option>
               </select>
             </div>
             <template v-if="proxyForm.runnerType === 'coze'">
@@ -215,6 +218,28 @@
                   <p class="form-hint">{{ t('agents.cozeAccessTokenHint') }}</p>
                 </div>
               </template>
+            </template>
+            <template v-if="proxyForm.runnerType === 'claude_code'">
+              <p class="form-hint">{{ t('agents.runnerTypeClaudeCodeHint') }}</p>
+              <div class="form-group">
+                <label>{{ t('agents.claudeCodeWorkingDirectory') }}</label>
+                <div class="form-input-with-btn">
+                  <input
+                    v-model="proxyForm.claudeCode.workingDirectory"
+                    type="text"
+                    class="form-input"
+                    :placeholder="t('agents.claudeCodeWorkingDirectoryPlaceholder')"
+                  />
+                  <button
+                    v-if="hasElectronFolderPicker"
+                    type="button"
+                    class="btn-secondary btn-pick-folder"
+                    @click="pickClaudeCodeWorkingDirectory"
+                  >
+                    {{ t('agents.claudeCodeSelectFolder') }}
+                  </button>
+                </div>
+              </div>
             </template>
             <template v-if="proxyForm.runnerType === 'openclawx'">
               <div class="form-group">
@@ -734,7 +759,7 @@ export default {
     const activeTab = ref('config');
     const isProxyAgent = computed(() => {
       const a = agent.value;
-      return a && (a.runnerType === 'coze' || a.runnerType === 'openclawx' || a.runnerType === 'opencode');
+      return a && (a.runnerType === 'coze' || a.runnerType === 'openclawx' || a.runnerType === 'opencode' || a.runnerType === 'claude_code');
     });
     const tabs = computed(() => {
       const list = [{ id: 'config', label: t('agents.basicConfig'), icon: '⚙️' }];
@@ -763,6 +788,7 @@ export default {
       },
       openclawx: { baseUrl: '', apiKey: '' },
       opencode: { mode: 'local', address: '', port: 4096, username: '', password: '', model: '', workingDirectory: '' },
+      claudeCode: { workingDirectory: '' },
     });
     const opencodeFreeModels = ref([]);
     const showDeleteConfirm = ref(false);
@@ -1049,7 +1075,7 @@ export default {
           const endpoint = (ep === defaultCn || ep === defaultCom) ? '' : ep;
           proxyForm.value = {
             runnerType:
-              agent.value.runnerType === 'coze' || agent.value.runnerType === 'openclawx' || agent.value.runnerType === 'opencode'
+              agent.value.runnerType === 'coze' || agent.value.runnerType === 'openclawx' || agent.value.runnerType === 'opencode' || agent.value.runnerType === 'claude_code'
                 ? agent.value.runnerType
                 : 'local',
             coze: {
@@ -1073,6 +1099,7 @@ export default {
               model: agent.value.opencode?.model ?? '',
               workingDirectory: agent.value.opencode?.workingDirectory ?? '',
             },
+            claudeCode: { workingDirectory: agent.value.claudeCode?.workingDirectory ?? '' },
           };
           const raw = agent.value.mcpServers;
           if (raw != null && typeof raw === 'object' && !Array.isArray(raw)) {
@@ -1096,6 +1123,7 @@ export default {
             coze: { region: 'com', cn: { botId: '', apiKey: '' }, com: { botId: '', apiKey: '' }, endpoint: '' },
             openclawx: { baseUrl: '', apiKey: '' },
             opencode: { mode: 'local', address: '', port: 4096, username: '', password: '', model: '', workingDirectory: '' },
+            claudeCode: { workingDirectory: '' },
           };
           mcpServers.value = {};
           syncMcpJsonString();
@@ -1112,6 +1140,7 @@ export default {
             coze: { region: 'com', cn: { botId: '', apiKey: '' }, com: { botId: '', apiKey: '' }, endpoint: '' },
             openclawx: { baseUrl: '', apiKey: '' },
             opencode: { mode: 'local', address: '', port: 4096, username: '', password: '', model: '', workingDirectory: '' },
+            claudeCode: { workingDirectory: '' },
           };
           mcpServers.value = {};
           webSearchForm.value = { enabled: false, provider: 'duck-duck-scrape', maxResultTokens: 64000 };
@@ -1176,10 +1205,14 @@ export default {
             model: (oc.model || '').trim() || undefined,
             workingDirectory: (oc.workingDirectory || '').trim() || undefined,
           };
+        } else if (proxyForm.value.runnerType === 'claude_code') {
+          const wd = (proxyForm.value.claudeCode?.workingDirectory ?? '').trim();
+          payload.claudeCode = wd ? { workingDirectory: wd } : undefined;
         } else {
           payload.coze = undefined;
           payload.openclawx = undefined;
           payload.opencode = undefined;
+          payload.claudeCode = undefined;
         }
         await agentConfigAPI.updateAgent(agent.value.id, payload);
         if (!agent.value.isDefault) {
@@ -1195,6 +1228,7 @@ export default {
           coze: payload.coze,
           openclawx: payload.openclawx,
           opencode: payload.opencode,
+          claudeCode: payload.claudeCode,
         };
       } catch (e) {
         console.error('Save config failed', e);
@@ -1411,6 +1445,11 @@ export default {
       const path = await window.electronAPI.showOpenDirectoryDialog({ title: '选择 OpenCode 工作目录' });
       if (path) proxyForm.value.opencode.workingDirectory = path;
     }
+    async function pickClaudeCodeWorkingDirectory() {
+      if (!window.electronAPI?.showOpenDirectoryDialog) return;
+      const path = await window.electronAPI.showOpenDirectoryDialog({ title: t('agents.claudeCodeSelectFolderTitle') });
+      if (path) proxyForm.value.claudeCode.workingDirectory = path;
+    }
 
     function openDeleteConfirm() {
       deleteWorkspaceDir.value = false;
@@ -1461,6 +1500,7 @@ export default {
       opencodeFreeModels,
       hasElectronFolderPicker,
       pickOpencodeWorkingDirectory,
+      pickClaudeCodeWorkingDirectory,
       showDeleteConfirm,
       deleteAgentSaving,
       deleteWorkspaceDir,

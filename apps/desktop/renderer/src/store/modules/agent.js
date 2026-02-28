@@ -11,6 +11,8 @@ export const useAgentStore = defineStore('agent', {
         currentMessage: '',
         currentStreamParts: [], // Array of {type: 'text'|'tool', content?: string, toolId?: string}
         isStreaming: false,
+        /** 当前流式回复在 messages 中的 id，用于原地更新、完成时不再插入新 DOM 避免闪烁 */
+        streamingMessageId: null,
         toolExecutions: [],
         totalTokens: 0,
         /** 为 true 时根路径 / 不自动跳转最近会话（新建对话/切换智能体后清除 stay query 时用，跨组件实例生效） */
@@ -110,6 +112,7 @@ export const useAgentStore = defineStore('agent', {
                 const historyResponse = await agentAPI.getHistory(sessionId);
                 const list = historyResponse?.data?.data ?? historyResponse?.data;
                 this.messages = Array.isArray(list) ? list : [];
+                this.streamingMessageId = null;
 
                 await socketService.connectToSession(sessionId, session.agentId, session.type);
             } catch (error) {
@@ -117,6 +120,7 @@ export const useAgentStore = defineStore('agent', {
                 if (fallback) {
                     this.currentSession = fallback;
                     this.messages = [];
+                    this.streamingMessageId = null;
                     await socketService.connectToSession(sessionId, fallback.agentId, fallback.type);
                 } else {
                     throw error;
@@ -127,6 +131,7 @@ export const useAgentStore = defineStore('agent', {
         clearCurrentSession() {
             this.currentSession = null;
             this.messages = [];
+            this.streamingMessageId = null;
         },
 
         /**
@@ -142,6 +147,7 @@ export const useAgentStore = defineStore('agent', {
                 this.currentStreamParts = [];
                 this.toolExecutions = [];
                 this.isStreaming = false;
+                this.streamingMessageId = null;
             } catch (error) {
                 console.error('Failed to clear session messages:', error);
                 throw error;
@@ -156,6 +162,7 @@ export const useAgentStore = defineStore('agent', {
                 console.error('Failed to cancel agent turn:', error);
             } finally {
                 this.isStreaming = false;
+                this.streamingMessageId = null;
             }
         },
 
@@ -209,6 +216,7 @@ export const useAgentStore = defineStore('agent', {
                 this.currentMessage = '';
                 this.currentStreamParts = [];
                 this.isStreaming = true;
+                this.streamingMessageId = null;
                 this.toolExecutions = [];
 
                 // Persist user message to NestJS (for history)
@@ -225,6 +233,22 @@ export const useAgentStore = defineStore('agent', {
             } catch (error) {
                 console.error('Failed to send message:', error);
                 this.isStreaming = false;
+                this.streamingMessageId = null;
+                this.currentMessage = '';
+                this.currentStreamParts = [];
+                this.toolExecutions = [];
+                // 插入一条助手错误消息，避免 loading 突然消失且无提示
+                const errMsg = (error && error.message) ? String(error.message).trim() : '';
+                const assistantError = {
+                    id: `${Date.now()}-err-${Math.random().toString(36).slice(2, 9)}`,
+                    role: 'assistant',
+                    content: errMsg || 'Service error. Please check agent model config or try again.',
+                    timestamp: Date.now(),
+                    toolCalls: [],
+                    contentParts: null,
+                    isError: true,
+                };
+                this.messages.push(assistantError);
             }
 
             return this.currentSession; // Return session so component can update route
@@ -235,7 +259,13 @@ export const useAgentStore = defineStore('agent', {
             if (!this.currentSession) return;
             if (data?.sessionId != null && data.sessionId !== this.currentSession?.id) return;
 
+            const text = data.text || '';
+            if (!text) return;
+            // 若后端误将整段内容再发一次（与当前已累积内容完全相同），则不再追加，避免最后一轮显示两遍
+            if (this.currentMessage.length > 0 && text === this.currentMessage) return;
+
             // Auto-start streaming if not active (handles multi-turn agent responses)
+            const wasStreaming = this.isStreaming;
             if (!this.isStreaming) {
                 this.isStreaming = true;
                 this.currentMessage = '';
@@ -243,10 +273,6 @@ export const useAgentStore = defineStore('agent', {
                 this.toolExecutions = [];
             }
 
-            const text = data.text || '';
-            if (!text) return;
-            // 若后端误将整段内容再发一次（与当前已累积内容完全相同），则不再追加，避免最后一轮显示两遍
-            if (this.currentMessage.length > 0 && text === this.currentMessage) return;
             this.currentMessage += text;
 
             const parts = this.currentStreamParts;
@@ -259,16 +285,40 @@ export const useAgentStore = defineStore('agent', {
             } else {
                 this.currentStreamParts = [...parts, { type: 'text', content: text }];
             }
+
+            // 首包时把流式回复作为一条消息加入列表并原地更新，完成时不再插入新 DOM 避免闪烁
+            if (!wasStreaming) {
+                const id = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+                this.streamingMessageId = id;
+                this.messages.push({
+                    id,
+                    role: 'assistant',
+                    content: this.currentMessage,
+                    timestamp: Date.now(),
+                    toolCalls: [...this.toolExecutions],
+                    contentParts: this.currentStreamParts.map((p) =>
+                        p.type === 'text' ? { type: 'text', content: String(p.content ?? '') } : { type: 'tool', toolId: p.toolId }
+                    ),
+                });
+            } else if (this.streamingMessageId) {
+                const last = this.messages[this.messages.length - 1];
+                if (last && last.id === this.streamingMessageId) {
+                    last.content = this.currentMessage;
+                    last.toolCalls = [...this.toolExecutions];
+                    last.contentParts = this.currentStreamParts.map((p) =>
+                        p.type === 'text' ? { type: 'text', content: String(p.content ?? '') } : { type: 'tool', toolId: p.toolId }
+                    );
+                }
+            }
         },
 
         handleToolExecution(data) {
             if (data.type === 'start') {
-                // Auto-start streaming if not active
+                const wasStreaming = this.isStreaming;
                 if (!this.isStreaming) {
                     this.isStreaming = true;
                     this.currentMessage = '';
                     this.currentStreamParts = [];
-                    // For tools, clear previous executions if we are starting fresh
                     this.toolExecutions = [];
                 }
 
@@ -286,14 +336,43 @@ export const useAgentStore = defineStore('agent', {
                     ...this.currentStreamParts,
                     { type: 'tool', toolId: data.toolCallId }
                 ];
+
+                // 首包（先于 chunk 的 tool）时也把流式回复加入列表，原地更新避免完成时闪烁
+                if (!wasStreaming) {
+                    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+                    this.streamingMessageId = id;
+                    this.messages.push({
+                        id,
+                        role: 'assistant',
+                        content: this.currentMessage,
+                        timestamp: Date.now(),
+                        toolCalls: [...this.toolExecutions],
+                        contentParts: this.currentStreamParts.map((p) =>
+                            p.type === 'text' ? { type: 'text', content: String(p.content ?? '') } : { type: 'tool', toolId: p.toolId }
+                        ),
+                    });
+                } else if (this.streamingMessageId) {
+                    const last = this.messages[this.messages.length - 1];
+                    if (last && last.id === this.streamingMessageId) {
+                        last.toolCalls = [...this.toolExecutions];
+                        last.contentParts = this.currentStreamParts.map((p) =>
+                            p.type === 'text' ? { type: 'text', content: String(p.content ?? '') } : { type: 'tool', toolId: p.toolId }
+                        );
+                    }
+                }
             } else if (data.type === 'end') {
                 const tool = this.toolExecutions.find(t => t.id === data.toolCallId);
                 if (tool) {
                     tool.status = data.isError ? 'error' : 'completed';
                     tool.result = data.result;
                     tool.endTime = Date.now();
-                    // 触发 toolExecutions 的响应式更新
                     this.toolExecutions = [...this.toolExecutions];
+                }
+                if (this.streamingMessageId) {
+                    const last = this.messages[this.messages.length - 1];
+                    if (last && last.id === this.streamingMessageId) {
+                        last.toolCalls = [...this.toolExecutions];
+                    }
                 }
             }
         },
@@ -326,17 +405,35 @@ export const useAgentStore = defineStore('agent', {
         /** agent_end：整轮对话真正结束，落库消息并允许再次输入。同步后端 session（含 agentId），便于对话内 switch_agent 后前端展示最新智能体。 */
         handleConversationEnd(data) {
             if (data?.sessionId !== this.currentSession?.id) return;
-            // 延迟到 nextTick 再快照，避免 conversation_end 先于同 tick 的 agent_chunk 到达导致提交不完整内容、界面“闪一下消失”
             nextTick(() => {
                 const content = this.currentMessage || data.content || '';
-                if (content || this.toolExecutions.length > 0) {
+                const toolCalls = [...this.toolExecutions];
+                const contentParts = this.currentStreamParts.map((p) =>
+                    p.type === 'text' ? { type: 'text', content: String(p.content ?? '') } : { type: 'tool', toolId: p.toolId }
+                );
+
+                if (this.streamingMessageId) {
+                    // 流式回复已在列表中，只做最终同步并落库，不 push，避免 DOM 先删后增导致闪烁
+                    const last = this.messages[this.messages.length - 1];
+                    if (last && last.id === this.streamingMessageId) {
+                        last.content = content;
+                        last.toolCalls = toolCalls;
+                        last.contentParts = contentParts;
+                        if (content || toolCalls.length > 0) {
+                            agentAPI.appendMessage(this.currentSession.id, 'assistant', content, {
+                                toolCalls: last.toolCalls,
+                                contentParts: last.contentParts,
+                            }).catch(() => {});
+                        }
+                    }
+                } else if (content || toolCalls.length > 0) {
                     const assistantMessage = {
                         id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
                         role: 'assistant',
                         content,
                         timestamp: Date.now(),
-                        toolCalls: [...this.toolExecutions],
-                        contentParts: this.currentStreamParts.map((p) => (p.type === 'text' ? { type: 'text', content: String(p.content ?? '') } : { type: 'tool', toolId: p.toolId })),
+                        toolCalls,
+                        contentParts,
                     };
                     this.messages.push(assistantMessage);
                     agentAPI.appendMessage(this.currentSession.id, 'assistant', content, {
@@ -344,9 +441,11 @@ export const useAgentStore = defineStore('agent', {
                         contentParts: assistantMessage.contentParts,
                     }).catch(() => {});
                 }
+
                 this.currentMessage = '';
                 this.currentStreamParts = [];
                 this.isStreaming = false;
+                this.streamingMessageId = null;
                 this.toolExecutions = [];
 
                 // 同步当前 session（含 agentId），对话内 switch_agent 后前端展示最新智能体
