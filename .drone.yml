@@ -32,7 +32,7 @@ steps:
       # 更多变量参考https://docs.drone.io/pipeline/environment/reference/
       tags:
         - ${DRONE_TAG=latest}
-        - ${DRONE_TAG=0.8.28}
+        - ${DRONE_TAG=0.8}
         - build-ci-openbot-${DRONE_BUILD_NUMBER}
 
   - name: 部署到集群-dron8s方式x
@@ -44,7 +44,7 @@ steps:
       app_name: openclawx
       path_name: /
       image_name: ccr.ccs.tencentyun.com/windwithlife/openclawx
-      soa_gateway: bot.zhangyongqiao.com
+      soa_gateway: agent.zhangyongqiao.com
       soa_gateway_cert: api-default-secret
 
       build_tag: build-ci-openbot-${DRONE_BUILD_NUMBER}

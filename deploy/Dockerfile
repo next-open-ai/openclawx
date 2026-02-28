@@ -68,7 +68,7 @@ COPY --from=builder /app/apps/desktop/renderer/dist ./apps/desktop/renderer/dist
 # 预装资源：智能体/工作区/技能预设，运行时通过 OPENBOT_PRESETS_DIR 或 process.cwd()/presets 使用
 COPY presets ./presets
 
-# 入口脚本：容器启动时按需安装 OpenCode / Claude Code CLI（不打进镜像以减小体积），再启动主进程
+# 入口脚本：容器启动时按需安装 OpenCode CLI（不打进镜像以减小体积），再启动主进程
 COPY deploy/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 

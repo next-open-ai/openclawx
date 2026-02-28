@@ -23,9 +23,9 @@
 | | [Web 与 Gateway](docs/zh/guides/gateway-web.md) | 启动网关、端口与路径、Web 端连接 |
 | | [使用场景](docs/zh/guides/usage-scenarios.md) | 整理下载目录、创建/切换智能体、B站下载助手、安装技能、MCP、定时任务等 |
 | **配置** | [配置概览](docs/zh/configuration/config-overview.md) | 配置目录、config.json 与 agents.json |
-| | [智能体配置](docs/zh/configuration/agents.md) | 本机/Coze/OpenClawX 执行方式与模型 |
+| | [智能体配置](docs/zh/configuration/agents.md) | 本机/Coze/OpenClawX/OpenCode/Claude Code 执行方式与模型 |
 | | [通道配置](docs/zh/configuration/channels.md) | 飞书、钉钉、Telegram、微信启用与配置项 |
-| **功能说明** | [代理模式与多节点](docs/zh/features/proxy-mode.md) | Coze 接入、OpenClawX 多节点协作 |
+| **功能说明** | [代理模式与多节点](docs/zh/features/proxy-mode.md) | Coze/OpenCode/Claude Code 接入、OpenClawX 多节点协作 |
 | | [技能系统](docs/zh/features/skills.md) | Agent Skills 规范与扩展 |
 | | [插件与扩展](docs/zh/features/plugins.md) | 扩展安装与编写、openbot extension 命令、用户手册 |
 | **参考** | [常见问题](docs/zh/reference/faq.md) | 安装失败、端口占用、通道不回复等 FAQ |
@@ -52,10 +52,11 @@
 | **长期记忆** | 向量存储（Vectra）+ 本地嵌入，支持经验总结与会话压缩（compaction） |
 | **多端接入** | CLI、WebSocket 网关、Electron 桌面端，同一套 Agent 核心；各端技术栈见下方「各端技术栈」 |
 | **多通道接入** | 飞书、钉钉、Telegram、微信等 IM 通道，Gateway 根据配置注册；入站经统一格式进 Agent，回复经通道回传 |
-| **代理模式** | 智能体执行方式可选 **本机** / **Coze** / **OpenClawX** / **OpenCode**；本机使用当前模型与 Skills，**代理模式下本机 0 Token 消耗**，推理与消息处理在对方平台完成 |
+| **代理模式** | 智能体执行方式可选 **本机** / **Coze** / **OpenClawX** / **OpenCode** / **Claude Code**；本机使用当前模型与 Skills，**代理模式下本机 0 Token 消耗**，推理与消息处理在对方平台完成 |
 | **Coze 接入** | 支持 Coze 国内站（api.coze.cn）与国际站（api.coze.com）；按站点分别配置 Bot ID 与 Access Token（PAT/OAuth/JWT），桌面端与通道均可选用 Coze 智能体；**0 Token 消耗**，适合 Coze 侧大量消息与长对话场景 |
 | **OpenClawX 多节点协作** | 可将智能体代理到另一台 OpenClawX 实例（baseUrl + 可选 API Key），实现多节点分工、负载与协作；本机 0 Token 消耗 |
 | **OpenCode 代理** | 可将智能体代理至 [OpenCode](https://opencode.ai/) 官方 Server（本地 `opencode serve` 或远程）；支持流式回复、斜杠指令 `/init`、`/undo`、`/redo`、`/share`、`/help`，与 TUI 使用方式一致；**0 Token 消耗**，适合 OpenCode 侧大量代码与长上下文能力 |
+| **Claude Code 代理** | 可将智能体代理至本机 [Claude Code](https://github.com/anthropics/claude-code) CLI；需本机已安装 `claude` 命令（如 `npm install -g @anthropic-ai/claude-code`），可选配置工作目录（默认使用智能体工作区 `~/.openbot/workspace/<workspace>/`）；**0 Token 消耗**，推理由 Claude Code CLI 完成 |
 | **MCP** | 已支持 [MCP](https://modelcontextprotocol.io/)（Model Context Protocol）：智能体可配置 stdio/SSE 两种连接方式，按智能体绑定 MCP 服务器，会话内自动加载对应工具，降低 Token 消耗与大模型幻觉 |
 | **RPA（影刀）** | 通过 MCP 可接入影刀 RPA：在智能体 MCP 配置中添加 [yingdao-mcp-server](https://www.npmjs.com/package/yingdao-mcp-server)（命令 `npx -y yingdao-mcp-server`，可选 env 如 `RPA_MODEL`、`SHADOWBOT_PATH`、`USER_FOLDER`），即可在对话中调用影刀自动化能力 |
 | **插件支持** | 通过 `openbot extension install/list/uninstall` 在 `~/.openbot/plugins` 安装 npm 包形式扩展；详见 [插件与扩展](docs/zh/features/plugins.md) |
@@ -87,7 +88,8 @@
 │  执行方式:      │    │  Agents · Skills · Tasks    │    │  compaction 扩展     │
 │  local/coze/    │    │  Auth · Users · Workspace   │    │  sql.js              │
 │  openclawx/     │    │                             │    │                     │
-│  opencode(代理) │    │                             │    │                     │
+│  opencode/      │    │                             │    │                     │
+│  claude_code(代理)│   │                             │    │                     │
 │  pi-coding-agent│    │                             │    │                     │
 │  pi-ai 多模型   │    │                             │    │                     │
 └────────┬────────┘    └─────────────────────────────┘    └─────────────────────┘
@@ -95,7 +97,7 @@
          ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  Tools: read/write/edit · bash · find/grep/ls · browser · install-skill ·   │
-│         save-experience (写入记忆) · Proxy(local/coze/openclawx)             │
+│         save-experience (写入记忆) · Proxy(local/coze/openclawx/opencode/claude_code)   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -103,7 +105,7 @@
 - **WebSocket Gateway**（`src/gateway/`）：单进程内嵌 Nest，对外提供 WebSocket（JSON-RPC）与 HTTP；按 path 分流：`/server-api` 走 Nest、`/ws` 为 Agent 对话、`/ws/voice`/`/sse`/`/channel` 为扩展占位，其余为静态资源。根据配置注册**飞书、钉钉、Telegram、微信**等通道，入站消息经统一格式进入 Agent，回复经该通道发回对应平台。供 Web/移动端连接；支持以开机/登录自启方式常驻（Linux cron、macOS LaunchAgent、Windows 计划任务）。
 - **Desktop 后端**（`src/server/`）：NestJS HTTP API，即 **server-api**；可被 Gateway 内嵌或独立监听（默认端口 38081）。会话、智能体配置、技能、任务、工作区、鉴权等由本模块提供。
 - **Desktop**：Electron 包一层 Vue 前端 + 上述后端；通过 Gateway 或直连 Desktop 后端与 Agent 通信。
-- **Agent 核心**：统一由 `AgentManager` 管理会话、技能注入与工具注册；**执行方式**可为 **local**（本机 pi-coding-agent + Skills）、**coze**（代理至 Coze 国内/国际站）、**openclawx**（代理至其他 OpenClawX 节点，多节点协作）、**opencode**（代理至 OpenCode 官方 Server，支持流式与 `/init`、`/undo`、`/redo`、`/share`、`/help` 等指令）。记忆与 compaction 作为扩展参与 system prompt 与经验写入。
+- **Agent 核心**：统一由 `AgentManager` 管理会话、技能注入与工具注册；**执行方式**可为 **local**（本机 pi-coding-agent + Skills）、**coze**（代理至 Coze 国内/国际站）、**openclawx**（代理至其他 OpenClawX 节点，多节点协作）、**opencode**（代理至 OpenCode 官方 Server，支持流式与 `/init`、`/undo`、`/redo`、`/share`、`/help` 等指令）、**claude_code**（代理至本机 Claude Code CLI，需已安装 `claude` 命令，可选工作目录）。记忆与 compaction 作为扩展参与 system prompt 与经验写入。
 
 ### 插件支持（Extensions）
 
@@ -115,7 +117,7 @@
 |------|------|
 | **CLI** | Node.js 20+、TypeScript 5.7、Commander（gateway/login/config/service）；`openbot` 入口，配置 `~/.openbot/desktop`，支持开机自启 |
 | **WebSocket Gateway** | JSON-RPC over WebSocket，默认 38080；单进程内嵌 Nest，path 分流（/server-api、/ws、/channel 等）；连接管理、通道（飞书/钉钉/Telegram/微信） |
-| **Agent 核心** | pi-coding-agent、pi-ai 多模型；执行方式 local/coze/openclawx；工具 read/write/bash/browser 等，SKILL.md 技能注入 |
+| **Agent 核心** | pi-coding-agent、pi-ai 多模型；执行方式 local/coze/openclawx/opencode/claude_code；工具 read/write/bash/browser 等，SKILL.md 技能注入 |
 | **Desktop 后端** | NestJS 10、Express、Socket.io，前缀 `server-api`；sql.js；Agents·Skills·Config·Auth·Workspace·Tasks |
 | **Desktop 前端** | Electron 28、Vue 3、Pinia、Vite 5；Dashboard、Agents、Sessions、Skills、Settings、Tasks、Workspace |
 | **记忆与向量** | Vectra 向量索引、远端嵌入、compaction 会话压缩、memory 目录持久化 |
@@ -282,7 +284,7 @@ openbot --model deepseek-chat --provider deepseek "写一段 TypeScript 示例"
 CLI 与桌面端共用**桌面配置**（`~/.openbot/desktop/`）。主要文件：
 
 - **config.json**：全局缺省 provider/model、**defaultModelItemCode**（缺省模型在 configuredModels 中的唯一标识）、缺省智能体 id（`defaultAgentId`）、各 provider 的 API Key/baseUrl、已配置模型列表（configuredModels）等。
-- **agents.json**：智能体列表；每个智能体可配置 provider、model、**modelItemCode**（匹配 configuredModels）、工作区。**执行方式**可为 **local** / **coze** / **openclawx**。Coze 代理：`execution: "coze"`，并配置 **region**（`cn` 国内 / `com` 国际）、**coze.cn** / **coze.com**（各含 botId、apiKey），不暴露 endpoint。OpenClawX 代理：`execution: "openclawx"`，配置 **openclawx.baseUrl**、**openclawx.apiKey**（可选）。
+- **agents.json**：智能体列表；每个智能体可配置 provider、model、**modelItemCode**（匹配 configuredModels）、工作区。**执行方式**可为 **local** / **coze** / **openclawx** / **opencode** / **claude_code**。Coze 代理：`runnerType: "coze"`，并配置 **region**（`cn` 国内 / `com` 国际）、**coze.cn** / **coze.com**（各含 botId、apiKey）。OpenClawX 代理：`runnerType: "openclawx"`，配置 **openclawx.baseUrl**、**openclawx.apiKey**（可选）。OpenCode 代理：`runnerType: "opencode"`，配置 **opencode**（mode、port、model、workingDirectory 等）。Claude Code 代理：`runnerType: "claude_code"`，可选 **claudeCode.workingDirectory**（默认使用工作区路径）。
 - **provider-support.json**：Provider 与模型目录，供设置页下拉选择。
 
 | 操作 | 命令 | 说明 |
@@ -399,16 +401,17 @@ openclawx gateway --port 38080
 
 ### 2.4.1 代理模式与多节点协作
 
-智能体除在本机运行（**local**）外，可配置为**代理模式**，将对话转发至 Coze、OpenCode 或另一台 OpenClawX，实现生态接入与多节点协作。**代理智能体为本机 0 Token 消耗模式**：推理与消息处理均在对方平台完成，本机仅做转发与展示，不占用本机模型 API 的 Token。特别适合 **Coze**、**OpenCode** 等具备大量消息、长上下文或代码协作能力的平台，在桌面端与通道中直接使用其能力而无需消耗本机配额。
+智能体除在本机运行（**local**）外，可配置为**代理模式**，将对话转发至 Coze、OpenCode、Claude Code 或另一台 OpenClawX，实现生态接入与多节点协作。**代理智能体为本机 0 Token 消耗模式**：推理与消息处理均在对方平台完成，本机仅做转发与展示，不占用本机模型 API 的 Token。特别适合 **Coze**、**OpenCode**、**Claude Code** 等具备大量消息、长上下文或代码协作能力的平台，在桌面端与通道中直接使用其能力而无需消耗本机配额。
 
 | 模式 | 说明 | 配置要点 |
 |------|------|----------|
 | **local** | 本机执行，使用当前模型的 pi-coding-agent 与 Skills | 默认；无需额外配置 |
-| **coze** | 代理至 Coze 平台 | 在桌面端「智能体 → 编辑 → 执行方式」选 Coze；**站点**选国内(cn)或国际(com)；分别填写该站点的 **Bot ID**、**Access Token**（PAT / OAuth 2.0 / JWT 等）。`agents.json` 中对应智能体为 `"execution": "coze"`，并含 `coze.region`、`coze.cn` / `coze.com`（botId、apiKey） |
-| **openclawx** | 代理至其他 OpenClawX 实例（多节点） | 执行方式选 OpenClawX；填写目标实例 **baseUrl**（如 `http://另一台机器:38080`）、可选 **API Key**。`agents.json` 中为 `"execution": "openclawx"`，含 `openclawx.baseUrl`、`openclawx.apiKey`（可选） |
+| **coze** | 代理至 Coze 平台 | 在桌面端「智能体 → 编辑 → 执行方式」选 Coze；**站点**选国内(cn)或国际(com)；分别填写该站点的 **Bot ID**、**Access Token**（PAT / OAuth 2.0 / JWT 等）。`agents.json` 中对应智能体为 `"runnerType": "coze"`，并含 `coze.region`、`coze.cn` / `coze.com`（botId、apiKey） |
+| **openclawx** | 代理至其他 OpenClawX 实例（多节点） | 执行方式选 OpenClawX；填写目标实例 **baseUrl**（如 `http://另一台机器:38080`）、可选 **API Key**。`agents.json` 中为 `"runnerType": "openclawx"`，含 `openclawx.baseUrl`、`openclawx.apiKey`（可选） |
 | **opencode** | 代理至 OpenCode 官方 Server | 执行方式选 OpenCode；本地模式需先在本机运行 `opencode serve`（默认 4096 端口），填写端口；远程模式填写地址与端口。可选密码、工作目录、默认模型。支持 `/init`、`/undo`、`/redo`、`/share`、`/help` 等斜杠指令，分享链接会回显到对话中 |
+| **claude_code** | 代理至本机 Claude Code CLI | 执行方式选 Claude Code；需本机已安装 `claude` 命令（如 `npm install -g @anthropic-ai/claude-code` 并执行 `claude login`）。可选配置**工作目录**（默认使用智能体工作区 `~/.openbot/workspace/<workspace>/`）。`agents.json` 中为 `"runnerType": "claude_code"`，可选 `claudeCode.workingDirectory` |
 
-- **入口**：桌面端「设置」→「智能体」中新建/编辑智能体时可选择执行方式；通道使用的默认智能体也可设为 Coze 或 OpenClawX 代理。
+- **入口**：桌面端「设置」→「智能体」中新建/编辑智能体时可选择执行方式；通道使用的默认智能体也可设为 Coze、OpenClawX、OpenCode 或 Claude Code 代理。
 - **多节点**：多台机器各跑一个 OpenClawX Gateway，将部分智能体指向对方 baseUrl，即可实现分工、专机专用或负载均衡。
 
 ---
@@ -437,6 +440,7 @@ openclawx gateway --port 38080
 | **Coze 生态** | **已支持**：智能体执行方式可选 coze，按站点（国内 cn / 国际 com）配置 Bot ID 与 Access Token，桌面端与通道均可使用 |
 | **OpenClawX 多节点** | **已支持**：执行方式可选 openclawx，通过 baseUrl（及可选 apiKey）将对话代理到另一 OpenClawX 实例，实现多节点协作与负载分工 |
 | **OpenCode 代理** | **已支持**：执行方式可选 opencode，对接 OpenCode 官方 Server（本地 `opencode serve` 或远程）；流式回复、`/init`/`/undo`/`/redo`/`/share`/`/help` 等指令，分享链接回显；失败时展示「执行失败」提示 |
+| **Claude Code 代理** | **已支持**：执行方式可选 claude_code，对接本机 Claude Code CLI（需已安装 `claude` 并登录）；可选工作目录，默认使用智能体工作区路径 |
 
 文档与发布节奏后续更新。
 

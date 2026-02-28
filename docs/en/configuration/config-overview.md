@@ -18,7 +18,7 @@ OpenClawX config lives in the **desktop config directory**, shared by CLI, Deskt
 | File | Description |
 |------|-------------|
 | **config.json** | Default provider/model, defaultModelItemCode, defaultAgentId, API keys, configured models, channels |
-| **agents.json** | Agent list: provider, model, modelItemCode, workspace, **execution** (local/coze/openclawx/opencode) and proxy fields |
+| **agents.json** | Agent list: provider, model, modelItemCode, workspace, **execution** (local/coze/openclawx/opencode/claude_code) and proxy fields |
 | **provider-support.json** | Provider and model catalog (usually shipped with the package) |
 
 ---

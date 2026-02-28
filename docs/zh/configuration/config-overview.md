@@ -18,7 +18,7 @@ OpenClawX 的配置集中在**桌面配置目录**，CLI、Desktop、Gateway 共
 | 文件 | 说明 |
 |------|------|
 | **config.json** | 全局缺省 provider/model、defaultModelItemCode、defaultAgentId、各 provider 的 API Key/baseUrl、已配置模型列表（configuredModels）、通道配置（channels）等 |
-| **agents.json** | 智能体列表：每个智能体的 provider、model、modelItemCode、工作区、**执行方式**（local / coze / openclawx / opencode）及代理相关字段 |
+| **agents.json** | 智能体列表：每个智能体的 provider、model、modelItemCode、工作区、**执行方式**（local / coze / openclawx / opencode / claude_code）及代理相关字段 |
 | **provider-support.json** | Provider 与模型目录，供设置页下拉选择（一般随包提供，无需手改） |
 
 ---

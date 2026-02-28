@@ -59,7 +59,7 @@ docs/zh/                        # 中文文档
 | 文档 | 说明 |
 |------|------|
 | [配置概览](configuration/config-overview.md) | 配置目录、config.json 与 agents.json 位置与作用 |
-| [智能体配置](configuration/agents.md) | 本机/Coze/OpenClawX/OpenCode 执行方式、模型与工作区 |
+| [智能体配置](configuration/agents.md) | 本机/Coze/OpenClawX/OpenCode/Claude Code 执行方式、模型与工作区 |
 | [通道配置](configuration/channels.md) | 飞书、钉钉、Telegram、微信的启用与配置项 |
 
 ---
@@ -68,7 +68,7 @@ docs/zh/                        # 中文文档
 
 | 文档 | 说明 |
 |------|------|
-| [代理模式与多节点协作](features/proxy-mode.md) | Coze、OpenClawX、OpenCode 代理与配置要点 |
+| [代理模式与多节点协作](features/proxy-mode.md) | Coze、OpenClawX、OpenCode、Claude Code 代理与配置要点 |
 | [技能系统](features/skills.md) | Agent Skills 规范、内置技能、安装与扩展 |
 | [插件与扩展](features/plugins.md) | 扩展目录、CLI 命令、编写约定与用户手册 |
 

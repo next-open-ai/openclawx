@@ -16,6 +16,7 @@ Each agent has one **execution** mode:
 | **coze** | Proxy to Coze; set region and Bot ID, Access Token |
 | **openclawx** | Proxy to another OpenClawX instance; set baseUrl, optional apiKey |
 | **opencode** | Proxy to [OpenCode](https://opencode.ai/) (local `opencode serve` or remote); set port or address, optional password, working directory, model |
+| **claude_code** | Proxy to local [Claude Code](https://github.com/anthropics/claude-code) CLI; requires `claude` command (e.g. `npm install -g @anthropic-ai/claude-code`) and `claude login`; optional working directory (default: agent workspace) |
 
 ---
 
@@ -25,6 +26,7 @@ Each agent has one **execution** mode:
 - **Coze**: `runnerType: "coze"`, region (cn/com), coze.cn / coze.com (botId, apiKey).
 - **OpenClawX**: `runnerType: "openclawx"`, openclawx.baseUrl, openclawx.apiKey.
 - **OpenCode**: `runnerType: "opencode"`, opencode object (mode, port, address, password, model, workingDirectory).
+- **Claude Code**: `runnerType: "claude_code"`, optional claudeCode.workingDirectory (default: agent workspace). Requires `claude` CLI installed and logged in.
 
 **defaultAgentId** in config.json sets the default agent; channels can override with their own defaultAgentId.
 
