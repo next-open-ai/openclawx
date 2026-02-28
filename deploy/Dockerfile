@@ -68,11 +68,15 @@ COPY --from=builder /app/apps/desktop/renderer/dist ./apps/desktop/renderer/dist
 # 预装资源：智能体/工作区/技能预设，运行时通过 OPENBOT_PRESETS_DIR 或 process.cwd()/presets 使用
 COPY presets ./presets
 
+# 入口脚本：容器启动时按需安装 OpenCode / Claude Code CLI（不打进镜像以减小体积），再启动主进程
+COPY deploy/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 ENV NODE_ENV=production
 
 # Gateway 默认端口；CLI 可通过 CMD 覆盖
 EXPOSE 38080
 
-# 使用 openbot CLI；默认启动 Gateway（镜像内已具备 node/npx、python3/uv/uvx 及常用命令）
-ENTRYPOINT ["node", "dist/cli/cli.js"]
+# 先执行 entrypoint 安装缺失 CLI，再 exec 主命令
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["gateway", "--port", "38080"]

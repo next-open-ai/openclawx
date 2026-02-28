@@ -20,8 +20,10 @@
  *   - opencode/big-pickle          — Big Pickle
  * 本适配器请求不传 model 时由 OpenCode 服务端使用上述配置的默认模型。详见 https://opencode.ai/docs/zen
  */
+import { join, resolve } from "path";
 import { createOpencodeClient } from "@opencode-ai/sdk";
 import type { DesktopAgentConfig } from "../../../config/desktop-config.js";
+import { getOpenbotWorkspaceDir } from "../../agent-dir.js";
 import { ensureLocalOpencodeRunning } from "./opencode-local-runner.js";
 import type {
     IAgentProxyAdapter,
@@ -101,6 +103,17 @@ function getOpenCodeConfig(config: DesktopAgentConfig): ResolvedOpenCodeConfig |
         password: oc.password != null ? String(oc.password).trim() : undefined,
         model: { providerID, modelID: modelID || "default" },
     };
+}
+
+/** 与 Claude Code 一致：未显式配置时使用智能体工作区路径 ~/.openbot/workspace/<workspace>/ */
+function getOpencodeWorkingDirectory(config: DesktopAgentConfig): string | undefined {
+    const custom = config.opencode?.workingDirectory;
+    if (typeof custom === "string" && custom.trim()) {
+        return resolve(custom.trim());
+    }
+    const w = config.workspace;
+    if (typeof w !== "string" || !w.trim()) return undefined;
+    return join(getOpenbotWorkspaceDir(), w.trim());
 }
 
 function buildAuthHeaders(oc: ResolvedOpenCodeConfig): Record<string, string> {
@@ -231,13 +244,24 @@ function parseSlashCommand(message: string): { command: string; args: string } |
     return command ? { command, args } : null;
 }
 
-/** 从 session.prompt / session.command 返回的 parts 提取文本 */
+/** 从 session.prompt / session.command 返回的 parts 提取文本（含所有 type，用于兼容旧逻辑） */
 function partsToText(parts: Array<{ type?: string; text?: string; content?: string }> | undefined): string {
     if (!Array.isArray(parts)) return "";
     return parts
         .map((p) => (typeof p?.text === "string" ? p.text : typeof p?.content === "string" ? p.content : ""))
         .filter(Boolean)
         .join("");
+}
+
+/** 仅取 type=text 的 part 拼接为助手正文，与流式时只推 text 保持一致，不包含 reasoning/step-start/step-finish */
+function partsToReplyText(parts: Array<{ type?: string; text?: string; content?: string }> | undefined): string {
+    if (!Array.isArray(parts)) return "";
+    return parts
+        .filter((p) => p?.type === "text")
+        .map((p) => (typeof (p as any).text === "string" ? (p as any).text : typeof (p as any).content === "string" ? (p as any).content : ""))
+        .filter(Boolean)
+        .join("")
+        .trim();
 }
 
 /** 日志用：可序列化对象，避免循环引用、过长字符串和不可序列化字段 */
@@ -356,7 +380,7 @@ async function pollForAssistantMessage(
             if (item?.info?.role !== "assistant") continue;
             const parts = item?.info?.parts ?? item?.parts;
             if (!Array.isArray(parts)) continue;
-            const text = partsToText(parts);
+            const text = partsToReplyText(parts);
             if (text) return text;
             // 已有 assistant 但 parts 为空，可能仍在生成，继续轮询
             break;
@@ -379,7 +403,7 @@ export const opencodeAdapter: IAgentProxyAdapter = {
             await ensureLocalOpencodeRunning(
                 Number(config.opencode.port),
                 config.opencode.model?.trim() || undefined,
-                config.opencode.workingDirectory?.trim() || undefined
+                getOpencodeWorkingDirectory(config)
             );
         }
 
@@ -557,8 +581,29 @@ export const opencodeAdapter: IAgentProxyAdapter = {
             let hadAnyChunk = false;
             let lastTextLength = 0;
             let eventCount = 0;
-            // 非 text 部分按 (messageID, partType) 记录上次已下发的完整内容，避免同一 part 多次相同事件导致前端重复显示
-            const lastEmittedNonText = new Map<string, string>();
+            // reasoning 只缓存在见到 text 或 session.idle 时再整体输出一次，避免「先部分后完整」重复显示
+            const reasoningBuffer = new Map<string, string>();
+            // 正文累积后去掉 [step-start]/[step-finish] 再推送，避免服务端把这类标签混在 text 里
+            let textAccumulated = "";
+            let lastEmittedCleanLen = 0;
+            const stepMarkerRe = /\n?\[step-(?:start|finish)\]\n?/g;
+            const emitStrippedText = (): void => {
+                const cleaned = textAccumulated.replace(stepMarkerRe, "");
+                const toEmit = cleaned.slice(lastEmittedCleanLen);
+                if (toEmit) {
+                    hadAnyChunk = true;
+                    callbacks.onChunk(toEmit);
+                    lastEmittedCleanLen = cleaned.length;
+                }
+            };
+            const flushReasoningForMessage = (messageID: string): void => {
+                const raw = reasoningBuffer.get(messageID);
+                if (!raw?.trim()) return;
+                reasoningBuffer.delete(messageID);
+                const formatted = `\n\n---\nreasoning: ${raw.slice(0, 2000)}${raw.length > 2000 ? "…" : ""}\n---\n\n`;
+                hadAnyChunk = true;
+                callbacks.onChunk(formatted);
+            };
             try {
                 for await (const event of eventStream) {
                     if (userSignal?.aborted) break;
@@ -572,7 +617,6 @@ export const opencodeAdapter: IAgentProxyAdapter = {
                             info?: { role?: string; id?: string };
                         };
                     };
-                    // 日志：长任务排查时可见 OpenCode 下发了哪些事件类型与 part 类型，便于确认是否有中间状态未回显
                     if (ev.type !== "message.part.updated" || (ev.properties?.part?.type !== "text")) {
                         const partType = ev.properties?.part?.type ?? "(no part)";
                         console.log(`[OpenCode] event #${eventCount} type=${ev.type} part.type=${partType}`);
@@ -583,37 +627,29 @@ export const opencodeAdapter: IAgentProxyAdapter = {
                     }
                     if (ev.type === "message.part.updated" && ev.properties?.part?.sessionID === opencodeSessionId) {
                         const part = ev.properties.part;
-                        if (userMessageID != null && part.messageID === userMessageID) continue; // 跳过用户消息的 part
+                        if (userMessageID != null && part.messageID === userMessageID) continue;
                         const partType = part.type ?? "";
                         const delta = ev.properties.delta;
                         const fullText = typeof part?.text === "string" ? part.text : "";
                         if (partType === "text") {
+                            const msgId = part.messageID ?? "";
+                            flushReasoningForMessage(msgId);
                             if (typeof delta === "string" && delta) {
-                                hadAnyChunk = true;
-                                callbacks.onChunk(delta);
-                                lastTextLength += delta.length;
+                                textAccumulated += delta;
+                                emitStrippedText();
                             } else if (fullText.length > lastTextLength) {
-                                hadAnyChunk = true;
-                                callbacks.onChunk(fullText.slice(lastTextLength));
+                                textAccumulated = fullText;
                                 lastTextLength = fullText.length;
+                                emitStrippedText();
                             }
-                        } else {
-                            // 非 text（如 reasoning、tool_call 等）：向前端回显简短状态；相同 part 相同内容只发一次，避免重复
-                            const key = `${part.messageID ?? ""}-${partType}`;
-                            if (fullText && fullText.trim()) {
-                                const formatted = `\n\n---\n${partType}: ${fullText.slice(0, 500)}${fullText.length > 500 ? "…" : ""}\n---\n\n`;
-                                if (lastEmittedNonText.get(key) === formatted) continue;
-                                lastEmittedNonText.set(key, formatted);
-                                hadAnyChunk = true;
-                                callbacks.onChunk(formatted);
-                            } else if (partType) {
-                                // [tool]/[step-start]/[step-finish] 等无正文：每次事件都发（无法区分“同一事件重复”与“多次不同 tool/step”，故不做去重）
-                                hadAnyChunk = true;
-                                callbacks.onChunk(`\n[${partType}]\n`);
-                            }
+                        } else if (partType === "reasoning" && fullText.trim()) {
+                            const msgId = part.messageID ?? "";
+                            reasoningBuffer.set(msgId, fullText);
                         }
+                        // step-start、step-finish、tool_call 等不推给前端
                     }
                     if (ev.type === "session.idle" && ev.properties?.sessionID === opencodeSessionId) {
+                        for (const msgId of reasoningBuffer.keys()) flushReasoningForMessage(msgId);
                         console.log(`[OpenCode] session.idle after ${eventCount} events, hadAnyChunk=${hadAnyChunk}`);
                         break;
                     }
@@ -647,7 +683,7 @@ export const opencodeAdapter: IAgentProxyAdapter = {
             await ensureLocalOpencodeRunning(
                 Number(config.opencode.port),
                 config.opencode.model?.trim() || undefined,
-                config.opencode.workingDirectory?.trim() || undefined
+                getOpencodeWorkingDirectory(config)
             );
         }
 

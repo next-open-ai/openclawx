@@ -3,6 +3,7 @@
  * 并通过 OPENCODE_CONFIG_CONTENT 注入默认模型与端口；可选设置工作目录（cwd）。
  */
 import { spawn, type ChildProcess } from "child_process";
+import { mkdirSync } from "node:fs";
 import { createInterface } from "readline";
 import { resolve } from "path";
 
@@ -58,6 +59,14 @@ export async function ensureLocalOpencodeRunning(
         ...process.env,
         OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
     };
+
+    if (cwd) {
+        try {
+            mkdirSync(cwd, { recursive: true });
+        } catch (e) {
+            console.warn("[OpenCode local runner] mkdir cwd failed:", (e as Error).message);
+        }
+    }
 
     const child = spawn("opencode", ["serve", "--port", String(port), "--hostname", "127.0.0.1"], {
         env,
