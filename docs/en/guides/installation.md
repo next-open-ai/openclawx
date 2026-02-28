@@ -46,6 +46,8 @@ npm link   # or npm install -g .
 
 Use the `deploy/` compose files. See project root [README](../../README.md) “Docker deployment” section for `docker-compose.yaml` (CI image) and `docker-compose-dev.yaml` (local build). Port **38080** is exposed.
 
+**After starting with Docker, you can configure and use the service via Web**: open **`http://localhost:38080`** (local) or **`http://yourIP:38080`** (LAN/remote) in a browser to configure agents, models, channels, and chat—same as when running the gateway with npm. See [Web and Gateway](gateway-web.md).
+
 ---
 
 ## Desktop installer

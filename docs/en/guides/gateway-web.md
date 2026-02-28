@@ -8,6 +8,8 @@ Use OpenClawX via the **WebSocket gateway**: start the gateway, then connect wit
 
 ## Start the gateway
 
+**npm**:
+
 ```bash
 openbot gateway
 # or
@@ -15,6 +17,8 @@ openbot gateway --port 38080
 ```
 
 For auto-start on boot: `openbot service install`; to remove: `openbot service uninstall`; to stop: `openbot service stop`.
+
+**Docker**: If you started the service via [Docker deployment](installation.md#docker-deployment), it also listens on port 38080. Open **`http://localhost:38080`** or **`http://yourIP:38080`** in a browser to configure and use the same Web UI as with npm.
 
 ---
 

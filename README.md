@@ -216,6 +216,8 @@ docker compose -f docker-compose-dev.yaml up --build -d
 
 构建完成后服务同样监听 **38080** 端口，镜像名为 `openclawx:dev`，容器名为 `openclawx-dev`。
 
+**Docker 部署启动后，可通过 Web 方式配置与使用**：在浏览器中打开 **`http://localhost:38080`**（本机）或 **`http://宿主机IP:38080`**（局域网/远程），即可访问 server-api、健康检查及静态资源（若已挂载或内置前端），进行智能体、模型、通道等配置及对话，使用方式与 npm 启动网关一致（见下方「二、使用方式 → 2.2 Web」）。
+
 ### 配置与数据持久化
 
 - Gateway 默认从容器内 `~/.openbot/desktop/` 读取配置（智能体、模型、通道等）。若需持久化或预置配置，可在 compose 中挂载宿主机目录，例如在 `deploy/docker-compose.yaml` 或 `deploy/docker-compose-dev.yaml` 的 `openclawx` 服务下增加：
@@ -318,12 +320,18 @@ openbot "总结一下当前有哪些技能"
 
 **配置与访问地址**：可使用 **`http://localhost:38080`**（本机）或 **`http://你的IP:38080`**（局域网/远程）进行配置与使用；WebSocket 为 `ws://` 同 host/端口，HTTP 接口（如 `/server-api`、`/health`）与静态资源均通过上述地址访问。
 
+### 通过 npm 启动网关
+
 ```bash
 # 启动网关（默认端口 38080）
 openclawx gateway --port 38080
 ```
 
 若需网关开机/登录自启，可执行 `openbot service install`（支持 Linux / macOS / Windows）；移除自启用 `openbot service uninstall`，停止当前网关用 `openbot service stop`。
+
+### 通过 Docker 启动后使用 Web 浏览器
+
+若通过 **Docker** 方式启动（见上方「1.2 Docker 部署」），同样可通过 Web 浏览器进行配置与对话：在浏览器中打开 **`http://localhost:38080`** 或 **`http://宿主机IP:38080`**，即可进行智能体、模型、通道等配置及对话，使用方式与 npm 启动网关一致。WebSocket 客户端连接 `ws://localhost:38080` 或 `ws://宿主机IP:38080`，使用 JSON-RPC 调用 `connect`、`agent.chat`、`agent.cancel` 等。
 
 客户端连接 `ws://localhost:38080`（或 `ws://你的IP:38080`），使用 JSON-RPC 调用 `connect`、`agent.chat`、`agent.cancel` 等（详见下方「Gateway API 简述」）。  
 前端可自行实现或使用仓库内 Web 示例（若有）。

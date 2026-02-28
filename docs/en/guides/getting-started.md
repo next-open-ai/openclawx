@@ -10,7 +10,7 @@ Get installed, have your first conversation, and find desktop and channel entry 
 |--------|-------------|-----|
 | **npm** | CLI or self-hosted Gateway | [Installation → npm](installation.md#npm-installation) |
 | **Desktop installer** | Desktop only, no Node | [Installation → Desktop](installation.md#desktop-installer) |
-| **Docker** | Container deployment | [Installation](installation.md) |
+| **Docker** | Container deployment; use Web to configure and chat after start | [Installation → Docker](installation.md#docker-deployment) |
 
 ---
 
@@ -40,13 +40,11 @@ openbot gateway --port 38080
 
 ## 3. Web / Gateway
 
-```bash
-openbot gateway
-# or
-openbot gateway --port 38080
-```
+**npm**: Run `openbot gateway` (or `openbot gateway --port 38080`).
 
-Open `http://localhost:38080` or connect clients to `ws://localhost:38080` and use JSON-RPC (`connect`, `agent.chat`, etc.). See [Web and Gateway](gateway-web.md).
+**Docker**: If you started the service via [Docker deployment](installation.md#docker-deployment), open **`http://localhost:38080`** or **`http://yourIP:38080`** in a browser to configure and chat—same as with npm.
+
+Open `http://localhost:38080` or `http://yourIP:38080`, or connect clients to `ws://localhost:38080`, and use JSON-RPC (`connect`, `agent.chat`, etc.). See [Web and Gateway](gateway-web.md).
 
 ---
 

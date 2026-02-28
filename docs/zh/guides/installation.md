@@ -53,14 +53,20 @@ npm link   # 或 npm install -g .
 
 ## Docker 部署
 
-Docker 镜像与编排正在规划中，当前推荐使用 npm 全局安装后执行 `openbot gateway` 部署网关。
-
-规划中的示例：
+适用于：在服务器或容器环境中运行 **Gateway**，供 Web/其他客户端连接。编排文件位于仓库 `deploy/` 目录，详见项目根目录 [README → 1.2 Docker 部署](../../README.md#12-docker-部署)。
 
 ```bash
-# docker pull next-open-ai/openclawx
-# docker run -p 38080:38080 -e OPENAI_API_KEY=xxx next-open-ai/openclawx gateway
+# 使用预构建镜像（在 deploy 目录下）
+cd deploy
+docker compose up -d
+
+# 或从仓库根目录
+docker compose -f deploy/docker-compose.yaml up -d
 ```
+
+服务启动后暴露端口 **38080**。
+
+**Docker 部署启动后，可通过 Web 方式配置与使用**：在浏览器中打开 **`http://localhost:38080`**（本机）或 **`http://宿主机IP:38080`**（局域网/远程），即可进行智能体、模型、通道等配置及对话，使用方式与 npm 启动网关一致。详见 [Web 与 Gateway](gateway-web.md)。
 
 ---
 

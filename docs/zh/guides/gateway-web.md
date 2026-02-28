@@ -8,6 +8,8 @@
 
 ## 启动网关
 
+**npm 方式**：
+
 ```bash
 # 默认端口 38080
 openbot gateway
@@ -17,6 +19,8 @@ openbot gateway --port 38080
 ```
 
 若需开机/登录自启：`openbot service install`；移除自启用 `openbot service uninstall`，停止当前网关用 `openbot service stop`。
+
+**Docker 方式**：若通过 [Docker 部署](installation.md#docker-部署) 启动，服务同样监听 38080 端口。启动后在浏览器中打开 **`http://localhost:38080`** 或 **`http://宿主机IP:38080`** 即可进行配置与使用，与 npm 启动网关的 Web 使用方式一致。
 
 ---
 

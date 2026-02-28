@@ -10,7 +10,7 @@
 |------|----------|------|
 | **npm 安装** | 使用 CLI 或自建环境跑 Gateway | [安装与部署 → npm](installation.md#npm-安装) |
 | **Desktop 安装包** | 仅用桌面端，无需 Node | [安装与部署 → Desktop](installation.md#desktop-安装包) |
-| **Docker** | 容器化部署（规划中） | [安装与部署](installation.md) |
+| **Docker** | 容器化部署，启动后可用 Web 配置与使用 | [安装与部署](installation.md#docker-部署) |
 
 ---
 
@@ -41,6 +41,8 @@ openbot gateway --port 38080
 
 ## 3. Web / Gateway 入口
 
+**npm 启动**：
+
 ```bash
 # 启动网关（默认端口 38080）
 openbot gateway
@@ -48,7 +50,9 @@ openbot gateway
 openbot gateway --port 38080
 ```
 
-浏览器打开`http://localhost:38080` 或客户端连接 `ws://localhost:38080`，使用 JSON-RPC 调用 `connect`、`agent.chat` 等。详见 [Web 与 Gateway](gateway-web.md)。
+**Docker 启动**：若通过 Docker 部署并启动（见 [安装与部署 → Docker](installation.md#docker-部署)），启动后在浏览器中打开 **`http://localhost:38080`** 或 **`http://宿主机IP:38080`** 即可进行配置与对话，使用方式与 npm 启动一致。
+
+浏览器打开 `http://localhost:38080` 或 `http://你的IP:38080`，或客户端连接 `ws://localhost:38080`，使用 JSON-RPC 调用 `connect`、`agent.chat` 等。详见 [Web 与 Gateway](gateway-web.md)。
 
 ---
 ## 4. 桌面端入口
