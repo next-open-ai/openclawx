@@ -4,7 +4,7 @@
 
 services:
   openclawx:
-    image: windwithlife/openclawx:latest
+    image: ccr.ccs.tencentyun.com/windwithlife/openclawx:latest
     container_name: openclawx
     ports:
       - "38080:38080"
