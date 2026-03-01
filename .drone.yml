@@ -33,7 +33,7 @@ steps:
       tags:
         - ${DRONE_TAG=latest}
         - ${DRONE_TAG=0.8}
-        - build-ci-openbot-${DRONE_BUILD_NUMBER}
+        - build-ci-openclawx-${DRONE_BUILD_NUMBER}
 
   - name: 部署到集群-dron8s方式x
     image: bh90210/dron8s:0.2.0
@@ -47,7 +47,7 @@ steps:
       soa_gateway: agent.zhangyongqiao.com
       soa_gateway_cert: api-default-secret
 
-      build_tag: build-ci-openbot-${DRONE_BUILD_NUMBER}
+      build_tag: build-ci-openclawx-${DRONE_BUILD_NUMBER}
 
 volumes:
   - name: mvncache
