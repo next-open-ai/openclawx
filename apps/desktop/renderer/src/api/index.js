@@ -80,6 +80,26 @@ export const configAPI = {
     getOpencodeFreeModels: () => apiClient.get('/config/opencode-free-models'),
 };
 
+// Local Models API（本地 GGUF 模型管理）
+export const localModelsAPI = {
+    /** 列出本地已缓存的 GGUF 模型文件 */
+    list: () => apiClient.get('/config/local-models'),
+    /** 推荐的 GGUF 模型列表（供下载选择） */
+    getRecommended: () => apiClient.get('/config/local-models/recommended'),
+    /** 仅返回尚未安装的推荐模型（已安装的不显示在下载区） */
+    getRecommendedToDownload: () => apiClient.get('/config/local-models/recommended-to-download'),
+    /** 本地模型服务状态：available, error?, baseUrl? */
+    getStatus: () => apiClient.get('/config/local-models/status'),
+    /** 启动本地模型服务，可选 llmModelUri、embeddingModelUri（文件名或 hf: URI） */
+    start: (body) => apiClient.post('/config/local-models/start', body),
+    /** 开始后台下载模型（立即返回，进度通过 getProgress 轮询） */
+    startDownload: (modelUri) => apiClient.post('/config/local-models/download', { modelUri }),
+    /** 查询下载进度 */
+    getProgress: (uri) => apiClient.get('/config/local-models/progress', { params: { uri } }),
+    /** 删除本地缓存的 GGUF 模型文件 */
+    delete: (filename) => apiClient.delete(`/config/local-models/${encodeURIComponent(filename)}`),
+};
+
 // Auth API（登录）
 export const authAPI = {
     login: (username, password) => apiClient.post('/auth/login', { username, password }),

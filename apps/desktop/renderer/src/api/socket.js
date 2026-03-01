@@ -113,8 +113,8 @@ class SocketService {
             sessionId,
             agentId: this.currentAgentId,
             sessionType: this.currentSessionType,
-        });
-        await this.call('subscribe_session', { sessionId });
+        }, 30000);
+        await this.call('subscribe_session', { sessionId }, 30000);
     }
 
     /**

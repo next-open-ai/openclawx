@@ -78,4 +78,30 @@ export const DEFAULT_PROVIDER_SUPPORT: ProviderSupport = {
             { id: "moonshot-v1-128k", name: "Moonshot 128K", types: ["llm"] },
         ],
     },
+    /** 本地 Ollama 服务，兼容 OpenAI API；baseUrl 指向本机 Ollama 默认端口 */
+    ollama: {
+        name: "Ollama (本地)",
+        baseUrl: "http://localhost:11434/v1",
+        models: [
+            { id: "qwen3:4b", name: "Qwen3 4B", types: ["llm"] },
+            { id: "qwen3:8b", name: "Qwen3 8B", types: ["llm"] },
+            { id: "qwen3:14b", name: "Qwen3 14B", types: ["llm"] },
+            { id: "llama3.2:3b", name: "Llama 3.2 3B", types: ["llm"] },
+            { id: "llama3.2:1b", name: "Llama 3.2 1B", types: ["llm"] },
+            { id: "nomic-embed-text", name: "Nomic Embed Text", types: ["embedding"] },
+        ],
+    },
+    /**
+     * 内置本地推理（node-llama-cpp），无需安装 Ollama。
+     * baseUrl 指向本地 LLM 子进程服务；模型列表为推荐的 GGUF 模型，可在本地模型管理页面增删。
+     * 无需 API Key。
+     */
+    local: {
+        name: "本地推理 (node-llama-cpp)",
+        baseUrl: "http://127.0.0.1:11435/v1",
+        models: [
+            { id: "local-llm", name: "本地 LLM（当前加载）", types: ["llm"] },
+            { id: "local-embedding", name: "本地 Embedding（当前加载）", types: ["embedding"] },
+        ],
+    },
 };

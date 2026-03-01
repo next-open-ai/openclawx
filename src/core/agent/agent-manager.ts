@@ -307,7 +307,13 @@ For downloads, provide either a direct URL or a selector to click.`;
         const modelId = options.modelId ?? process.env.OPENBOT_MODEL ?? "deepseek-chat";
         const apiKey = options.apiKey;
 
-        ensureDefaultAgentDir(this.agentDir);
+        // local provider：指向本地 node-llama-cpp 子进程服务
+        if (provider === "local") {
+            const localBaseUrl = process.env.LOCAL_LLM_BASE_URL ?? "http://127.0.0.1:11435/v1";
+            process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || "local";
+            process.env.OPENAI_BASE_URL = localBaseUrl;
+        }
+
         const authPath = join(this.agentDir, "auth.json");
         const modelsPath = join(this.agentDir, "models.json");
         const authStorage = new AuthStorage(authPath);
@@ -343,6 +349,7 @@ For downloads, provide either a direct URL or a selector to click.`;
             if (p === "nvidia") return process.env.NVIDIA_API_KEY || process.env.OPENAI_API_KEY;
             if (p === "kimi") return process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY || process.env.OPENAI_API_KEY;
             if (p === "openai" || p === "openai-custom") return process.env.OPENAI_API_KEY;
+            if (p === "local") return process.env.OPENAI_API_KEY || "local";
             return process.env.OPENAI_API_KEY;
         });
 

@@ -44,7 +44,9 @@ import multer from "multer";
 import { handleInstallSkillFromPath } from "./methods/install-skill-from-path.js";
 import { handleInstallSkillFromUpload } from "./methods/install-skill-from-upload.js";
 import { setBackendBaseUrl } from "./backend-url.js";
-import { ensureDesktopConfigInitialized, getChannelsConfigSync } from "../core/config/desktop-config.js";
+import { ensureDesktopConfigInitialized, getChannelsConfigSync, loadDesktopAgentConfig } from "../core/config/desktop-config.js";
+import { startLocalLlmServer } from "../core/local-llm-server/index.js";
+import { isModelFileInCache } from "../core/local-llm-server/model-resolve.js";
 import { createNestAppEmbedded } from "../server/bootstrap.js";
 import { registerChannel, startAllChannels, stopAllChannels } from "./channel/registry.js";
 import { createFeishuChannel } from "./channel/adapters/feishu.js";
@@ -92,6 +94,56 @@ export async function startGatewayServer(port: number = 38080): Promise<{
     process.env.PORT = String(port);
     await ensureDesktopConfigInitialized();
     console.log(`Starting gateway server on port ${port}...`);
+
+    // 若默认智能体或环境变量指定为 local provider，后台启动本地 LLM 子进程（不阻塞主服务启动）
+    // 仅读 env 时，桌面端选「本机」默认 agent 时可能未设 OPENBOT_PROVIDER，导致本地服务未启、出现 Connection error
+    const envProvider = process.env.OPENBOT_PROVIDER ?? "";
+    let shouldStartLocal = envProvider === "local";
+    let defaultLocalModel: string | undefined;
+    let defaultAgentContextSize: number | undefined;
+    try {
+        const defaultAgent = await loadDesktopAgentConfig("default");
+        if (defaultAgent) {
+            defaultAgentContextSize = defaultAgent.contextSize;
+            if (!shouldStartLocal) {
+                shouldStartLocal =
+                    defaultAgent.provider === "local" &&
+                    defaultAgent.runnerType !== "coze" &&
+                    defaultAgent.runnerType !== "openclawx" &&
+                    defaultAgent.runnerType !== "opencode" &&
+                    defaultAgent.runnerType !== "claude_code";
+            }
+            if (shouldStartLocal && defaultAgent.provider === "local" && defaultAgent.model?.trim()) {
+                defaultLocalModel = defaultAgent.model.trim();
+            }
+        }
+    } catch {
+        // ignore
+    }
+    if (shouldStartLocal) {
+        // 若缺省模型已指定但文件不在缓存中，不启动本地服务，标记不可用，由用户在设置中下载后手动启动
+        const llmFileExists = !defaultLocalModel || isModelFileInCache(defaultLocalModel);
+        if (!llmFileExists) {
+            process.env.LOCAL_LLM_START_FAILED = `缺省模型文件不存在: ${defaultLocalModel}，请先在「模型管理」中下载或选择已安装模型后点击「启动本地模型服务」`;
+            console.warn("[local-llm] 未启动:", process.env.LOCAL_LLM_START_FAILED);
+        } else {
+            const opts = {
+                ...(defaultLocalModel ? { llmModelPath: defaultLocalModel } : {}),
+                contextSize: defaultAgentContextSize ?? 32768,
+            };
+            startLocalLlmServer(opts)
+                .then((handle) => {
+                    process.env.LOCAL_LLM_BASE_URL = handle.baseUrl;
+                    delete process.env.LOCAL_LLM_START_FAILED;
+                    console.log("[local-llm] 已就绪:", handle.baseUrl);
+                })
+                .catch((e) => {
+                    const msg = e instanceof Error ? e.message : String(e);
+                    process.env.LOCAL_LLM_START_FAILED = msg;
+                    console.warn("[local-llm] 启动失败:", msg);
+                });
+        }
+    }
 
     setBackendBaseUrl(`http://localhost:${port}`);
 

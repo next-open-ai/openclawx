@@ -96,6 +96,65 @@
               <p class="form-hint">{{ t('agents.agentDescriptionHint') }}</p>
             </div>
             <div class="form-group">
+              <h3 class="form-subtitle">{{ t('agents.modelConfig') }}</h3>
+              <p class="form-hint">{{ t('agents.modelConfigHint') }}</p>
+              <template v-if="configuredModelsList.length === 0">
+                <p class="form-hint warning">{{ t('agents.noConfiguredModels') }}</p>
+              </template>
+              <template v-else>
+                <div class="form-group">
+                  <label>{{ t('agents.selectConfiguredModel') }}</label>
+                  <select
+                    v-model="selectedConfiguredModelKey"
+                    class="form-input"
+                    @change="onConfiguredModelSelect"
+                  >
+                    <option value="">{{ t('agents.useDefaultModel') }}</option>
+                    <option
+                      v-for="item in configuredModelsList"
+                      :key="optionValueFor(item)"
+                      :value="optionValueFor(item)"
+                    >
+                      {{ optionLabelFor(item) }}
+                    </option>
+                  </select>
+                </div>
+                <div v-if="selectedConfiguredModelKey" class="form-group">
+                  <label>{{ t('agents.currentProvider') }}</label>
+                  <input
+                    :value="modelForm.provider"
+                    type="text"
+                    class="form-input readonly"
+                    readonly
+                    disabled
+                  />
+                </div>
+                <div v-if="selectedConfiguredModelKey" class="form-group">
+                  <label>{{ t('agents.currentModelId') }}</label>
+                  <input
+                    :value="modelForm.model"
+                    type="text"
+                    class="form-input readonly"
+                    readonly
+                    disabled
+                  />
+                </div>
+              </template>
+              <div v-if="proxyForm.runnerType === 'local'" class="form-group">
+                <label>{{ t('agents.contextSize') }}</label>
+                <input
+                  v-model.number="contextSizeForm"
+                  type="number"
+                  min="2048"
+                  max="131072"
+                  step="1024"
+                  class="form-input"
+                  :placeholder="'32768'"
+                />
+                <p class="form-hint">{{ t('agents.contextSizeHint') }}</p>
+              </div>
+            </div>
+            <div class="form-group">
               <h3 class="form-subtitle">{{ t('agents.webSearchTitle') }}</h3>
               <div class="form-row checkbox-row">
                 <input
@@ -778,6 +837,8 @@ export default {
     const configSaving = ref(false);
 
     const modelForm = ref({ provider: '', model: '' });
+    /** 本地模型上下文长度（token 数），仅 runnerType 为 local 时生效 */
+    const contextSizeForm = ref(32768);
     const proxyForm = ref({
       runnerType: 'local',
       coze: {
@@ -1028,6 +1089,11 @@ export default {
     function optionValueFor(item) {
       return (item.modelItemCode && item.modelItemCode.trim()) ? item.modelItemCode : `${item.provider}|${item.modelId}`;
     }
+    function optionLabelFor(item) {
+      const alias = item.alias || item.modelId || '';
+      const provider = item.provider || '';
+      return alias ? `${alias} (${provider})` : `${provider} - ${item.modelId}`;
+    }
     const selectedModelItem = computed(() => {
       const key = selectedConfiguredModelKey.value;
       if (!key) return null;
@@ -1056,6 +1122,7 @@ export default {
             maxResultTokens: agent.value.webSearch?.maxResultTokens ?? 64000,
           };
           mcpMaxResultTokensForm.value = agent.value.mcpMaxResultTokens != null && agent.value.mcpMaxResultTokens > 0 ? String(agent.value.mcpMaxResultTokens) : '';
+          contextSizeForm.value = agent.value.contextSize != null && agent.value.contextSize > 0 ? agent.value.contextSize : 32768;
           modelForm.value = {
             provider: agent.value.provider ?? '',
             model: agent.value.model ?? '',
@@ -1117,6 +1184,7 @@ export default {
           configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
           webSearchForm.value = { enabled: false, provider: 'duck-duck-scrape', maxResultTokens: 64000 };
           mcpMaxResultTokensForm.value = '';
+          contextSizeForm.value = 32768;
           modelForm.value = { provider: '', model: '' };
           proxyForm.value = {
             runnerType: 'local',
@@ -1134,6 +1202,7 @@ export default {
           configForm.value = { name: agent.value.name, systemPrompt: '', icon: AGENT_ICON_DEFAULT };
           webSearchForm.value = { enabled: false, provider: 'duck-duck-scrape', maxResultTokens: 64000 };
           mcpMaxResultTokensForm.value = '';
+          contextSizeForm.value = 32768;
           modelForm.value = { provider: '', model: '' };
           proxyForm.value = {
             runnerType: 'local',
@@ -1168,12 +1237,32 @@ export default {
             : undefined;
         payload.systemPrompt = configForm.value.systemPrompt?.trim() || undefined;
         payload.icon = configForm.value.icon || undefined;
+        // Model configuration
+        if (selectedConfiguredModelKey.value) {
+          const item = selectedModelItem.value;
+          if (item) {
+            payload.provider = item.provider;
+            payload.model = item.modelId;
+            payload.modelItemCode = item.modelItemCode || undefined;
+          }
+        } else {
+          // Empty selection means use global default
+          payload.provider = undefined;
+          payload.model = undefined;
+          payload.modelItemCode = undefined;
+        }
         const wsMax = webSearchForm.value.maxResultTokens;
         const wsMaxNum = wsMax == null || wsMax === '' || wsMax === 0 ? undefined : (Number(wsMax) || 64000);
         payload.webSearch = webSearchForm.value.enabled
           ? { enabled: true, provider: webSearchForm.value.provider, maxResultTokens: wsMaxNum }
           : undefined;
         payload.runnerType = proxyForm.value.runnerType;
+        if (proxyForm.value.runnerType === 'local') {
+          const ctx = contextSizeForm.value;
+          payload.contextSize = (typeof ctx === 'number' && Number.isInteger(ctx) && ctx >= 2048) ? ctx : undefined;
+        } else {
+          payload.contextSize = null;
+        }
         if (proxyForm.value.runnerType === 'coze') {
           const c = proxyForm.value.coze;
           payload.coze = {
@@ -1222,9 +1311,13 @@ export default {
           ...agent.value,
           systemPrompt: payload.systemPrompt,
           icon: payload.icon,
+          provider: payload.provider,
+          model: payload.model,
+          modelItemCode: payload.modelItemCode,
           mcpMaxResultTokens: payload.mcpMaxResultTokens,
           webSearch: payload.webSearch,
           runnerType: payload.runnerType,
+          contextSize: payload.contextSize,
           coze: payload.coze,
           openclawx: payload.openclawx,
           opencode: payload.opencode,
@@ -1511,6 +1604,7 @@ export default {
       selectedModelItem,
       getConfiguredModelOptionLabel,
       optionValueFor,
+      optionLabelFor,
       getProviderDisplayName,
       onConfiguredModelSelect,
       modelConfigLoading,
@@ -2111,6 +2205,9 @@ export default {
 .form-hint {
   font-size: var(--font-size-sm);
   color: var(--color-text-tertiary);
+}
+.form-hint.warning {
+  color: var(--color-warning, #b8860b);
 }
 .form-hint-warn {
   color: var(--color-warning, #b8860b);

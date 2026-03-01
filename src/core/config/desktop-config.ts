@@ -217,6 +217,8 @@ interface AgentItem {
         /** 单次搜索返回最大 token；超过则从尾部裁剪；不配置则不限制；前端默认 64K */
         maxResultTokens?: number;
     };
+    /** 本地模型上下文长度（token 数），仅 runnerType 为 local 时生效；默认 32768（32K） */
+    contextSize?: number;
 }
 
 interface AgentsFile {
@@ -390,6 +392,8 @@ export interface DesktopAgentConfig {
         /** 单次搜索返回最大 token；超过则从尾部裁剪；不配置则不限制 */
         maxResultTokens?: number;
     };
+    /** 本地模型上下文长度（token 数），仅 runnerType 为 local 时用于启动本地 LLM；默认 32768 */
+    contextSize?: number;
 }
 
 /**
@@ -446,8 +450,8 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
     }
 
     const resolvedAgentId = agentId === "default" ? "default" : agentId;
-    let provider = config.defaultProvider ?? "deepseek";
-    let model = config.defaultModel ?? "deepseek-chat";
+    let provider = config.defaultProvider ?? "ollama";
+    let model = config.defaultModel ?? "qwen3:4b";
     if (config.defaultModelItemCode && Array.isArray(config.configuredModels)) {
         const configured = config.configuredModels.find((m) => m.modelItemCode === config.defaultModelItemCode);
         if (configured) {
@@ -460,6 +464,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
     let mcpMaxResultTokens: number | undefined;
     let systemPrompt: string | undefined;
     let useLongMemory: boolean = true;
+    let contextSize: number | undefined;
 
     if (existsSync(agentsPath)) {
         try {
@@ -472,6 +477,9 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
                 else if (agent.id) workspaceName = agent.id;
                 if (agent.mcpMaxResultTokens != null && typeof agent.mcpMaxResultTokens === "number" && agent.mcpMaxResultTokens > 0) {
                     mcpMaxResultTokens = agent.mcpMaxResultTokens;
+                }
+                if (agent.contextSize != null && typeof agent.contextSize === "number" && agent.contextSize > 0) {
+                    contextSize = agent.contextSize;
                 }
                 if (agent.mcpServers != null) {
                     if (Array.isArray(agent.mcpServers) || (typeof agent.mcpServers === "object" && !Array.isArray(agent.mcpServers))) {
@@ -671,6 +679,7 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
         claudeCode,
         useLongMemory,
         webSearch,
+        contextSize,
     };
 }
 
@@ -890,12 +899,22 @@ export async function ensureProviderSupportFile(): Promise<void> {
 async function ensureConfigJsonInitialized(): Promise<void> {
     const presetPath = join(getPresetsDir(), "preset-config.json");
     let presetConfig: DesktopConfigJson = {
-        defaultProvider: "deepseek",
-        defaultModel: "deepseek-chat",
+        defaultProvider: "ollama",
+        defaultModel: "qwen3:4b",
         defaultAgentId: DEFAULT_AGENT_ID,
         maxAgentSessions: DEFAULT_MAX_AGENT_SESSIONS,
-        providers: {},
-        configuredModels: [],
+        providers: {
+            ollama: { baseUrl: "http://localhost:11434/v1" },
+        },
+        configuredModels: [
+            {
+                provider: "ollama",
+                modelId: "qwen3:4b",
+                type: "llm",
+                alias: "Qwen3 4B (本地)",
+                modelItemCode: "ollama:qwen3:4b",
+            },
+        ],
     };
     if (existsSync(presetPath)) {
         try {
@@ -1056,6 +1075,10 @@ const SYNC_DEFAULTS: Record<string, { baseUrl: string; apiKey: string; api: stri
     "openai-custom": { baseUrl: "", apiKey: "OPENAI_API_KEY", api: "openai-completions" },
     nvidia: { baseUrl: "https://integrate.api.nvidia.com/v1", apiKey: "NVIDIA_API_KEY", api: "openai-completions" },
     kimi: { baseUrl: "https://api.moonshot.cn/v1", apiKey: "MOONSHOT_API_KEY", api: "openai-completions" },
+    /** 本地 Ollama，无需真实 API Key */
+    ollama: { baseUrl: "http://localhost:11434/v1", apiKey: "OPENAI_API_KEY", api: "openai-completions" },
+    /** 内置本地推理（node-llama-cpp），无需 API Key，baseUrl 指向本地子进程服务 */
+    local: { baseUrl: "http://127.0.0.1:11435/v1", apiKey: "OPENAI_API_KEY", api: "openai-completions" },
 };
 
 const DEFAULT_COST = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
@@ -1095,9 +1118,11 @@ export async function syncDesktopConfigToModelsJson(): Promise<void> {
     const support = await getProviderSupport();
     const piProviders: Record<string, PiProviderEntry> = {};
     for (const [providerId, userConfig] of Object.entries(configured)) {
-        if (!userConfig?.apiKey?.trim()) continue;
+        // ollama / local 不需要 API Key，其他 provider 必须有 apiKey
+        const isNoKeyProvider = providerId === "ollama" || providerId === "local";
+        if (!isNoKeyProvider && !userConfig?.apiKey?.trim()) continue;
         const defaults = SYNC_DEFAULTS[providerId] ?? { baseUrl: "", apiKey: "OPENAI_API_KEY", api: "openai-completions" };
-        const baseUrl = userConfig.baseUrl?.trim() || (support[providerId]?.baseUrl ?? "").trim() || defaults.baseUrl;
+        const baseUrl = userConfig?.baseUrl?.trim() || (support[providerId]?.baseUrl ?? "").trim() || defaults.baseUrl;
         if (!baseUrl) continue;
         const def = support[providerId];
         const items = configuredModels.filter((m) => m.provider === providerId);
@@ -1130,7 +1155,7 @@ export async function syncDesktopConfigToModelsJson(): Promise<void> {
             continue;
         }
         piProviders[providerId] = {
-            name: (userConfig.alias?.trim() || def?.name) || providerId,
+            name: (userConfig?.alias?.trim() || def?.name) || providerId,
             apiKey: defaults.apiKey,
             api: defaults.api,
             baseUrl: baseUrl.replace(/\/$/, ""),

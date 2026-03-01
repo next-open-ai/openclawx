@@ -13,6 +13,19 @@ import type { SessionMessage, SessionMessageConsumer } from "../../core/session-
 
 const COMPOSITE_KEY_SEP = "::";
 
+/** 将 delta/text 规范为字符串，避免 SDK 或上游返回对象时前端显示 [object Object] 或触发 Unknown value type */
+function normalizeChunkText(v: unknown): string {
+    if (v == null) return "";
+    if (typeof v === "string") return v;
+    if (typeof (v as { content?: string }).content === "string") return (v as { content: string }).content;
+    if (typeof (v as { text?: string }).text === "string") return (v as { text: string }).text;
+    try {
+        return String(JSON.stringify(v));
+    } catch {
+        return String(v);
+    }
+}
+
 /** 当前每个 session 的流式订阅（用于在 cancel 或新 run 前移除旧订阅，避免重复广播） */
 const sessionSubscriptionBySessionId = new Map<string, () => void>();
 
@@ -210,7 +223,14 @@ async function handleAgentChatInner(
                 if (!isAbort) console.error(`Error in agent chat (proxy ${runnerType}):`, error);
                 finishAndUnregister();
                 if (!isAbort) {
-                    const errMsg = error?.message || String(error);
+                    let errMsg = error?.message || String(error);
+                    const needNormalize = typeof errMsg === "object" || (typeof errMsg === "string" && errMsg.includes("[object Object]"));
+                    if (needNormalize) {
+                        errMsg = normalizeChunkText(errMsg);
+                        if (typeof errMsg === "string" && errMsg.includes("Unknown value type") && errMsg.includes("[object Object]")) {
+                            errMsg = "模型返回了不支持的数据结构（如工具调用流），请尝试关闭工具或更换模型。";
+                        }
+                    }
                     sendSessionMessage(targetSessionId, { type: "chat", code: "agent.chunk", payload: { text: `请求失败：${errMsg}` } });
                 }
                 return { status: "completed", sessionId: targetSessionId };
@@ -281,9 +301,9 @@ async function handleAgentChatInner(
                 const update = event as any;
                 if (update.assistantMessageEvent && update.assistantMessageEvent.type === "text_delta") {
                     hasReceivedAnyChunk = true;
-                    wsPayload = { type: "chat", code: "agent.chunk", payload: { text: update.assistantMessageEvent.delta } };
+                    wsPayload = { type: "chat", code: "agent.chunk", payload: { text: normalizeChunkText(update.assistantMessageEvent.delta) } };
                 } else if (update.assistantMessageEvent && update.assistantMessageEvent.type === "thinking_delta") {
-                    wsPayload = { type: "chat", code: "agent.chunk", payload: { text: update.assistantMessageEvent.delta, isThinking: true } };
+                    wsPayload = { type: "chat", code: "agent.chunk", payload: { text: normalizeChunkText(update.assistantMessageEvent.delta), isThinking: true } };
                 } else if (update.assistantMessageEvent?.type === "error" && update.assistantMessageEvent?.error?.errorMessage) {
                     console.warn("[agent.chat] model error:", update.assistantMessageEvent.error.errorMessage);
                 }
@@ -304,9 +324,15 @@ async function handleAgentChatInner(
                     hasReceivedAnyChunk = true;
                 }
                 if (msg?.errorMessage) {
-                    const errText = msg.errorMessage.includes("402") || msg.errorMessage.includes("Insufficient Balance")
+                    // 调试：定位本地 LLM 流式报错来源（pi-ai 等 SDK 抛出的原始 errorMessage）
+                    console.error("[agent.chat] message_end errorMessage:", msg.errorMessage);
+                    if (typeof (msg as any).errorStack === "string") console.error("[agent.chat] message_end errorStack:", (msg as any).errorStack);
+                    let errText = msg.errorMessage.includes("402") || msg.errorMessage.includes("Insufficient Balance")
                         ? "API 余额不足，请到「设置」检查并充值后重试。"
-                        : `请求失败：${msg.errorMessage}`;
+                        : `请求失败：${normalizeChunkText(msg.errorMessage)}`;
+                    if (errText.includes("Unknown value type") && errText.includes("[object Object]")) {
+                        errText = "请求失败：模型返回了不支持的数据结构（如工具调用流），请尝试关闭工具或更换模型。";
+                    }
                     sendSessionMessage(targetSessionId, { type: "chat", code: "agent.chunk", payload: { text: errText } });
                 }
                 wsPayload = null;
@@ -323,9 +349,15 @@ async function handleAgentChatInner(
                     }
                 }
                 if (msg?.errorMessage) {
-                    const errText = msg.errorMessage.includes("402") || msg.errorMessage.includes("Insufficient Balance")
+                    // 调试：定位 turn_end 时 SDK 传入的原始错误
+                    console.error("[agent.chat] turn_end errorMessage:", msg.errorMessage);
+                    if (typeof (msg as any).errorStack === "string") console.error("[agent.chat] turn_end errorStack:", (msg as any).errorStack);
+                    let errText = msg.errorMessage.includes("402") || msg.errorMessage.includes("Insufficient Balance")
                         ? "API 余额不足，请到「设置」检查并充值后重试。"
-                        : `请求失败：${msg.errorMessage}`;
+                        : `请求失败：${normalizeChunkText(msg.errorMessage)}`;
+                    if (errText.includes("Unknown value type") && errText.includes("[object Object]")) {
+                        errText = "请求失败：模型返回了不支持的数据结构（如工具调用流），请尝试关闭工具或更换模型。";
+                    }
                     sendSessionMessage(targetSessionId, { type: "chat", code: "agent.chunk", payload: { text: errText } });
                     hasReceivedAnyChunk = true;
                 }

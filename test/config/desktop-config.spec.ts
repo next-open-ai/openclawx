@@ -117,8 +117,8 @@ describe("config/desktop-config", () => {
         it("returns default provider/model when config.json does not exist", async () => {
             const result = await loadDesktopAgentConfig("default");
             expect(result).not.toBeNull();
-            expect(result!.provider).toBe("deepseek");
-            expect(result!.model).toBe("deepseek-chat");
+            expect(result!.provider).toBe("ollama");
+            expect(result!.model).toBe("qwen3:4b");
             expect(result!.apiKey).toBeUndefined();
         });
 

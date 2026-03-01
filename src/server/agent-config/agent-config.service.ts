@@ -102,6 +102,8 @@ export interface AgentConfigItem {
         provider?: 'brave' | 'duck-duck-scrape';
         maxResultTokens?: number;
     };
+    /** 本地模型上下文长度（token 数），仅 runnerType 为 local 时生效；默认 32768（32K） */
+    contextSize?: number;
 }
 
 interface AgentsFile {
@@ -350,6 +352,11 @@ export class AgentConfigService {
         if (updates.opencode !== undefined) agent.opencode = updates.opencode;
         if (updates.claudeCode !== undefined) agent.claudeCode = updates.claudeCode;
         if (updates.useLongMemory !== undefined) agent.useLongMemory = updates.useLongMemory;
+        if ('contextSize' in updates) {
+            const v = updates.contextSize;
+            agent.contextSize =
+                typeof v === 'number' && Number.isInteger(v) && v > 0 ? v : undefined;
+        }
         if (updates.webSearch !== undefined) {
             agent.webSearch =
                 updates.webSearch && (updates.webSearch.enabled || updates.webSearch.provider)

@@ -259,7 +259,9 @@ export const useAgentStore = defineStore('agent', {
             if (!this.currentSession) return;
             if (data?.sessionId != null && data.sessionId !== this.currentSession?.id) return;
 
-            const text = data.text || '';
+            // 规范为字符串，避免后端或 SDK 误传对象导致 [object Object] 或 Unknown value type
+            const raw = data.text;
+            const text = typeof raw === 'string' ? raw : (raw && typeof raw.content === 'string' ? raw.content : (raw && typeof raw.text === 'string' ? raw.text : (raw != null ? String(raw) : '')));
             if (!text) return;
             // 若后端误将整段内容再发一次（与当前已累积内容完全相同），则不再追加，避免最后一轮显示两遍
             if (this.currentMessage.length > 0 && text === this.currentMessage) return;

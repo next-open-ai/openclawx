@@ -231,6 +231,13 @@
             >
               {{ t('settings.defaultModelConfig') }}
             </button>
+            <button
+              class="model-config-tab"
+              :class="{ active: modelConfigSubTab === 'local' }"
+              @click="modelConfigSubTab = 'local'; initLocalModelsTab()"
+            >
+              {{ t('settings.localModelsNav') }}
+            </button>
           </div>
 
           <!-- Provider 配置：新增供应商按钮 + 弹窗；已配置列表卡片展示 -->
@@ -391,6 +398,99 @@
               </div>
             </template>
           </div>
+
+          <!-- 本地模型管理（node-llama-cpp GGUF） -->
+          <div v-show="modelConfigSubTab === 'local'" class="settings-group local-models-group">
+            <div class="settings-hint-block">
+              <span class="settings-hint-icon">ℹ️</span>
+              <p class="settings-hint-text">{{ t('settings.localModelsHint') }}</p>
+            </div>
+
+            <!-- 启动本地模型服务：状态 + 选择 LLM/Embedding 后启动 -->
+            <div class="subsection-header">
+              <h4 class="subsection-title">{{ t('settings.localLlmServiceTitle') }}</h4>
+            </div>
+            <div class="local-llm-service-block">
+              <p v-if="localLlmStatusLoading" class="form-hint">{{ t('common.loading') }}</p>
+              <template v-else>
+                <p class="local-llm-status" :class="{ 'status-ok': localLlmStatus.available, 'status-fail': !localLlmStatus.available && localLlmStatus.error }">
+                  <span v-if="localLlmStatus.available">{{ t('settings.localLlmStatusReady') }}</span>
+                  <span v-else-if="localLlmStatus.error">{{ t('settings.localLlmStatusUnavailable') }}：{{ localLlmStatus.error }}</span>
+                  <span v-else>{{ t('settings.localLlmStatusUnavailable') }}</span>
+                </p>
+                <div class="local-llm-start-form">
+                  <div class="form-group">
+                    <label>{{ t('settings.localLlmSelectLlm') }}</label>
+                    <select v-model="localLlmStartSelectedLlm" class="input select-input">
+                      <option value="">— {{ t('settings.localLlmUseDefault') }}</option>
+                      <option v-for="m in installedLlmsForStart" :key="m.filename" :value="m.filename">{{ m.filename }}</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>{{ t('settings.localLlmSelectEmbedding') }}</label>
+                    <select v-model="localLlmStartSelectedEmb" class="input select-input">
+                      <option value="">— {{ t('settings.localLlmUseDefault') }}</option>
+                      <option v-for="m in installedEmbeddingsForStart" :key="m.filename" :value="m.filename">{{ m.filename }}</option>
+                    </select>
+                  </div>
+                  <button type="button" class="btn-primary" :disabled="localLlmStartLoading" @click="startLocalLlmService">
+                    {{ localLlmStartLoading ? t('common.loading') : t('settings.localLlmStartBtn') }}
+                  </button>
+                </div>
+              </template>
+            </div>
+
+            <!-- 推荐模型下载区（仅显示尚未安装的） -->
+            <template v-if="recommendedModels.length > 0">
+              <div class="subsection-header">
+                <h4 class="subsection-title">{{ t('settings.localModelsDownload') }}</h4>
+              </div>
+              <div class="local-models-download-list">
+                <div v-for="rec in recommendedModels" :key="rec.id" class="local-model-rec-row">
+                <div class="local-model-rec-info">
+                  <span class="local-model-rec-name">{{ rec.name }}</span>
+                  <span class="local-model-rec-type model-row-type">{{ rec.type }}</span>
+                  <span class="local-model-rec-size">{{ rec.sizeHint }}</span>
+                </div>
+                <div class="local-model-rec-actions">
+                  <template v-if="downloadProgressMap[rec.id]">
+                    <span class="download-progress-text">
+                      {{ downloadProgressMap[rec.id].status }}
+                      <template v-if="downloadProgressMap[rec.id].percent != null">
+                        ({{ downloadProgressMap[rec.id].percent }}%)
+                      </template>
+                    </span>
+                  </template>
+                  <template v-else>
+                    <button type="button" class="btn-primary btn-sm" @click="startDownloadModel(rec.id)">
+                      {{ t('settings.localModelsDownloadBtn') }}
+                    </button>
+                  </template>
+                </div>
+              </div>
+            </div>
+            </template>
+
+            <!-- 已下载的本地模型列表 -->
+            <div class="subsection-header" style="margin-top: 20px;">
+              <h4 class="subsection-title">{{ t('settings.localModelsInstalled') }}</h4>
+              <button type="button" class="btn-secondary btn-sm" @click="refreshLocalModels">{{ t('common.refresh') }}</button>
+            </div>
+            <div v-if="localModelsLoading" class="loading-state">{{ t('common.loading') }}</div>
+            <p v-else-if="localModelsList.length === 0" class="form-hint empty-hint">{{ t('settings.localModelsEmpty') }}</p>
+            <div v-else class="local-models-installed-list">
+              <div v-for="m in localModelsList" :key="m.filename" class="local-model-row">
+                <div class="local-model-info">
+                  <span class="local-model-filename">{{ m.filename }}</span>
+                  <span class="local-model-type model-row-type">{{ m.inferredType }}</span>
+                  <span class="local-model-size">{{ formatFileSize(m.size) }}</span>
+                </div>
+                <div class="local-model-actions">
+                  <button type="button" class="link-btn danger" @click="confirmDeleteLocalModel(m.filename)">{{ t('common.delete') }}</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 新增/编辑模型配置弹窗 -->
@@ -426,6 +526,17 @@
                     class="input"
                     :placeholder="t('settings.modelIdCustomPlaceholder')"
                   />
+                  <template v-else-if="addModelForm.provider === 'local'">
+                    <select
+                      v-model="addModelForm.modelId"
+                      class="input select-input"
+                      :disabled="editingModelIndex >= 0"
+                    >
+                      <option value="">—</option>
+                      <option v-for="lm in localModelsForSelect" :key="lm.id" :value="lm.id">{{ lm.name }}</option>
+                    </select>
+                    <p class="form-hint form-hint-inline">{{ t('settings.localModelSelectHint') }}</p>
+                  </template>
                   <template v-else>
                     <select
                       v-model="addModelForm.modelId"
@@ -959,6 +1070,7 @@ import { useLocaleStore } from '@/store/modules/locale';
 import { useAuthStore } from '@/store/modules/auth';
 import { useI18n } from '@/composables/useI18n';
 import { usersAPI, agentConfigAPI } from '@/api';
+import { localModelsAPI } from '@/api';
 import SettingsSkills from '@/components/SettingsSkills.vue';
 
 const SETTINGS_TABS = ['general', 'agent', 'models', 'knowledge', 'users', 'skills', 'channels', 'about'];
@@ -1004,6 +1116,7 @@ export default {
       if (tab === 'models') {
         await settingsStore.loadConfig();
         initModelConfigTab();
+        refreshLocalModels().catch(() => {});
       }
       if (tab === 'knowledge') {
         await settingsStore.loadConfig();
@@ -1055,6 +1168,21 @@ export default {
     const userFormSaving = ref(false);
     const showChangeCurrentPasswordModal = ref(false);
     const currentUserPasswordForm = ref({ password: '', confirm: '' });
+    // ─── 本地模型管理状态 ────────────────────────────────────────────────────────
+    const localModelsList = ref([]);
+    const localModelsLoading = ref(false);
+    const recommendedModels = ref([]);
+    /** 正在下载的模型进度 map：modelUri → DownloadProgress */
+    const downloadProgressMap = ref({});
+    let downloadPollTimer = null;
+    /** 本地模型服务状态：{ available, error?, baseUrl? } */
+    const localLlmStatus = ref({ available: false });
+    const localLlmStatusLoading = ref(false);
+    const localLlmStartLoading = ref(false);
+    /** 启动服务时选择的 LLM / Embedding 模型（文件名，与已安装列表一致） */
+    const localLlmStartSelectedLlm = ref('');
+    const localLlmStartSelectedEmb = ref('');
+
     const localRag = ref({
       embeddingSource: 'online',
       embeddingProvider: '',
@@ -1308,6 +1436,154 @@ export default {
       loadAgentConfig();
     };
 
+    // ─── 本地模型管理函数 ────────────────────────────────────────────────────────
+
+    function formatFileSize(bytes) {
+      if (!bytes) return '0 B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+    }
+
+    async function refreshLocalModels() {
+      localModelsLoading.value = true;
+      try {
+        const res = await localModelsAPI.list();
+        localModelsList.value = res.data?.data ?? [];
+        localModelsAPI.getRecommendedToDownload().then((r) => {
+          recommendedModels.value = r.data?.data ?? [];
+        }).catch(() => {});
+      } catch (e) {
+        console.warn('[Settings] refreshLocalModels error', e);
+        localModelsList.value = [];
+      } finally {
+        localModelsLoading.value = false;
+      }
+    }
+
+    async function initLocalModelsTab() {
+      await refreshLocalModels();
+      try {
+        const res = await localModelsAPI.getRecommendedToDownload();
+        recommendedModels.value = res.data?.data ?? [];
+      } catch (e) {
+        console.warn('[Settings] getRecommendedToDownload error', e);
+        recommendedModels.value = [];
+      }
+      await fetchLocalLlmStatus();
+    }
+
+    async function startDownloadModel(modelUri) {
+      try {
+        await localModelsAPI.startDownload(modelUri);
+        downloadProgressMap.value = { ...downloadProgressMap.value, [modelUri]: { status: '准备下载...' } };
+        startDownloadPoll();
+      } catch (e) {
+        console.warn('[Settings] startDownload error', e);
+      }
+    }
+
+    function startDownloadPoll() {
+      if (downloadPollTimer) return;
+      downloadPollTimer = setInterval(async () => {
+        const uris = Object.keys(downloadProgressMap.value);
+        if (!uris.length) {
+          clearInterval(downloadPollTimer);
+          downloadPollTimer = null;
+          return;
+        }
+        let anyActive = false;
+        for (const uri of uris) {
+          try {
+            const res = await localModelsAPI.getProgress(uri);
+            const prog = res.data?.data;
+            if (prog) {
+              downloadProgressMap.value = { ...downloadProgressMap.value, [uri]: prog };
+              const isDone = prog.status?.startsWith('完成') || prog.status?.startsWith('失败');
+              if (!isDone) anyActive = true;
+              if (isDone) {
+                // 下载完成后刷新本地模型列表
+                await refreshLocalModels();
+                // 3 秒后清除进度显示
+                setTimeout(() => {
+                  const next = { ...downloadProgressMap.value };
+                  delete next[uri];
+                  downloadProgressMap.value = next;
+                }, 3000);
+              }
+            } else {
+              // 进度已清除（下载完成后服务端清除）
+              const next = { ...downloadProgressMap.value };
+              delete next[uri];
+              downloadProgressMap.value = next;
+              await refreshLocalModels();
+            }
+          } catch (_e) { /* ignore */ }
+        }
+        if (!anyActive) {
+          clearInterval(downloadPollTimer);
+          downloadPollTimer = null;
+        }
+      }, 1500);
+    }
+
+    async function confirmDeleteLocalModel(filename) {
+      if (!window.confirm(t('settings.localModelsDeleteConfirm'))) return;
+      try {
+        await localModelsAPI.delete(filename);
+        await refreshLocalModels();
+      } catch (e) {
+        alert(e.response?.data?.message ?? e.message ?? t('settings.localModelsDeleteFailed'));
+      }
+    }
+
+    /** 本地模型列表供「模型配置」弹窗中 local provider 选择 */
+    const localModelsForSelect = computed(() => {
+      const list = localModelsList.value;
+      if (!list.length) return [
+        { id: 'local-llm', name: t('settings.localModelLlmPlaceholder') },
+        { id: 'local-embedding', name: t('settings.localModelEmbeddingPlaceholder') },
+      ];
+      return list.map((m) => ({ id: m.filename, name: m.filename }));
+    });
+
+    /** 已安装的 LLM 列表，供「启动本地模型服务」下拉选择 */
+    const installedLlmsForStart = computed(() =>
+      (localModelsList.value || []).filter((m) => (m.inferredType || m.type) === 'llm')
+    );
+    /** 已安装的 Embedding 列表，供「启动本地模型服务」下拉选择 */
+    const installedEmbeddingsForStart = computed(() =>
+      (localModelsList.value || []).filter((m) => (m.inferredType || m.type) === 'embedding')
+    );
+
+    async function fetchLocalLlmStatus() {
+      localLlmStatusLoading.value = true;
+      try {
+        const res = await localModelsAPI.getStatus();
+        localLlmStatus.value = res.data?.data ?? { available: false };
+      } catch (e) {
+        localLlmStatus.value = { available: false, error: e?.message || String(e) };
+      } finally {
+        localLlmStatusLoading.value = false;
+      }
+    }
+
+    async function startLocalLlmService() {
+      localLlmStartLoading.value = true;
+      try {
+        await localModelsAPI.start({
+          llmModelUri: localLlmStartSelectedLlm.value || undefined,
+          embeddingModelUri: localLlmStartSelectedEmb.value || undefined,
+        });
+        await fetchLocalLlmStatus();
+      } catch (e) {
+        const msg = e.response?.data?.message ?? e.message ?? t('settings.localLlmStartFailed');
+        alert(msg);
+      } finally {
+        localLlmStartLoading.value = false;
+      }
+    }
+
     function initKnowledgeTab() {
       const cfg = config.value || {};
       const rag = cfg.rag;
@@ -1552,7 +1828,9 @@ export default {
         contextWindow: 64000,
         maxTokens: 8192,
       };
-      if (addModelForm.value.provider) {
+      if (addModelForm.value.provider === 'local') {
+        refreshLocalModels().catch(() => {});
+      } else if (addModelForm.value.provider) {
         settingsStore.loadModels(addModelForm.value.provider, addModelForm.value.type).catch(() => {});
       }
       showAddModelModal.value = true;
@@ -1594,7 +1872,11 @@ export default {
       const { provider, type } = addModelForm.value;
       addModelForm.value.modelId = '';
       addModelForm.value.customModelId = '';
-      if (provider && type) settingsStore.loadModels(provider, type).catch(() => {});
+      if (provider === 'local') {
+        refreshLocalModels().catch(() => {});
+      } else if (provider && type) {
+        settingsStore.loadModels(provider, type).catch(() => {});
+      }
     }
 
     function buildModelItemCode(provider, modelId) {
@@ -1972,6 +2254,7 @@ export default {
         await settingsStore.loadConfig();
         loadAgentConfig();
         initModelConfigTab();
+        refreshLocalModels().catch(() => {});
         if (activeTab.value === 'agent') await loadAgentList();
         if (activeTab.value === 'knowledge') initKnowledgeTab();
         if (activeTab.value === 'channels') {
@@ -1998,6 +2281,26 @@ export default {
       isOpenAiCustomProvider,
       addModelOptions,
       effectiveAddModelId,
+      // 本地模型管理
+      localModelsList,
+      localModelsLoading,
+      recommendedModels,
+      downloadProgressMap,
+      localModelsForSelect,
+      installedLlmsForStart,
+      installedEmbeddingsForStart,
+      localLlmStatus,
+      localLlmStatusLoading,
+      localLlmStartLoading,
+      localLlmStartSelectedLlm,
+      localLlmStartSelectedEmb,
+      fetchLocalLlmStatus,
+      startLocalLlmService,
+      formatFileSize,
+      refreshLocalModels,
+      initLocalModelsTab,
+      startDownloadModel,
+      confirmDeleteLocalModel,
       channelFeishuDefaultAgentOptions,
       channelDingtalkDefaultAgentOptions,
       channelTelegramDefaultAgentOptions,
@@ -2950,5 +3253,131 @@ export default {
   border-radius: 8px;
   border: 1px solid var(--border-color, #e0e0e0);
   background: #fff;
+}
+
+/* ─── 本地模型管理 ─────────────────────────────────────────────────────────── */
+.local-llm-service-block {
+  margin-bottom: 16px;
+}
+.local-llm-status {
+  font-size: 0.875rem;
+  margin-bottom: 12px;
+}
+.local-llm-status.status-ok {
+  color: var(--color-success, #22c55e);
+}
+.local-llm-status.status-fail {
+  color: var(--color-error, #ef4444);
+}
+.local-llm-start-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+.local-llm-start-form .form-group {
+  margin-bottom: 0;
+  min-width: 200px;
+}
+.local-models-download-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.local-model-rec-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  gap: 12px;
+}
+
+.local-model-rec-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.local-model-rec-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.local-model-rec-size {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.local-model-rec-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.download-progress-text {
+  font-size: 0.8rem;
+  color: var(--color-accent-primary);
+}
+
+.local-models-installed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.local-model-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  gap: 12px;
+}
+
+.local-model-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.local-model-filename {
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.local-model-size {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.local-model-actions {
+  flex-shrink: 0;
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 0.8rem;
 }
 </style>
