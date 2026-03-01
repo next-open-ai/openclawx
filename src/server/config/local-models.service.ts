@@ -1,14 +1,22 @@
 /**
  * 本地 GGUF 模型管理服务。
  * 负责列出、下载（通过 node-llama-cpp resolveModelFile）、删除本地缓存的 GGUF 模型文件。
+ * 推荐列表从 presets/recommended-local-models.json 加载，已安装的与推荐使用同一套展示名称且已安装的不再出现在「备下载」列表。
  * 模型缓存目录：~/.cache/llama
  */
 import { Injectable } from '@nestjs/common';
-import { readdir, stat, unlink } from 'node:fs/promises';
+import { readdir, stat, unlink, readFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
 import { existsSync, mkdirSync } from 'node:fs';
-import { modelUriToFilename, LOCAL_LLM_CACHE_DIR } from '../../core/local-llm-server/model-resolve.js';
+import { modelUriToFilename, modelUriBasename, LOCAL_LLM_CACHE_DIR } from '../../core/local-llm-server/model-resolve.js';
+
+export interface RecommendedModel {
+    id: string;
+    name: string;
+    type: 'llm' | 'embedding';
+    sizeHint: string;
+}
 
 export interface LocalModelInfo {
     filename: string;
@@ -18,6 +26,8 @@ export interface LocalModelInfo {
     updatedAt: string;
     /** 推断的模型类型：llm / embedding（根据文件名关键词） */
     inferredType: 'llm' | 'embedding' | 'unknown';
+    /** 与推荐列表一致的展示名称（能匹配到预设时），否则为 filename */
+    displayName: string;
 }
 
 export interface DownloadProgress {
@@ -34,21 +44,43 @@ function inferModelType(filename: string): LocalModelInfo['inferredType'] {
     return 'llm';
 }
 
-/** 推荐的 GGUF 模型列表，供前端下拉选择 */
-export const RECOMMENDED_MODELS = [
-    // LLM - 使用官方 Qwen3 GGUF 仓库（无需 token）
+const PRESET_FILENAME = 'recommended-local-models.json';
+const DEFAULT_RECOMMENDED: RecommendedModel[] = [
     { id: 'hf:Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf', name: 'Qwen3 4B Q4_K_M', type: 'llm', sizeHint: '~2.5GB' },
     { id: 'hf:Qwen/Qwen3-7B-GGUF/Qwen3-7B-Q4_K_M.gguf', name: 'Qwen3 7B Q4_K_M', type: 'llm', sizeHint: '~4.5GB' },
     { id: 'hf:Qwen/Qwen3-14B-GGUF/Qwen3-14B-Q4_K_M.gguf', name: 'Qwen3 14B Q4_K_M', type: 'llm', sizeHint: '~8.5GB' },
-    // Embedding
     { id: 'hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf', name: 'EmbeddingGemma 300M Q8 (768维)', type: 'embedding', sizeHint: '~300MB' },
     { id: 'hf:gpustack/bge-m3-GGUF/bge-m3-Q8_0.gguf', name: 'BGE-M3 Q8 多语言 (1024维)', type: 'embedding', sizeHint: '~1.2GB' },
     { id: 'hf:mixedbread-ai/mxbai-embed-large-v1-GGUF/mxbai-embed-large-v1-f16.gguf', name: 'MxBai Embed Large v1 (1024维)', type: 'embedding', sizeHint: '~670MB' },
 ];
 
+function getPresetsDir(): string {
+    return process.env.OPENBOT_PRESETS_DIR || join(process.cwd(), 'presets');
+}
+
+/** 推荐项是否对应已安装文件（精确预测名 或 安装文件名以 uri 末尾文件名结尾，兼容不同 node-llama-cpp 命名） */
+function recommendedMatchesInstalled(rec: RecommendedModel, installedFilenames: Set<string>): boolean {
+    const predicted = modelUriToFilename(rec.id);
+    if (installedFilenames.has(predicted)) return true;
+    const suffix = modelUriBasename(rec.id);
+    return Array.from(installedFilenames).some((f) => f.endsWith(suffix) || f === suffix);
+}
+
+/** 已安装文件名在预设中对应的展示名，若无匹配则返回 filename */
+function displayNameForFilename(filename: string, recommended: RecommendedModel[]): string {
+    for (const rec of recommended) {
+        const predicted = modelUriToFilename(rec.id);
+        if (filename === predicted) return rec.name;
+        const uriBase = modelUriBasename(rec.id);
+        if (uriBase && filename.endsWith(uriBase)) return rec.name;
+    }
+    return filename;
+}
+
 @Injectable()
 export class LocalModelsService {
     private readonly cacheDir: string;
+    private recommendedCache: RecommendedModel[] | null = null;
     /** 正在下载的任务：modelUri → 进度 */
     private downloadingMap = new Map<string, DownloadProgress>();
 
@@ -59,9 +91,30 @@ export class LocalModelsService {
         }
     }
 
-    /** 列出本地已缓存的 GGUF 模型文件 */
+    /** 从 presets/recommended-local-models.json 加载推荐列表，失败则用内置默认 */
+    private async getRecommendedModelsFromPreset(): Promise<RecommendedModel[]> {
+        if (this.recommendedCache) return this.recommendedCache;
+        const presetPath = join(getPresetsDir(), PRESET_FILENAME);
+        try {
+            if (existsSync(presetPath)) {
+                const raw = await readFile(presetPath, 'utf-8');
+                const data = JSON.parse(raw) as { models?: RecommendedModel[] };
+                if (Array.isArray(data.models) && data.models.length > 0) {
+                    this.recommendedCache = data.models;
+                    return this.recommendedCache;
+                }
+            }
+        } catch {
+            // ignore, fallback to default
+        }
+        this.recommendedCache = DEFAULT_RECOMMENDED;
+        return this.recommendedCache;
+    }
+
+    /** 列出本地已缓存的 GGUF 模型文件，displayName 与推荐列表一致（来自 preset 匹配） */
     async listModels(): Promise<LocalModelInfo[]> {
         try {
+            const recommended = await this.getRecommendedModelsFromPreset();
             const files = await readdir(this.cacheDir);
             const ggufFiles = files.filter((f) => f.endsWith('.gguf'));
             const infos = await Promise.all(
@@ -73,6 +126,7 @@ export class LocalModelsService {
                         size: s.size,
                         updatedAt: s.mtime.toISOString(),
                         inferredType: inferModelType(f),
+                        displayName: displayNameForFilename(f, recommended),
                     } satisfies LocalModelInfo;
                 }),
             );
@@ -93,16 +147,19 @@ export class LocalModelsService {
         await unlink(filePath);
     }
 
-    /** 获取推荐模型列表 */
-    getRecommendedModels() {
-        return RECOMMENDED_MODELS;
+    /** 获取推荐模型列表（来自 preset，与已安装展示名称一致） */
+    async getRecommendedModels(): Promise<RecommendedModel[]> {
+        return this.getRecommendedModelsFromPreset();
     }
 
-    /** 仅返回尚未安装的推荐模型（用于「推荐下载」区，已安装的不显示下载项） */
-    async getRecommendedToDownload(): Promise<typeof RECOMMENDED_MODELS> {
-        const installed = await this.listModels();
+    /** 仅返回尚未安装的推荐模型；已安装的视为「推荐列表中的一员」不再出现在备下载区 */
+    async getRecommendedToDownload(): Promise<RecommendedModel[]> {
+        const [recommended, installed] = await Promise.all([
+            this.getRecommendedModelsFromPreset(),
+            this.listModels(),
+        ]);
         const installedFilenames = new Set(installed.map((m) => m.filename));
-        return RECOMMENDED_MODELS.filter((rec) => !installedFilenames.has(modelUriToFilename(rec.id)));
+        return recommended.filter((rec) => !recommendedMatchesInstalled(rec, installedFilenames));
     }
 
     /** 检查指定模型（uri 或文件名）是否已在缓存目录存在 */
@@ -124,7 +181,7 @@ export class LocalModelsService {
     async startDownload(modelUri: string): Promise<{ filename: string }> {
         if (this.downloadingMap.has(modelUri)) {
             // 已在下载中，返回预期文件名
-            return { filename: this.predictFilename(modelUri) };
+            return { filename: modelUriToFilename(modelUri) };
         }
 
         this.downloadingMap.set(modelUri, { status: '准备下载...' });
@@ -134,7 +191,7 @@ export class LocalModelsService {
             this.downloadingMap.set(modelUri, { status: `下载失败: ${e?.message ?? e}` });
         });
 
-        return { filename: this.predictFilename(modelUri) };
+        return { filename: modelUriToFilename(modelUri) };
     }
 
     private async runDownload(modelUri: string): Promise<void> {
@@ -183,8 +240,4 @@ export class LocalModelsService {
         }
     }
 
-    /** 根据 hf: URI 预测本地文件名（node-llama-cpp 的命名规则） */
-    private predictFilename(modelUri: string): string {
-        return modelUriToFilename(modelUri) || basename(modelUri);
-    }
 }

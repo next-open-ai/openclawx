@@ -10,6 +10,8 @@ export const useAgentStore = defineStore('agent', {
         messages: [],
         currentMessage: '',
         currentStreamParts: [], // Array of {type: 'text'|'tool', content?: string, toolId?: string}
+        /** 上一片流式 chunk 的原文，用于去重（缓慢时可能出现同一 delta 发两遍） */
+        lastStreamChunkText: '',
         isStreaming: false,
         /** 当前流式回复在 messages 中的 id，用于原地更新、完成时不再插入新 DOM 避免闪烁 */
         streamingMessageId: null,
@@ -19,6 +21,12 @@ export const useAgentStore = defineStore('agent', {
         skipRedirectToRecentOnce: false,
         /** 每次整轮对话结束时自增，用于通知对话页刷新智能体列表（如 create_agent 后） */
         agentListRefreshTrigger: 0,
+        /** 首包超时定时器 id，收到首 chunk 或 agent_end 时清除 */
+        firstChunkTimeoutId: null,
+        /** 流式过程中的错误文案（超时或后端报错），落库时追加到内容，不删已显示内容 */
+        streamErrorText: '',
+        /** 当前轮次的系统消息（中间展示，不进 session 聊天记录） */
+        currentSystemMessage: '',
     }),
 
     getters: {
@@ -163,6 +171,7 @@ export const useAgentStore = defineStore('agent', {
             } finally {
                 this.isStreaming = false;
                 this.streamingMessageId = null;
+                this.lastStreamChunkText = '';
             }
         },
 
@@ -215,6 +224,7 @@ export const useAgentStore = defineStore('agent', {
 
                 this.currentMessage = '';
                 this.currentStreamParts = [];
+                this.lastStreamChunkText = '';
                 this.isStreaming = true;
                 this.streamingMessageId = null;
                 this.toolExecutions = [];
@@ -230,25 +240,37 @@ export const useAgentStore = defineStore('agent', {
                     agentIdForRequest,
                     this.currentSession.type,
                 );
+                this.clearFirstChunkTimeout();
+                this.firstChunkTimeoutId = setTimeout(() => {
+                    if (!this.isStreaming) return;
+                    this.streamErrorText = '等待回复超时，请检查网络或模型配置。';
+                    this.handleConversationEnd({ sessionId: this.currentSession?.id });
+                }, 90000);
             } catch (error) {
                 console.error('Failed to send message:', error);
+                this.clearFirstChunkTimeout();
                 this.isStreaming = false;
                 this.streamingMessageId = null;
-                this.currentMessage = '';
-                this.currentStreamParts = [];
-                this.toolExecutions = [];
-                // 插入一条助手错误消息，避免 loading 突然消失且无提示
                 const errMsg = (error && error.message) ? String(error.message).trim() : '';
-                const assistantError = {
-                    id: `${Date.now()}-err-${Math.random().toString(36).slice(2, 9)}`,
-                    role: 'assistant',
-                    content: errMsg || 'Service error. Please check agent model config or try again.',
-                    timestamp: Date.now(),
-                    toolCalls: [],
-                    contentParts: null,
-                    isError: true,
-                };
-                this.messages.push(assistantError);
+                if (this.currentMessage || (this.streamingMessageId && this.currentStreamParts.length > 0)) {
+                    this.streamErrorText = errMsg || '请求失败';
+                    this.handleConversationEnd({ sessionId: this.currentSession?.id });
+                } else {
+                    this.currentMessage = '';
+                    this.currentStreamParts = [];
+                    this.lastStreamChunkText = '';
+                    this.toolExecutions = [];
+                    const assistantError = {
+                        id: `${Date.now()}-err-${Math.random().toString(36).slice(2, 9)}`,
+                        role: 'assistant',
+                        content: errMsg || 'Service error. Please check agent model config or try again.',
+                        timestamp: Date.now(),
+                        toolCalls: [],
+                        contentParts: null,
+                        isError: true,
+                    };
+                    this.messages.push(assistantError);
+                }
             }
 
             return this.currentSession; // Return session so component can update route
@@ -259,12 +281,17 @@ export const useAgentStore = defineStore('agent', {
             if (!this.currentSession) return;
             if (data?.sessionId != null && data.sessionId !== this.currentSession?.id) return;
 
+            this.clearFirstChunkTimeout();
+
             // 规范为字符串，避免后端或 SDK 误传对象导致 [object Object] 或 Unknown value type
             const raw = data.text;
             const text = typeof raw === 'string' ? raw : (raw && typeof raw.content === 'string' ? raw.content : (raw && typeof raw.text === 'string' ? raw.text : (raw != null ? String(raw) : '')));
             if (!text) return;
             // 若后端误将整段内容再发一次（与当前已累积内容完全相同），则不再追加，避免最后一轮显示两遍
             if (this.currentMessage.length > 0 && text === this.currentMessage) return;
+            // 与上一片 chunk 完全相同则跳过，避免回复缓慢时「每个字显示两遍」
+            if (text === this.lastStreamChunkText) return;
+            this.lastStreamChunkText = text;
 
             // Auto-start streaming if not active (handles multi-turn agent responses)
             const wasStreaming = this.isStreaming;
@@ -276,6 +303,7 @@ export const useAgentStore = defineStore('agent', {
             }
 
             this.currentMessage += text;
+            if (text) this.currentSystemMessage = '';
 
             const parts = this.currentStreamParts;
             const lastPart = parts[parts.length - 1];
@@ -321,6 +349,7 @@ export const useAgentStore = defineStore('agent', {
                     this.isStreaming = true;
                     this.currentMessage = '';
                     this.currentStreamParts = [];
+                    this.lastStreamChunkText = '';
                     this.toolExecutions = [];
                 }
 
@@ -404,15 +433,34 @@ export const useAgentStore = defineStore('agent', {
                     .catch((e) => console.warn('Record usage failed:', e));
             }
         },
-        /** agent_end：整轮对话真正结束，落库消息并允许再次输入。同步后端 session（含 agentId），便于对话内 switch_agent 后前端展示最新智能体。 */
+        clearFirstChunkTimeout() {
+            if (this.firstChunkTimeoutId != null) {
+                clearTimeout(this.firstChunkTimeoutId);
+                this.firstChunkTimeoutId = null;
+            }
+        },
+
+        handleSystemMessage(data) {
+            if (data?.sessionId !== this.currentSession?.id) return;
+            const text = typeof data?.text === 'string' ? data.text : '';
+            this.currentSystemMessage = text;
+        },
+
+        /** agent_end / conversation_end：整轮对话真正结束，落库消息并允许再次输入。报错或超时时保留已显示内容并追加错误文案。 */
         handleConversationEnd(data) {
             if (data?.sessionId !== this.currentSession?.id) return;
+            if (!this.isStreaming && !this.streamingMessageId) return;
+            this.clearFirstChunkTimeout();
             nextTick(() => {
-                const content = this.currentMessage || data.content || '';
+                const baseContent = this.currentMessage || data.content || '';
+                const content = this.streamErrorText ? baseContent + '\n\n' + this.streamErrorText : baseContent;
                 const toolCalls = [...this.toolExecutions];
-                const contentParts = this.currentStreamParts.map((p) =>
+                let contentParts = this.currentStreamParts.map((p) =>
                     p.type === 'text' ? { type: 'text', content: String(p.content ?? '') } : { type: 'tool', toolId: p.toolId }
                 );
+                if (this.streamErrorText) {
+                    contentParts = [...contentParts, { type: 'text', content: '\n\n' + this.streamErrorText }];
+                }
 
                 if (this.streamingMessageId) {
                     // 流式回复已在列表中，只做最终同步并落库，不 push，避免 DOM 先删后增导致闪烁
@@ -446,6 +494,9 @@ export const useAgentStore = defineStore('agent', {
 
                 this.currentMessage = '';
                 this.currentStreamParts = [];
+                this.lastStreamChunkText = '';
+                this.streamErrorText = '';
+                this.currentSystemMessage = '';
                 this.isStreaming = false;
                 this.streamingMessageId = null;
                 this.toolExecutions = [];

@@ -8,6 +8,17 @@ import { homedir } from "node:os";
 export const LOCAL_LLM_CACHE_DIR = join(homedir(), ".cache", "llama");
 
 /**
+ * 取 modelUri 的末尾文件名（用于与已安装文件灵活匹配：不同 node-llama-cpp 版本可能生成不同前缀）。
+ * 例：hf:Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf → Qwen3-4B-Q4_K_M.gguf
+ */
+export function modelUriBasename(modelUri: string): string {
+    const s = (modelUri || "").trim();
+    if (!s) return "";
+    const parts = s.replace(/\\/g, "/").split("/");
+    return parts[parts.length - 1] || s;
+}
+
+/**
  * 将 modelUri（hf:owner/repo/file.gguf）或文件名转为缓存目录下的文件名。
  * 与 LocalModelsService.predictFilename 逻辑一致。
  */

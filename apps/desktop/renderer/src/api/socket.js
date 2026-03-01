@@ -91,6 +91,7 @@ class SocketService {
                 'conversation_end': 'conversation_end',
                 'turn_end': 'turn_end',
                 'agent_end': 'agent_end',
+                'system_message': 'system_message',
             };
             const mappedEvent = eventMap[event] || event;
             this.emit(mappedEvent, payload);
@@ -135,7 +136,8 @@ class SocketService {
         if (targetAgentId !== undefined && targetAgentId !== null) {
             params.targetAgentId = targetAgentId;
         }
-        return this.call('agent.chat', params, 120000);
+        // 后端流式启动即返回；首响应可能较慢（冷启、首包等），给 3 分钟
+        return this.call('agent.chat', params, 180000);
     }
 
     /**

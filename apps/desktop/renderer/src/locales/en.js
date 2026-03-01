@@ -382,6 +382,7 @@ export default {
     placeholder: 'Type your message... (Shift+Enter for new line)',
     placeholderOpenCode: 'Type a message or use OpenCode commands: /init, /undo, /redo, /share, /help',
     thinking: 'Thinking...',
+    systemMessage: 'System',
     sessionsPanel: 'Sessions',
     showSessions: 'Show sessions',
     hideSessions: 'Hide sessions',
@@ -606,6 +607,7 @@ export default {
     localLlmSelectEmbedding: 'Embedding model',
     localLlmUseDefault: 'Use default',
     localLlmStartBtn: 'Start local model service',
+    localLlmRestartBtn: 'Restart local model service',
     localLlmStartFailed: 'Start failed',
   },
   lang: {

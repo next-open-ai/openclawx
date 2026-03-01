@@ -10,7 +10,7 @@ import type {
     RunAgentStreamCallbacks,
 } from "../types.js";
 
-const CHANNEL_AGENT_TIMEOUT_MS = 120_000;
+const CHANNEL_AGENT_TIMEOUT_MS = 300_000; // 5 分钟，本地/大模型回复可能较慢
 
 export const localAdapter: IAgentProxyAdapter = {
     type: "local",

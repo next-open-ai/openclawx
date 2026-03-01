@@ -60,7 +60,7 @@ const SYSTEM_MSG_SUFFIX = "\n";
 
 /**
  * 创建 Web 端会话消息消费者：将统一出口的 SessionMessage 转为 Gateway 事件并 broadcast。
- * 系统消息以 agent.chunk 形式发送，正文带 [System Message] 前缀且结尾换行，与当轮回复分行。
+ * 系统消息以独立事件 system_message 下发，前端做中间展示、不进入 session 聊天记录；各通道通过统一出口收到原始 system 消息后自行处理。
  */
 function createWebSessionConsumer(_sessionId: string): SessionMessageConsumer {
     return {
@@ -68,8 +68,7 @@ function createWebSessionConsumer(_sessionId: string): SessionMessageConsumer {
             const sid = msg.sessionId;
             if (msg.type === "system" && msg.code === "command.result") {
                 const raw = (msg.payload?.text as string) ?? "";
-                const text = raw ? SYSTEM_MSG_PREFIX + raw + SYSTEM_MSG_SUFFIX : "";
-                if (text) broadcastToSession(sid, createEvent("agent.chunk", { text, sessionId: sid }));
+                if (raw) broadcastToSession(sid, createEvent("system_message", { text: raw, code: "command.result", sessionId: sid }));
                 broadcastToSession(sid, createEvent("turn_end", { sessionId: sid, content: "" }));
                 broadcastToSession(sid, createEvent("message_complete", { sessionId: sid, content: "" }));
                 broadcastToSession(sid, createEvent("agent_end", { sessionId: sid }));
@@ -78,10 +77,7 @@ function createWebSessionConsumer(_sessionId: string): SessionMessageConsumer {
             }
             if (msg.type === "system" && msg.code === "mcp.progress") {
                 const raw = (msg.payload?.message as string) ?? (msg.payload?.phase as string) ?? "";
-                if (raw) {
-                    const text = SYSTEM_MSG_PREFIX + raw + SYSTEM_MSG_SUFFIX;
-                    broadcastToSession(sid, createEvent("agent.chunk", { text, sessionId: sid }));
-                }
+                if (raw) broadcastToSession(sid, createEvent("system_message", { text: raw, code: "mcp.progress", sessionId: sid }));
                 return;
             }
             if (msg.type === "chat") {
@@ -196,29 +192,26 @@ async function handleAgentChatInner(
                 sendSessionMessage(targetSessionId, { type: "chat", code: "agent_end", payload: {} });
                 sendSessionMessage(targetSessionId, { type: "chat", code: "conversation_end", payload: {} });
             };
-            try {
-                await runForChannelStream(
-                    {
-                        sessionId: targetSessionId,
-                        message,
-                        agentId: currentAgentId,
-                        signal,
+            runForChannelStream(
+                {
+                    sessionId: targetSessionId,
+                    message,
+                    agentId: currentAgentId,
+                    signal,
+                },
+                {
+                    onChunk(delta: string) {
+                        sendSessionMessage(targetSessionId, { type: "chat", code: "agent.chunk", payload: { text: delta } });
                     },
-                    {
-                        onChunk(delta: string) {
-                            sendSessionMessage(targetSessionId, { type: "chat", code: "agent.chunk", payload: { text: delta } });
-                        },
-                        onTurnEnd() {
-                            sendSessionMessage(targetSessionId, { type: "chat", code: "turn_end", payload: {} });
-                            sendSessionMessage(targetSessionId, { type: "chat", code: "message_complete", payload: {} });
-                        },
-                        onDone() {
-                            finishAndUnregister();
-                        },
-                    }
-                );
-                return { status: "completed", sessionId: targetSessionId };
-            } catch (error: any) {
+                    onTurnEnd() {
+                        sendSessionMessage(targetSessionId, { type: "chat", code: "turn_end", payload: {} });
+                        sendSessionMessage(targetSessionId, { type: "chat", code: "message_complete", payload: {} });
+                    },
+                    onDone() {
+                        finishAndUnregister();
+                    },
+                }
+            ).catch((error: any) => {
                 const isAbort = error?.name === "AbortError" || (typeof error?.message === "string" && error.message.includes("abort"));
                 if (!isAbort) console.error(`Error in agent chat (proxy ${runnerType}):`, error);
                 finishAndUnregister();
@@ -233,8 +226,8 @@ async function handleAgentChatInner(
                     }
                     sendSessionMessage(targetSessionId, { type: "chat", code: "agent.chunk", payload: { text: `请求失败：${errMsg}` } });
                 }
-                return { status: "completed", sessionId: targetSessionId };
-            }
+            });
+            return { status: "streaming", sessionId: targetSessionId };
         }
 
         const isEphemeralSession = sessionType === "system" || sessionType === "scheduled";
@@ -399,9 +392,8 @@ async function handleAgentChatInner(
 
         try {
             await session.sendUserMessage(message, { deliverAs: "followUp" });
-            await agentDonePromise;
-            console.log(`Agent chat completed for session ${targetSessionId}`);
-            return { status: "completed", sessionId: targetSessionId };
+            // 流已启动，立即返回；前端以 agent_end 判断整轮结束，超时以「首包」计算更优
+            return { status: "streaming", sessionId: targetSessionId };
         } catch (error: any) {
             console.error(`Error in agent chat:`, error);
             resolveAgentDone!();

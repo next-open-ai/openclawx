@@ -42,6 +42,12 @@
             :is-error="!!message.isError"
           />
 
+          <!-- 系统消息：中间展示，有正式回复或 agent_end 后消失，不进 session 记录 -->
+          <div v-if="currentSystemMessage" class="system-message-banner">
+            <span class="system-message-label">{{ t('chat.systemMessage') }}</span>
+            <span class="system-message-text">{{ currentSystemMessage }}</span>
+          </div>
+
           <!-- Executing placeholder: show as soon as streaming starts, before any content -->
           <div v-if="isStreaming && !currentMessage && toolExecutions.length === 0" class="streaming-placeholder">
             <div class="message-avatar">
@@ -350,6 +356,7 @@ export default {
     const isStreaming = computed(() => agentStore.isStreaming);
     const streamingMessageId = computed(() => agentStore.streamingMessageId);
     const currentMessage = computed(() => agentStore.currentMessage);
+    const currentSystemMessage = computed(() => agentStore.currentSystemMessage);
     const toolExecutions = computed(() => agentStore.toolExecutions);
     const streamContentParts = computed(() => {
       const parts = agentStore.currentStreamParts;
@@ -574,6 +581,7 @@ export default {
       isStreaming,
       streamingMessageId,
       currentMessage,
+      currentSystemMessage,
       toolExecutions,
       streamContentParts,
       inputMessage,
@@ -656,6 +664,29 @@ export default {
 
 .streaming-message {
   opacity: 0.9;
+}
+
+/* 系统消息：中间展示，不进会话记录 */
+.system-message-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin: 0 var(--spacing-lg);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+.system-message-label {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.system-message-text {
+  flex: 1;
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* 发送后、首包前：助手位「正在执行」占位 + 动画 */

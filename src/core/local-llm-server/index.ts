@@ -46,7 +46,7 @@ export interface LocalLlmServerOptions {
     embeddingModelPath?: string;
     /** 上下文窗口 token 数，默认 32768（32K），需能容纳 system + tools + 对话 */
     contextSize?: number;
-    /** 等待子进程就绪的超时毫秒数，默认 120000（模型下载可能较慢） */
+    /** 等待子进程就绪的超时毫秒数，默认 300000（5 分钟，冷启/大模型加载可能较慢） */
     readyTimeoutMs?: number;
 }
 
@@ -78,7 +78,7 @@ export async function startLocalLlmServer(
 
     const { fork } = await import("node:child_process");
     const port = opts.port ?? 11435;
-    const readyTimeoutMs = opts.readyTimeoutMs ?? 120_000;
+    const readyTimeoutMs = opts.readyTimeoutMs ?? 300_000;
 
     const env: NodeJS.ProcessEnv = {
         ...process.env,

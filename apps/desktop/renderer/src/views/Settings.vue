@@ -423,18 +423,18 @@
                     <label>{{ t('settings.localLlmSelectLlm') }}</label>
                     <select v-model="localLlmStartSelectedLlm" class="input select-input">
                       <option value="">— {{ t('settings.localLlmUseDefault') }}</option>
-                      <option v-for="m in installedLlmsForStart" :key="m.filename" :value="m.filename">{{ m.filename }}</option>
+                      <option v-for="m in installedLlmsForStart" :key="m.filename" :value="m.filename">{{ m.displayName || m.filename }}</option>
                     </select>
                   </div>
                   <div class="form-group">
                     <label>{{ t('settings.localLlmSelectEmbedding') }}</label>
                     <select v-model="localLlmStartSelectedEmb" class="input select-input">
                       <option value="">— {{ t('settings.localLlmUseDefault') }}</option>
-                      <option v-for="m in installedEmbeddingsForStart" :key="m.filename" :value="m.filename">{{ m.filename }}</option>
+                      <option v-for="m in installedEmbeddingsForStart" :key="m.filename" :value="m.filename">{{ m.displayName || m.filename }}</option>
                     </select>
                   </div>
                   <button type="button" class="btn-primary" :disabled="localLlmStartLoading" @click="startLocalLlmService">
-                    {{ localLlmStartLoading ? t('common.loading') : t('settings.localLlmStartBtn') }}
+                    {{ localLlmStartLoading ? t('common.loading') : (localLlmStatus.available ? t('settings.localLlmRestartBtn') : t('settings.localLlmStartBtn')) }}
                   </button>
                 </div>
               </template>
@@ -481,7 +481,7 @@
             <div v-else class="local-models-installed-list">
               <div v-for="m in localModelsList" :key="m.filename" class="local-model-row">
                 <div class="local-model-info">
-                  <span class="local-model-filename">{{ m.filename }}</span>
+                  <span class="local-model-filename" :title="m.filename">{{ m.displayName || m.filename }}</span>
                   <span class="local-model-type model-row-type">{{ m.inferredType }}</span>
                   <span class="local-model-size">{{ formatFileSize(m.size) }}</span>
                 </div>
@@ -1544,7 +1544,7 @@ export default {
         { id: 'local-llm', name: t('settings.localModelLlmPlaceholder') },
         { id: 'local-embedding', name: t('settings.localModelEmbeddingPlaceholder') },
       ];
-      return list.map((m) => ({ id: m.filename, name: m.filename }));
+      return list.map((m) => ({ id: m.filename, name: m.displayName || m.filename }));
     });
 
     /** 已安装的 LLM 列表，供「启动本地模型服务」下拉选择 */

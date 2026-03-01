@@ -77,10 +77,11 @@ export class ConfigController {
         return { success: true, data: await this.localModelsService.listModels() };
     }
 
-    /** 推荐的 GGUF 模型列表（供下载选择） */
+    /** 推荐的 GGUF 模型列表（来自 preset，与已安装展示名称一致） */
     @Get('local-models/recommended')
-    getRecommendedModels() {
-        return { success: true, data: this.localModelsService.getRecommendedModels() };
+    async getRecommendedModels() {
+        const data = await this.localModelsService.getRecommendedModels();
+        return { success: true, data };
     }
 
     /** 仅返回尚未安装的推荐模型（已安装的不显示在下载区） */

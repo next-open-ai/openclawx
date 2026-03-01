@@ -199,6 +199,7 @@ export async function chatCompletionStream(
 
         let fullText = "";
         let prevSentLength = 0;
+        let lastSent = ""; // 连续相同 delta 只发一次，缓解回复缓慢时「每个字显示两遍」
         try {
             await session.prompt(userPrompt, {
                 onTextChunk: (token: unknown) => {
@@ -214,7 +215,10 @@ export async function chatCompletionStream(
                     }
                     const toSend = fullText.slice(prevSentLength);
                     prevSentLength = fullText.length;
-                    if (toSend) onChunk({ content: toSend });
+                    if (toSend && toSend !== lastSent) {
+                        lastSent = toSend;
+                        onChunk({ content: toSend });
+                    }
                 },
                 signal,
             });

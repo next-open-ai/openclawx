@@ -382,6 +382,7 @@ export default {
     placeholder: '输入消息…（Shift+Enter 换行）',
     placeholderOpenCode: '输入消息，或使用 /init、/undo、/redo、/share、/help 等 OpenCode 指令',
     thinking: '思考中…',
+    systemMessage: '系统',
     sessionsPanel: '会话列表',
     showSessions: '显示会话列表',
     hideSessions: '隐藏会话列表',
@@ -606,6 +607,7 @@ export default {
     localLlmSelectEmbedding: 'Embedding 模型',
     localLlmUseDefault: '使用默认',
     localLlmStartBtn: '启动本地模型服务',
+    localLlmRestartBtn: '重启本地模型服务',
     localLlmStartFailed: '启动失败',
   },
   lang: {
