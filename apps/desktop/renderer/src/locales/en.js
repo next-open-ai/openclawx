@@ -591,8 +591,12 @@ export default {
     // Local model management
     localModelsNav: 'Local Models',
     localModelsHint: 'Manage local GGUF model files (node-llama-cpp). After downloading, you can select the file as the model ID when configuring the "local" provider in Model Config.',
-    localModelsDownload: 'Recommended Models (click to download)',
+    localModelsDownload: 'Recommended Models',
     localModelsDownloadBtn: 'Download',
+    localModelsDownloadChina: 'China',
+    localModelsDownloadGlobal: 'Global',
+    localModelsAlreadyDownloaded: 'Downloaded',
+    localModelsCancelDownload: 'Cancel',
     localModelsInstalled: 'Installed Local Models',
     localModelsEmpty: 'No local models downloaded yet. Download one from the list above.',
     localModelsDeleteConfirm: 'Delete this local model file? This cannot be undone.',

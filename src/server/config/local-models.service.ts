@@ -169,75 +169,113 @@ export class LocalModelsService {
         return existsSync(join(this.cacheDir, filename));
     }
 
+    /** 正在下载任务的 AbortController，用于取消 */
+    private abortControllerMap = new Map<string, AbortController>();
+
     /** 获取某个 modelUri 的下载进度（不存在则表示未在下载） */
     getDownloadProgress(modelUri: string): DownloadProgress | null {
         return this.downloadingMap.get(modelUri) ?? null;
     }
 
     /**
+     * 取消指定 modelUri 的下载（若正在下载）。
+     */
+    cancelDownload(modelUri: string): void {
+        const controller = this.abortControllerMap.get(modelUri);
+        if (controller) {
+            controller.abort();
+            this.downloadingMap.set(modelUri, { status: '已取消' });
+            this.abortControllerMap.delete(modelUri);
+            setTimeout(() => this.downloadingMap.delete(modelUri), 3000);
+        }
+    }
+
+    /**
+     * 返回所有推荐模型及是否已安装，用于前端展示「已下载」或下载按钮。
+     */
+    async getRecommendedWithStatus(): Promise<Array<RecommendedModel & { isInstalled: boolean }>> {
+        const [recommended, installed] = await Promise.all([
+            this.getRecommendedModelsFromPreset(),
+            this.listModels(),
+        ]);
+        const installedFilenames = new Set(installed.map((m) => m.filename));
+        return recommended.map((rec) => ({
+            ...rec,
+            isInstalled: recommendedMatchesInstalled(rec, installedFilenames),
+        }));
+    }
+
+    /**
      * 后台下载模型（通过 node-llama-cpp resolveModelFile）。
+     * useMirror=true 使用国内镜像 hf-mirror.com，false 使用官方 huggingface.co。
      * 返回后立即响应，进度通过 getDownloadProgress 轮询获取。
      */
-    async startDownload(modelUri: string): Promise<{ filename: string }> {
+    async startDownload(modelUri: string, options?: { useMirror?: boolean }): Promise<{ filename: string }> {
         if (this.downloadingMap.has(modelUri)) {
-            // 已在下载中，返回预期文件名
             return { filename: modelUriToFilename(modelUri) };
         }
 
+        const controller = new AbortController();
+        this.abortControllerMap.set(modelUri, controller);
         this.downloadingMap.set(modelUri, { status: '准备下载...' });
 
-        // 后台异步执行，不 await
-        this.runDownload(modelUri).catch((e) => {
-            this.downloadingMap.set(modelUri, { status: `下载失败: ${e?.message ?? e}` });
+        this.runDownload(modelUri, controller.signal, options?.useMirror === true).catch((e) => {
+            if (e?.name === 'AbortError' || (typeof e?.message === 'string' && e.message.includes('abort'))) {
+                this.downloadingMap.set(modelUri, { status: '已取消' });
+            } else {
+                const msg = e instanceof Error ? e.message : String(e);
+                let errorMsg = `失败: ${msg}`;
+                if (msg.includes('401') || msg.includes('Unauthorized')) {
+                    errorMsg = '下载失败: 需要 Hugging Face Token。请设置环境变量 HF_TOKEN 或 HUGGING_FACE_TOKEN';
+                }
+                this.downloadingMap.set(modelUri, { status: errorMsg });
+            }
+            this.abortControllerMap.delete(modelUri);
+            setTimeout(() => this.downloadingMap.delete(modelUri), 5000);
         });
 
         return { filename: modelUriToFilename(modelUri) };
     }
 
-    private async runDownload(modelUri: string): Promise<void> {
-        try {
-            const { resolveModelFile } = await import('node-llama-cpp');
-            this.downloadingMap.set(modelUri, { status: '解析模型地址...' });
+    private async runDownload(modelUri: string, signal: AbortSignal, useMirror: boolean): Promise<void> {
+        const { resolveModelFile } = await import('node-llama-cpp');
+        this.downloadingMap.set(modelUri, { status: '解析模型地址...' });
 
-            // 从环境变量读取 Hugging Face token（可选）
-            const hfToken = process.env.HF_TOKEN || process.env.HUGGING_FACE_TOKEN;
+        const hfToken = process.env.HF_TOKEN || process.env.HUGGING_FACE_TOKEN;
 
-            const options: any = {
-                directory: this.cacheDir,
-                onProgress: ({ downloadedSize, totalSize }: { downloadedSize: number; totalSize: number }) => {
-                    const percent = totalSize ? Math.round((downloadedSize / totalSize) * 100) : 0;
-                    this.downloadingMap.set(modelUri, {
-                        status: '下载中',
-                        completed: downloadedSize,
-                        total: totalSize,
-                        percent,
-                    });
-                },
-            };
+        const options: {
+            directory: string;
+            onProgress: (p: { downloadedSize: number; totalSize: number }) => void;
+            signal?: AbortSignal;
+            headers?: Record<string, string>;
+            endpoints?: { huggingFace: string };
+        } = {
+            directory: this.cacheDir,
+            onProgress: ({ downloadedSize, totalSize }: { downloadedSize: number; totalSize: number }) => {
+                if (signal?.aborted) return;
+                const percent = totalSize ? Math.round((downloadedSize / totalSize) * 100) : 0;
+                this.downloadingMap.set(modelUri, {
+                    status: '下载中',
+                    completed: downloadedSize,
+                    total: totalSize,
+                    percent,
+                });
+            },
+            signal,
+            endpoints: {
+                huggingFace: useMirror ? 'https://hf-mirror.com/' : 'https://huggingface.co/',
+            },
+        };
 
-            // 如果有 token，添加到请求头
-            if (hfToken) {
-                options.headers = { Authorization: `Bearer ${hfToken}` };
-            }
-
-            const resolved = await resolveModelFile(modelUri, options);
-
-            const filename = basename(resolved);
-            this.downloadingMap.set(modelUri, { status: `完成: ${filename}`, percent: 100 });
-            // 5 秒后清除进度记录
-            setTimeout(() => this.downloadingMap.delete(modelUri), 5000);
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
-            let errorMsg = `失败: ${msg}`;
-
-            // 如果是 401 错误，提供更友好的提示
-            if (msg.includes('401') || msg.includes('Unauthorized')) {
-                errorMsg = '下载失败: 需要 Hugging Face Token。请设置环境变量 HF_TOKEN 或 HUGGING_FACE_TOKEN';
-            }
-
-            this.downloadingMap.set(modelUri, { status: errorMsg });
-            throw e;
+        if (hfToken) {
+            options.headers = { Authorization: `Bearer ${hfToken}` };
         }
-    }
 
+        const resolved = await resolveModelFile(modelUri, options);
+
+        const filename = basename(resolved);
+        this.downloadingMap.set(modelUri, { status: `完成: ${filename}`, percent: 100 });
+        this.abortControllerMap.delete(modelUri);
+        setTimeout(() => this.downloadingMap.delete(modelUri), 5000);
+    }
 }

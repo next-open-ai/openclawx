@@ -591,8 +591,12 @@ export default {
     // 本地模型管理
     localModelsNav: '本地模型',
     localModelsHint: '管理本地 GGUF 模型文件（node-llama-cpp）。下载后可在「模型配置」中将 local provider 的模型指向已下载的文件。',
-    localModelsDownload: '推荐模型（点击下载）',
+    localModelsDownload: '推荐模型',
     localModelsDownloadBtn: '下载',
+    localModelsDownloadChina: '中国',
+    localModelsDownloadGlobal: '全球',
+    localModelsAlreadyDownloaded: '已下载',
+    localModelsCancelDownload: '取消下载',
     localModelsInstalled: '已安装的本地模型',
     localModelsEmpty: '暂无已下载的本地模型，请从上方推荐列表下载。',
     localModelsDeleteConfirm: '确定删除该本地模型文件？此操作不可恢复。',

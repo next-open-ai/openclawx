@@ -88,12 +88,17 @@ export const localModelsAPI = {
     getRecommended: () => apiClient.get('/config/local-models/recommended'),
     /** 仅返回尚未安装的推荐模型（已安装的不显示在下载区） */
     getRecommendedToDownload: () => apiClient.get('/config/local-models/recommended-to-download'),
+    /** 推荐模型列表含是否已安装（用于展示已下载 / 中国·全球下载） */
+    getRecommendedWithStatus: () => apiClient.get('/config/local-models/recommended-with-status'),
     /** 本地模型服务状态：available, error?, baseUrl? */
     getStatus: () => apiClient.get('/config/local-models/status'),
     /** 启动本地模型服务，可选 llmModelUri、embeddingModelUri（文件名或 hf: URI） */
     start: (body) => apiClient.post('/config/local-models/start', body),
-    /** 开始后台下载模型（立即返回，进度通过 getProgress 轮询） */
-    startDownload: (modelUri) => apiClient.post('/config/local-models/download', { modelUri }),
+    /** 开始后台下载模型。useMirror=true 使用国内镜像，false 使用全球官方源 */
+    startDownload: (modelUri, useMirror = false) =>
+        apiClient.post('/config/local-models/download', { modelUri, useMirror }),
+    /** 取消指定模型的下载 */
+    cancelDownload: (modelUri) => apiClient.post('/config/local-models/cancel-download', { modelUri }),
     /** 查询下载进度 */
     getProgress: (uri) => apiClient.get('/config/local-models/progress', { params: { uri } }),
     /** 删除本地缓存的 GGUF 模型文件 */

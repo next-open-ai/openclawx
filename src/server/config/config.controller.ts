@@ -136,11 +136,27 @@ export class ConfigController {
         }
     }
 
-    /** 开始后台下载模型（立即返回，进度通过 GET local-models/progress/:uri 轮询） */
+    /** 开始后台下载模型（立即返回，进度通过 GET local-models/progress 轮询）。useMirror=true 使用国内镜像。 */
     @Post('local-models/download')
-    async startDownload(@Body() body: { modelUri: string }) {
-        const result = await this.localModelsService.startDownload(body.modelUri);
+    async startDownload(@Body() body: { modelUri: string; useMirror?: boolean }) {
+        const result = await this.localModelsService.startDownload(body.modelUri, {
+            useMirror: body.useMirror === true,
+        });
         return { success: true, data: result };
+    }
+
+    /** 取消指定模型的下载 */
+    @Post('local-models/cancel-download')
+    cancelDownload(@Body() body: { modelUri: string }) {
+        this.localModelsService.cancelDownload(body.modelUri);
+        return { success: true };
+    }
+
+    /** 推荐模型列表（含是否已安装），用于展示「已下载」或中国/全球下载按钮 */
+    @Get('local-models/recommended-with-status')
+    async getRecommendedWithStatus() {
+        const models = await this.localModelsService.getRecommendedWithStatus();
+        return { success: true, data: models };
     }
 
     /** 查询下载进度 */

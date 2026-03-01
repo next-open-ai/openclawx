@@ -440,35 +440,49 @@
               </template>
             </div>
 
-            <!-- 推荐模型下载区（仅显示尚未安装的） -->
+            <!-- 推荐模型：已下载显示状态，未下载显示中国/全球按钮，下载中显示进度与取消 -->
             <template v-if="recommendedModels.length > 0">
               <div class="subsection-header">
                 <h4 class="subsection-title">{{ t('settings.localModelsDownload') }}</h4>
               </div>
               <div class="local-models-download-list">
                 <div v-for="rec in recommendedModels" :key="rec.id" class="local-model-rec-row">
-                <div class="local-model-rec-info">
-                  <span class="local-model-rec-name">{{ rec.name }}</span>
-                  <span class="local-model-rec-type model-row-type">{{ rec.type }}</span>
-                  <span class="local-model-rec-size">{{ rec.sizeHint }}</span>
-                </div>
-                <div class="local-model-rec-actions">
-                  <template v-if="downloadProgressMap[rec.id]">
-                    <span class="download-progress-text">
-                      {{ downloadProgressMap[rec.id].status }}
-                      <template v-if="downloadProgressMap[rec.id].percent != null">
-                        ({{ downloadProgressMap[rec.id].percent }}%)
-                      </template>
-                    </span>
-                  </template>
-                  <template v-else>
-                    <button type="button" class="btn-primary btn-sm" @click="startDownloadModel(rec.id)">
-                      {{ t('settings.localModelsDownloadBtn') }}
-                    </button>
-                  </template>
+                  <div class="local-model-rec-info">
+                    <span class="local-model-rec-name">{{ rec.name }}</span>
+                    <span class="local-model-rec-type model-row-type">{{ rec.type }}</span>
+                    <span class="local-model-rec-size">{{ rec.sizeHint }}</span>
+                  </div>
+                  <div class="local-model-rec-actions">
+                    <template v-if="rec.isInstalled">
+                      <span class="local-model-rec-badge downloaded">{{ t('settings.localModelsAlreadyDownloaded') }}</span>
+                    </template>
+                    <template v-else-if="downloadProgressMap[rec.id]">
+                      <span class="download-progress-text">
+                        {{ downloadProgressMap[rec.id].status }}
+                        <template v-if="downloadProgressMap[rec.id].percent != null">
+                          ({{ downloadProgressMap[rec.id].percent }}%)
+                        </template>
+                      </span>
+                      <button
+                        v-if="isDownloading(downloadProgressMap[rec.id])"
+                        type="button"
+                        class="btn-secondary btn-sm"
+                        @click="cancelDownloadModel(rec.id)"
+                      >
+                        {{ t('settings.localModelsCancelDownload') }}
+                      </button>
+                    </template>
+                    <template v-else>
+                      <button type="button" class="btn-primary btn-sm" @click="startDownloadModel(rec.id, true)">
+                        {{ t('settings.localModelsDownloadChina') }}
+                      </button>
+                      <button type="button" class="btn-secondary btn-sm" @click="startDownloadModel(rec.id, false)">
+                        {{ t('settings.localModelsDownloadGlobal') }}
+                      </button>
+                    </template>
+                  </div>
                 </div>
               </div>
-            </div>
             </template>
 
             <!-- 已下载的本地模型列表 -->
@@ -1448,14 +1462,16 @@ export default {
     async function refreshLocalModels() {
       localModelsLoading.value = true;
       try {
-        const res = await localModelsAPI.list();
-        localModelsList.value = res.data?.data ?? [];
-        localModelsAPI.getRecommendedToDownload().then((r) => {
-          recommendedModels.value = r.data?.data ?? [];
-        }).catch(() => {});
+        const [listRes, recommendedRes] = await Promise.all([
+          localModelsAPI.list(),
+          localModelsAPI.getRecommendedWithStatus(),
+        ]);
+        localModelsList.value = listRes.data?.data ?? [];
+        recommendedModels.value = recommendedRes.data?.data ?? [];
       } catch (e) {
         console.warn('[Settings] refreshLocalModels error', e);
         localModelsList.value = [];
+        recommendedModels.value = [];
       } finally {
         localModelsLoading.value = false;
       }
@@ -1463,23 +1479,37 @@ export default {
 
     async function initLocalModelsTab() {
       await refreshLocalModels();
-      try {
-        const res = await localModelsAPI.getRecommendedToDownload();
-        recommendedModels.value = res.data?.data ?? [];
-      } catch (e) {
-        console.warn('[Settings] getRecommendedToDownload error', e);
-        recommendedModels.value = [];
-      }
       await fetchLocalLlmStatus();
     }
 
-    async function startDownloadModel(modelUri) {
+    /** 是否处于可取消的下载中状态（准备/解析/下载中） */
+    function isDownloading(progress) {
+      if (!progress?.status) return false;
+      const s = progress.status;
+      return s === '准备下载...' || s === '解析模型地址...' || s === '下载中';
+    }
+
+    async function startDownloadModel(modelUri, useMirror = false) {
       try {
-        await localModelsAPI.startDownload(modelUri);
+        await localModelsAPI.startDownload(modelUri, useMirror);
         downloadProgressMap.value = { ...downloadProgressMap.value, [modelUri]: { status: '准备下载...' } };
         startDownloadPoll();
       } catch (e) {
         console.warn('[Settings] startDownload error', e);
+      }
+    }
+
+    async function cancelDownloadModel(modelUri) {
+      try {
+        await localModelsAPI.cancelDownload(modelUri);
+        downloadProgressMap.value = { ...downloadProgressMap.value, [modelUri]: { status: '已取消' } };
+        setTimeout(() => {
+          const next = { ...downloadProgressMap.value };
+          delete next[modelUri];
+          downloadProgressMap.value = next;
+        }, 2000);
+      } catch (e) {
+        console.warn('[Settings] cancelDownload error', e);
       }
     }
 
@@ -1499,7 +1529,7 @@ export default {
             const prog = res.data?.data;
             if (prog) {
               downloadProgressMap.value = { ...downloadProgressMap.value, [uri]: prog };
-              const isDone = prog.status?.startsWith('完成') || prog.status?.startsWith('失败');
+              const isDone = prog.status?.startsWith('完成') || prog.status?.startsWith('失败') || prog.status === '已取消';
               if (!isDone) anyActive = true;
               if (isDone) {
                 // 下载完成后刷新本地模型列表
@@ -2299,7 +2329,9 @@ export default {
       formatFileSize,
       refreshLocalModels,
       initLocalModelsTab,
+      isDownloading,
       startDownloadModel,
+      cancelDownloadModel,
       confirmDeleteLocalModel,
       channelFeishuDefaultAgentOptions,
       channelDingtalkDefaultAgentOptions,
@@ -3330,6 +3362,14 @@ export default {
 .download-progress-text {
   font-size: 0.8rem;
   color: var(--color-accent-primary);
+}
+
+.local-model-rec-badge.downloaded {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--glass-bg);
 }
 
 .local-models-installed-list {
