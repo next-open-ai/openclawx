@@ -12,7 +12,7 @@ Each agent has one **execution** mode:
 
 | Mode | Description |
 |------|-------------|
-| **local** | Run on this machine with pi-coding-agent and Skills; set provider/model (or modelItemCode) |
+| **local** | Run on this machine with pi-coding-agent and Skills; set provider/model (or modelItemCode). You can use a **local GGUF model** (node-llama-cpp) for **0 cloud Token usage**; see [Local inference: 0 Tokens](../guides/local-inference.md) |
 | **coze** | Proxy to Coze; set region and Bot ID, Access Token |
 | **openclawx** | Proxy to another OpenClawX instance; set baseUrl, optional apiKey |
 | **opencode** | Proxy to [OpenCode](https://opencode.ai/) (local `opencode serve` or remote); set port or address, optional password, working directory, model |
@@ -22,7 +22,7 @@ Each agent has one **execution** mode:
 
 ## agents.json outline
 
-- **local**: `runnerType: "local"`, provider, model, modelItemCode, workspace.
+- **local**: `runnerType: "local"`, provider, model, modelItemCode, workspace. For **local GGUF** (download and start under Settings → Model config → Local models), inference uses 0 cloud Tokens; see [Local inference: 0 Tokens](../guides/local-inference.md).
 - **Coze**: `runnerType: "coze"`, region (cn/com), coze.cn / coze.com (botId, apiKey).
 - **OpenClawX**: `runnerType: "openclawx"`, openclawx.baseUrl, openclawx.apiKey.
 - **OpenCode**: `runnerType: "opencode"`, opencode object (mode, port, address, password, model, workingDirectory).

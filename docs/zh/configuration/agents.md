@@ -12,7 +12,7 @@
 
 | 执行方式 | 说明 |
 |----------|------|
-| **local** | 本机执行，使用 pi-coding-agent 与 Skills，需配置 provider/model（或 modelItemCode） |
+| **local** | 本机执行，使用 pi-coding-agent 与 Skills，需配置 provider/model（或 modelItemCode）。可选**本地 GGUF 模型**（node-llama-cpp），实现 **0 云端 Token 消耗**，详见 [本地推理 0 Tokens 方案](../guides/local-inference.md) |
 | **coze** | 代理至 Coze 平台，需配置站点（region）及对应 Bot ID、Access Token |
 | **openclawx** | 代理至其他 OpenClawX 实例，需配置 baseUrl、可选 apiKey |
 | **opencode** | 代理至 [OpenCode](https://opencode.ai/) 官方 Server，需配置端口（本地）或地址+端口（远程），可选密码、工作目录、默认模型 |
@@ -22,7 +22,7 @@
 
 ## agents.json 结构要点
 
-- **local**：`runnerType: "local"`，并配置 provider、model、**modelItemCode**（匹配 config 中 configuredModels）、工作区等。
+- **local**：`runnerType: "local"`，并配置 provider、model、**modelItemCode**（匹配 config 中 configuredModels）、工作区等。若选用**本地 GGUF 模型**（在「设置 → 模型配置 → 本地模型」中下载并启动本地服务），则推理 0 云端 Token，参见 [本地推理 0 Tokens 方案](../guides/local-inference.md)。
 - **Coze**：`runnerType: "coze"`，配置 **region**（`cn` 国内 / `com` 国际）、**coze.cn** / **coze.com**（各含 botId、apiKey）。
 - **OpenClawX**：`runnerType: "openclawx"`，配置 **openclawx.baseUrl**、**openclawx.apiKey**（可选）。
 - **OpenCode**：`runnerType: "opencode"`，配置 **opencode** 对象：`mode`（local/remote）、`port`、远程时的 `address`、可选 `password`、`model`、`workingDirectory`。本地模式需先在本机运行 `opencode serve`。

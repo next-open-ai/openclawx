@@ -49,6 +49,7 @@ docs/zh/                        # 中文文档
 |------|------|
 | [CLI 使用](guides/cli-usage.md) | 命令行：对话、登录、模型与技能、开机自启 |
 | [桌面端使用](guides/desktop-usage.md) | Desktop 安装与启动、智能体/会话/技能/设置 |
+| [本地推理 0 Tokens 方案](guides/local-inference.md) | 本地 GGUF 配置与使用；**一键省 Token** 特征说明 |
 | [Web 与 Gateway](guides/gateway-web.md) | 启动网关、端口与路径、Web 端连接方式 |
 | [使用场景](guides/usage-scenarios.md) | 桌面/Web 典型场景：整理下载目录、创建/切换智能体、安装技能、MCP、定时任务等 |
 

@@ -48,6 +48,7 @@ docs/en/                        # English documentation
 |----------|-------------|
 | [CLI Usage](guides/cli-usage.md) | Command line: chat, login, model and skills, auto-start |
 | [Desktop Usage](guides/desktop-usage.md) | Desktop install and launch, agents/sessions/skills/settings |
+| [Local inference: 0 Tokens](guides/local-inference.md) | Local GGUF setup and usage; **one-click save Tokens** |
 | [Web and Gateway](guides/gateway-web.md) | Start gateway, ports and paths, Web client connection |
 | [Usage Scenarios](guides/usage-scenarios.md) | Organize downloads, create/switch agents, install skills, MCP, scheduled tasks |
 

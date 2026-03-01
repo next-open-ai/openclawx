@@ -20,6 +20,7 @@
 | | [安装与部署](docs/zh/guides/installation.md) | npm、Docker、Desktop 安装包及环境要求 |
 | **使用指南** | [CLI 使用](docs/zh/guides/cli-usage.md) | 命令行对话、登录、模型与技能、开机自启 |
 | | [桌面端使用](docs/zh/guides/desktop-usage.md) | Desktop 安装与启动、智能体/会话/技能/设置；对话内 `//` 指令查询与切换智能体 |
+| | [本地推理 0 Tokens 方案](docs/zh/guides/local-inference.md) | 本地 GGUF 配置与使用；**一键省 Token** 特征说明 |
 | | [Web 与 Gateway](docs/zh/guides/gateway-web.md) | 启动网关、端口与路径、Web 端连接 |
 | | [使用场景](docs/zh/guides/usage-scenarios.md) | 整理下载目录、创建/切换智能体、B站下载助手、安装技能、MCP、定时任务等 |
 | **配置** | [配置概览](docs/zh/configuration/config-overview.md) | 配置目录、config.json 与 agents.json |
@@ -53,6 +54,7 @@
 | **多端接入** | CLI、WebSocket 网关、Electron 桌面端，同一套 Agent 核心；各端技术栈见下方「各端技术栈」 |
 | **多通道接入** | 飞书、钉钉、Telegram、微信等 IM 通道，Gateway 根据配置注册；入站经统一格式进 Agent，回复经通道回传 |
 | **代理模式** | 智能体执行方式可选 **本机** / **Coze** / **OpenClawX** / **OpenCode** / **Claude Code**；本机使用当前模型与 Skills，**代理模式下本机 0 Token 消耗**，推理与消息处理在对方平台完成 |
+| **本地推理 0 Tokens** | 本机执行时可选 **本地 GGUF 模型**：在「设置 → 模型配置 → 本地模型」中下载/选择模型并启动本地推理服务，智能体选用 local + 本地模型后，**推理完全在本地进行，不消耗任何云端 API Token**，即 **一键省 Token**；适合私密对话、离线或配额有限场景。详见 [本地推理 0 Tokens 方案](docs/zh/guides/local-inference.md) |
 | **Coze 接入** | 支持 Coze 国内站（api.coze.cn）与国际站（api.coze.com）；按站点分别配置 Bot ID 与 Access Token（PAT/OAuth/JWT），桌面端与通道均可选用 Coze 智能体；**0 Token 消耗**，适合 Coze 侧大量消息与长对话场景 |
 | **OpenClawX 多节点协作** | 可将智能体代理到另一台 OpenClawX 实例（baseUrl + 可选 API Key），实现多节点分工、负载与协作；本机 0 Token 消耗 |
 | **OpenCode 代理** | 可将智能体代理至 [OpenCode](https://opencode.ai/) 官方 Server（本地 `opencode serve` 或远程）；支持流式回复、斜杠指令 `/init`、`/undo`、`/redo`、`/share`、`/help`，与 TUI 使用方式一致；**0 Token 消耗**，适合 OpenCode 侧大量代码与长上下文能力 |
@@ -60,6 +62,14 @@
 | **MCP** | 已支持 [MCP](https://modelcontextprotocol.io/)（Model Context Protocol）：智能体可配置 stdio/SSE 两种连接方式，按智能体绑定 MCP 服务器，会话内自动加载对应工具，降低 Token 消耗与大模型幻觉 |
 | **RPA（影刀）** | 通过 MCP 可接入影刀 RPA：在智能体 MCP 配置中添加 [yingdao-mcp-server](https://www.npmjs.com/package/yingdao-mcp-server)（命令 `npx -y yingdao-mcp-server`，可选 env 如 `RPA_MODEL`、`SHADOWBOT_PATH`、`USER_FOLDER`），即可在对话中调用影刀自动化能力 |
 | **插件支持** | 通过 `openbot extension install/list/uninstall` 在 `~/.openbot/plugins` 安装 npm 包形式扩展；详见 [插件与扩展](docs/zh/features/plugins.md) |
+
+### 本地推理 0 Tokens 方案（一键省 Token）
+
+当智能体执行方式为 **本机（local）** 且选用 **本地 GGUF 模型** 时，推理由本机 子进程完成，**不调用任何云端 API**，因此 **0 Token 消耗**。
+
+- **一键省 Token 含义**：在「设置 → 模型配置」中将默认（或某智能体）的 Provider 选为 **local**、模型选为已下载的本地 GGUF（如 Qwen3 4B/7B、EmbeddingGemma 等），即可实现「对话不花一分钱 Token」；无需改代码，无需代理到第三方，本机即可完成问答、工具调用与技能执行。
+- **配置与使用**：在桌面端「设置 → 模型配置 → 本地模型」中可下载推荐 GGUF、查看已安装模型、启动/重启本地模型服务（可选 LLM + Embedding）；在「模型配置」或「智能体」中为 local provider 选择对应本地模型与上下文长度。缺省模型文件不存在时本地服务不会自动启动，需在「本地模型」页下载或选择模型后点击「启动本地模型服务」。
+- 详细步骤与常见问题见 **[本地推理 0 Tokens 方案](docs/zh/guides/local-inference.md)**。
 
 ---
 
