@@ -8,6 +8,7 @@ import type { INestApplication } from '@nestjs/common';
 import express from 'express';
 import type { Express } from 'express';
 import { AppModule } from './app.module.js';
+import { ensureDesktopConfigInitialized } from '../core/config/desktop-config.js';
 
 const BODY_LIMIT = '10mb';
 
@@ -37,8 +38,10 @@ export async function createNestAppEmbedded(): Promise<NestAppResult> {
 
 /**
  * 独立启动时使用：设置 globalPrefix 并监听端口。
+ * 先执行桌面配置初始化，保证首次启动即有 local provider 与缺省模型。
  */
 export async function createNestAppStandalone(port: number = 38081): Promise<INestApplication> {
+    await ensureDesktopConfigInitialized();
     const app = await NestFactory.create(AppModule, {
         cors: true,
     });

@@ -2,12 +2,11 @@
  * 本地 GGUF 模型管理服务。
  * 负责列出、下载（通过 node-llama-cpp resolveModelFile）、删除本地缓存的 GGUF 模型文件。
  * 推荐列表从 presets/recommended-local-models.json 加载，已安装的与推荐使用同一套展示名称且已安装的不再出现在「备下载」列表。
- * 模型缓存目录：~/.cache/llama
+ * 模型缓存目录：~/.openbot/.cached_models/
  */
 import { Injectable } from '@nestjs/common';
 import { readdir, stat, unlink, readFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
-import { homedir } from 'node:os';
 import { existsSync, mkdirSync } from 'node:fs';
 import { modelUriToFilename, modelUriBasename, LOCAL_LLM_CACHE_DIR } from '../../core/local-llm-server/model-resolve.js';
 
@@ -85,7 +84,7 @@ export class LocalModelsService {
     private downloadingMap = new Map<string, DownloadProgress>();
 
     constructor() {
-        this.cacheDir = join(homedir(), '.cache', 'llama');
+        this.cacheDir = LOCAL_LLM_CACHE_DIR;
         if (!existsSync(this.cacheDir)) {
             mkdirSync(this.cacheDir, { recursive: true });
         }

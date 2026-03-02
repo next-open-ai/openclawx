@@ -4,8 +4,6 @@
  * 加载前会注册 ESM 钩子，将 "typescript" 解析为桩模块，避免依赖链加载 typescript.js（含 with 语句，ESM 下报错）。
  */
 import type { IEmbeddingProvider } from "./embedding-types.js";
-import { join } from "path";
-import { homedir } from "os";
 
 let cached: IEmbeddingProvider | null = null;
 let initError: Error | null = null;
@@ -51,9 +49,9 @@ export async function getLocalEmbeddingLlamaProvider(
         const { getLlama, resolveModelFile, LlamaLogLevel } = await import(
             "node-llama-cpp"
         );
+        const { LOCAL_LLM_CACHE_DIR } = await import("../local-llm-server/model-resolve.js");
         const llama = await getLlama({ logLevel: LlamaLogLevel.error });
-        const cacheDir = join(homedir(), ".cache", "llama");
-        const resolved = await resolveModelFile(effectivePath, cacheDir);
+        const resolved = await resolveModelFile(effectivePath, LOCAL_LLM_CACHE_DIR);
         const model = await llama.loadModel({ modelPath: resolved });
         const embeddingCtx = await model.createEmbeddingContext();
 

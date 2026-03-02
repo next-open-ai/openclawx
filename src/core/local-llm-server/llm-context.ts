@@ -1,16 +1,14 @@
 /**
  * node-llama-cpp 模型实例管理。
- * 同时持有一个 LLM chat 模型和一个 embedding 模型，各自独立上下文。
- * 推理和 embedding 请求串行处理（同一模型不支持并发），两个模型之间可并发。
+ * 可只加载 LLM、只加载 Embedding、或两者都加载；有一个就启动一个，不因缺另一个而失败。
  */
-import { join } from "node:path";
-import { homedir } from "node:os";
+import { LOCAL_LLM_CACHE_DIR } from "./model-resolve.js";
 
 export interface LlmContextOptions {
-    /** LLM 推理模型路径或 hf: URI */
-    llmModelPath: string;
-    /** Embedding 模型路径或 hf: URI */
-    embeddingModelPath: string;
+    /** LLM 推理模型路径或 hf: URI，可选；不传则仅提供 embedding */
+    llmModelPath?: string;
+    /** Embedding 模型路径或 hf: URI，可选；不传则仅提供 chat */
+    embeddingModelPath?: string;
     /** GPU layers，-1 表示全部卸载到 GPU（Metal），0 表示纯 CPU */
     gpuLayers?: number;
     /** 上下文窗口大小，默认 32768（32K） */
@@ -76,19 +74,31 @@ async function getLlamaInstance(gpuLayers?: number): Promise<any> {
 export async function initModels(opts: LlmContextOptions): Promise<void> {
     storedContextSize = opts.contextSize ?? 32768;
     const { resolveModelFile } = await import("node-llama-cpp");
-    const cacheDir = join(homedir(), ".cache", "llama");
     const instance = await getLlamaInstance(opts.gpuLayers);
+    const cacheDir = LOCAL_LLM_CACHE_DIR;
 
-    console.log("[local-llm] 加载 LLM 模型:", opts.llmModelPath);
-    const llmPath = await resolveModelFile(opts.llmModelPath, cacheDir);
-    llmModel = await instance.loadModel({ modelPath: llmPath });
+    if (opts.llmModelPath?.trim()) {
+        console.log("[local-llm] 加载 LLM 模型:", opts.llmModelPath);
+        const llmPath = await resolveModelFile(opts.llmModelPath, cacheDir);
+        llmModel = await instance.loadModel({ modelPath: llmPath });
+    } else {
+        llmModel = null;
+    }
 
-    console.log("[local-llm] 加载 Embedding 模型:", opts.embeddingModelPath);
-    const embPath = await resolveModelFile(opts.embeddingModelPath, cacheDir);
-    embeddingModel = await instance.loadModel({ modelPath: embPath });
-    embeddingCtx = await embeddingModel.createEmbeddingContext();
+    if (opts.embeddingModelPath?.trim()) {
+        console.log("[local-llm] 加载 Embedding 模型:", opts.embeddingModelPath);
+        const embPath = await resolveModelFile(opts.embeddingModelPath, cacheDir);
+        embeddingModel = await instance.loadModel({ modelPath: embPath });
+        embeddingCtx = await embeddingModel.createEmbeddingContext();
+    } else {
+        embeddingModel = null;
+        embeddingCtx = null;
+    }
 
-    console.log("[local-llm] 模型加载完成");
+    console.log("[local-llm] 模型加载完成", {
+        llm: !!llmModel,
+        embedding: !!embeddingCtx,
+    });
 }
 
 /** 将 API 可能传来的 content（string | array 如 [{ type: "text", text: "..." }]）规范为 string，避免 node-llama-cpp LlamaText.fromJSON 收到对象抛 "Unknown value type: [object Object]" */
@@ -278,6 +288,17 @@ export async function getEmbedding(text: string): Promise<number[]> {
     return vec.map((v) => v / norm);
 }
 
+/** 是否至少加载了一个模型（LLM 或 Embedding） */
 export function isReady(): boolean {
-    return llmModel !== null && embeddingCtx !== null;
+    return llmModel !== null || embeddingCtx !== null;
+}
+
+/** 是否有 LLM，可提供 chat/completions */
+export function isLlmReady(): boolean {
+    return llmModel !== null;
+}
+
+/** 是否有 Embedding，可提供 embeddings */
+export function isEmbeddingReady(): boolean {
+    return embeddingCtx !== null;
 }

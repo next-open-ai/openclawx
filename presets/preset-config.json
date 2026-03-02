@@ -1,11 +1,29 @@
 {
     "presetVersion": "1.0",
     "config": {
-        "defaultProvider": "deepseek",
-        "defaultModel": "deepseek-chat",
+        "defaultProvider": "local",
+        "defaultModel": "hf_Qwen_Qwen3-4B-GGUF_Qwen3-4B-Q4_K_M.gguf",
+        "defaultModelItemCode": "local-qwen3-4b",
         "defaultAgentId": "default",
-        "maxAgentSessions": 50,
-        "providers": {},
-        "configuredModels": []
+        "maxAgentSessions": 5,
+        "providers": {
+            "local": { "baseUrl": "http://127.0.0.1:11435/v1" }
+        },
+        "configuredModels": [
+            {
+                "provider": "local",
+                "modelId": "hf_Qwen_Qwen3-4B-GGUF_Qwen3-4B-Q4_K_M.gguf",
+                "type": "llm",
+                "alias": "Qwen3 4B Q4_K_M",
+                "modelItemCode": "local-qwen3-4b"
+            },
+            {
+                "provider": "local",
+                "modelId": "hf_ggml-org_embeddinggemma-300M-GGUF_embeddinggemma-300M-Q8_0.gguf",
+                "type": "embedding",
+                "alias": "EmbeddingGemma 300M Q8 (768维)",
+                "modelItemCode": "local-embeddinggemma-300m"
+            }
+        ]
     }
 }

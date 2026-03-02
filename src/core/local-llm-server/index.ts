@@ -15,17 +15,29 @@ import { fileURLToPath } from "node:url";
 
 async function runChildProcess(): Promise<void> {
     const port = parseInt(process.env.LOCAL_LLM_PORT ?? "11435", 10);
-    const llmModelPath = process.env.LOCAL_LLM_MODEL ?? "hf:Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf";
-    const embModelPath = process.env.LOCAL_EMB_MODEL ?? "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf";
-    const contextSize = process.env.LOCAL_LLM_CONTEXT_SIZE != null ? parseInt(process.env.LOCAL_LLM_CONTEXT_SIZE, 10) : undefined;
+    const llmModelPath = process.env.LOCAL_LLM_MODEL?.trim() || undefined;
+    const embModelPath = process.env.LOCAL_EMB_MODEL?.trim() || undefined;
+    let contextSize = process.env.LOCAL_LLM_CONTEXT_SIZE != null ? parseInt(process.env.LOCAL_LLM_CONTEXT_SIZE, 10) : undefined;
+    if (contextSize == null && process.env.LOCAL_LLM_CONTEXT_MAX != null && String(process.env.LOCAL_LLM_CONTEXT_MAX).trim() !== '') {
+        contextSize = parseInt(process.env.LOCAL_LLM_CONTEXT_MAX, 10) || undefined;
+    }
+
+    if (!llmModelPath && !embModelPath) {
+        console.error("[local-llm] 未指定 LLM 或 Embedding 模型路径，至少需提供一个");
+        if (process.send) process.send({ type: "error", message: "至少需指定 LOCAL_LLM_MODEL 或 LOCAL_EMB_MODEL" });
+        process.exit(1);
+    }
 
     const { initModels } = await import("./llm-context.js");
     const { createOpenAICompatServer } = await import("./server.js");
 
     try {
-        await initModels({ llmModelPath, embeddingModelPath: embModelPath, contextSize: contextSize ?? 32768 });
+        await initModels({
+            ...(llmModelPath ? { llmModelPath } : {}),
+            ...(embModelPath ? { embeddingModelPath: embModelPath } : {}),
+            contextSize: contextSize ?? 32768,
+        });
         await createOpenAICompatServer(port);
-        // 通知主进程已就绪
         if (process.send) {
             process.send({ type: "ready", port });
         }
@@ -137,6 +149,15 @@ export async function startLocalLlmServer(
             try { child.kill(); } catch { /* ignore */ }
         },
     };
+
+    // 子进程意外退出（崩溃、OOM 等）时清理 handle 与 env，避免后续请求继续连已死服务导致 "Connection error"
+    const onChildExit = (code: number | null, signal: NodeJS.Signals | null) => {
+        if (serverHandle) serverHandle = null;
+        process.env.LOCAL_LLM_START_FAILED = "本地模型服务已退出，请重新点击「启动本地模型服务」";
+        delete process.env.LOCAL_LLM_BASE_URL;
+        console.warn("[local-llm] 子进程已退出 code=%s signal=%s，请重新启动本地模型服务", code, signal);
+    };
+    child.on("exit", onChildExit);
 
     console.log(`[local-llm] 本地服务就绪: ${serverHandle.baseUrl}`);
     return serverHandle;

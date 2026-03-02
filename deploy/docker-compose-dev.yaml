@@ -6,12 +6,16 @@ services:
   openclawx:
     build:
       context: ..
-      dockerfile: deploy/Dockerfile
+      dockerfile: deploy/Dockerfile-dev
     image: openclawx:dev
     container_name: openclawx-dev
     ports:
-      - "38080:38080"
+      - "38888:38080"
     environment:
       - NODE_ENV=production
+      - LOCAL_LLM_CONTEXT_MAX=8192
     restart: unless-stopped
+    volumes:
+      # 持久化 ~/.openbot：配置（desktop/config 等）及本地模型缓存（.cached_models）
+      - ~/.openbot-data:/root/.openbot
     command: ["gateway", "--port", "38080"]

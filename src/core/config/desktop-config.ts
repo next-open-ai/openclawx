@@ -459,6 +459,8 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
             model = configured.modelId;
         }
     }
+    /** 是否从当前智能体自己的配置得到了模型（有 modelItemCode 或 provider/model）；若否，则使用的是全局默认 */
+    let agentHadOwnModel = false;
     let workspaceName: string = resolvedAgentId;
     let mcpServers: DesktopMcpServerConfig[] | DesktopMcpServersStandardFormat | undefined;
     let mcpMaxResultTokens: number | undefined;
@@ -495,18 +497,25 @@ export async function loadDesktopAgentConfig(agentId: string): Promise<DesktopAg
                     if (configured) {
                         provider = configured.provider;
                         model = configured.modelId;
+                        agentHadOwnModel = true;
                     } else {
-                        if (agent.provider) provider = agent.provider;
-                        if (agent.model) model = agent.model;
+                        if (agent.provider) { provider = agent.provider; agentHadOwnModel = true; }
+                        if (agent.model) { model = agent.model; agentHadOwnModel = true; }
                     }
                 } else {
-                    if (agent.provider) provider = agent.provider;
-                    if (agent.model) model = agent.model;
+                    if (agent.provider) { provider = agent.provider; agentHadOwnModel = true; }
+                    if (agent.model) { model = agent.model; agentHadOwnModel = true; }
                 }
             }
         } catch {
             // ignore
         }
+    }
+
+    // 本地 LLM 可用且当前智能体未配置自己的模型时，使用本地推理作为缺省，使所有智能体“拥有”该配置
+    if (!agentHadOwnModel && process.env.LOCAL_LLM_BASE_URL?.trim()) {
+        provider = "local";
+        model = "local-llm";
     }
 
     const provConfig = config.providers?.[provider];
@@ -895,31 +904,58 @@ export async function ensureProviderSupportFile(): Promise<void> {
     }
 }
 
-/** 若 config.json 不存在则用 preset-config.json 初始化，若存在则浅合并补充新基础键值 */
+/** 预装本地推理缺省：推荐列表第一个 LLM（Qwen3-4B）对应的本地文件名，与 modelUriToFilename 一致 */
+const DEFAULT_LOCAL_LLM_MODEL_ID = "hf_Qwen_Qwen3-4B-GGUF_Qwen3-4B-Q4_K_M.gguf";
+const DEFAULT_LOCAL_MODEL_ITEM_CODE = "local-qwen3-4b";
+
+/** 代码内建默认：local provider + 本地 Qwen3-4B，首次与合并时优先保证存在 */
+const BUILTIN_DEFAULT_CONFIG: DesktopConfigJson = {
+    defaultProvider: "local",
+    defaultModel: DEFAULT_LOCAL_LLM_MODEL_ID,
+    defaultModelItemCode: DEFAULT_LOCAL_MODEL_ITEM_CODE,
+    defaultAgentId: DEFAULT_AGENT_ID,
+    maxAgentSessions: DEFAULT_MAX_AGENT_SESSIONS,
+    providers: {
+        local: { baseUrl: "http://127.0.0.1:11435/v1" },
+    },
+    configuredModels: [
+        {
+            provider: "local",
+            modelId: DEFAULT_LOCAL_LLM_MODEL_ID,
+            type: "llm",
+            alias: "Qwen3 4B Q4_K_M",
+            modelItemCode: DEFAULT_LOCAL_MODEL_ITEM_CODE,
+        },
+        {
+            provider: "local",
+            modelId: "hf_ggml-org_embeddinggemma-300M-GGUF_embeddinggemma-300M-Q8_0.gguf",
+            type: "embedding",
+            alias: "EmbeddingGemma 300M Q8 (768维)",
+            modelItemCode: "local-embeddinggemma-300m",
+        },
+    ],
+};
+
+/** 若 config.json 不存在则用 preset-config.json 初始化，若存在则浅合并补充新基础键值。预装 local provider + 本地 Qwen3-4B 模型并设为缺省；preset 与代码默认合并，保证 local 一定存在。 */
 async function ensureConfigJsonInitialized(): Promise<void> {
     const presetPath = join(getPresetsDir(), "preset-config.json");
-    let presetConfig: DesktopConfigJson = {
-        defaultProvider: "ollama",
-        defaultModel: "qwen3:4b",
-        defaultAgentId: DEFAULT_AGENT_ID,
-        maxAgentSessions: DEFAULT_MAX_AGENT_SESSIONS,
-        providers: {
-            ollama: { baseUrl: "http://localhost:11434/v1" },
-        },
-        configuredModels: [
-            {
-                provider: "ollama",
-                modelId: "qwen3:4b",
-                type: "llm",
-                alias: "Qwen3 4B (本地)",
-                modelItemCode: "ollama:qwen3:4b",
-            },
-        ],
-    };
+    let presetConfig: DesktopConfigJson = { ...BUILTIN_DEFAULT_CONFIG };
     if (existsSync(presetPath)) {
         try {
             const data = JSON.parse(await readFile(presetPath, "utf-8"));
-            if (data.config) presetConfig = data.config;
+            if (data.config && typeof data.config === "object") {
+                presetConfig = { ...BUILTIN_DEFAULT_CONFIG, ...data.config };
+                presetConfig.providers = { ...BUILTIN_DEFAULT_CONFIG.providers, ...(presetConfig.providers || {}) };
+                const hasLocalModel = (presetConfig.configuredModels || []).some(
+                    (m: any) => m?.provider === "local" && (m?.modelId === DEFAULT_LOCAL_LLM_MODEL_ID || m?.modelItemCode === DEFAULT_LOCAL_MODEL_ITEM_CODE)
+                );
+                if (!hasLocalModel) {
+                    presetConfig.configuredModels = [
+                        ...(BUILTIN_DEFAULT_CONFIG.configuredModels || []),
+                        ...(presetConfig.configuredModels || []),
+                    ];
+                }
+            }
         } catch { }
     }
 
@@ -990,19 +1026,46 @@ async function ensureAgentsJsonInitialized(): Promise<void> {
         }
     }
 
+    // 所有未单独配置模型的智能体使用 config 的缺省模型（预装为 local + Qwen3-4B）
+    const configPath = join(getDesktopDir(), "config.json");
+    if (existsSync(configPath)) {
+        try {
+            const configRaw = await readFile(configPath, "utf-8");
+            const configData = JSON.parse(configRaw) as { defaultProvider?: string; defaultModel?: string; defaultModelItemCode?: string };
+            const defProvider = configData.defaultProvider?.trim();
+            const defModel = configData.defaultModel?.trim();
+            const defCode = configData.defaultModelItemCode?.trim();
+            if (defProvider && defModel) {
+                for (const agent of currentData.agents) {
+                    const hasOwn = (agent.provider && String(agent.provider).trim()) || (agent.model && String(agent.model).trim()) || (agent.modelItemCode && String(agent.modelItemCode).trim());
+                    if (!hasOwn) {
+                        agent.provider = defProvider;
+                        agent.model = defModel;
+                        if (defCode) agent.modelItemCode = defCode;
+                        changed = true;
+                    }
+                }
+            }
+        } catch { /* ignore */ }
+    }
+
     if (changed || !existsSync(agentsPath)) {
         await writeFile(agentsPath, JSON.stringify(currentData, null, 2), "utf-8");
     }
 }
 
 /**
- * CLI / Gateway 运行时调用，确保 config.json、provider-support.json、agents.json 均完成初始化。
+ * CLI / Gateway 运行时调用，确保 config.json、provider-support.json、agents.json 均完成初始化，
+ * 并同步到 agent 目录 models.json，供 pi ModelRegistry 解析 local 等模型与凭证。
  */
 export async function ensureDesktopConfigInitialized(): Promise<void> {
     ensureDesktopDir();
     await ensureProviderSupportFile();
     await ensureConfigJsonInitialized();
     await ensureAgentsJsonInitialized();
+    await syncDesktopConfigToModelsJson().catch((err) => {
+        console.warn("[ensureDesktopConfigInitialized] syncDesktopConfigToModelsJson failed:", err);
+    });
 }
 
 /**

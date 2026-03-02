@@ -11,5 +11,11 @@ services:
     environment:
       - NODE_ENV=production
     restart: unless-stopped
+    volumes:
+      # 持久化 ~/.openbot：配置（desktop/config 等）及本地模型缓存（.cached_models）
+      - ~/.openbot-data:/root/.openbot
     # 与 Dockerfile 一致：node dist/cli/cli.js gateway --port 38080
     command: ["gateway", "--port", "38080"]
+
+volumes:
+  openbot-data:

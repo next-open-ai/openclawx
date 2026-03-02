@@ -1,8 +1,8 @@
 import { Controller, Get, Put, Body, Param, Query, Delete, Post } from '@nestjs/common';
 import { OPENCODE_FREE_MODELS } from '../../core/agent/proxy/adapters/opencode-free-models.js';
-import { loadDesktopAgentConfig } from '../../core/config/desktop-config.js';
+import { loadDesktopAgentConfig, setDefaultModel } from '../../core/config/desktop-config.js';
 import { startLocalLlmServer, stopLocalLlmServer } from '../../core/local-llm-server/index.js';
-import { toModelPathForStart, LOCAL_LLM_CACHE_DIR } from '../../core/local-llm-server/model-resolve.js';
+import { toModelPathForStart, resolveModelPathInCache, LOCAL_LLM_CACHE_DIR } from '../../core/local-llm-server/model-resolve.js';
 import { ConfigService, AppConfig } from './config.service.js';
 import { LocalModelsService } from './local-models.service.js';
 
@@ -103,13 +103,30 @@ export class ConfigController {
         };
     }
 
-    /** 启动本地模型服务：可选指定 LLM 与 Embedding 模型（文件名或 hf: URI），先停后启 */
+    /** 启动本地模型服务：LLM/Embedding 任一已下载即可启动，只启动已存在的模型并提示；失败仅返回错误信息不抛错 */
     @Post('local-models/start')
     async startLocalLlm(@Body() body: { llmModelUri?: string; embeddingModelUri?: string }) {
         stopLocalLlmServer();
         delete process.env.LOCAL_LLM_BASE_URL;
         delete process.env.LOCAL_LLM_START_FAILED;
-        let contextSize = 32768;
+        const llmPath = body.llmModelUri?.trim();
+        const embPath = body.embeddingModelUri?.trim();
+        if (!llmPath && !embPath) {
+            return { success: false, data: { error: '请至少选择 LLM 或 Embedding 模型之一' } };
+        }
+        const llmResolved = llmPath ? resolveModelPathInCache(llmPath, LOCAL_LLM_CACHE_DIR) : '';
+        const embResolved = embPath ? resolveModelPathInCache(embPath, LOCAL_LLM_CACHE_DIR) : '';
+        if (!llmResolved && !embResolved) {
+            return { success: false, data: { error: '未找到已下载的模型文件，请先在「模型管理」中下载' } };
+        }
+        if (llmPath) {
+            try {
+                await setDefaultModel('local', llmPath);
+            } catch {
+                // 保存失败不阻断启动
+            }
+        }
+        let contextSize: number | undefined;
         try {
             const defaultAgent = await loadDesktopAgentConfig('default');
             if (defaultAgent?.contextSize != null && defaultAgent.contextSize > 0) {
@@ -118,21 +135,29 @@ export class ConfigController {
         } catch {
             // ignore
         }
-        const llmPath = body.llmModelUri?.trim();
-        const embPath = body.embeddingModelUri?.trim();
+        if (contextSize == null) {
+            const envMax = process.env.LOCAL_LLM_CONTEXT_MAX;
+            contextSize = envMax != null && String(envMax).trim() !== '' ? parseInt(envMax, 10) || 32768 : 32768;
+        }
         const opts = {
-            ...(llmPath ? { llmModelPath: toModelPathForStart(llmPath, LOCAL_LLM_CACHE_DIR) } : {}),
-            ...(embPath ? { embeddingModelPath: toModelPathForStart(embPath, LOCAL_LLM_CACHE_DIR) } : {}),
+            ...(llmResolved ? { llmModelPath: llmResolved } : {}),
+            ...(embResolved ? { embeddingModelPath: embResolved } : {}),
             contextSize,
         };
         try {
             const handle = await startLocalLlmServer(opts);
             process.env.LOCAL_LLM_BASE_URL = handle.baseUrl;
-            return { success: true, data: { baseUrl: handle.baseUrl } };
+            const message =
+                llmResolved && embResolved
+                    ? '已启动 LLM + Embedding'
+                    : llmResolved
+                      ? '已启动 LLM 模型（当前未使用 Embedding）'
+                      : '已启动 Embedding 模型（当前未使用 LLM）';
+            return { success: true, data: { baseUrl: handle.baseUrl, message } };
         } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
             process.env.LOCAL_LLM_START_FAILED = msg;
-            throw new Error(msg);
+            return { success: false, data: { error: msg } };
         }
     }
 

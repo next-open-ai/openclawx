@@ -1289,9 +1289,12 @@ export default {
     const configuredProviders = computed(() => {
       const cfg = localProviderConfig.value;
       if (!cfg || typeof cfg !== 'object') return [];
+      const noKeyProviders = ['local', 'ollama'];
       return Object.keys(cfg).filter((p) => {
         const entry = cfg[p];
-        return entry && typeof entry.apiKey === 'string' && entry.apiKey.trim() !== '';
+        if (!entry) return false;
+        if (noKeyProviders.includes(p)) return !!entry.baseUrl?.trim();
+        return typeof entry.apiKey === 'string' && entry.apiKey.trim() !== '';
       });
     });
     /** 已配置的模型列表（备用），从 config.configuredModels 来 */
@@ -1601,13 +1604,17 @@ export default {
     async function startLocalLlmService() {
       localLlmStartLoading.value = true;
       try {
-        await localModelsAPI.start({
+        const res = await localModelsAPI.start({
           llmModelUri: localLlmStartSelectedLlm.value || undefined,
           embeddingModelUri: localLlmStartSelectedEmb.value || undefined,
         });
+        const payload = res?.data;
+        if (payload && payload.success === false && payload.data?.error) {
+          alert(payload.data.error);
+        }
         await fetchLocalLlmStatus();
       } catch (e) {
-        const msg = e.response?.data?.message ?? e.message ?? t('settings.localLlmStartFailed');
+        const msg = e.response?.data?.message ?? e.response?.data?.data?.error ?? e.message ?? t('settings.localLlmStartFailed');
         alert(msg);
       } finally {
         localLlmStartLoading.value = false;

@@ -15,6 +15,19 @@ import {
     ensureDesktopConfigInitialized,
 } from "../core/config/desktop-config.js";
 import {
+    downloadModel,
+    DEFAULT_LLM_MODEL_URI,
+} from "../core/local-llm-server/download-model.js";
+import {
+    startLocalLlmServer,
+    stopLocalLlmServer,
+} from "../core/local-llm-server/index.js";
+import {
+    LOCAL_LLM_CACHE_DIR,
+    isModelFileInCache,
+    toModelPathForStart,
+} from "../core/local-llm-server/model-resolve.js";
+import {
     writeGatewayPid,
     removeGatewayPidFile,
     serviceInstall,
@@ -298,6 +311,110 @@ extensionCmd
     .description("Uninstall an extension package")
     .action((pkg: string) => {
         uninstallExtension(pkg);
+    });
+
+// 本地模型：下载与启动服务
+const localCmd = program
+    .command("local")
+    .description("下载本地 GGUF 模型与启动本地 LLM 服务");
+
+localCmd
+    .command("download")
+    .description("下载推荐模型到 ~/.openbot/.cached_models/，不指定模型时下载 Qwen3-4B")
+    .argument("[modelUri]", "模型 URI（如 hf:Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf），不传则下载 Qwen3-4B")
+    .option("--mirror", "使用国内镜像 hf-mirror.com 下载")
+    .action(async (modelUri: string | undefined, opts: { mirror?: boolean }) => {
+        const uri = (modelUri || "").trim() || DEFAULT_LLM_MODEL_URI;
+        console.log(`[openbot] 下载模型: ${uri}`);
+        if (opts.mirror) console.log("[openbot] 使用国内镜像 hf-mirror.com");
+        try {
+            const path = await downloadModel(uri, {
+                useMirror: opts.mirror,
+                onProgress: (p) => {
+                    const percent = p.totalSize ? Math.round((p.downloadedSize / p.totalSize) * 100) : (p.percent ?? 0);
+                    const mb = (p.downloadedSize / 1024 / 1024).toFixed(1);
+                    const totalMb = p.totalSize ? (p.totalSize / 1024 / 1024).toFixed(1) : "?";
+                    process.stderr.write(`\r[openbot] 下载中 ${percent}% (${mb} / ${totalMb} MB)`);
+                },
+            });
+            console.log(`\n[openbot] 已保存: ${path}`);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error("\n[openbot] 下载失败:", msg);
+            process.exit(1);
+        }
+    });
+
+localCmd
+    .command("start")
+    .description("启动本地 LLM 服务（至少指定 --llm 或 --embedding 之一）")
+    .option("--llm <uriOrFile>", "LLM 模型：hf: URI 或已下载文件名，不传则使用桌面缺省模型")
+    .option("--embedding <uriOrFile>", "Embedding 模型：hf: URI 或已下载文件名（可选）")
+    .option("--context-size <n>", "上下文长度（token 数），默认 32768 或环境变量 LOCAL_LLM_CONTEXT_MAX", (v: string) => parseInt(v, 10) || 32768)
+    .option("--port <port>", "服务端口", "11435")
+    .action(async (opts: { llm?: string; embedding?: string; contextSize?: number; port?: string }) => {
+        let llmPath: string | undefined;
+        let embPath: string | undefined;
+        if (opts.llm?.trim()) {
+            const llmArg = opts.llm.trim();
+            if (!llmArg.startsWith("hf:") && !isModelFileInCache(llmArg, LOCAL_LLM_CACHE_DIR)) {
+                console.error("[openbot] 模型未下载或路径不存在，请先执行: openbot local download [modelUri]");
+                process.exit(1);
+            }
+            llmPath = toModelPathForStart(llmArg, LOCAL_LLM_CACHE_DIR);
+        } else {
+            const agentConfig = await loadDesktopAgentConfig("default");
+            const defaultModel = agentConfig?.model?.trim();
+            if (defaultModel) {
+                llmPath = toModelPathForStart(defaultModel, LOCAL_LLM_CACHE_DIR);
+                if (!isModelFileInCache(defaultModel, LOCAL_LLM_CACHE_DIR)) {
+                    console.error("[openbot] 缺省模型未下载，请先执行: openbot local download");
+                    process.exit(1);
+                }
+            }
+        }
+        if (opts.embedding?.trim()) {
+            const embArg = opts.embedding.trim();
+            if (!embArg.startsWith("hf:") && !isModelFileInCache(embArg, LOCAL_LLM_CACHE_DIR)) {
+                console.error("[openbot] Embedding 模型未下载或路径不存在，请先执行: openbot local download <embedding-uri>");
+                process.exit(1);
+            }
+            embPath = toModelPathForStart(embArg, LOCAL_LLM_CACHE_DIR);
+        }
+        if (!llmPath && !embPath) {
+            console.error("[openbot] 请至少指定 --llm 或 --embedding，或先配置桌面缺省模型");
+            process.exit(1);
+        }
+        const contextSize =
+            opts.contextSize ??
+            (process.env.LOCAL_LLM_CONTEXT_MAX ? parseInt(process.env.LOCAL_LLM_CONTEXT_MAX, 10) : undefined) ??
+            32768;
+        const port = parseInt(opts.port || "11435", 10);
+        try {
+            const handle = await startLocalLlmServer({
+                port,
+                llmModelPath: llmPath,
+                embeddingModelPath: embPath,
+                contextSize,
+            });
+            console.log(`[openbot] 本地模型服务已启动: ${handle.baseUrl}`);
+            console.log("[openbot] 按 Ctrl+C 停止服务");
+            await new Promise<void>((resolve) => {
+                process.on("SIGINT", () => {
+                    stopLocalLlmServer();
+                    resolve();
+                });
+                process.on("SIGTERM", () => {
+                    stopLocalLlmServer();
+                    resolve();
+                });
+            });
+            process.exit(0);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error("[openbot] 启动失败:", msg);
+            process.exit(1);
+        }
     });
 
 (async () => {

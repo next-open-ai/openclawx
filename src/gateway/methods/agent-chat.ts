@@ -326,6 +326,11 @@ async function handleAgentChatInner(
                     if (errText.includes("Unknown value type") && errText.includes("[object Object]")) {
                         errText = "请求失败：模型返回了不支持的数据结构（如工具调用流），请尝试关闭工具或更换模型。";
                     }
+                    // 本地模型子进程退出后，SDK 会报 terminated/Connection error，用 env 中的说明替换为可操作提示
+                    const localFailed = process.env.LOCAL_LLM_START_FAILED;
+                    if (localFailed && (msg.errorMessage === "terminated" || /Connection error|ECONNREFUSED|fetch failed/i.test(msg.errorMessage))) {
+                        errText = `请求失败：${localFailed}`;
+                    }
                     sendSessionMessage(targetSessionId, { type: "chat", code: "agent.chunk", payload: { text: errText } });
                 }
                 wsPayload = null;
@@ -350,6 +355,10 @@ async function handleAgentChatInner(
                         : `请求失败：${normalizeChunkText(msg.errorMessage)}`;
                     if (errText.includes("Unknown value type") && errText.includes("[object Object]")) {
                         errText = "请求失败：模型返回了不支持的数据结构（如工具调用流），请尝试关闭工具或更换模型。";
+                    }
+                    const localFailed = process.env.LOCAL_LLM_START_FAILED;
+                    if (localFailed && (msg.errorMessage === "terminated" || /Connection error|ECONNREFUSED|fetch failed/i.test(msg.errorMessage))) {
+                        errText = `请求失败：${localFailed}`;
                     }
                     sendSessionMessage(targetSessionId, { type: "chat", code: "agent.chunk", payload: { text: errText } });
                     hasReceivedAnyChunk = true;

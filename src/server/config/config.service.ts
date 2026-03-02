@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { readFile, writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { existsSync } from 'fs';
 import { homedir } from 'os';
 import { getProviderSupport, syncDesktopConfigToModelsJson, type ChannelsConfig } from '../../core/config/desktop-config.js';
@@ -106,16 +106,31 @@ export class ConfigService {
         this.loadConfig();
     }
 
+    /** 预装本地推理缺省：与 desktop-config 的 DEFAULT_LOCAL_LLM_MODEL_ID / DEFAULT_LOCAL_MODEL_ITEM_CODE 一致 */
+    private static readonly DEFAULT_LOCAL_MODEL_ID = 'hf_Qwen_Qwen3-4B-GGUF_Qwen3-4B-Q4_K_M.gguf';
+    private static readonly DEFAULT_LOCAL_MODEL_ITEM_CODE = 'local-qwen3-4b';
+
     private getDefaultConfig(): AppConfig {
         return {
             gatewayUrl: 'ws://localhost:38080',
-            defaultProvider: 'deepseek',
-            defaultModel: 'deepseek-chat',
+            defaultProvider: 'local',
+            defaultModel: ConfigService.DEFAULT_LOCAL_MODEL_ID,
+            defaultModelItemCode: ConfigService.DEFAULT_LOCAL_MODEL_ITEM_CODE,
             defaultAgentId: 'default',
             theme: 'dark',
             maxAgentSessions: 5,
-            providers: {},
-            configuredModels: [],
+            providers: {
+                local: { baseUrl: 'http://127.0.0.1:11435/v1' },
+            },
+            configuredModels: [
+                {
+                    provider: 'local',
+                    modelId: ConfigService.DEFAULT_LOCAL_MODEL_ID,
+                    modelItemCode: ConfigService.DEFAULT_LOCAL_MODEL_ITEM_CODE,
+                    type: 'llm',
+                    alias: 'Qwen3 4B Q4_K_M',
+                },
+            ],
             rag: undefined,
             memory: {},
             channels: {},
@@ -132,18 +147,51 @@ export class ConfigService {
         try {
             if (existsSync(this.configPath)) {
                 const content = await readFile(this.configPath, 'utf-8');
-                this.config = { ...this.getDefaultConfig(), ...JSON.parse(content) };
+                const parsed = JSON.parse(content) as Partial<AppConfig>;
+                this.config = { ...this.getDefaultConfig(), ...parsed };
                 this.config.defaultAgentId = this.getDefaultAgentId(this.config);
+                // 保证 local 与缺省本地模型始终存在，避免旧配置或空配置覆盖产品默认
+                const def = this.getDefaultConfig();
+                if (!this.config.providers?.local) {
+                    this.config.providers = { ...(this.config.providers || {}), local: def.providers.local };
+                }
+                if (!(this.config.configuredModels || []).some((m) => m.provider === 'local')) {
+                    this.config.configuredModels = [...(def.configuredModels || []), ...(this.config.configuredModels || [])];
+                }
+            } else {
+                this.config = this.getDefaultConfig();
+                await this.saveConfig();
             }
         } catch (error) {
             console.error('Error loading config:', error);
         }
     }
 
-    /** 每次获取前从磁盘重新读取，保证打开配置界面时显示最新（含 CLI 写入的配置） */
+    /** 每次获取前从磁盘重新读取，保证打开配置界面时显示最新（含 CLI 写入的配置）。本地 LLM 可用时注入 local 与缺省模型项，供所有智能体使用。 */
     async getConfig(): Promise<AppConfig> {
         await this.loadConfig();
-        return this.config;
+        const baseUrl = process.env.LOCAL_LLM_BASE_URL?.trim();
+        if (!baseUrl) return this.config;
+        const out: AppConfig = { ...this.config };
+        out.providers = { ...(this.config.providers || {}) };
+        if (!out.providers['local']) {
+            out.providers['local'] = { baseUrl: baseUrl || 'http://127.0.0.1:11435/v1' };
+        } else if (!out.providers['local'].baseUrl?.trim()) {
+            out.providers['local'] = { ...out.providers['local'], baseUrl: baseUrl || 'http://127.0.0.1:11435/v1' };
+        }
+        const list = [...(out.configuredModels || [])];
+        const hasLocal = list.some((m) => m.provider === 'local' && m.modelId === 'local-llm');
+        if (!hasLocal) {
+            list.push({
+                provider: 'local',
+                modelId: 'local-llm',
+                modelItemCode: 'local-llm',
+                type: 'llm',
+                alias: '本地 LLM（当前加载）',
+            });
+            out.configuredModels = list;
+        }
+        return out;
     }
 
     async updateConfig(updates: Partial<AppConfig>): Promise<AppConfig> {
@@ -168,6 +216,7 @@ export class ConfigService {
 
     private async saveConfig(): Promise<void> {
         try {
+            await mkdir(dirname(this.configPath), { recursive: true });
             await writeFile(this.configPath, JSON.stringify(this.config, null, 2));
         } catch (error) {
             console.error('Error saving config:', error);

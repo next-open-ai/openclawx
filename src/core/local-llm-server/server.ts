@@ -10,7 +10,8 @@ import {
     chatCompletionStream,
     chatCompletion,
     getEmbedding,
-    isReady,
+    isLlmReady,
+    isEmbeddingReady,
     type ChatMessage,
     type ToolDefinition,
     type ToolCall,
@@ -95,7 +96,7 @@ async function handleChatCompletions(req: IncomingMessage, res: ServerResponse):
         return sendError(res, 400, "Invalid JSON body");
     }
 
-    if (!isReady()) return sendError(res, 503, "模型尚未加载完成，请稍后重试", "server_error");
+    if (!isLlmReady()) return sendError(res, 503, "LLM 模型未加载，请先启动本地模型服务并选择 LLM 模型", "server_error");
 
     if (!Array.isArray(body.messages)) {
         return sendError(res, 400, "Missing or invalid 'messages' (must be an array)", "invalid_request_error");
@@ -193,7 +194,7 @@ async function handleEmbeddings(req: IncomingMessage, res: ServerResponse): Prom
         return sendError(res, 400, "Invalid JSON body", "invalid_request_error");
     }
 
-    if (!isReady()) return sendError(res, 503, "模型尚未加载完成，请稍后重试", "server_error");
+    if (!isEmbeddingReady()) return sendError(res, 503, "Embedding 模型未加载，请先启动本地模型服务并选择 Embedding 模型", "server_error");
 
     const input = body.input;
     if (input === undefined || input === null) {
@@ -225,13 +226,10 @@ async function handleEmbeddings(req: IncomingMessage, res: ServerResponse): Prom
 }
 
 function handleModels(_req: IncomingMessage, res: ServerResponse): void {
-    sendJson(res, 200, {
-        object: "list",
-        data: [
-            { id: LLM_MODEL_ID, object: "model", created: 0, owned_by: "local" },
-            { id: EMB_MODEL_ID, object: "model", created: 0, owned_by: "local" },
-        ],
-    });
+    const data: { id: string; object: string; created: number; owned_by: string }[] = [];
+    if (isLlmReady()) data.push({ id: LLM_MODEL_ID, object: "model", created: 0, owned_by: "local" });
+    if (isEmbeddingReady()) data.push({ id: EMB_MODEL_ID, object: "model", created: 0, owned_by: "local" });
+    sendJson(res, 200, { object: "list", data });
 }
 
 export function createOpenAICompatServer(port: number): Promise<void> {

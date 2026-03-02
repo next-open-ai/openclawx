@@ -321,6 +321,10 @@ For downloads, provide either a direct URL or a selector to click.`;
         if (apiKey) {
             authStorage.setRuntimeApiKey(provider, apiKey);
         }
+        // local 无需真实 API Key，显式设置占位凭证，避免 SDK 走默认凭证链（如 AWS）导致 "Could not load credentials from any providers"
+        if (provider === "local") {
+            authStorage.setRuntimeApiKey("local", process.env.OPENAI_API_KEY || "local");
+        }
 
         if (await authStorage.hasAuth(provider)) {
             const key = await authStorage.getApiKey(provider);
