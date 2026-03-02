@@ -933,14 +933,14 @@
               <img src="@/assets/logo.svg" alt="OpenClawX" />
             </div>
             <h3>OpenClawX Desktop</h3>
-            <p class="version">{{ appVersion || 'v1.0.0' }}</p>
-            
-<div class="about-details">
-            <div class="detail-row">
+            <p class="version">{{ displayVersion }}</p>
+
+            <div class="about-details">
+              <div class="detail-row">
                 <span>{{ t('settings.platform') }}:</span>
                 <span>{{ platform }}</span>
               </div>
-              <div class="detail-row">
+              <div v-if="platform !== 'web'" class="detail-row">
                 <span>Electron:</span>
                 <span>{{ electronVersion }}</span>
               </div>
@@ -1390,6 +1390,10 @@ export default {
     const platform = window.electronAPI?.platform || 'web';
     const appVersion = ref('');
     const electronVersion = ref('Unknown');
+    const displayVersion = computed(() => {
+      if (platform !== 'web') return appVersion.value || 'v0.0.0';
+      return typeof __APP_VERSION__ !== 'undefined' ? `v${__APP_VERSION__}` : 'v0.0.0';
+    });
 
     const currentLocale = computed({
       get: () => localeStore.locale,
@@ -2395,6 +2399,7 @@ export default {
       currentLocale,
       platform,
       appVersion,
+      displayVersion,
       electronVersion,
       setTheme,
       defaultAgentOptions,

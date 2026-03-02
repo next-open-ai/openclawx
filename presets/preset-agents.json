@@ -68,7 +68,7 @@
       "useLongMemory": true,
       "mcpServers": {
         "akshare-tools": {
-          "command": "npx",
+          "command": "uvx",
           "args": ["-y", "akshare-tools"],
           "env": {}
         }
@@ -107,7 +107,11 @@
         "影刀 RPA MCP Server": {
           "command": "npx",
           "args": ["-y", "yingdao-mcp-server"],
-          "env": {}
+          "env": {
+            "RPA_MODEL": "qwen3-4b-q4_k_m",
+            "SHADOWBOT_PATH": "/Applications/影刀.app",
+            "USER_FOLDER": "/Users/ctrip/Library/Application Support/Shadowbot/users/718771925823332354"
+      }
         }
       }
     },
