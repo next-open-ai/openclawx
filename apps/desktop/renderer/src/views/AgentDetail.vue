@@ -489,6 +489,7 @@
           <div v-show="activeTab === 'mcp'" class="tab-panel mcp-panel">
             <h2 class="panel-title">{{ t('agents.mcpConfig') }}</h2>
             <p class="form-hint">{{ t('agents.mcpConfigHint') }}</p>
+            <p class="form-hint mcp-test-hint">{{ t('agents.mcpTestHint') }}</p>
 
             <div class="mcp-list">
               <div
@@ -502,6 +503,21 @@
                 <span class="mcp-item-name">{{ name }}</span>
                 <span class="mcp-item-text">{{ mcpServerDisplayText(entry) }}</span>
                 <div class="mcp-item-actions">
+                  <button
+                    type="button"
+                    class="link-btn"
+                    :disabled="mcpTestState[name] === 'loading'"
+                    @click="testMcpServer(name, entry)"
+                  >
+                    {{ mcpTestState[name] === 'loading' ? t('agents.mcpTestTesting') : t('agents.mcpTest') }}
+                  </button>
+                  <span v-if="mcpTestState[name] && mcpTestState[name] !== 'loading'" class="mcp-test-result" :class="mcpTestState[name].success ? 'success' : 'error'">
+                    <template v-if="mcpTestState[name].success">
+                      <span class="mcp-test-success-badge">{{ t('agents.mcpTestSuccessStatus') }}</span>
+                      {{ t('agents.mcpTestSuccess', { count: mcpTestState[name].toolsCount }) }}
+                    </template>
+                    <template v-else>{{ mcpTestState[name].error }}</template>
+                  </span>
                   <button type="button" class="link-btn" @click="startEditMcp(name)">
                     {{ t('common.edit') }}
                   </button>
@@ -615,7 +631,22 @@
               </template>
 
               <p v-if="mcpFormError" class="form-hint form-hint-warn">{{ mcpFormError }}</p>
+              <div v-if="mcpFormTestResult" class="form-hint mcp-form-test-result" :class="mcpFormTestResult.success ? 'success' : 'error'">
+                <template v-if="mcpFormTestResult.success">
+                  <span class="mcp-test-success-badge">{{ t('agents.mcpTestSuccessStatus') }}</span>
+                  {{ t('agents.mcpTestSuccess', { count: mcpFormTestResult.toolsCount }) }}
+                </template>
+                <template v-else>{{ mcpFormTestResult.error }}</template>
+              </div>
               <div class="mcp-form-actions">
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  :disabled="mcpFormTestLoading"
+                  @click="testMcpForm"
+                >
+                  {{ mcpFormTestLoading ? t('agents.mcpTestTesting') : t('agents.mcpTest') }}
+                </button>
                 <button type="button" class="btn-secondary" @click="cancelMcpForm">
                   {{ t('common.cancel') }}
                 </button>
@@ -893,6 +924,10 @@ export default {
     const mcpJsonError = ref('');
     /** MCP 单次返回最大 token，可选，不填则不限制 */
     const mcpMaxResultTokensForm = ref('');
+    /** 列表项测试状态：name -> 'loading' | { success, toolsCount } | { error } */
+    const mcpTestState = ref({});
+    const mcpFormTestLoading = ref(false);
+    const mcpFormTestResult = ref(null);
 
     /** 将后端返回的 array 转为标准对象（无名称时用 MCP Server 1, 2...） */
     function arrayToMcpStandardFormat(arr) {
@@ -969,6 +1004,84 @@ export default {
       mcpForm.value = getDefaultMcpForm();
       mcpFormError.value = '';
       mcpFormVisible.value = false;
+      mcpFormTestResult.value = null;
+    }
+
+    /** 从当前表单构建一条标准 MCP 配置（用于测试未保存的配置） */
+    function buildMcpEntryFromForm() {
+      const f = mcpForm.value;
+      if (f.transport === 'stdio') {
+        const cmd = (f.command || '').trim();
+        if (!cmd) return null;
+        const argsStr = (f.argsStr || '').trim();
+        const args = argsStr ? argsStr.split(/[\s,]+/).filter(Boolean) : undefined;
+        let env;
+        const envStr = (f.envStr || '').trim();
+        if (envStr) {
+          try {
+            env = JSON.parse(envStr);
+            if (typeof env !== 'object' || env === null) env = undefined;
+          } catch {
+            return null;
+          }
+        }
+        return { command: cmd, args, env };
+      }
+      const url = (f.url || '').trim();
+      if (!url) return null;
+      let headers;
+      const headersStr = (f.headersStr || '').trim();
+      if (headersStr) {
+        try {
+          headers = JSON.parse(headersStr);
+          if (typeof headers !== 'object' || headers === null) headers = undefined;
+        } catch {
+          return null;
+        }
+      }
+      return { url, headers };
+    }
+
+    async function testMcpServer(name, entry) {
+      mcpTestState.value = { ...mcpTestState.value, [name]: 'loading' };
+      try {
+        const res = await agentConfigAPI.testMcp(entry);
+        const data = res?.data ?? res;
+        const success = data?.success === true;
+        mcpTestState.value = {
+          ...mcpTestState.value,
+          [name]: success
+            ? { success: true, toolsCount: data?.toolsCount ?? 0 }
+            : { success: false, error: data?.error || t('agents.mcpTestFailed') },
+        };
+      } catch (err) {
+        const msg = err?.response?.data?.error || err?.message || String(err);
+        mcpTestState.value = { ...mcpTestState.value, [name]: { success: false, error: msg } };
+      }
+    }
+
+    async function testMcpForm() {
+      const entry = buildMcpEntryFromForm();
+      if (!entry) {
+        mcpFormError.value = t('agents.mcpTestInvalidConfig');
+        return;
+      }
+      mcpFormError.value = '';
+      mcpFormTestResult.value = null;
+      mcpFormTestLoading.value = true;
+      try {
+        const res = await agentConfigAPI.testMcp(entry);
+        const data = res?.data ?? res;
+        const success = data?.success === true;
+        mcpFormTestResult.value = success
+          ? { success: true, toolsCount: data?.toolsCount ?? 0 }
+          : { success: false, error: data?.error || t('agents.mcpTestFailed') };
+      } catch (err) {
+        const msg = err?.response?.data?.error || err?.message || String(err);
+        mcpFormTestResult.value = { success: false, error: msg };
+      } finally {
+        mcpFormTestLoading.value = false;
+      }
     }
 
     function saveMcpServer() {
@@ -1645,6 +1758,11 @@ export default {
       applyMcpJson,
       mcpJsonError,
       mcpMaxResultTokensForm,
+      mcpTestState,
+      mcpFormTestLoading,
+      mcpFormTestResult,
+      testMcpServer,
+      testMcpForm,
     };
   },
 };
@@ -2383,8 +2501,49 @@ export default {
 }
 .mcp-item-actions {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: var(--spacing-md);
   flex-shrink: 0;
+}
+.mcp-test-result {
+  font-size: var(--font-size-sm, 0.875rem);
+}
+.mcp-test-result.success {
+  color: var(--color-success, #28a745);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs, 0.25rem);
+}
+.mcp-test-success-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1em 0.4em;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--color-success, #28a745);
+  background: rgba(40, 167, 69, 0.12);
+  border-radius: var(--radius-sm, 4px);
+}
+.mcp-test-result.error {
+  color: var(--color-danger, #dc3545);
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mcp-form-test-result {
+  margin-top: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs, 0.25rem);
+}
+.mcp-form-test-result.success {
+  color: var(--color-success, #28a745);
+}
+.mcp-form-test-result.error {
+  color: var(--color-danger, #dc3545);
 }
 .mcp-form {
   padding: var(--spacing-lg);

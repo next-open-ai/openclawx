@@ -916,19 +916,14 @@ export default {
   overflow-x: auto;
   overflow-y: hidden;
   padding: 4px 4px;
-  scrollbar-width: thin;
   scroll-behavior: smooth;
+  /* 隐藏横向滚动条，保持界面简洁；仍可鼠标滚轮或左右箭头滚动 */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+/* 隐藏横向滚动条（仍可滚轮/箭头滚动），界面更简洁 */
 .agent-list-bar::-webkit-scrollbar {
-  height: 6px;
-}
-.agent-list-bar::-webkit-scrollbar-thumb {
-  background: rgba(102, 126, 234, 0.25);
-  border-radius: 6px;
-}
-.agent-list-bar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 6px;
+  display: none;
 }
 /* 智能体芯片：紧凑尺寸 */
 .agent-chip {

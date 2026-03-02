@@ -69,7 +69,7 @@
       "mcpServers": {
         "akshare-tools": {
           "command": "uvx",
-          "args": ["-y", "akshare-tools"],
+          "args": ["akshare-tools"],
           "env": {}
         }
       }
@@ -108,7 +108,7 @@
           "command": "npx",
           "args": ["-y", "yingdao-mcp-server"],
           "env": {
-            "RPA_MODEL": "qwen3-4b-q4_k_m",
+            "RPA_MODEL": "local",
             "SHADOWBOT_PATH": "/Applications/影刀.app",
             "USER_FOLDER": "/Users/ctrip/Library/Application Support/Shadowbot/users/718771925823332354"
       }

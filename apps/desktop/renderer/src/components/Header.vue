@@ -106,12 +106,14 @@ export default {
         Tasks: () => t('nav.tasks'),
         Workspace: () => t('nav.workspace'),
         WorkResults: () => t('nav.workResults'),
+        Channels: () => t('nav.channels'),
         Settings: () => t('nav.settings'),
       };
       const fn = nameToTitle[name];
       if (fn) return fn();
       if (route.path.startsWith('/chat')) return t('nav.agentChat');
       if (route.path.startsWith('/agents')) return t('nav.agents');
+      if (route.path === '/channels' || route.path.startsWith('/channels')) return t('nav.channels');
       if (route.path === '/settings' || route.path.startsWith('/settings')) return t('nav.settings');
       return t('app.name');
     });

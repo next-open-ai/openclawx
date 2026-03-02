@@ -30,6 +30,9 @@ export const agentConfigAPI = {
     updateAgent: (id, body) => apiClient.put(`/agent-config/${id}`, body),
     /** deleteWorkspaceDir: true 时同时删除工作区磁盘目录；默认仅删数据库中的工作区相关数据 */
     deleteAgent: (id, params) => apiClient.delete(`/agent-config/${id}`, { params: params || {} }),
+    /** 测试单条 MCP 配置是否可用（连接并拉取工具列表，可提前触发 uvx/npx 依赖安装） */
+    testMcp: (mcpServer) =>
+        apiClient.post('/agent-config/mcp/test', { mcpServer: mcpServer || {} }),
 };
 
 // Skills API

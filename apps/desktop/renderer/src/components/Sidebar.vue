@@ -57,12 +57,13 @@ import IconChat from '@/components/icons/IconChat.vue';
 import IconAgents from '@/components/icons/IconAgents.vue';
 import IconTasks from '@/components/icons/IconTasks.vue';
 import IconWorkResults from '@/components/icons/IconWorkResults.vue';
+import IconChannels from '@/components/icons/IconChannels.vue';
 import IconSettings from '@/components/icons/IconSettings.vue';
 import IconLogs from '@/components/icons/IconLogs.vue';
 
 export default {
   name: 'Sidebar',
-  components: { IconChat, IconAgents, IconTasks, IconWorkResults, IconSettings, IconLogs },
+  components: { IconChat, IconAgents, IconTasks, IconWorkResults, IconChannels, IconSettings, IconLogs },
   setup() {
     const route = useRoute();
     const { t } = useI18n();
@@ -70,6 +71,7 @@ export default {
     const navItems = computed(() => [
       { path: '/chat', label: t('nav.agentChat'), iconComponent: IconChat },
       { path: '/agents', label: t('nav.agents'), iconComponent: IconAgents },
+      { path: '/channels', label: t('nav.channels'), iconComponent: IconChannels },
       { path: '/tasks', label: t('nav.tasks'), iconComponent: IconTasks },
       { path: '/work-results', label: t('nav.workResults'), iconComponent: IconWorkResults },
     ]);

@@ -38,7 +38,9 @@ export class StdioTransport {
 
     constructor(config: McpServerConfigStdio, options: StdioTransportOptions = {}) {
         this.config = config;
-        this.initTimeoutMs = options.initTimeoutMs ?? 20_000;
+        const isUvx = /^uvx?$/i.test((config.command || "").trim().replace(/^.*[/\\]/, ""));
+        const defaultInitMs = isUvx ? 60_000 : 20_000;
+        this.initTimeoutMs = options.initTimeoutMs ?? defaultInitMs;
         this.requestTimeoutMs = options.requestTimeoutMs ?? 30_000;
         this.initRetries = options.initRetries ?? 1;
         this.initRetryDelayMs = options.initRetryDelayMs ?? 3_000;
@@ -63,7 +65,12 @@ export class StdioTransport {
             if (env.CI === undefined) env.CI = "1";
             if (env.UV_SILENT === undefined) env.UV_SILENT = "1";
         }
-        this.process = spawn(this.config.command, this.config.args ?? [], {
+        // uvx/uv 不支持 -y 参数（与 npx -y 不同），自动去掉以免报错 "unexpected argument '-y' found"
+        let args = this.config.args ?? [];
+        if (cmdBase === "uvx" || cmdBase === "uv") {
+            args = args.filter((a) => a !== "-y" && a !== "--yes");
+        }
+        this.process = spawn(this.config.command, args, {
             env,
             stdio: ["pipe", "pipe", "pipe"],
         });
@@ -85,6 +92,16 @@ export class StdioTransport {
             this.rejectAll(new Error(`MCP process error: ${err.message}`));
         });
         child.on("exit", (code, signal) => {
+            if (code !== 0 && code !== null) {
+                const cmd = this.config.command;
+                const args = JSON.stringify(this.config.args ?? []);
+                // 延后读取 stderr，以便管道中尚未 flush 的输出先写入 stderrBuffer
+                setImmediate(() => {
+                    const stderrTail = this.stderrBuffer.trim().slice(-2048) || "(无 stderr 输出)";
+                    console.warn(`[mcp stdio] 子进程异常退出 command=${cmd} args=${args} code=${code} signal=${signal}`);
+                    console.warn("[mcp stdio] 子进程 stderr 末尾:", stderrTail);
+                });
+            }
             this.rejectAll(new Error(`MCP process exited: code=${code} signal=${signal}`));
             this.process = null;
         });

@@ -18,7 +18,7 @@
         v-else
         type="button"
         class="btn-add-agent"
-        @click="showCreateProxyModal = true"
+        @click="openCreateProxyModal"
       >
         <span class="btn-icon">+</span>
         {{ t('agents.addProxyAgent') }}
@@ -100,13 +100,31 @@
           </div>
         </template>
         <template v-else>
-          <div v-if="proxyAgents.length === 0" class="empty-state">
+          <!-- 支持的代理类型卡片 + 新增按钮 -->
+          <div class="proxy-types-section card-glass">
+            <div class="proxy-types-cards">
+              <button
+                v-for="opt in proxyTypeOptions"
+                :key="opt.id"
+                type="button"
+                class="proxy-type-card"
+                @click="openCreateProxyWithType(opt.id)"
+              >
+                <span class="proxy-type-card-icon">{{ opt.icon }}</span>
+                <span class="proxy-type-card-name">{{ t(opt.labelKey) }}</span>
+                <span class="proxy-type-card-brief">{{ t(opt.briefKey) }}</span>
+              </button>
+            </div>
+            <button type="button" class="btn-add-proxy" @click="openCreateProxyModal">
+              <span class="btn-icon">+</span>
+              {{ t('agents.addProxyAgent') }}
+            </button>
+          </div>
+
+          <div v-if="proxyAgents.length === 0" class="empty-state proxy-empty">
             <div class="empty-icon">🔗</div>
             <p>{{ t('agents.noProxyAgents') }}</p>
             <p class="text-secondary">{{ t('agents.noProxyAgentsHint') }}</p>
-            <button class="btn-primary mt-4" @click="showCreateProxyModal = true">
-              {{ t('agents.addProxyAgent') }}
-            </button>
           </div>
           <div v-else class="agents-grid">
             <div
@@ -229,44 +247,61 @@
       </div>
     </transition>
 
-    <!-- 新增代理智能体弹窗 -->
+    <!-- 新增代理智能体弹窗：先选类型再填配置 -->
     <transition name="fade">
-      <div v-if="showCreateProxyModal" class="modal-backdrop" @click.self="showCreateProxyModal = false">
+      <div v-if="showCreateProxyModal" class="modal-backdrop" @click.self="closeCreateProxyModal">
         <div class="modal-content card-glass modal-content-wide">
           <div class="modal-header">
-            <h2>{{ t('agents.createProxyAgent') }}</h2>
-            <button type="button" class="close-btn" @click="showCreateProxyModal = false">✕</button>
+            <h2>{{ proxyCreateStep === 'type' ? t('agents.chooseProxyType') : t('agents.createProxyAgent') }}</h2>
+            <button type="button" class="close-btn" @click="closeCreateProxyModal">✕</button>
           </div>
           <div class="modal-body">
-            <div class="form-group">
-              <label>{{ t('agents.displayName') }}</label>
-              <input
-                v-model="proxyCreateForm.name"
-                type="text"
-                class="form-input"
-                :placeholder="t('agents.displayNamePlaceholder')"
-              />
-            </div>
-            <div class="form-group">
-              <label>{{ t('agents.workspaceName') }}</label>
-              <input
-                v-model="proxyCreateForm.workspace"
-                type="text"
-                class="form-input"
-                :placeholder="t('agents.workspaceNamePlaceholder')"
-              />
-              <p class="form-hint">{{ t('agents.workspaceNameHint') }}</p>
-            </div>
-            <div class="form-group">
-              <label>{{ t('agents.runnerType') }}</label>
-              <select v-model="proxyCreateForm.runnerType" class="form-input">
-                <option value="coze">{{ t('agents.runnerTypeCoze') }}</option>
-                <option value="openclawx">{{ t('agents.runnerTypeOpenclawx') }}</option>
-                <option value="opencode">{{ t('agents.runnerTypeOpencode') }}</option>
-                <option value="claude_code">{{ t('agents.runnerTypeClaudeCode') }}</option>
-              </select>
-              <p v-if="proxyCreateForm.runnerType === 'claude_code'" class="form-hint">{{ t('agents.runnerTypeClaudeCodeHint') }}</p>
-            </div>
+            <!-- 步骤 1：选择代理类型 -->
+            <template v-if="proxyCreateStep === 'type'">
+              <p class="modal-step-hint">{{ t('agents.chooseProxyTypeHint') }}</p>
+              <div class="proxy-type-select-grid">
+                <button
+                  v-for="opt in proxyTypeOptions"
+                  :key="opt.id"
+                  type="button"
+                  class="proxy-type-select-card"
+                  @click="selectProxyTypeAndGoConfig(opt.id)"
+                >
+                  <span class="proxy-type-select-icon">{{ opt.icon }}</span>
+                  <span class="proxy-type-select-name">{{ t(opt.labelKey) }}</span>
+                  <span class="proxy-type-select-brief">{{ t(opt.briefKey) }}</span>
+                </button>
+              </div>
+            </template>
+
+            <!-- 步骤 2：填写配置 -->
+            <template v-else>
+              <div class="modal-step-bar">
+                <span class="modal-step-label">{{ t('agents.runnerType') }}:</span>
+                <span class="modal-step-value">{{ proxyTypeLabelByKey(proxyCreateForm.runnerType) }}</span>
+                <button type="button" class="link-btn modal-step-back" @click="proxyCreateStep = 'type'">
+                  {{ t('agents.changeProxyType') }}
+                </button>
+              </div>
+              <div class="form-group">
+                <label>{{ t('agents.displayName') }}</label>
+                <input
+                  v-model="proxyCreateForm.name"
+                  type="text"
+                  class="form-input"
+                  :placeholder="t('agents.displayNamePlaceholder')"
+                />
+              </div>
+              <div class="form-group">
+                <label>{{ t('agents.workspaceName') }}</label>
+                <input
+                  v-model="proxyCreateForm.workspace"
+                  type="text"
+                  class="form-input"
+                  :placeholder="t('agents.workspaceNamePlaceholder')"
+                />
+                <p class="form-hint">{{ t('agents.workspaceNameHint') }}</p>
+              </div>
             <template v-if="proxyCreateForm.runnerType === 'claude_code'">
               <div class="form-group">
                 <label>{{ t('agents.claudeCodeWorkingDirectory') }}</label>
@@ -467,14 +502,15 @@
               </template>
             </template>
             <p v-if="proxyCreateError" class="form-error">{{ proxyCreateError }}</p>
-            <div class="modal-footer-actions">
-              <button type="button" class="btn-secondary" @click="showCreateProxyModal = false">
+            <div v-if="proxyCreateStep === 'config'" class="modal-footer-actions">
+              <button type="button" class="btn-secondary" @click="closeCreateProxyModal">
                 {{ t('common.close') }}
               </button>
               <button type="button" class="btn-primary" :disabled="proxyCreateSaving" @click="doCreateProxy">
                 {{ proxyCreateSaving ? t('common.loading') : t('agents.create') }}
               </button>
             </div>
+            </template>
           </div>
         </div>
       </div>
@@ -519,6 +555,14 @@ const FALLBACK_DEFAULT_AGENT = {
   isDefault: true,
 };
 
+/** 支持的代理类型（用于卡片展示与弹窗选择） */
+const PROXY_TYPE_OPTIONS = [
+  { id: 'coze', labelKey: 'agents.runnerTypeCoze', briefKey: 'agents.proxyTypeBriefCoze', icon: '🤖' },
+  { id: 'openclawx', labelKey: 'agents.runnerTypeOpenclawx', briefKey: 'agents.proxyTypeBriefOpenclawx', icon: '🔗' },
+  { id: 'opencode', labelKey: 'agents.runnerTypeOpencode', briefKey: 'agents.proxyTypeBriefOpencode', icon: '⚡' },
+  { id: 'claude_code', labelKey: 'agents.runnerTypeClaudeCode', briefKey: 'agents.proxyTypeBriefClaudeCode', icon: '⌘' },
+];
+
 function keyFor(provider, modelId) {
   return (provider || '') + '::' + (modelId || '');
 }
@@ -533,6 +577,9 @@ export default {
     const agentTab = ref('local');
     const showCreateModal = ref(false);
     const showCreateProxyModal = ref(false);
+    const proxyCreateStep = ref('type');
+    const proxyCreateSelectedType = ref(null);
+    const proxyTypeOptions = PROXY_TYPE_OPTIONS;
     const showDeleteConfirm = ref(false);
     const deleteTargetAgent = ref(null);
     const deleteAgentSaving = ref(false);
@@ -585,11 +632,34 @@ export default {
 
     function proxyTypeLabel(agent) {
       const rt = agent?.runnerType;
-      if (rt === 'coze') return t('agents.runnerTypeCoze');
-      if (rt === 'openclawx') return t('agents.runnerTypeOpenclawx');
-      if (rt === 'opencode') return t('agents.runnerTypeOpencode');
-      if (rt === 'claude_code') return t('agents.runnerTypeClaudeCode');
-      return rt || '—';
+      return proxyTypeLabelByKey(rt);
+    }
+    function proxyTypeLabelByKey(runnerType) {
+      if (runnerType === 'coze') return t('agents.runnerTypeCoze');
+      if (runnerType === 'openclawx') return t('agents.runnerTypeOpenclawx');
+      if (runnerType === 'opencode') return t('agents.runnerTypeOpencode');
+      if (runnerType === 'claude_code') return t('agents.runnerTypeClaudeCode');
+      return runnerType || '—';
+    }
+    function openCreateProxyModal() {
+      proxyCreateStep.value = 'type';
+      proxyCreateSelectedType.value = null;
+      showCreateProxyModal.value = true;
+    }
+    function openCreateProxyWithType(typeId) {
+      proxyCreateSelectedType.value = typeId;
+      proxyCreateStep.value = 'config';
+      proxyCreateForm.value.runnerType = typeId;
+      showCreateProxyModal.value = true;
+    }
+    function selectProxyTypeAndGoConfig(typeId) {
+      proxyCreateForm.value.runnerType = typeId;
+      proxyCreateStep.value = 'config';
+    }
+    function closeCreateProxyModal() {
+      showCreateProxyModal.value = false;
+      proxyCreateStep.value = 'type';
+      proxyCreateSelectedType.value = null;
     }
 
     const createModelOptions = computed(() => {
@@ -702,7 +772,7 @@ export default {
     watch(showCreateProxyModal, (visible) => {
       if (visible) {
         proxyCreateError.value = '';
-        proxyCreateForm.value = {
+        const defaultForm = {
           name: '',
           workspace: '',
           runnerType: 'coze',
@@ -716,6 +786,13 @@ export default {
           opencode: { mode: 'local', address: '', port: 4096, username: '', password: '', model: '', workingDirectory: '' },
           claudeCode: { workingDirectory: '' },
         };
+        proxyCreateForm.value = { ...defaultForm };
+        if (proxyCreateSelectedType.value) {
+          proxyCreateStep.value = 'config';
+          proxyCreateForm.value.runnerType = proxyCreateSelectedType.value;
+        } else {
+          proxyCreateStep.value = 'type';
+        }
       }
     });
 
@@ -786,7 +863,7 @@ export default {
           updateBody.claudeCode = wd ? { workingDirectory: wd } : undefined;
         }
         await agentConfigAPI.updateAgent(id, updateBody);
-        showCreateProxyModal.value = false;
+        closeCreateProxyModal();
         await loadAgents();
         router.push(`/agents/${id}?tab=proxy`);
       } catch (e) {
@@ -870,6 +947,14 @@ export default {
       proxyTypeLabel,
       showCreateModal,
       showCreateProxyModal,
+      proxyCreateStep,
+      proxyCreateSelectedType,
+      proxyTypeOptions,
+      openCreateProxyModal,
+      openCreateProxyWithType,
+      selectProxyTypeAndGoConfig,
+      closeCreateProxyModal,
+      proxyTypeLabelByKey,
       proxyCreateForm,
       proxyCreateError,
       proxyCreateSaving,
@@ -1022,6 +1107,164 @@ export default {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+}
+
+/* 代理类型卡片区 + 新增按钮 */
+.proxy-types-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  background: var(--color-bg-secondary);
+}
+.proxy-types-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  flex: 1;
+  min-width: 0;
+}
+.proxy-type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-width: 100px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+  text-align: center;
+}
+.proxy-type-card:hover {
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+.proxy-type-card.selected {
+  border-color: var(--color-accent-primary);
+  background: rgba(102, 126, 234, 0.08);
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+.proxy-type-card-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.proxy-type-card-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.proxy-type-card-brief {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  line-height: 1.2;
+}
+.btn-add-proxy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: white;
+  background: var(--color-accent-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: filter var(--transition-fast);
+}
+.btn-add-proxy:hover {
+  filter: brightness(1.08);
+}
+.btn-add-proxy .btn-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.proxy-empty {
+  margin-top: var(--spacing-md);
+}
+
+/* 弹窗：选择类型步骤 */
+.modal-step-hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-lg) 0;
+  line-height: 1.5;
+}
+.proxy-type-select-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--spacing-md);
+}
+.proxy-type-select-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  text-align: center;
+}
+.proxy-type-select-card:hover {
+  border-color: var(--color-accent-primary);
+  background: rgba(102, 126, 234, 0.06);
+}
+.proxy-type-select-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+.proxy-type-select-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.proxy-type-select-brief {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  line-height: 1.2;
+}
+
+/* 弹窗：配置步骤顶部类型栏 */
+.modal-step-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+.modal-step-label {
+  color: var(--color-text-secondary);
+}
+.modal-step-value {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.modal-step-back {
+  margin-left: auto;
+  font-size: var(--font-size-sm);
+  color: var(--color-accent-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.modal-step-back:hover {
+  text-decoration: underline;
 }
 
 .modal-content-wide {

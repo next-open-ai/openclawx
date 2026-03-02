@@ -4,6 +4,9 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import { homedir } from 'os';
 import type { McpServerConfig, McpServersStandardFormat } from '../../core/mcp/index.js';
+import type { McpServerConfigStandardEntry } from '../../core/mcp/types.js';
+import { testMcpConnection } from '../../core/mcp/operator.js';
+import { standardFormatToArray } from '../../core/mcp/config.js';
 import { addPendingAgentReload } from '../../core/config/agent-reload-pending.js';
 import { DatabaseService } from '../database/database.service.js';
 import { WorkspaceService } from '../workspace/workspace.service.js';
@@ -448,5 +451,17 @@ export class AgentConfigService {
             agent.modelItemCode = modelItemCode;
         }
         await this.writeAgentsFile(file);
+    }
+
+    /**
+     * 测试单条 MCP 配置是否可用（连接并拉取工具列表后断开）。
+     * 用于配置界面「测试」按钮，可提前触发 uvx/npx 依赖安装。
+     */
+    async testMcpServer(entry: McpServerConfigStandardEntry): Promise<{ success: boolean; error?: string; toolsCount?: number }> {
+        const configs = standardFormatToArray({ test: entry });
+        if (configs.length === 0) {
+            return { success: false, error: '无效配置：需 command（本地进程）或 url（远程服务）' };
+        }
+        return testMcpConnection(configs[0], { initTimeoutMs: 60_000 });
     }
 }

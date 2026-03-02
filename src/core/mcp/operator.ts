@@ -18,14 +18,12 @@ function configLabel(config: McpServerConfig): string {
     return config.url;
 }
 
-/** 用于系统消息展示的 MCP 名称：stdio 优先用首参（如 akshare-tools），否则 command；sse 用 URL 主机或路径末段 */
+/** 用于系统消息展示的 MCP 名称：stdio 优先用首个非选项参数（如 akshare-tools），否则 command；sse 用 URL 主机或路径末段 */
 function mcpDisplayName(config: McpServerConfig): string {
     if (config.transport === "stdio") {
         const args = (config as McpServerConfigStdio).args;
-        const first = args?.[0];
-        if (typeof first === "string" && first.trim() && !first.includes("/") && !first.includes("\\")) {
-            return first.trim();
-        }
+        const nameArg = (args ?? []).find((a) => typeof a === "string" && a.trim() && !a.startsWith("-") && !a.includes("/") && !a.includes("\\"));
+        if (nameArg) return (nameArg as string).trim();
         return config.command;
     }
     try {
@@ -118,8 +116,13 @@ export async function getMcpToolDefinitions(
                 } catch (err) {
                     if (client) try { await client.close(); } catch {}
                     if (attempt === connectRetries) {
-                        console.warn(`[mcp] 连接失败 (${label}):`, err instanceof Error ? err.message : err);
                         const errMsg = err instanceof Error ? err.message : String(err);
+                        console.warn(`[mcp] 连接失败 (${label}):`, errMsg);
+                        const enoentHint =
+                            /ENOENT/.test(errMsg) && /uvx|npx/.test(errMsg)
+                                ? " 若在 Docker 中运行，请使用已安装 uv/npx 的镜像（Dockerfile 中需安装 uv 并设置 PATH=/root/.local/bin）并重新构建。"
+                                : "";
+                        if (enoentHint) console.warn(`[mcp]`, enoentHint.trim());
                         emitProgress(`${displayName} MCP failed: ${errMsg}`, "skipped", errMsg);
                     }
                 }
@@ -165,4 +168,36 @@ export async function shutdownMcpClients(): Promise<void> {
     const closeAll = Array.from(clientCache.values()).map((c) => c.close().catch(() => {}));
     clientCache.clear();
     await Promise.all(closeAll);
+}
+
+/**
+ * 测试单条 MCP 配置是否可用：连接、拉取工具列表后断开。
+ * 不写入 clientCache，用于配置界面「测试」按钮，可提前触发 uvx/npx 依赖安装。
+ */
+export async function testMcpConnection(
+    config: McpServerConfig,
+    options: GetMcpToolDefinitionsOptions = {},
+): Promise<{ success: boolean; error?: string; toolsCount?: number }> {
+    const clientOptions = {
+        initTimeoutMs: options.initTimeoutMs,
+        initRetries: options.initRetries ?? 1,
+        initRetryDelayMs: options.initRetryDelayMs,
+    };
+    let client: McpClient | null = null;
+    try {
+        client = new McpClient(config, clientOptions);
+        await client.connect();
+        const tools = await client.listTools();
+        const count = Array.isArray(tools) ? tools.length : 0;
+        await client.close();
+        return { success: true, toolsCount: count };
+    } catch (err) {
+        if (client) {
+            try {
+                await client.close();
+            } catch {}
+        }
+        const message = err instanceof Error ? err.message : String(err);
+        return { success: false, error: message };
+    }
 }

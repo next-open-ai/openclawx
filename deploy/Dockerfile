@@ -36,6 +36,7 @@ WORKDIR /app
 
 # 系统基础能力：证书、网络、版本控制、压缩、进程查看、Python3 + uv（提供 uvx）
 # 使镜像具备类 Ubuntu/Debian 的常用命令行环境，支持 npx / uvx 及通用工具
+ENV HOME=/root
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
@@ -51,14 +52,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && curl -LsSf https://astral.sh/uv/install.sh | sh \
     && rm -rf /var/lib/apt/lists/*
 
-# uv 安装到 /root/.local/bin，加入 PATH 以便使用 uvx
+# uv 安装到 /root/.local/bin，加入 PATH 以便使用 uvx；校验存在避免运行时 ENOENT
 ENV PATH="/root/.local/bin:$PATH"
+RUN uvx --version
 
 # 从构建阶段拷贝依赖与产物（无原生模块，任意 Linux 镜像即可）
 COPY package.json package-lock.json ./
 COPY --from=builder /app/node_modules ./node_modules
 RUN npm config set registry https://registry.npmmirror.com
 RUN npm prune --production
+
+# 运行时 npx/uvx 使用国内镜像：npm 淘宝源、uv/pip 清华源（MCP 等子进程会继承）
+ENV npm_config_registry=https://registry.npmmirror.com
+ENV UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 从构建阶段拷贝产物
 COPY --from=builder /app/dist ./dist

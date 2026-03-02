@@ -1,9 +1,16 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import type { McpServerConfigStandardEntry } from '../../core/mcp/types.js';
 import { AgentConfigService, AgentConfigItem } from './agent-config.service.js';
 
 @Controller('agent-config')
 export class AgentConfigController {
     constructor(private readonly agentConfigService: AgentConfigService) {}
+
+    @Post('mcp/test')
+    async testMcp(@Body() body: { mcpServer: McpServerConfigStandardEntry }) {
+        const result = await this.agentConfigService.testMcpServer(body?.mcpServer ?? {});
+        return { success: result.success, error: result.error, toolsCount: result.toolsCount };
+    }
 
     @Get()
     async listAgents() {

@@ -8,6 +8,7 @@ import Agents from '@/views/Agents.vue';
 import AgentDetail from '@/views/AgentDetail.vue';
 import Tasks from '@/views/Tasks.vue';
 import Settings from '@/views/Settings.vue';
+import Channels from '@/views/Channels.vue';
 
 const routes = [
     {
@@ -63,6 +64,11 @@ const routes = [
         path: '/settings',
         name: 'Settings',
         component: Settings,
+    },
+    {
+        path: '/channels',
+        name: 'Channels',
+        component: Channels,
     },
 ];
 

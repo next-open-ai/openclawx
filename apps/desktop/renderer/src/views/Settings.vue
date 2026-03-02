@@ -17,7 +17,7 @@
           @click="activeTab = 'agent'"
         >
           <span class="nav-icon">🤖</span>
-          {{ t('settings.agent') }}
+          {{ t('settings.agentGlobal') }}
         </div>
         <div 
           class="nav-item" 
@@ -54,14 +54,6 @@
         </div>
         <div 
           class="nav-item" 
-          :class="{ active: activeTab === 'channels' }"
-          @click="activeTab = 'channels'; initChannelsTab()"
-        >
-          <span class="nav-icon">📡</span>
-          {{ t('settings.channels') }}
-        </div>
-        <div 
-          class="nav-item" 
           :class="{ active: activeTab === 'about' }"
           @click="activeTab = 'about'"
         >
@@ -84,30 +76,6 @@
                 <option value="zh">简体中文</option>
                 <option value="en">English (US)</option>
               </select>
-            </div>
-          </div>
-
-          <div class="settings-group">
-            <h3>{{ t('settings.webSearchTitle') }}</h3>
-            <p class="form-hint settings-group-desc">{{ t('settings.webSearchDesc') }}</p>
-            <div class="form-group">
-              <label>{{ t('settings.webSearchBraveApiKey') }}</label>
-              <input
-                v-model="webSearchBraveApiKey"
-                type="password"
-                class="input"
-                :placeholder="t('settings.webSearchBraveApiKeyPlaceholder')"
-                autocomplete="off"
-              />
-              <p class="form-hint">{{ t('settings.webSearchBraveApiKeyHint') }}</p>
-              <button
-                type="button"
-                class="btn-primary btn-sm"
-                :disabled="webSearchSaving"
-                @click="saveWebSearchConfig"
-              >
-                {{ webSearchSaving ? t('common.loading') : t('common.save') }}
-              </button>
             </div>
           </div>
 
@@ -153,9 +121,9 @@
           </div>
         </div>
 
-        <!-- Agent Tab (Merged Configuration)：不含模型配置（在「模型配置」Tab）、不含用户密码 -->
+        <!-- 智能体全局 Tab：默认智能体、会话上限、记忆库、在线搜索等 -->
         <div v-show="activeTab === 'agent'" class="tab-content">
-          <h2 class="tab-title">{{ t('settings.agentConfig') }}</h2>
+          <h2 class="tab-title">{{ t('settings.agentGlobal') }}</h2>
 
           <div class="settings-group">
             <h3>{{ t('settings.workspace') }}</h3>
@@ -200,6 +168,22 @@
                 </option>
               </select>
               <p v-if="configuredEmbeddingModels.length === 0" class="form-hint form-hint-warn">{{ t('settings.memoryNoEmbeddingModels') }}</p>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3>{{ t('settings.webSearchTitle') }}</h3>
+            <p class="form-hint settings-group-desc">{{ t('settings.webSearchDesc') }}</p>
+            <div class="form-group">
+              <label>{{ t('settings.webSearchBraveApiKey') }}</label>
+              <input
+                v-model="webSearchBraveApiKey"
+                type="password"
+                class="input"
+                :placeholder="t('settings.webSearchBraveApiKeyPlaceholder')"
+                autocomplete="off"
+              />
+              <p class="form-hint">{{ t('settings.webSearchBraveApiKeyHint') }}</p>
             </div>
           </div>
 
@@ -755,175 +739,6 @@
           <SettingsSkills />
         </div>
 
-        <!-- 通道配置 Tab -->
-        <div v-show="activeTab === 'channels'" class="tab-content">
-          <h2 class="tab-title">{{ t('settings.channels') }}</h2>
-          <p class="form-hint settings-channels-desc">{{ t('settings.channelsDesc') }}</p>
-          <div class="settings-group">
-            <h3>{{ t('settings.feishu') }}</h3>
-            <div class="form-group channel-feishu-enabled">
-              <label class="checkbox-label">
-                <input v-model="localChannels.feishu.enabled" type="checkbox" />
-                {{ t('settings.channelFeishuEnabled') }}
-              </label>
-            </div>
-            <div class="form-group">
-              <label>{{ t('settings.channelFeishuAppId') }}</label>
-              <input
-                v-model="localChannels.feishu.appId"
-                type="text"
-                class="input"
-                :placeholder="t('settings.channelFeishuAppIdPlaceholder')"
-                autocomplete="off"
-              />
-            </div>
-            <div class="form-group">
-              <label>{{ t('settings.channelFeishuAppSecret') }}</label>
-              <input
-                v-model="localChannels.feishu.appSecret"
-                type="password"
-                class="input"
-                :placeholder="t('settings.channelFeishuAppSecretPlaceholder')"
-                autocomplete="off"
-              />
-            </div>
-            <div class="form-group">
-              <label>{{ t('settings.channelDefaultAgentId') }}</label>
-              <select v-model="localChannels.feishu.defaultAgentId" class="input select-input">
-                <option
-                  v-for="a in channelFeishuDefaultAgentOptions"
-                  :key="a.id"
-                  :value="a.id"
-                >
-                  {{ a.name || a.id }}
-                </option>
-              </select>
-            </div>
-            <p class="form-hint">{{ t('settings.channelFeishuHint') }}</p>
-          </div>
-          <div class="settings-group">
-            <h3>{{ t('settings.dingtalk') }}</h3>
-            <div class="form-group channel-dingtalk-enabled">
-              <label class="checkbox-label">
-                <input v-model="localChannels.dingtalk.enabled" type="checkbox" />
-                {{ t('settings.channelDingtalkEnabled') }}
-              </label>
-            </div>
-            <div class="form-group">
-              <label>{{ t('settings.channelDingtalkClientId') }}</label>
-              <input
-                v-model="localChannels.dingtalk.clientId"
-                type="text"
-                class="input"
-                :placeholder="t('settings.channelDingtalkClientIdPlaceholder')"
-                autocomplete="off"
-              />
-            </div>
-            <div class="form-group">
-              <label>{{ t('settings.channelDingtalkClientSecret') }}</label>
-              <input
-                v-model="localChannels.dingtalk.clientSecret"
-                type="password"
-                class="input"
-                :placeholder="t('settings.channelDingtalkClientSecretPlaceholder')"
-                autocomplete="off"
-              />
-            </div>
-            <div class="form-group">
-              <label>{{ t('settings.channelDefaultAgentId') }}</label>
-              <select v-model="localChannels.dingtalk.defaultAgentId" class="input select-input">
-                <option
-                  v-for="a in channelDingtalkDefaultAgentOptions"
-                  :key="a.id"
-                  :value="a.id"
-                >
-                  {{ a.name || a.id }}
-                </option>
-              </select>
-            </div>
-            <p class="form-hint">{{ t('settings.channelDingtalkHint') }}</p>
-          </div>
-          <div class="settings-group">
-            <h3>{{ t('settings.telegram') }}</h3>
-            <div class="form-group channel-telegram-enabled">
-              <label class="checkbox-label">
-                <input v-model="localChannels.telegram.enabled" type="checkbox" />
-                {{ t('settings.channelTelegramEnabled') }}
-              </label>
-            </div>
-            <div class="form-group">
-              <label>{{ t('settings.channelTelegramBotToken') }}</label>
-              <input
-                v-model="localChannels.telegram.botToken"
-                type="password"
-                class="input"
-                :placeholder="t('settings.channelTelegramBotTokenPlaceholder')"
-                autocomplete="off"
-              />
-            </div>
-            <div class="form-group">
-              <label>{{ t('settings.channelDefaultAgentId') }}</label>
-              <select v-model="localChannels.telegram.defaultAgentId" class="input select-input">
-                <option
-                  v-for="a in channelTelegramDefaultAgentOptions"
-                  :key="a.id"
-                  :value="a.id"
-                >
-                  {{ a.name || a.id }}
-                </option>
-              </select>
-            </div>
-            <p class="form-hint">{{ t('settings.channelTelegramHint') }}</p>
-          </div>
-          <div class="settings-group">
-            <h3>{{ t('settings.wechat') }}</h3>
-            <div class="form-group channel-wechat-enabled">
-              <label class="checkbox-label">
-                <input v-model="localChannels.wechat.enabled" type="checkbox" />
-                {{ t('settings.channelWechatEnabled') }}
-              </label>
-            </div>
-            <div class="form-group">
-              <label>{{ t('settings.channelDefaultAgentId') }}</label>
-              <select v-model="localChannels.wechat.defaultAgentId" class="input select-input">
-                <option
-                  v-for="a in channelWechatDefaultAgentOptions"
-                  :key="a.id"
-                  :value="a.id"
-                >
-                  {{ a.name || a.id }}
-                </option>
-              </select>
-            </div>
-            <div v-if="localChannels.wechat.enabled" class="form-group wechat-qrcode-section">
-              <div class="wechat-status-row">
-                <span class="wechat-status-dot" :class="wechatStatusClass"></span>
-                <span>{{ wechatStatusText }}</span>
-                <span v-if="wechatUserName" class="wechat-username">（{{ wechatUserName }}）</span>
-              </div>
-              <button
-                v-if="wechatStatus !== 'logged_in'"
-                type="button"
-                class="btn-secondary"
-                :disabled="wechatQrLoading"
-                @click="fetchWechatQrCode"
-              >
-                {{ wechatQrCode ? t('settings.channelWechatRefreshQrCode') : t('settings.channelWechatGetQrCode') }}
-              </button>
-              <div v-if="wechatQrCode && wechatStatus !== 'logged_in'" class="wechat-qrcode-wrap">
-                <p class="form-hint">{{ t('settings.channelWechatQrCodeHint') }}</p>
-                <img :src="wechatQrCode" alt="WeChat QR Code" class="wechat-qrcode-img" />
-              </div>
-            </div>
-            <p class="form-hint">{{ t('settings.channelWechatHint') }}</p>
-          </div>
-          <div class="actions">
-            <button type="button" class="btn-primary" @click="saveChannelsConfig">
-              {{ t('common.save') }}
-            </button>
-          </div>
-        </div>
-
         <!-- About Tab -->
         <div v-show="activeTab === 'about'" class="tab-content">
           <h2 class="tab-title">{{ t('settings.about') }}</h2>
@@ -1087,7 +902,7 @@ import { usersAPI, agentConfigAPI } from '@/api';
 import { localModelsAPI } from '@/api';
 import SettingsSkills from '@/components/SettingsSkills.vue';
 
-const SETTINGS_TABS = ['general', 'agent', 'models', 'knowledge', 'users', 'skills', 'channels', 'about'];
+const SETTINGS_TABS = ['general', 'agent', 'models', 'knowledge', 'users', 'skills', 'about'];
     /** 是否显示 RAG/知识库 Tab */
     const showRagTab = true;
 
@@ -1119,8 +934,6 @@ export default {
       // 打开对应配置 Tab 时先从磁盘刷新配置再初始化界面，显示最新（含 CLI 写入）
       if (tab === 'general') {
         await settingsStore.loadConfig();
-        loadAgentConfig();
-        webSearchBraveApiKey.value = settingsStore.config?.tools?.webSearch?.providers?.brave?.apiKey ?? '';
       }
       if (tab === 'agent') {
         await settingsStore.loadConfig();
@@ -1136,13 +949,9 @@ export default {
         await settingsStore.loadConfig();
         initKnowledgeTab();
       }
-      if (tab === 'channels') {
-        await loadAgentList();
-      }
     });
     const localConfig = ref({ memory: {} });
     const webSearchBraveApiKey = ref('');
-    const webSearchSaving = ref(false);
     const agentList = ref([]);
     const modelConfigSubTab = ref('provider');
     const localProviderConfig = ref({});
@@ -1410,6 +1219,7 @@ export default {
         const effectiveAgentId = cfg.defaultAgentId ?? 'default';
         const memoryCfg = cfg.memory || {};
         localConfig.value = { ...cfg, defaultAgentId: effectiveAgentId, loginPassword: '', memory: { ...memoryCfg } };
+        webSearchBraveApiKey.value = cfg?.tools?.webSearch?.providers?.brave?.apiKey ?? '';
       } catch (err) {
         console.warn('[Settings] loadAgentConfig error', err);
         localConfig.value = { loginPassword: '', memory: {} };
@@ -1442,10 +1252,24 @@ export default {
       const payload = { ...localConfig.value };
       if (payload.loginPassword === '') delete payload.loginPassword;
       const agentId = payload.defaultAgentId ?? 'default';
-      await settingsStore.updateConfig({ ...payload, defaultAgentId: agentId });
+      const current = settingsStore.config || {};
+      const currentTools = current.tools || {};
+      const trimmed = (webSearchBraveApiKey.value || '').trim();
+      const tools = {
+        ...currentTools,
+        webSearch: {
+          ...(currentTools.webSearch || {}),
+          providers: {
+            ...(currentTools.webSearch?.providers || {}),
+            brave: trimmed ? { apiKey: trimmed } : undefined,
+          },
+        },
+      };
+      await settingsStore.updateConfig({ ...payload, defaultAgentId: agentId, tools });
       const updatedCfg = settingsStore.config || {};
       const memoryCfg = updatedCfg.memory || {};
       localConfig.value = { ...updatedCfg, defaultAgentId: updatedCfg.defaultAgentId ?? 'default', loginPassword: '', memory: { ...memoryCfg } };
+      webSearchBraveApiKey.value = updatedCfg?.tools?.webSearch?.providers?.brave?.apiKey ?? '';
       alert(t('common.saved'));
     };
 
@@ -1683,32 +1507,6 @@ export default {
       alert(t('common.saved'));
     }
 
-    async function saveWebSearchConfig() {
-      webSearchSaving.value = true;
-      try {
-        const current = settingsStore.config || {};
-        const currentTools = current.tools || {};
-        const currentWebSearch = currentTools.webSearch || {};
-        const currentProviders = currentWebSearch.providers || {};
-        const trimmed = (webSearchBraveApiKey.value || '').trim();
-        const tools = {
-          ...currentTools,
-          webSearch: {
-            ...currentWebSearch,
-            providers: {
-              ...currentProviders,
-              brave: trimmed ? { apiKey: trimmed } : undefined,
-            },
-          },
-        };
-        await settingsStore.updateConfig({ tools });
-        alert(t('common.saved'));
-      } catch (e) {
-        console.error('Save web search config failed', e);
-      } finally {
-        webSearchSaving.value = false;
-      }
-    }
 
     function initChannelsTab() {
       const ch = config.value?.channels;
@@ -2298,10 +2096,6 @@ export default {
         refreshLocalModels().catch(() => {});
         if (activeTab.value === 'agent') await loadAgentList();
         if (activeTab.value === 'knowledge') initKnowledgeTab();
-        if (activeTab.value === 'channels') {
-          await loadAgentList();
-          initChannelsTab();
-        }
       } catch (err) {
         console.error('[Settings] onMounted error', err);
       }
@@ -2432,8 +2226,6 @@ export default {
       submitChangeCurrentUserPassword,
       submitDeleteUser,
       localChannels,
-      initChannelsTab,
-      saveChannelsConfig,
     };
   },
 };
