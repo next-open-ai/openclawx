@@ -43,13 +43,18 @@ export const useLocaleStore = defineStore('locale', {
         localStorage.setItem(STORAGE_KEY, locale);
       } catch (_) {}
     },
-    /** 根据 key 取文案，key 如 'nav.dashboard' */
-    t(key) {
+    /** 根据 key 取文案，key 如 'nav.dashboard'；params 为插值对象，如 { sec: 5 } 会替换字符串中的 {sec} */
+    t(key, params) {
       const msg = this.messages;
-      const value = key.split('.').reduce((o, k) => (o != null ? o[k] : undefined), msg);
-      if (value != null) return value;
-      const fb = fallbacks[key];
-      return fb ? (fb[this.locale] || fb.zh || key) : key;
+      let value = key.split('.').reduce((o, k) => (o != null ? o[k] : undefined), msg);
+      if (value == null) {
+        const fb = fallbacks[key];
+        value = fb ? (fb[this.locale] || fb.zh || key) : key;
+      }
+      if (params != null && typeof params === 'object' && typeof value === 'string') {
+        return value.replace(/\{(\w+)\}/g, (_, name) => (params[name] != null ? String(params[name]) : `{${name}}`));
+      }
+      return value;
     },
   },
 });

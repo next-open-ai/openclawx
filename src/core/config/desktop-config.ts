@@ -904,11 +904,11 @@ export async function ensureProviderSupportFile(): Promise<void> {
     }
 }
 
-/** 预装本地推理缺省：推荐列表第一个 LLM（Qwen3-4B）对应的本地文件名，与 modelUriToFilename 一致 */
-const DEFAULT_LOCAL_LLM_MODEL_ID = "hf_Qwen_Qwen3-4B-GGUF_Qwen3-4B-Q4_K_M.gguf";
-const DEFAULT_LOCAL_MODEL_ITEM_CODE = "local-qwen3-4b";
+/** 预装本地推理缺省：推荐列表第一个 LLM（Qwen 3.5 4B）对应的本地文件名，与 modelUriToFilename 一致 */
+const DEFAULT_LOCAL_LLM_MODEL_ID = "hf_unsloth_Qwen3.5-4B-GGUF_Qwen3.5-4B-Q5_K_M.gguf";
+const DEFAULT_LOCAL_MODEL_ITEM_CODE = "local-qwen35-4b";
 
-/** 代码内建默认：local provider + 本地 Qwen3-4B，首次与合并时优先保证存在 */
+/** 代码内建默认：local provider + 本地 Qwen 3.5 4B，首次与合并时优先保证存在 */
 const BUILTIN_DEFAULT_CONFIG: DesktopConfigJson = {
     defaultProvider: "local",
     defaultModel: DEFAULT_LOCAL_LLM_MODEL_ID,
@@ -923,7 +923,7 @@ const BUILTIN_DEFAULT_CONFIG: DesktopConfigJson = {
             provider: "local",
             modelId: DEFAULT_LOCAL_LLM_MODEL_ID,
             type: "llm",
-            alias: "Qwen3 4B Q4_K_M",
+            alias: "Qwen 3.5 4B Q5_K_M",
             modelItemCode: DEFAULT_LOCAL_MODEL_ITEM_CODE,
         },
         {
@@ -936,7 +936,7 @@ const BUILTIN_DEFAULT_CONFIG: DesktopConfigJson = {
     ],
 };
 
-/** 若 config.json 不存在则用 preset-config.json 初始化，若存在则浅合并补充新基础键值。预装 local provider + 本地 Qwen3-4B 模型并设为缺省；preset 与代码默认合并，保证 local 一定存在。 */
+/** 若 config.json 不存在则用 preset-config.json 初始化，若存在则浅合并补充新基础键值。预装 local provider + 本地 Qwen 3.5 4B 模型并设为缺省；preset 与代码默认合并，保证 local 一定存在。 */
 async function ensureConfigJsonInitialized(): Promise<void> {
     const presetPath = join(getPresetsDir(), "preset-config.json");
     let presetConfig: DesktopConfigJson = { ...BUILTIN_DEFAULT_CONFIG };
@@ -1026,7 +1026,7 @@ async function ensureAgentsJsonInitialized(): Promise<void> {
         }
     }
 
-    // 所有未单独配置模型的智能体使用 config 的缺省模型（预装为 local + Qwen3-4B）
+    // 所有未单独配置模型的智能体使用 config 的缺省模型（预装为 local + Qwen 3.5 4B）
     const configPath = join(getDesktopDir(), "config.json");
     if (existsSync(configPath)) {
         try {
@@ -1169,25 +1169,35 @@ function configuredModelToPi(item: DesktopConfiguredModel, displayName: string):
 
 /**
  * 根据桌面 config（已配置的 providers + configuredModels）与 provider-support，生成并写入 agent 目录的 models.json。
- * 仅包含在 config 的 providers 中已配置的 provider；每个 provider 的 models 来自 configuredModels，结构含 reasoning、cost 等。
+ * 包含：config.providers 中已配置的 provider；以及 configuredModels / defaultProvider 中引用但未在 providers 中的 provider（用 support 默认 baseUrl 补全，避免 Ollama 等仅选模型未填 baseUrl 时连不上）。
  */
 export async function syncDesktopConfigToModelsJson(): Promise<void> {
     const config = await readDesktopConfigJson();
     const configured = config.providers ?? {};
     const configuredModels = Array.isArray(config.configuredModels) ? config.configuredModels : [];
-    if (Object.keys(configured).length === 0) {
+    const support = await getProviderSupport();
+    const providerIdsFromModels = new Set<string>();
+    for (const m of configuredModels) if (m?.provider) providerIdsFromModels.add(m.provider);
+    if (config.defaultProvider) providerIdsFromModels.add(config.defaultProvider);
+    const allProviderIds = new Set<string>([...Object.keys(configured), ...providerIdsFromModels]);
+    if (allProviderIds.size === 0) {
         return;
     }
-    const support = await getProviderSupport();
     const piProviders: Record<string, PiProviderEntry> = {};
-    for (const [providerId, userConfig] of Object.entries(configured)) {
+    for (const providerId of allProviderIds) {
+        const userConfig = configured[providerId];
         // ollama / local 不需要 API Key，其他 provider 必须有 apiKey
         const isNoKeyProvider = providerId === "ollama" || providerId === "local";
         if (!isNoKeyProvider && !userConfig?.apiKey?.trim()) continue;
         const defaults = SYNC_DEFAULTS[providerId] ?? { baseUrl: "", apiKey: "OPENAI_API_KEY", api: "openai-completions" };
-        const baseUrl = userConfig?.baseUrl?.trim() || (support[providerId]?.baseUrl ?? "").trim() || defaults.baseUrl;
+        let baseUrl = userConfig?.baseUrl?.trim() || (support[providerId]?.baseUrl ?? "").trim() || defaults.baseUrl;
+        if (providerId === "ollama" && process.env.OLLAMA_BASE_URL?.trim()) {
+            const u = process.env.OLLAMA_BASE_URL.trim().replace(/\/$/, "");
+            baseUrl = u.endsWith("/v1") ? u : u + "/v1";
+        }
         if (!baseUrl) continue;
         const def = support[providerId];
+        if (!def) continue;
         const items = configuredModels.filter((m) => m.provider === providerId);
         let models: PiModelEntry[];
         if (items.length > 0) {
@@ -1196,7 +1206,10 @@ export async function syncDesktopConfigToModelsJson(): Promise<void> {
                     (item.alias && item.alias.trim()) ||
                     (def?.models?.find((m) => m.id === item.modelId)?.name) ||
                     item.modelId;
-                return configuredModelToPi(item, displayName);
+                const pi = configuredModelToPi(item, displayName);
+                // 本地 node-llama-cpp 关闭思考：不向 SDK 发送 reasoning，避免启用 thinking 相关参数
+                if (providerId === "local") return { ...pi, reasoning: false };
+                return pi;
             });
         } else if (def?.models?.length) {
             models = def.models.map((m) =>

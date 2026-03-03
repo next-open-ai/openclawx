@@ -326,10 +326,20 @@ async function handleAgentChatInner(
                     if (errText.includes("Unknown value type") && errText.includes("[object Object]")) {
                         errText = "请求失败：模型返回了不支持的数据结构（如工具调用流），请尝试关闭工具或更换模型。";
                     }
-                    // 本地模型子进程退出后，SDK 会报 terminated/Connection error，用 env 中的说明替换为可操作提示
+                    const isConnErr = /Connection error|ECONNREFUSED|fetch failed/i.test(msg.errorMessage);
                     const localFailed = process.env.LOCAL_LLM_START_FAILED;
-                    if (localFailed && (msg.errorMessage === "terminated" || /Connection error|ECONNREFUSED|fetch failed/i.test(msg.errorMessage))) {
+                    const isLocalProvider = provider === "local";
+                    const isModelRequired = /model is required|400.*model/i.test(msg.errorMessage);
+                    if (isLocalProvider && localFailed && (msg.errorMessage === "terminated" || isConnErr)) {
                         errText = `请求失败：${localFailed}`;
+                    } else if ((provider === "openai-custom" || provider === "ollama") && isConnErr) {
+                        errText = "请求失败：无法连接到模型服务（若使用 Ollama 请确认已启动且 baseUrl 为 http://localhost:11434/v1，或改用「Ollama」Provider）。";
+                    } else if (isModelRequired && (provider === "openai-custom" || provider === "ollama")) {
+                        errText =
+                            "请求失败：模型名称未被服务端识别。若使用 Ollama，请确保「模型配置」中的模型名与终端中 `ollama list` 显示的名称完全一致（如 qwen3:4b）。";
+                    } else if (provider === "local" && /context size.*too large|VRAM|显存/i.test(msg.errorMessage)) {
+                        errText =
+                            "请求失败：显存/内存不足，当前上下文长度过大。请在「智能体配置」中将该智能体的「上下文长度」调小（如 8192 或 4096）后重新启动本地模型服务再试。";
                     }
                     sendSessionMessage(targetSessionId, { type: "chat", code: "agent.chunk", payload: { text: errText } });
                 }
@@ -356,9 +366,20 @@ async function handleAgentChatInner(
                     if (errText.includes("Unknown value type") && errText.includes("[object Object]")) {
                         errText = "请求失败：模型返回了不支持的数据结构（如工具调用流），请尝试关闭工具或更换模型。";
                     }
+                    const isConnErr = /Connection error|ECONNREFUSED|fetch failed/i.test(msg.errorMessage);
                     const localFailed = process.env.LOCAL_LLM_START_FAILED;
-                    if (localFailed && (msg.errorMessage === "terminated" || /Connection error|ECONNREFUSED|fetch failed/i.test(msg.errorMessage))) {
+                    const isLocalProvider = provider === "local";
+                    const isModelRequired = /model is required|400.*model/i.test(msg.errorMessage);
+                    if (isLocalProvider && localFailed && (msg.errorMessage === "terminated" || isConnErr)) {
                         errText = `请求失败：${localFailed}`;
+                    } else if ((provider === "openai-custom" || provider === "ollama") && isConnErr) {
+                        errText = "请求失败：无法连接到模型服务（若使用 Ollama 请确认已启动且 baseUrl 为 http://localhost:11434/v1，或改用「Ollama」Provider）。";
+                    } else if (isModelRequired && (provider === "openai-custom" || provider === "ollama")) {
+                        errText =
+                            "请求失败：模型名称未被服务端识别。若使用 Ollama，请确保「模型配置」中的模型名与终端中 `ollama list` 显示的名称完全一致（如 qwen3:4b）。";
+                    } else if (provider === "local" && /context size.*too large|VRAM|显存/i.test(msg.errorMessage)) {
+                        errText =
+                            "请求失败：显存/内存不足，当前上下文长度过大。请在「智能体配置」中将该智能体的「上下文长度」调小（如 8192 或 4096）后重新启动本地模型服务再试。";
                     }
                     sendSessionMessage(targetSessionId, { type: "chat", code: "agent.chunk", payload: { text: errText } });
                     hasReceivedAnyChunk = true;

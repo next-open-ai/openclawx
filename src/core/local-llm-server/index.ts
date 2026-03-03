@@ -56,7 +56,7 @@ export interface LocalLlmServerOptions {
     port?: number;
     llmModelPath?: string;
     embeddingModelPath?: string;
-    /** 上下文窗口 token 数，默认 32768（32K），需能容纳 system + tools + 对话 */
+    /** 上下文窗口 token 数，默认 32768（32K），需能容纳 system + tools + 对话；显存不足时在智能体配置中调小 */
     contextSize?: number;
     /** 等待子进程就绪的超时毫秒数，默认 300000（5 分钟，冷启/大模型加载可能较慢） */
     readyTimeoutMs?: number;

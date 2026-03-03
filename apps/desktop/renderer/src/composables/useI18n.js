@@ -5,7 +5,7 @@ import { computed } from 'vue';
 export function useI18n() {
   const store = useLocaleStore();
   const { locale, messages } = storeToRefs(store);
-  const t = (key) => store.t(key);
+  const t = (key, params) => store.t(key, params);
   const localeLabel = computed(() => store.localeLabel);
   return {
     t,

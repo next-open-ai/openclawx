@@ -394,6 +394,10 @@
             <div class="subsection-header">
               <h4 class="subsection-title">{{ t('settings.localLlmServiceTitle') }}</h4>
             </div>
+            <div class="settings-hint-block local-llm-context-limit-hint">
+              <span class="settings-hint-icon" aria-hidden="true">⚠️</span>
+              <p class="settings-hint-text">{{ t('settings.localLlmContextLimitHint') }}</p>
+            </div>
             <div class="local-llm-service-block">
               <p v-if="localLlmStatusLoading" class="form-hint">{{ t('common.loading') }}</p>
               <template v-else>
@@ -3092,6 +3096,18 @@ export default {
 }
 
 /* ─── 本地模型管理 ─────────────────────────────────────────────────────────── */
+.local-llm-context-limit-hint {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-warning-bg, rgba(234, 179, 8, 0.08));
+  border-left: 3px solid var(--color-warning, #eab308);
+}
+.local-llm-context-limit-hint .settings-hint-text {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
 .local-llm-service-block {
   margin-bottom: 16px;
 }

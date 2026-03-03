@@ -466,6 +466,13 @@ For downloads, provide either a direct URL or a selector to click.`;
         if (model) {
             console.log(`Setting model to ${model.provider}/${model.id} (workspace: ${workspaceName})`);
             await session.setModel(model);
+        } else if (provider && modelId) {
+            // 配置了 provider/model 但在 models.json 中找不到，避免发请求后收到 400 model is required
+            const hint =
+                provider === "ollama" || provider === "openai-custom"
+                    ? "若使用 Ollama，请确保模型名与终端中 `ollama list` 显示的名称完全一致（如 qwen3:4b），并在「模型配置」中保存。"
+                    : "请检查「模型配置」中该 Provider 下是否已添加并保存该模型。";
+            throw new Error(`未找到模型 ${provider}/${modelId}。${hint}`);
         }
 
         this.sessions.set(compositeKey, session);

@@ -2,8 +2,8 @@
     "presetVersion": "1.0",
     "config": {
         "defaultProvider": "local",
-        "defaultModel": "hf_Qwen_Qwen3-4B-GGUF_Qwen3-4B-Q4_K_M.gguf",
-        "defaultModelItemCode": "local-qwen3-4b",
+        "defaultModel": "hf_unsloth_Qwen3.5-4B-GGUF_Qwen3.5-4B-Q5_K_M.gguf",
+        "defaultModelItemCode": "local-qwen35-4b",
         "defaultAgentId": "default",
         "maxAgentSessions": 5,
         "providers": {
@@ -12,10 +12,10 @@
         "configuredModels": [
             {
                 "provider": "local",
-                "modelId": "hf_Qwen_Qwen3-4B-GGUF_Qwen3-4B-Q4_K_M.gguf",
+                "modelId": "hf_unsloth_Qwen3.5-4B-GGUF_Qwen3.5-4B-Q5_K_M.gguf",
                 "type": "llm",
-                "alias": "Qwen3 4B Q4_K_M",
-                "modelItemCode": "local-qwen3-4b"
+                "alias": "Qwen 3.5 4B Q5_K_M",
+                "modelItemCode": "local-qwen35-4b"
             },
             {
                 "provider": "local",

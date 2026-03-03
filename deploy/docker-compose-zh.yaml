@@ -2,11 +2,14 @@
 # 镜像来源：.drone.yml 推送到 ccr.ccs.tencentyun.com/windwithlife/openclawx
 # 可用标签：latest、具体版本（如 0.8.28）或 build-ci-openbot-${DRONE_BUILD_NUMBER}
 #
-# 使用宿主机英伟达显卡（本地推理 node-llama-cpp）时：
+# 使用宿主机英伟达显卡（本地推理 node-llama-cpp 或 Ollama）时：
 # 1. 宿主机安装 NVIDIA 驱动 + NVIDIA Container Toolkit：
 #    https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
 # 2. 本文件已启用 deploy.reservations.devices（见下），无需改配置。
-# 3. 若无 GPU 或不想用 GPU，可注释掉 deploy 整段，容器将仅用 CPU 推理。
+# 3. 若无 GPU 或不想用 GPU，可注释掉各服务下的 deploy 整段，容器将仅用 CPU 推理。
+#
+# Ollama 与 OpenClawX 同栈时：OpenClawX 通过 OLLAMA_BASE_URL 自动连到 ollama 服务；
+# 在「模型配置」或智能体中选用 Ollama 为 Provider 即可，无需再填 baseUrl。
 
 services:
   openclawx:
@@ -16,6 +19,8 @@ services:
       - "38080:38080"
     environment:
       - NODE_ENV=production
+      # 与 Ollama 同栈时，自动使用容器名访问；无 Ollama 服务时可删除此行
+      - OLLAMA_BASE_URL=http://ollama:11434
     restart: unless-stopped
     volumes:
       # 持久化 ~/.openbot：配置（desktop/config 等）及本地模型缓存（.cached_models）
@@ -31,5 +36,23 @@ services:
               count: all
               capabilities: [gpu]
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    # 使用宿主机 GPU 加速推理（需 nvidia-container-toolkit）
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
 volumes:
   openbot-data:
+  ollama-data:

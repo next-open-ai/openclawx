@@ -5,7 +5,7 @@
 import { basename } from "node:path";
 import { LOCAL_LLM_CACHE_DIR } from "./model-resolve.js";
 
-export const DEFAULT_LLM_MODEL_URI = "hf:Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf";
+export const DEFAULT_LLM_MODEL_URI = "hf:unsloth/Qwen3.5-4B-GGUF/Qwen3.5-4B-Q5_K_M.gguf";
 
 export interface DownloadModelOptions {
     useMirror?: boolean;

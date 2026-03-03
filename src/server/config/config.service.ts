@@ -107,8 +107,8 @@ export class ConfigService {
     }
 
     /** 预装本地推理缺省：与 desktop-config 的 DEFAULT_LOCAL_LLM_MODEL_ID / DEFAULT_LOCAL_MODEL_ITEM_CODE 一致 */
-    private static readonly DEFAULT_LOCAL_MODEL_ID = 'hf_Qwen_Qwen3-4B-GGUF_Qwen3-4B-Q4_K_M.gguf';
-    private static readonly DEFAULT_LOCAL_MODEL_ITEM_CODE = 'local-qwen3-4b';
+    private static readonly DEFAULT_LOCAL_MODEL_ID = 'hf_unsloth_Qwen3.5-4B-GGUF_Qwen3.5-4B-Q5_K_M.gguf';
+    private static readonly DEFAULT_LOCAL_MODEL_ITEM_CODE = 'local-qwen35-4b';
 
     private getDefaultConfig(): AppConfig {
         return {
@@ -128,7 +128,7 @@ export class ConfigService {
                     modelId: ConfigService.DEFAULT_LOCAL_MODEL_ID,
                     modelItemCode: ConfigService.DEFAULT_LOCAL_MODEL_ITEM_CODE,
                     type: 'llm',
-                    alias: 'Qwen3 4B Q4_K_M',
+                    alias: 'Qwen 3.5 4B Q5_K_M',
                 },
             ],
             rag: undefined,
@@ -167,30 +167,40 @@ export class ConfigService {
         }
     }
 
-    /** 每次获取前从磁盘重新读取，保证打开配置界面时显示最新（含 CLI 写入的配置）。本地 LLM 可用时注入 local 与缺省模型项，供所有智能体使用。 */
+    /** 每次获取前从磁盘重新读取，保证打开配置界面时显示最新（含 CLI 写入的配置）。本地 LLM 可用时注入 local 与缺省模型项；OLLAMA_BASE_URL 时注入 ollama baseUrl（如与 Ollama 同栈）。 */
     async getConfig(): Promise<AppConfig> {
         await this.loadConfig();
-        const baseUrl = process.env.LOCAL_LLM_BASE_URL?.trim();
-        if (!baseUrl) return this.config;
         const out: AppConfig = { ...this.config };
         out.providers = { ...(this.config.providers || {}) };
-        if (!out.providers['local']) {
-            out.providers['local'] = { baseUrl: baseUrl || 'http://127.0.0.1:11435/v1' };
-        } else if (!out.providers['local'].baseUrl?.trim()) {
-            out.providers['local'] = { ...out.providers['local'], baseUrl: baseUrl || 'http://127.0.0.1:11435/v1' };
+
+        const localBaseUrl = process.env.LOCAL_LLM_BASE_URL?.trim();
+        if (localBaseUrl) {
+            if (!out.providers['local']) {
+                out.providers['local'] = { baseUrl: localBaseUrl.replace(/\/$/, '') + (localBaseUrl.endsWith('/v1') ? '' : '/v1') };
+            } else if (!out.providers['local'].baseUrl?.trim()) {
+                out.providers['local'] = { ...out.providers['local'], baseUrl: localBaseUrl.replace(/\/$/, '') + (localBaseUrl.endsWith('/v1') ? '' : '/v1') };
+            }
+            const list = [...(out.configuredModels || [])];
+            const hasLocal = list.some((m) => m.provider === 'local' && m.modelId === 'local-llm');
+            if (!hasLocal) {
+                list.push({
+                    provider: 'local',
+                    modelId: 'local-llm',
+                    modelItemCode: 'local-llm',
+                    type: 'llm',
+                    alias: '本地 LLM（当前加载）',
+                });
+                out.configuredModels = list;
+            }
         }
-        const list = [...(out.configuredModels || [])];
-        const hasLocal = list.some((m) => m.provider === 'local' && m.modelId === 'local-llm');
-        if (!hasLocal) {
-            list.push({
-                provider: 'local',
-                modelId: 'local-llm',
-                modelItemCode: 'local-llm',
-                type: 'llm',
-                alias: '本地 LLM（当前加载）',
-            });
-            out.configuredModels = list;
+
+        const ollamaBaseUrl = process.env.OLLAMA_BASE_URL?.trim();
+        if (ollamaBaseUrl) {
+            const url = ollamaBaseUrl.replace(/\/$/, '');
+            const withV1 = url.endsWith('/v1') ? url : url + '/v1';
+            out.providers['ollama'] = { ...(out.providers['ollama'] || {}), baseUrl: withV1 };
         }
+
         return out;
     }
 

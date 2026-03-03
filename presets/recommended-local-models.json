@@ -3,22 +3,16 @@
   "description": "推荐本地 GGUF 模型列表，用于「模型管理」备下载与已安装展示。版本升级时可在此增删改，以支持更合适的模型。",
   "models": [
     {
-      "id": "hf:Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf",
-      "name": "Qwen3 4B Q4_K_M",
+      "id": "hf:unsloth/Qwen3.5-4B-GGUF/Qwen3.5-4B-Q5_K_M.gguf",
+      "name": "Qwen 3.5 4B Q5_K_M",
       "type": "llm",
-      "sizeHint": "~2.5GB"
+      "sizeHint": "~3.2GB"
     },
     {
-      "id": "hf:Qwen/Qwen3-7B-GGUF/Qwen3-7B-Q4_K_M.gguf",
-      "name": "Qwen3 7B Q4_K_M",
+      "id": "hf:unsloth/Qwen3.5-9B-GGUF/Qwen3.5-9B-Q5_K_M.gguf",
+      "name": "Qwen 3.5 9B Q5_K_M",
       "type": "llm",
-      "sizeHint": "~4.5GB"
-    },
-    {
-      "id": "hf:Qwen/Qwen3-14B-GGUF/Qwen3-14B-Q4_K_M.gguf",
-      "name": "Qwen3 14B Q4_K_M",
-      "type": "llm",
-      "sizeHint": "~8.5GB"
+      "sizeHint": "~6.8GB"
     },
     {
       "id": "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf",

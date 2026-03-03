@@ -15,8 +15,8 @@ export async function tryStartLocalModelFromSavedConfig(): Promise<void> {
     try {
         const agent = await loadDesktopAgentConfig("default");
         if (!agent || agent.provider !== "local" || !agent.model?.trim()) {
-            process.env.LOCAL_LLM_START_FAILED =
-                "未配置默认本地模型，请在「模型配置」中选择 LLM 后点击「启动本地模型服务」";
+            // 默认智能体未使用 local 时仅跳过启动，不设置 LOCAL_LLM_START_FAILED，避免 Ollama/openai-custom 等连接失败时被误报为「未配置本地模型」
+            delete process.env.LOCAL_LLM_START_FAILED;
             console.log("[local-llm] 提示：未配置默认本地模型，跳过启动。");
             return;
         }

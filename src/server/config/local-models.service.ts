@@ -45,9 +45,8 @@ function inferModelType(filename: string): LocalModelInfo['inferredType'] {
 
 const PRESET_FILENAME = 'recommended-local-models.json';
 const DEFAULT_RECOMMENDED: RecommendedModel[] = [
-    { id: 'hf:Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf', name: 'Qwen3 4B Q4_K_M', type: 'llm', sizeHint: '~2.5GB' },
-    { id: 'hf:Qwen/Qwen3-7B-GGUF/Qwen3-7B-Q4_K_M.gguf', name: 'Qwen3 7B Q4_K_M', type: 'llm', sizeHint: '~4.5GB' },
-    { id: 'hf:Qwen/Qwen3-14B-GGUF/Qwen3-14B-Q4_K_M.gguf', name: 'Qwen3 14B Q4_K_M', type: 'llm', sizeHint: '~8.5GB' },
+    { id: 'hf:unsloth/Qwen3.5-4B-GGUF/Qwen3.5-4B-Q5_K_M.gguf', name: 'Qwen 3.5 4B Q5_K_M', type: 'llm', sizeHint: '~3.2GB' },
+    { id: 'hf:unsloth/Qwen3.5-9B-GGUF/Qwen3.5-9B-Q5_K_M.gguf', name: 'Qwen 3.5 9B Q5_K_M', type: 'llm', sizeHint: '~6.8GB' },
     { id: 'hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf', name: 'EmbeddingGemma 300M Q8 (768维)', type: 'embedding', sizeHint: '~300MB' },
     { id: 'hf:gpustack/bge-m3-GGUF/bge-m3-Q8_0.gguf', name: 'BGE-M3 Q8 多语言 (1024维)', type: 'embedding', sizeHint: '~1.2GB' },
     { id: 'hf:mixedbread-ai/mxbai-embed-large-v1-GGUF/mxbai-embed-large-v1-f16.gguf', name: 'MxBai Embed Large v1 (1024维)', type: 'embedding', sizeHint: '~670MB' },

@@ -11,8 +11,8 @@ export const LOCAL_LLM_CACHE_DIR = join(homedir(), ".openbot", ".cached_models")
 
 /**
  * 取 modelUri 的末尾文件名（用于与已安装文件灵活匹配：不同 node-llama-cpp 版本可能生成不同前缀）。
- * 例：hf:Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf → Qwen3-4B-Q4_K_M.gguf
- * 例：hf_Qwen_Qwen3-4B-GGUF_Qwen3-4B-Q4_K_M.gguf → Qwen3-4B-Q4_K_M.gguf（文件名形式取最后一段 _ 之后）
+ * 例：hf:unsloth/Qwen3.5-4B-GGUF/Qwen3.5-4B-Q5_K_M.gguf → Qwen3.5-4B-Q5_K_M.gguf
+ * 例：hf_unsloth_Qwen3.5-4B-GGUF_Qwen3.5-4B-Q5_K_M.gguf → Qwen3.5-4B-Q5_K_M.gguf（文件名形式取最后一段 _ 之后）
  */
 export function modelUriBasename(modelUri: string): string {
     const s = (modelUri || "").trim();

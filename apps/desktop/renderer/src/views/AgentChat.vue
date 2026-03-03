@@ -58,7 +58,7 @@
             <div class="message-content">
               <div class="message-header">
                 <span class="message-role">{{ t('chat.assistant') }}</span>
-                <span class="typing-label">{{ t('chat.thinking') }}</span>
+                <span class="typing-label">{{ t('chat.thinking') }} {{ waitingElapsedSec }}s</span>
               </div>
               <div class="typing-indicator">
                 <span class="dot" aria-hidden="true"></span>
@@ -70,6 +70,7 @@
 
           <!-- Streaming Message: 仅当流式内容尚未并入列表时显示（有 streamingMessageId 时已在 v-for 中展示，避免完成时 DOM 先删后增导致闪烁） -->
           <div v-else-if="(isStreaming || toolExecutions.length > 0) && (currentMessage || toolExecutions.length > 0) && !streamingMessageId" class="streaming-message">
+            <p v-if="firstReplyElapsedSec != null" class="first-reply-duration">{{ t('chat.firstReplyDuration', { sec: firstReplyElapsedSec }) }}</p>
             <ChatMessage
               :role="'assistant'"
               :content="currentMessage || (toolExecutions.length > 0 ? t('chat.thinking') : '')"
@@ -198,7 +199,7 @@
 </template>
 
 <script>
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAgentStore } from '@/store/modules/agent';
 import { useUIStore } from '@/store/modules/ui';
@@ -358,6 +359,12 @@ export default {
     const currentMessage = computed(() => agentStore.currentMessage);
     const currentSystemMessage = computed(() => agentStore.currentSystemMessage);
     const toolExecutions = computed(() => agentStore.toolExecutions);
+    /** 等待首字回复时的动态计时（秒），每秒更新 */
+    const waitingElapsedSec = ref(0);
+    /** 首字回复到达后记录的耗时（秒），在流式块中展示「等第一个回复所用时长」 */
+    const firstReplyElapsedSec = ref(null);
+    const firstReplyWaitStartedAt = ref(null);
+    let waitTimerId = null;
     const streamContentParts = computed(() => {
       const parts = agentStore.currentStreamParts;
       if (parts && parts.length > 0) return parts;
@@ -451,6 +458,42 @@ export default {
     watch(isStreaming, (streaming) => {
       if (streaming) scrollToBottom();
     });
+
+    // 等待首字回复：动态按秒计时；首字到达后记录时长并在流式块中展示
+    function clearWaitTimer() {
+      if (waitTimerId != null) {
+        clearInterval(waitTimerId);
+        waitTimerId = null;
+      }
+      firstReplyWaitStartedAt.value = null;
+    }
+    watch(
+      () => ({ streaming: isStreaming.value, msg: currentMessage.value, toolsLen: toolExecutions.value.length }),
+      ({ streaming, msg, toolsLen }) => {
+        const isWaiting = streaming && !msg && toolsLen === 0;
+        const hasFirstContent = !!(msg && msg.trim()) || toolsLen > 0;
+        if (isWaiting) {
+          if (firstReplyWaitStartedAt.value == null) {
+            firstReplyElapsedSec.value = null;
+            firstReplyWaitStartedAt.value = Date.now();
+            waitingElapsedSec.value = 0;
+            waitTimerId = setInterval(() => {
+              if (firstReplyWaitStartedAt.value == null) return;
+              waitingElapsedSec.value = Math.floor((Date.now() - firstReplyWaitStartedAt.value) / 1000);
+            }, 1000);
+          }
+        } else {
+          const startedAt = firstReplyWaitStartedAt.value;
+          clearWaitTimer();
+          waitingElapsedSec.value = 0;
+          if (hasFirstContent && startedAt != null && firstReplyElapsedSec.value == null) {
+            firstReplyElapsedSec.value = Math.floor((Date.now() - startedAt) / 1000);
+          }
+          if (!streaming) firstReplyElapsedSec.value = null;
+        }
+      },
+    );
+
     // 切换会话时也要滚到底部（仅 length 可能不变，需依赖 session id）
     watch(() => currentSession.value?.id, () => {
       if (messages.value.length) scrollToBottom();
@@ -569,6 +612,13 @@ export default {
       }
     });
 
+    onBeforeUnmount(() => {
+      if (waitTimerId != null) {
+        clearInterval(waitTimerId);
+        waitTimerId = null;
+      }
+    });
+
     return {
       t,
       routeSessionId,
@@ -584,6 +634,8 @@ export default {
       currentSystemMessage,
       toolExecutions,
       streamContentParts,
+      waitingElapsedSec,
+      firstReplyElapsedSec,
       inputMessage,
       messagePlaceholder,
       messagesContainer,
@@ -664,6 +716,12 @@ export default {
 
 .streaming-message {
   opacity: 0.9;
+}
+
+.streaming-message .first-reply-duration {
+  margin: 0 0 6px 0;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-muted);
 }
 
 /* 系统消息：中间展示，不进会话记录 */

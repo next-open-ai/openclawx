@@ -164,8 +164,35 @@ function parseToolCalls(text: string): ToolCall[] | null {
 }
 
 /**
+ * 从累积文本中移除 <think>...</think> 块，只保留对外可见的正文（关闭本地模型“思考过程”的展示）。
+ * 若存在未闭合的 <think>，则从 <think> 起至末尾均视为思考内容不输出。
+ */
+function getVisibleWithoutThinking(text: string): string {
+    let out = "";
+    let i = 0;
+    const openTag = "<think>";
+    const closeTag = "</think>";
+    while (i < text.length) {
+        const open = text.indexOf(openTag, i);
+        if (open === -1) {
+            out += text.slice(i);
+            break;
+        }
+        out += text.slice(i, open);
+        const close = text.indexOf(closeTag, open + openTag.length);
+        if (close === -1) {
+            // 思考块未闭合，剩余不输出
+            break;
+        }
+        i = close + closeTag.length;
+    }
+    return out;
+}
+
+/**
  * 流式 chat completion。
  * onChunk 每次收到新 token 时调用；结束后返回完整 finish_reason。
+ * 本地模型若输出 <think>...</think> 块，会从流中过滤，不展示思考过程。
  */
 export async function chatCompletionStream(
     messages: ChatMessage[],
@@ -208,7 +235,7 @@ export async function chatCompletionStream(
         }
 
         let fullText = "";
-        let prevSentLength = 0;
+        let prevSentVisibleLength = 0;
         let lastSent = ""; // 连续相同 delta 只发一次，缓解回复缓慢时「每个字显示两遍」
         try {
             await session.prompt(userPrompt, {
@@ -223,8 +250,10 @@ export async function chatCompletionStream(
                     } else {
                         fullText += s;
                     }
-                    const toSend = fullText.slice(prevSentLength);
-                    prevSentLength = fullText.length;
+                    // 过滤 <think>...</think> 块，不向客户端输出思考过程
+                    const visibleText = getVisibleWithoutThinking(fullText);
+                    const toSend = visibleText.slice(prevSentVisibleLength);
+                    prevSentVisibleLength = visibleText.length;
                     if (toSend && toSend !== lastSent) {
                         lastSent = toSend;
                         onChunk({ content: toSend });

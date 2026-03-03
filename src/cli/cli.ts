@@ -320,8 +320,8 @@ const localCmd = program
 
 localCmd
     .command("download")
-    .description("下载推荐模型到 ~/.openbot/.cached_models/，不指定模型时下载 Qwen3-4B")
-    .argument("[modelUri]", "模型 URI（如 hf:Qwen/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf），不传则下载 Qwen3-4B")
+    .description("下载推荐模型到 ~/.openbot/.cached_models/，不指定模型时下载 Qwen 3.5 4B")
+    .argument("[modelUri]", "模型 URI（如 hf:unsloth/Qwen3.5-4B-GGUF/Qwen3.5-4B-Q5_K_M.gguf），不传则下载 Qwen 3.5 4B")
     .option("--mirror", "使用国内镜像 hf-mirror.com 下载")
     .action(async (modelUri: string | undefined, opts: { mirror?: boolean }) => {
         const uri = (modelUri || "").trim() || DEFAULT_LLM_MODEL_URI;
