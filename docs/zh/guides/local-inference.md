@@ -1,6 +1,13 @@
 # 本地推理 0 Tokens 方案
 
-当智能体采用**本机（local）**执行并选用**本地 GGUF 模型**时，推理完全在本机由 [node-llama-cpp](https://github.com/nicolo-ribani/node-llama-cpp) 完成，**不调用任何云端 API**，因此 **0 Token 消耗**。本文说明配置、使用方式，并重点介绍 **一键省 Token** 特征。
+当智能体采用**本机（local）**执行并选用**本地 GGUF 模型**时，推理完全在本机由 [node-llama-cpp](https://github.com/nicolo-ribani/node-llama-cpp) 完成，**全量仿真 OpenAI 协议**，提供**类本地 OpenAI 服务**，**不调用任何云端 API**，因此 **0 Token 消耗**。本文说明配置、使用方式，并重点介绍 **一键省 Token** 特征。
+
+---
+
+## 本地推理与 OpenAI 协议
+
+- **全量仿真 OpenAI 协议**：本地推理服务基于 node-llama-cpp 子进程，对外暴露与 OpenAI 兼容的 API（如 `/v1/chat/completions`），可被标准 OpenAI 客户端或兼容该协议的工具调用，即**类本地 OpenAI 服务**。
+- **模型推荐**：根据模型对比，目前国内开源表现较好的模型为 **Qwen3.5** 系列；推荐在「本地模型」推荐列表中下载 Qwen3.5 4B/8B 等用于本地 0 Token 推理。
 
 ---
 
