@@ -152,6 +152,7 @@
         </transition>
         <div class="input-container">
           <textarea
+            ref="messageInputRef"
             v-model="inputMessage"
             @keydown.enter.exact.prevent="sendMessage"
             @keydown.enter.shift.exact="inputMessage += '\n'"
@@ -300,6 +301,7 @@ export default {
 
     const inputMessage = ref('');
     const messagesContainer = ref(null);
+    const messageInputRef = ref(null);
     const agentListBarRef = ref(null);
     const canScrollAgentLeft = ref(false);
     const canScrollAgentRight = ref(false);
@@ -607,6 +609,14 @@ export default {
           const ro = new ResizeObserver(() => updateScrollTriggers());
           ro.observe(agentListBarRef.value);
         }
+
+        // 启动时把焦点放到输入框，避免 Windows 上首帧焦点在侧栏/别处导致需 Tab 或点一次才能录入
+        const focusInput = () => {
+          const el = messageInputRef.value;
+          if (el && typeof el.focus === 'function') el.focus();
+        };
+        focusInput();
+        setTimeout(focusInput, 150);
       } catch (e) {
         console.error('AgentChat mount error', e);
       }

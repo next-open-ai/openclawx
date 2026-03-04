@@ -16,6 +16,8 @@ import {
 import type { AgentSession } from "@mariozechner/pi-coding-agent";
 import { join } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
+import { platform } from "node:os";
+import { createWindowsShellOperations } from "../tools/windows-shell.js";
 import { createCompactionMemoryExtensionFactory } from "../memory/compaction-extension.js";
 import { loadExtensionFactories } from "../extensions/index.js";
 import { addMemory } from "../memory/index.js";
@@ -370,7 +372,10 @@ For downloads, provide either a direct URL or a selector to click.`;
             read: createReadTool(sessionWorkspaceDir),
             write: createWriteTool(sessionWorkspaceDir),
             edit: createEditTool(sessionWorkspaceDir),
-            bash: createBashTool(sessionWorkspaceDir),
+            bash:
+                platform() === "win32"
+                    ? createBashTool(sessionWorkspaceDir, { operations: createWindowsShellOperations() })
+                    : createBashTool(sessionWorkspaceDir),
             find: createFindTool(sessionWorkspaceDir),
             grep: createGrepTool(sessionWorkspaceDir),
             ls: createLsTool(sessionWorkspaceDir),
