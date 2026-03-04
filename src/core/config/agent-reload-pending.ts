@@ -1,7 +1,8 @@
 /**
  * Agent 配置更新后「待重载」标志：存于 ~/.openbot/desktop/.agent-reload-pending.json。
- * Nest 保存配置时写入 agentId；Gateway/本地会话在 getOrCreateSession 前若发现该 agent 有待重载，
- * 则先使该 agent 下所有旧 Session 失效，再用新配置创建新 Session，然后清除标志，实现配置实时生效。
+ * Nest 保存配置时会先写入本标志，再立即使该 agent 下所有运行中 Session 失效并消费标志；
+ * Gateway 在 getOrCreateSession 前若发现该 agent 有待重载，则先使旧 Session 失效再建新 Session 并消费标志。
+ * 二者配合实现配置更新后运行实例安全、及时生效。
  */
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";

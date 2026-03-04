@@ -1436,6 +1436,7 @@ export default {
           opencode: payload.opencode,
           claudeCode: payload.claudeCode,
         };
+        alert(t('agents.configSavedSessionRefresh'));
       } catch (e) {
         console.error('Save config failed', e);
       } finally {

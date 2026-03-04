@@ -16,6 +16,8 @@ let gatewayClose = null;
 let gatewayStartError = null; // Gateway 启动失败时的错误信息，用于错误页展示
 let tray = null;
 const GATEWAY_PORT = 38080;
+/** 实际监听端口（可能与 GATEWAY_PORT 不同，若首选端口被占用则自动递增） */
+let gatewayActualPort = GATEWAY_PORT;
 
 /** 主进程内启动 Gateway（dev 与打包均可用），不 spawn 子进程 */
 async function startGatewayInProcess() {
@@ -44,17 +46,17 @@ async function startGatewayInProcess() {
         ? path.join(process.resourcesPath, 'dist', 'gateway', 'server.js')
         : path.join(__dirname, '..', '..', 'dist', 'gateway', 'server.js');
     const { startGatewayServer } = await import(pathToFileURL(serverPath).href);
-    process.env.PORT = String(GATEWAY_PORT);
     const result = await startGatewayServer(GATEWAY_PORT);
+    gatewayActualPort = result.port;
     gatewayClose = result.close;
     return result;
 }
 
-/** 等待 Gateway 就绪（用于内嵌启动后轮询） */
+/** 等待 Gateway 就绪（用于内嵌启动后轮询，使用实际监听端口） */
 function waitForGateway() {
     return new Promise((resolve) => {
         const check = () => {
-            const req = http.get(`http://127.0.0.1:${GATEWAY_PORT}/health`, (res) => {
+            const req = http.get(`http://127.0.0.1:${gatewayActualPort}/health`, (res) => {
                 if (res.statusCode === 200) resolve();
                 else setTimeout(check, 500);
             });
@@ -141,7 +143,7 @@ async function createWindow() {
     if (isDev) {
         startUrl = 'http://127.0.0.1:5173';
     } else if (gatewayClose) {
-        startUrl = `http://localhost:${GATEWAY_PORT}`;
+        startUrl = `http://localhost:${gatewayActualPort}`;
     } else {
         // Gateway 未启动（打包后无法连上），显示错误页，避免请求 localhost 失败
         const errMsg = gatewayStartError ? String(gatewayStartError).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
@@ -151,7 +153,7 @@ async function createWindow() {
   <h1 style="color:#ff6b6b;margin-bottom:16px">服务未就绪</h1>
   <p>Gateway 未能启动，请关闭本窗口后重新打开应用。</p>
   ${errMsg ? `<pre style="text-align:left;background:#1a1a2e;padding:12px;border-radius:8px;font-size:12px;overflow:auto;margin:16px 0">${errMsg}</pre>` : ''}
-  <p style="color:#888;font-size:14px;margin-top:24px">若问题持续，请确认端口 ${GATEWAY_PORT} 未被占用，或查看终端/控制台完整错误。</p>
+  <p style="color:#888;font-size:14px;margin-top:24px">若问题持续，请确认端口 ${GATEWAY_PORT} 及邻近端口未被占用，或查看终端/控制台完整错误。</p>
 </div>
 </body></html>`);
     }
@@ -188,6 +190,8 @@ function registerIpcHandlers() {
         if (mainWindow) mainWindow.close();
     });
     ipcMain.handle('get-user-data-path', () => app.getPath('userData'));
+    /** 内嵌 Gateway 实际监听端口（端口被占时可能不同于 38080），供渲染进程 API/WS 使用 */
+    ipcMain.handle('get-gateway-port', () => gatewayActualPort);
     ipcMain.handle('show-open-directory-dialog', async (_, options) => {
         const title = (options && options.title) || '选择目录';
         const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow || null, {

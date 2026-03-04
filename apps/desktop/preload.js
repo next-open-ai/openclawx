@@ -13,5 +13,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     showOpenDirectoryDialog: (options) => ipcRenderer.invoke('show-open-directory-dialog', options),
     /** 在系统默认浏览器中打开 URL */
     openExternal: (url) => ipcRenderer.invoke('open-external', url),
+    /** 内嵌 Gateway 实际监听端口（端口被占时可能不同于 38080） */
+    getGatewayPort: () => ipcRenderer.invoke('get-gateway-port'),
     platform: process.platform,
 });

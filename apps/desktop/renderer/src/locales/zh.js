@@ -184,6 +184,7 @@ export default {
     workspaceReadonly: '创建时确定，不可修改',
     nameReadonly: '主智能体名称不可修改',
     saveConfig: '保存配置',
+    configSavedSessionRefresh: '配置已保存。该智能体对应的会话已刷新，下次对话将使用新配置。',
     modelConfig: '模型配置',
     modelConfigHint: '从下方已配置的模型列表中选择一个，缺省使用当前全局默认模型。',
     noConfiguredModels: '暂无已配置的模型，请先在设置 → 模型配置中添加。',

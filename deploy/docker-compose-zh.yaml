@@ -10,6 +10,12 @@
 #
 # Ollama 与 OpenClawX 同栈时：OpenClawX 通过 OLLAMA_BASE_URL 自动连到 ollama 服务；
 # 在「模型配置」或智能体中选用 Ollama 为 Provider 即可，无需再填 baseUrl。
+#
+# 仅使用宿主机上的 Ollama（不跑 compose 里的 ollama 容器）时：
+# 1. 不启动下方的 ollama 服务（或 docker compose up openclawx 只起 openclawx）。
+# 2. 宿主机确保 Ollama 监听 0.0.0.0（如 OLLAMA_HOST=0.0.0.0）且防火墙放行 11434。
+# 3. Custom OpenAPI 的 baseUrl 必须带协议，填：http://host.docker.internal:11434/v1（不能省 http://）。
+# 4. 本文件已通过 extra_hosts 将 host.docker.internal 解析为宿主机（Linux 需 Docker 20.10+）。
 
 services:
   openclawx:
@@ -19,13 +25,14 @@ services:
       - "38080:38080"
     environment:
       - NODE_ENV=production
-      # 与 Ollama 同栈时，自动使用容器名访问；无 Ollama 服务时可删除此行
+      # 使用同栈 Ollama 容器时用下面这行；仅用宿主机 Ollama 时改为下一行并确保不启动 ollama 服务
       - OLLAMA_BASE_URL=http://ollama:11434
+      # - OLLAMA_BASE_URL=http://host.docker.internal:11434
     restart: unless-stopped
     volumes:
       # 持久化 ~/.openbot：配置（desktop/config 等）及本地模型缓存（.cached_models）
       - ~/.openbot-data:/root/.openbot
-    # 支持容器内通过 host.docker.internal 访问宿主机（如宿主机上的 API、数据库等）
+    # 支持容器内通过 host.docker.internal 访问宿主机（Linux 需 Docker 20.10+，用 host-gateway 解析宿主机 IP）
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # 与 Dockerfile 一致：node dist/cli/cli.js gateway --port 38080

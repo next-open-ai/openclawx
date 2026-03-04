@@ -72,6 +72,13 @@
             "name": "OpenAI (自定义)",
             "models": [
                 {
+                    "id": "qwen3.5:4b",
+                    "name": "Qwen3.5 4B",
+                    "types": [
+                        "llm"
+                    ]
+                },
+                {
                     "id": "gpt-4o",
                     "name": "GPT-4o",
                     "types": [

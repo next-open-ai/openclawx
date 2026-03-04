@@ -184,6 +184,7 @@ export default {
     workspaceReadonly: 'Set at creation, cannot be changed',
     nameReadonly: 'Main agent name cannot be changed',
     saveConfig: 'Save config',
+    configSavedSessionRefresh: 'Config saved. Sessions for this agent have been refreshed; the next message will use the new config.',
     modelConfig: 'Model Configuration',
     modelConfigHint: 'Choose one from the configured models below. Defaults to the current global default model.',
     noConfiguredModels: 'No configured models. Add models in Settings → Model Configuration first.',

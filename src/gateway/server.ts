@@ -66,6 +66,47 @@ const PACKAGE_ROOT = join(__dirname, "..", "..");
 const STATIC_DIR =
     process.env.OPENBOT_STATIC_DIR || join(PACKAGE_ROOT, "apps", "desktop", "renderer", "dist");
 
+/** 端口被占用时依次尝试的最大个数（38080, 38081, ...） */
+const MAX_PORT_ATTEMPTS = 20;
+
+/**
+ * 尝试将 httpServer 绑定到某端口；若被占用则尝试下一端口，返回实际绑定端口。
+ * @param server 已挂好路由的 HTTP Server
+ * @param startPort 首选端口
+ * @returns 实际监听的端口
+ */
+function listenOnPreferredOrNextPort(server: Server, startPort: number): Promise<number> {
+    return new Promise((resolve, reject) => {
+        let tryPort = startPort;
+        const attempt = () => {
+            if (tryPort - startPort >= MAX_PORT_ATTEMPTS) {
+                reject(new Error(`No available port in range ${startPort}–${startPort + MAX_PORT_ATTEMPTS - 1}`));
+                return;
+            }
+            const onListen = () => {
+                server.off("error", onError);
+                const addr = server.address();
+                const p = typeof addr === "object" && addr && "port" in addr ? addr.port : tryPort;
+                resolve(p);
+            };
+            const onError = (err: NodeJS.ErrnoException) => {
+                server.off("listening", onListen);
+                if (err?.code === "EADDRINUSE") {
+                    console.log(`Port ${tryPort} in use, trying ${tryPort + 1}...`);
+                    tryPort += 1;
+                    attempt();
+                } else {
+                    reject(err);
+                }
+            };
+            server.once("listening", onListen);
+            server.once("error", onError);
+            server.listen(tryPort);
+        };
+        attempt();
+    });
+}
+
 const MIME_TYPES: Record<string, string> = {
     ".html": "text/html",
     ".js": "text/javascript",
@@ -88,7 +129,6 @@ export async function startGatewayServer(port: number = 38080): Promise<{
     port: number;
     close: () => Promise<void>;
 }> {
-    process.env.PORT = String(port);
     await ensureDesktopConfigInitialized();
     console.log(`Starting gateway server on port ${port}...`);
 
@@ -100,8 +140,6 @@ export async function startGatewayServer(port: number = 38080): Promise<{
         const msg = e instanceof Error ? e.message : String(e);
         console.log("[local-llm] 提示：启动时发生异常，已跳过。", msg);
     }
-
-    setBackendBaseUrl(`http://localhost:${port}`);
 
     const { app: nestApp, express: nestExpress } = await createNestAppEmbedded();
 
@@ -278,17 +316,16 @@ export async function startGatewayServer(port: number = 38080): Promise<{
         }
     });
 
-    const actualPort = await new Promise<number>((resolve) => {
-        httpServer.listen(port, () => {
-            const addr = httpServer.address();
-            const p = typeof addr === "object" && addr && "port" in addr ? addr.port : port;
-            console.log(`✅ Gateway server listening on ws://localhost:${p}`);
-            console.log(`   Health: http://localhost:${p}${PATHS.HEALTH}`);
-            console.log(`   API:    http://localhost:${p}${PATHS.SERVER_API}`);
-            console.log(`   WS:     ws://localhost:${p}${PATHS.WS}`);
-            resolve(p);
-        });
-    });
+    const actualPort = await listenOnPreferredOrNextPort(httpServer, port);
+    process.env.PORT = String(actualPort);
+    setBackendBaseUrl(`http://localhost:${actualPort}`);
+    if (actualPort !== port) {
+        console.log(`Using port ${actualPort} (preferred ${port} was in use).`);
+    }
+    console.log(`✅ Gateway server listening on ws://localhost:${actualPort}`);
+    console.log(`   Health: http://localhost:${actualPort}${PATHS.HEALTH}`);
+    console.log(`   API:    http://localhost:${actualPort}${PATHS.SERVER_API}`);
+    console.log(`   WS:     ws://localhost:${actualPort}${PATHS.WS}`);
 
     // 通道：根据配置注册并启动（飞书 WebSocket、钉钉 Stream 等）
     const channelsConfig = getChannelsConfigSync();

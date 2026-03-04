@@ -52,6 +52,7 @@ export const DEFAULT_PROVIDER_SUPPORT: ProviderSupport = {
     "openai-custom": {
         name: "OpenAI (自定义)",
         models: [
+            { id: "qwen3.5:4b", name: "Qwen3.5 4B", types: ["llm"] },
             { id: "gpt-4o", name: "GPT-4o", types: ["llm"] },
             { id: "gpt-4o-mini", name: "GPT-4o Mini", types: ["llm"] },
             { id: "gpt-4-turbo", name: "GPT-4 Turbo", types: ["llm"] },

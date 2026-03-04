@@ -29,7 +29,14 @@ export async function createNestAppEmbedded(): Promise<NestAppResult> {
     expressApp.use(express.json({ limit: BODY_LIMIT }));
     expressApp.use(express.urlencoded({ extended: true, limit: BODY_LIMIT }));
     app.enableCors({
-        origin: ['http://localhost:5173', 'http://localhost:38080', 'http://localhost:38081'],
+        origin: [
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
+            'http://localhost:38080',
+            'http://localhost:38081',
+            'http://127.0.0.1:38080',
+            'http://127.0.0.1:38081',
+        ],
         credentials: true,
     });
     await app.init();
@@ -50,7 +57,14 @@ export async function createNestAppStandalone(port: number = 38081): Promise<INe
     expressApp.use(express.urlencoded({ extended: true, limit: BODY_LIMIT }));
     app.setGlobalPrefix('server-api');
     app.enableCors({
-        origin: ['http://localhost:5173', 'http://localhost:38080', 'http://localhost:38081'],
+        origin: [
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
+            'http://localhost:38080',
+            'http://localhost:38081',
+            'http://127.0.0.1:38080',
+            'http://127.0.0.1:38081',
+        ],
         credentials: true,
     });
     await app.listen(port);

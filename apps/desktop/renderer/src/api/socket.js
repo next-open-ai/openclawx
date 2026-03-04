@@ -189,7 +189,9 @@ class SocketService {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         let host = window.location.host;
         if (window.location.port === '5173' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-            host = window.location.hostname + ':38080';
+            const raw = window.__GATEWAY_PORT__;
+            const port = (typeof raw === 'number' && raw > 0) ? raw : (Number.parseInt(raw, 10) || 38080);
+            host = window.location.hostname + ':' + port;
         }
         const base = `${protocol}//${host}`;
         const url = base.replace(/\/$/, '') + '/ws';

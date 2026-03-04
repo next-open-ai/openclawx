@@ -7,7 +7,8 @@ import type { McpServerConfig, McpServersStandardFormat } from '../../core/mcp/i
 import type { McpServerConfigStandardEntry } from '../../core/mcp/types.js';
 import { testMcpConnection } from '../../core/mcp/operator.js';
 import { standardFormatToArray } from '../../core/mcp/config.js';
-import { addPendingAgentReload } from '../../core/config/agent-reload-pending.js';
+import { addPendingAgentReload, consumePendingAgentReload } from '../../core/config/agent-reload-pending.js';
+import { agentManager } from '../../core/agent/agent-manager.js';
 import { DatabaseService } from '../database/database.service.js';
 import { WorkspaceService } from '../workspace/workspace.service.js';
 
@@ -378,6 +379,9 @@ export class AgentConfigService {
         }
         await this.writeAgentsFile(file);
         await addPendingAgentReload(id).catch(() => {});
+        // 立即使该智能体下所有运行中的 AgentSession 失效，下次请求将用新配置创建新会话（安全：先持久化 compaction 再移除）
+        await agentManager.deleteSessionsByAgentId(id).catch(() => {});
+        await consumePendingAgentReload(id).catch(() => {});
         return { ...agent, isDefault: agent.id === DEFAULT_AGENT_ID };
     }
 

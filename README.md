@@ -48,7 +48,7 @@
 | 能力 | 说明 |
 |------|------|
 | **技能架构** | 基于 Agent Skills 规范，支持多路径加载、本地安装与动态扩展；支持技能自我发现与自我迭代 |
-| **编码智能体** | 集成 [pi-coding-agent](https://www.npmjs.com/package/@mariozechner/pi-coding-agent)，支持多轮工具调用与代码执行 |
+| **编码智能体** | 集成 [coding-agent]支持多轮工具调用与代码执行 |
 | **浏览器自动化** | 内置 [agent-browser](https://www.npmjs.com/package/agent-browser)，可导航、填表、截图与数据抓取 |
 | **长期记忆** | 向量存储（Vectra）+ 本地嵌入，支持经验总结与会话压缩（compaction） |
 | **多端接入** | CLI、WebSocket 网关、Electron 桌面端，同一套 Agent 核心；各端技术栈见下方「各端技术栈」 |
