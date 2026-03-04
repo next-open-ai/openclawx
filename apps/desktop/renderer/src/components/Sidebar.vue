@@ -1,5 +1,5 @@
 <template>
-  <div class="sidebar">
+  <div class="sidebar" :class="{ 'is-web': isWeb }">
     <div class="sidebar-header">
       <div class="logo" :title="t('app.name')">
         <img src="@/assets/logo.svg" :alt="t('app.name')" class="logo-image" />
@@ -67,6 +67,7 @@ export default {
   setup() {
     const route = useRoute();
     const { t } = useI18n();
+    const isWeb = typeof window !== 'undefined' && !window.electronAPI;
 
     const navItems = computed(() => [
       { path: '/chat', label: t('nav.agentChat'), iconComponent: IconChat },
@@ -87,6 +88,7 @@ export default {
       navItems,
       isActive,
       isLogsActive,
+      isWeb,
       t,
     };
   },
@@ -108,6 +110,11 @@ export default {
   gap: var(--spacing-xl);
 }
 
+/* Web 下无窗口控制区，logo 上移，整体更紧凑 */
+.sidebar.is-web {
+  padding-top: var(--spacing-md);
+}
+
 .sidebar-header {
   margin-bottom: var(--spacing-sm);
   display: flex;
@@ -119,8 +126,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   overflow: hidden;
   transition: opacity 0.2s ease;
 }

@@ -139,10 +139,10 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-sm) var(--spacing-lg);
+  padding: 8px var(--spacing-lg);
   background: var(--color-bg-secondary);
   border-bottom: 1px solid var(--glass-border);
-  min-height: 56px; /* Slightly taller for better touch target */
+  min-height: 44px;
 }
 
 .header.draggable {
