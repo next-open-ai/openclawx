@@ -3,7 +3,7 @@
     "publishConfig": {
         "access": "public"
     },
-    "version": "0.9.6",
+    "version": "1.0.1",
     "description": "OpenClawX - A professional desktop application for managing and executing AI agents with real-time chat, session management, and skills browsing.",
     "type": "module",
     "main": "dist/index.js",
@@ -84,7 +84,8 @@
         "test": "jest --config test/jest.config.cjs",
         "test:memory": "node test/run-memory.mjs",
         "test:e2e": "OPENBOT_DB_PATH=:memory: jest --config test/jest.config.cjs --testPathPattern=e2e",
-        "test:gateway-e2e": "npm run build && node test/gateway/server.e2e.mjs"
+        "test:gateway-e2e": "npm run build && node test/gateway/server.e2e.mjs",
+        "test:env": "npm run build && node test/env-resolution.mjs"
     },
     "engines": {
         "node": ">=20.0.0"

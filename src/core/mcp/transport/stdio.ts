@@ -5,6 +5,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import type { McpServerConfigStdio } from "../types.js";
 import type { JsonRpcRequest, JsonRpcResponse } from "../types.js";
+import { buildSubprocessEnv, resolveCommandName, needsShellOnWindows } from "../../env/resolve-shell-env.js";
 
 const MCP_PROTOCOL_VERSION = "2024-11-05";
 
@@ -51,28 +52,35 @@ export class StdioTransport {
         if (this.process) {
             return;
         }
-        const env = { ...process.env, ...this.config.env };
+        // 使用已探测的 Shell PATH（含 nvm/brew/pyenv 等用户工具）+ 自定义 env
+        // buildSubprocessEnv 优先读取缓存（由 warmShellEnvCache 在应用启动时预热），兜底 process.env
+        const env = buildSubprocessEnv(this.config.env);
         // 避免 Python 类 MCP 在 pipe 下全缓冲 stdout，导致 initialize 响应迟迟不到而超时
         if (env.PYTHONUNBUFFERED === undefined) env.PYTHONUNBUFFERED = "1";
         // npx/uvx 可能向 stdout 输出安装/进度等，污染 Newline-delimited JSON，导致无法解析；设为静默
         const cmd = (this.config.command || "").trim().toLowerCase();
-        const cmdBase = cmd.includes("/") ? cmd.split("/").pop()! : cmd;
-        if (cmdBase === "npx" || cmdBase === "npm") {
+        const cmdBase = cmd.includes("/") ? cmd.split("/").pop()! : (cmd.includes("\\") ? cmd.split("\\").pop()! : cmd);
+        const cmdBaseClean = cmdBase.replace(/\.cmd$/i, "").replace(/\.exe$/i, "");
+        if (cmdBaseClean === "npx" || cmdBaseClean === "npm") {
             if (env.CI === undefined) env.CI = "1";
             if (env.NO_UPDATE_NOTIFIER === undefined) env.NO_UPDATE_NOTIFIER = "1";
             if (env.npm_config_loglevel === undefined) env.npm_config_loglevel = "silent";
-        } else if (cmdBase === "uvx" || cmdBase === "uv") {
+        } else if (cmdBaseClean === "uvx" || cmdBaseClean === "uv") {
             if (env.CI === undefined) env.CI = "1";
             if (env.UV_SILENT === undefined) env.UV_SILENT = "1";
         }
         // uvx/uv 不支持 -y 参数（与 npx -y 不同），自动去掉以免报错 "unexpected argument '-y' found"
         let args = this.config.args ?? [];
-        if (cmdBase === "uvx" || cmdBase === "uv") {
+        if (cmdBaseClean === "uvx" || cmdBaseClean === "uv") {
             args = args.filter((a) => a !== "-y" && a !== "--yes");
         }
-        this.process = spawn(this.config.command, args, {
+        // Windows：npx/npm 等为 .cmd 脚本，需要经 shell 才能执行；同时补全 .cmd 后缀
+        const resolvedCommand = resolveCommandName(this.config.command);
+        const useShell = needsShellOnWindows(this.config.command);
+        this.process = spawn(resolvedCommand, args, {
             env,
             stdio: ["pipe", "pipe", "pipe"],
+            shell: useShell,
         });
 
         const child = this.process;

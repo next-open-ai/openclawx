@@ -12,6 +12,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import { homedir } from "os";
 import { getOpenbotAgentDir, getOpenbotWorkspaceDir } from "../agent/agent-dir.js";
+import { buildSubprocessEnv, resolveCommandName } from "../env/resolve-shell-env.js";
 
 const execAsync = promisify(exec);
 
@@ -96,9 +97,13 @@ export async function installSkillByUrl(
     let stderr = "";
     try {
         await mkdir(tempPiSkills, { recursive: true });
+        // 使用已探测的 Shell PATH 确保 npx 可被找到（兼容 nvm/Homebrew/nvm-windows 安装的 Node）
+        // Windows 下 resolveCommandName 将 "npx" 转换为 "npx.cmd"；exec 本身调用 shell，可执行 .cmd
+        const npxCmd = resolveCommandName("npx");
+        const subEnv = buildSubprocessEnv();
         const { stdout: out, stderr: err } = await execAsync(
-            `npx skills add "${url.trim()}" -a pi -y`,
-            { cwd: tempDir, maxBuffer: 4 * 1024 * 1024 },
+            `"${npxCmd}" skills add "${url.trim()}" -a pi -y`,
+            { cwd: tempDir, maxBuffer: 4 * 1024 * 1024, env: subEnv },
         );
         stdout = out || "";
         stderr = err || "";

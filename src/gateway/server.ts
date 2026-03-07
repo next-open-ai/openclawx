@@ -44,6 +44,7 @@ import { handleInstallSkillFromUpload } from "./methods/install-skill-from-uploa
 import { setBackendBaseUrl } from "./backend-url.js";
 import { ensureDesktopConfigInitialized, getChannelsConfigSync } from "../core/config/desktop-config.js";
 import { tryStartLocalModelFromSavedConfig } from "../core/local-llm-server/start-from-config.js";
+import { warmShellEnvCache } from "../core/env/resolve-shell-env.js";
 import { createNestAppEmbedded } from "../server/bootstrap.js";
 import { registerChannel, startAllChannels, stopAllChannels } from "./channel/registry.js";
 import { createFeishuChannel } from "./channel/adapters/feishu.js";
@@ -131,6 +132,10 @@ export async function startGatewayServer(port: number = 38080): Promise<{
 }> {
     await ensureDesktopConfigInitialized();
     console.log(`Starting gateway server on port ${port}...`);
+
+    // 尽早预热 Shell PATH 缓存（fire-and-forget）
+    // 使得 MCP 首次 spawn 时已有完整 PATH（含 nvm/brew/pyenv 等），避免找不到 npx/node
+    warmShellEnvCache();
 
     // 每次启动时按已保存配置尝试启动本地模型服务（不阻塞、不影响主进程；失败仅提示）
     try {
