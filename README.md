@@ -4,7 +4,7 @@
 
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Restrictive MIT](https://img.shields.io/badge/License-Restrictive%20MIT-yellow.svg)](LICENSE)
 
 ---
 
@@ -603,6 +603,9 @@ npm run test:memory
 
 ---
 
-## 许可证
+## 许可证 / License
 
-MIT
+本项目采用 **限制性 MIT 许可证（Restrictive MIT License）**：在保留 MIT 条款的基础上，**禁止未经著作权人书面许可将本软件用于商业目的使用、修改或分发，或作为商业产品或服务发布**。如需商用，请联系著作权人取得单独许可。
+
+- 英文全文：[LICENSE](LICENSE)
+- 中文全文：[LICENSE.zh-CN](LICENSE.zh-CN)
