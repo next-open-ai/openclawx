@@ -1,10 +1,16 @@
 # OpenClawX
 
-基于自已的OpenBot重构而来，你们的关注或***star***是我坚持的动力 ：）
+**桌面级 AI Agent 平台**：支持 CLI / Web / Desktop 多端，飞书、钉钉、Telegram、微信等多通道已对接；可接 Coze / OpenCode / Claude Code 代理与**本地推理 0 Token**，**同一会话内自由切换智能体与模型**，支持 MCP、技能与插件扩展。
 
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 [![License: Restrictive MIT](https://img.shields.io/badge/License-Restrictive%20MIT-yellow.svg)](LICENSE)
+
+- **多通道**：飞书、钉钉、Telegram、微信已支持，Gateway 统一入站/出站，流式回复与 `//` 指令
+- **0 Token 方案**：本地 GGUF（node-llama-cpp）推理或代理至 Coze/OpenCode/Claude Code，本机不耗云端 Token
+- **同一会话多智能体**：桌面对话或通道会话中随时切换本机/代理智能体与模型，按任务控制费用
+- **MCP + 技能**：stdio/SSE 连接 MCP 服务器，Agent Skills 与插件（`openbot extension`）扩展能力
+- **国产、桌面优先**：数据可本地化，限制性 MIT；基于 OpenBot 重构，持续迭代
 
 ---
 
@@ -12,15 +18,16 @@
 
 **文档 (Documentation):** [中文 (Chinese)](docs/zh/README.md) · [English](docs/en/README.md)
 
-完整使用说明请进入上述链接。中文文档结构如下：
+<details>
+<summary><strong>📂 中文文档结构 (点击展开)</strong></summary>
 
 | 分类 | 文档 | 说明 |
 |------|------|------|
 | **入门** | [快速开始](docs/zh/guides/getting-started.md) | 5 分钟跑通：安装、首次对话、桌面/通道入口 |
 | | [安装与部署](docs/zh/guides/installation.md) | npm、Docker、Desktop 安装包及环境要求 |
 | **使用指南** | [CLI 使用](docs/zh/guides/cli-usage.md) | 命令行对话、登录、模型与技能、开机自启 |
-| | [桌面端使用](docs/zh/guides/desktop-usage.md) | Desktop 安装与启动、智能体/会话/技能/设置；**同一会话自由切换智能体**、**单智能体自由切换模型**（控制 Token 费用）、对话内 `//` 指令 |
-| | [本地推理 0 Tokens 方案](docs/zh/guides/local-inference.md) | 本地 GGUF 配置与使用；**一键省 Token** 特征说明 |
+| | [桌面端使用](docs/zh/guides/desktop-usage.md) | Desktop 安装与启动、智能体/会话/技能/设置；同一会话切换智能体与模型、`//` 指令 |
+| | [本地推理 0 Tokens 方案](docs/zh/guides/local-inference.md) | 本地 GGUF 配置与使用；一键省 Token |
 | | [Web 与 Gateway](docs/zh/guides/gateway-web.md) | 启动网关、端口与路径、Web 端连接 |
 | | [使用场景](docs/zh/guides/usage-scenarios.md) | 整理下载目录、创建/切换智能体、B站下载助手、安装技能、MCP、定时任务等 |
 | **配置** | [配置概览](docs/zh/configuration/config-overview.md) | 配置目录、config.json 与 agents.json |
@@ -32,14 +39,12 @@
 | **参考** | [常见问题](docs/zh/reference/faq.md) | 安装失败、端口占用、通道不回复等 FAQ |
 | | [发布说明](docs/zh/release-notes.md) | 各版本功能更新与问题修复记录 |
 
-
+</details>
 
 ### 常见问题（简要）
 
-- **Windows 安装失败 / 无法运行？**  
-  - **Desktop 安装包**：若安装或启动报错（如缺少运行库、闪退），请安装 [Visual C++ Redistributable](https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist)（选 x64）；若为杀毒/安全软件拦截，可尝试加入排除项或暂时关闭后重试。  
-  - **npm 全局安装**：Windows 上若因 `node-llama-cpp` 等原生依赖安装失败，可使用 `npm install -g @next-open-ai/openclawx --ignore-scripts` 跳过可选原生模块，对 CLI/Gateway/Desktop 常规使用无影响；长记忆需单独配置在线 RAG 或本地环境。  
-- 更多问题（macOS 安装包「已损坏」、端口占用、通道不回复等）见 **[常见问题](docs/zh/reference/faq.md)**；版本变更见 **[发布说明](docs/zh/release-notes.md)**。
+- **Windows 安装失败 / 无法运行？** Desktop 安装包请安装 [Visual C++ Redistributable](https://learn.microsoft.com/zh-cn/cpp/windows/latest-supported-vc-redist)（x64）；npm 安装可尝试 `npm install -g @next-open-ai/openclawx --ignore-scripts` 跳过原生模块。
+- 更多（macOS「已损坏」、端口占用、通道不回复等）见 [常见问题](docs/zh/reference/faq.md)；版本见 [发布说明](docs/zh/release-notes.md)。
 
 ---
 
@@ -596,6 +601,8 @@ npm run test:memory
 ---
 
 ### 社区与交流
+
+若本项目对你有帮助，欢迎 **Star** 或加入交流群。
 
 扫码加入交流群：
 
