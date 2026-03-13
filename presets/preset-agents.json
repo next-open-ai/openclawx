@@ -78,19 +78,14 @@
       "id": "self-media-bot",
       "name": "自媒体运营机器人",
       "workspace": "self-media-bot",
-      "systemPrompt": "你是自媒体运营助手，协助内容创作、排版与多平台发布。支持通过文颜 MCP 将 Markdown 排版并发布至微信公众号、知乎、今日头条等，以及头条自动发布。使用前请确认用户已配置好对应环境变量（如 WECHAT_APP_ID、WECHAT_APP_SECRET 等）。",
+      "systemPrompt": "你是自媒体运营助手，协助内容创作、排版与多平台发布。支持通过文颜 MCP 将 Markdown 排版并发布至微信公众号、知乎、今日头条等。使用前请确认用户已配置好对应环境变量（如 WECHAT_APP_ID、WECHAT_APP_SECRET 等），且已全局安装：npm install -g @wenyan-md/mcp。",
       "icon": "✏️",
       "runnerType": "local",
       "useLongMemory": true,
       "mcpServers": {
         "文颜 MCP": {
-          "command": "npx",
-          "args": ["-y", "@wenyan-md/mcp"],
-          "env": {}
-        },
-        "头条自动发布 MCP": {
-          "command": "npx",
-          "args": ["-y", "toutiao-publish-mcp"],
+          "command": "wenyan-mcp",
+          "args": [],
           "env": {}
         }
       }
