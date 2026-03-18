@@ -1,6 +1,6 @@
 # 通道配置
 
-OpenClawX 支持通过**通道**将 Agent 对接到飞书、钉钉、Telegram、微信。通道在 Gateway 启动时根据配置注册：入站消息经统一格式进入 Agent，回复经该通道发回对应平台。
+OpenClawX 支持通过**通道**将 Agent 对接到飞书、钉钉、Telegram、微信、QQ。通道在 Gateway 启动时根据配置注册：入站消息经统一格式进入 Agent，回复经该通道发回对应平台。
 
 ---
 
@@ -12,8 +12,11 @@ OpenClawX 支持通过**通道**将 Agent 对接到飞书、钉钉、Telegram、
 | **钉钉** | dingtalk-stream SDK（Stream 模式） | sessionWebhook POST | `channel:dingtalk:<conversationId>` |
 | **Telegram** | 长轮询 getUpdates | sendMessage / editMessageText 流式更新 | `channel:telegram:<chat_id>` |
 | **微信** | Wechaty（Web/UOS 协议）扫码登录 | say 一次性发送（不支持流式） | `channel:wechat:<thread_id>` |
+| **QQ** | QQ 开放平台 WebSocket（官方 Node SDK） | OPENAPI postMessage / postDirectMessage | `channel:qq:<子频道或私信ID>` |
 
 同一会话（如一个 chat_id / conversationId / thread_id）对应一个 Agent Session，由通道配置中的 **defaultAgentId** 指定使用的智能体。
+
+**修改默认智能体后**：保存通道配置时，会把**仍绑定在「旧默认智能体」上的该通道会话**批量改绑到新默认（在对话里用 `//` 切到其他智能体的会话不会被动）。若你曾把默认从 A 改成 B，但日志里仍出现 `::A`，请再点一次「保存」；若配置文件里已是 B、数据库里仍是 A（例如只改过 JSON 未走保存逻辑），可先临时把默认改回 A 并保存，再改回 B 并保存，以触发同步。
 
 **对话内切换智能体**：在飞书、钉钉、Telegram、微信的对话中，同样支持使用 **`//` 指令** 查询与切换当前会话的智能体（如 `//select` 列出智能体、`//名称` 或 `//id` 切换、`//` 切回主智能体）。与桌面端、Web 端行为一致，详见 [桌面端使用 → 对话内切换智能体：// 指令](../guides/desktop-usage.md#对话内切换智能体-指令)。
 
@@ -22,7 +25,7 @@ OpenClawX 支持通过**通道**将 Agent 对接到飞书、钉钉、Telegram、
 ## 配置位置
 
 - **桌面端**：**设置 → 通道** 中启用并填写各通道凭证，保存后**重启 Gateway** 生效。
-- **配置文件**：直接编辑 `~/.openbot/desktop/config.json` 中的 `channels.feishu`、`channels.dingtalk`、`channels.telegram`、`channels.wechat`。
+- **配置文件**：直接编辑 `~/.openbot/desktop/config.json` 中的 `channels.feishu`、`channels.dingtalk`、`channels.telegram`、`channels.wechat`、`channels.qq`。
 
 未配置或未启用某通道时，Gateway 会跳过该通道；若已启用但必填项为空，控制台会提示到「设置 → 通道」检查。
 
@@ -55,6 +58,14 @@ OpenClawX 支持通过**通道**将 Agent 对接到飞书、钉钉、Telegram、
 - **配置项**：enabled、puppet（可选，如 `wechaty-puppet-wechat4u`）、defaultAgentId。
 - **用法**：在 OpenClawX **设置 → 通道** 勾选「启用微信」，可选填写 puppet；保存后**重启 Gateway**。启动后在设置页或通过接口 `/server-api/wechat/qrcode` 获取二维码，使用**微信扫码登录**。登录成功后即可在微信内与机器人对话；对话中支持 **`//` 指令** 查询与切换智能体。
 - **账号说明**：微信对第三方协议有风控限制，**注册较早、使用时间较长的微信号** 相对更容易登录成功；新注册或存在风控的账号可能无法登录或易被限制，建议优先使用老号尝试。
+
+---
+
+## QQ
+
+- **说明**：QQ 通道基于 **QQ 开放平台** 官方 Node SDK（qq-guild-bot），使用 getAppAccessToken 鉴权，WebSocket 接收频道消息与私信，OPENAPI 发送回复。支持 QQ 频道子频道消息与私信（DIRECT_MESSAGE）。
+- **配置项**：enabled、appId、appSecret、defaultAgentId、sandbox（可选，是否使用沙箱环境）。
+- **用法**：在 [QQ 开放平台](https://bot.q.qq.com/) 创建机器人应用，获取 App ID 与 App Secret；在 OpenClawX **设置 → 通道** 勾选「启用 QQ」并填写 App ID、App Secret，可选勾选「使用沙箱环境」→ 保存后**重启 Gateway**。在 QQ 频道或私信中与机器人对话即可；对话中支持 **`//` 指令** 查询与切换智能体。
 
 ---
 

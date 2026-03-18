@@ -153,6 +153,40 @@
               </div>
               <p class="form-hint">{{ t('settings.channelWechatHint') }}</p>
             </template>
+
+            <template v-else-if="channelConfigId === 'qq'">
+              <div class="form-group">
+                <label class="checkbox-label">
+                  <input v-model="channelForm.qq.enabled" type="checkbox" />
+                  {{ t('settings.channelQQEnabled') }}
+                </label>
+              </div>
+              <div class="form-group">
+                <label>{{ t('settings.channelQQAppId') }}</label>
+                <input v-model="channelForm.qq.appId" type="text" class="form-input" :placeholder="t('settings.channelQQAppIdPlaceholder')" autocomplete="off" />
+              </div>
+              <div class="form-group">
+                <label>{{ t('settings.channelQQToken') }}</label>
+                <input v-model="channelForm.qq.token" type="password" class="form-input" :placeholder="t('settings.channelQQTokenPlaceholder')" autocomplete="off" />
+              </div>
+              <div class="form-group">
+                <label>{{ t('settings.channelQQAppSecret') }}</label>
+                <input v-model="channelForm.qq.appSecret" type="password" class="form-input" :placeholder="t('settings.channelQQAppSecretPlaceholder')" autocomplete="off" />
+              </div>
+              <div class="form-group">
+                <label class="checkbox-label">
+                  <input v-model="channelForm.qq.sandbox" type="checkbox" />
+                  {{ t('settings.channelQQSandbox') }}
+                </label>
+              </div>
+              <div class="form-group">
+                <label>{{ t('settings.channelDefaultAgentId') }}</label>
+                <select v-model="channelForm.qq.defaultAgentId" class="form-input">
+                  <option v-for="a in agentOptions" :key="a.id" :value="a.id">{{ a.name || a.id }}</option>
+                </select>
+              </div>
+              <p class="form-hint">{{ t('settings.channelQQHint') }}</p>
+            </template>
           </div>
           <div class="modal-footer-actions">
             <button type="button" class="btn-secondary" @click="closeChannelConfig">{{ t('common.cancel') }}</button>
@@ -173,13 +207,14 @@ import { configAPI } from '@/api';
 import { agentConfigAPI } from '@/api';
 import { useSettingsStore } from '@/store/modules/settings';
 
-const CHANNEL_IDS = ['feishu', 'dingtalk', 'telegram', 'wechat'];
+const CHANNEL_IDS = ['feishu', 'dingtalk', 'telegram', 'wechat', 'qq'];
 
 const defaultChannelForm = () => ({
   feishu: { enabled: false, appId: '', appSecret: '', defaultAgentId: 'default' },
   dingtalk: { enabled: false, clientId: '', clientSecret: '', defaultAgentId: 'default' },
   telegram: { enabled: false, botToken: '', defaultAgentId: 'default' },
   wechat: { enabled: false, puppet: '', defaultAgentId: 'default' },
+  qq: { enabled: false, appId: '', token: '', appSecret: '', defaultAgentId: 'default', sandbox: false },
 });
 
 export default {
@@ -219,13 +254,16 @@ export default {
         } else if (id === 'wechat') {
           name = t('settings.wechat');
           brief = t('settings.channelBriefWechat');
+        } else if (id === 'qq') {
+          name = t('settings.qq');
+          brief = t('settings.channelBriefQQ');
         }
         return {
           id,
           name,
           brief,
           enabled,
-          icon: { feishu: '📋', dingtalk: '🔔', telegram: '✈️', wechat: '💬' }[id],
+          icon: { feishu: '📋', dingtalk: '🔔', telegram: '✈️', wechat: '💬', qq: '🐧' }[id],
         };
       });
     });
@@ -376,6 +414,15 @@ export default {
         wechatModalStatus.value = 'logged_out';
         wechatModalUserName.value = null;
         if (channelForm.value.wechat.enabled) fetchWechatQrCodeModal();
+      } else if (id === 'qq') {
+        channelForm.value.qq = {
+          enabled: !!cur.enabled,
+          appId: typeof cur.appId === 'string' ? cur.appId : '',
+          token: typeof cur.token === 'string' ? cur.token : '',
+          appSecret: typeof cur.appSecret === 'string' ? cur.appSecret : '',
+          defaultAgentId: (cur.defaultAgentId || 'default').trim(),
+          sandbox: !!cur.sandbox,
+        };
       }
       loadAgentList();
     }
@@ -399,6 +446,7 @@ export default {
           dingtalk: ch.dingtalk || {},
           telegram: ch.telegram || {},
           wechat: ch.wechat || {},
+          qq: ch.qq || {},
         };
         if (id === 'feishu') {
           next.feishu = {
@@ -425,6 +473,15 @@ export default {
             enabled: !!channelForm.value.wechat.enabled,
             puppet: (channelForm.value.wechat.puppet || '').trim() || undefined,
             defaultAgentId: (channelForm.value.wechat.defaultAgentId || 'default').trim(),
+          };
+        } else if (id === 'qq') {
+          next.qq = {
+            enabled: !!channelForm.value.qq.enabled,
+            appId: (channelForm.value.qq.appId || '').trim(),
+            token: (channelForm.value.qq.token || '').trim() || undefined,
+            appSecret: (channelForm.value.qq.appSecret || '').trim() || undefined,
+            defaultAgentId: (channelForm.value.qq.defaultAgentId || 'default').trim(),
+            sandbox: !!channelForm.value.qq.sandbox,
           };
         }
         await settingsStore.updateConfig({ channels: next });

@@ -1,6 +1,6 @@
 # 通道配置
 
-OpenClawX 支持通过**通道**将 Agent 对接到飞书、钉钉、Telegram。通道在 Gateway 启动时根据配置注册：入站消息经统一格式进入 Agent，回复经该通道发回对应平台。
+OpenClawX 支持通过**通道**将 Agent 对接到飞书、钉钉、Telegram、微信、QQ。通道在 Gateway 启动时根据配置注册：入站消息经统一格式进入 Agent，回复经该通道发回对应平台。
 
 ---
 
@@ -11,6 +11,8 @@ OpenClawX 支持通过**通道**将 Agent 对接到飞书、钉钉、Telegram。
 | **飞书** | WebSocket 事件订阅（im.message.receive_v1） | 开放 API + 流式卡片更新 | `channel:feishu:<chat_id>` |
 | **钉钉** | dingtalk-stream SDK（Stream 模式） | sessionWebhook POST | `channel:dingtalk:<conversationId>` |
 | **Telegram** | 长轮询 getUpdates | sendMessage / editMessageText 流式更新 | `channel:telegram:<chat_id>` |
+| **微信** | Wechaty 扫码登录 | say 一次性发送 | `channel:wechat:<thread_id>` |
+| **QQ** | QQ 开放平台 WebSocket | OPENAPI postMessage / postDirectMessage | `channel:qq:<子频道或私信ID>` |
 
 同一会话（如一个 chat_id / conversationId）对应一个 Agent Session，由通道配置中的 **defaultAgentId** 指定使用的智能体。
 
@@ -19,7 +21,7 @@ OpenClawX 支持通过**通道**将 Agent 对接到飞书、钉钉、Telegram。
 ## 配置位置
 
 - **桌面端**：**设置 → 通道** 中启用并填写各通道凭证，保存后**重启 Gateway** 生效。
-- **配置文件**：直接编辑 `~/.openbot/desktop/config.json` 中的 `channels.feishu`、`channels.dingtalk`、`channels.telegram`。
+- **配置文件**：直接编辑 `~/.openbot/desktop/config.json` 中的 `channels.feishu`、`channels.dingtalk`、`channels.telegram`、`channels.wechat`、`channels.qq`。
 
 未配置或未启用某通道时，Gateway 会跳过该通道；若已启用但必填项为空，控制台会提示到「设置 → 通道」检查。
 

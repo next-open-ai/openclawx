@@ -3,6 +3,9 @@ import { randomUUID } from 'crypto';
 import { agentManager } from '../../core/agent/agent-manager.js';
 import { DatabaseService } from '../database/database.service.js';
 
+/** 与 gateway channel id 一致，用于 sessions.id 前缀 channel:<id>: */
+export type ChannelSessionPrefix = 'feishu' | 'dingtalk' | 'telegram' | 'wechat' | 'qq';
+
 export type SessionType = 'scheduled' | 'chat' | 'system';
 
 export interface AgentSession {
@@ -204,6 +207,38 @@ export class AgentsService {
         const session = this.getSession(sessionId);
         if (!session) return;
         this.db.run('UPDATE sessions SET agent_id = ? WHERE id = ?', [agentId, sessionId]);
+    }
+
+    /**
+     * 通道「默认智能体」变更时：仅把仍绑定「旧默认」的该通道会话改绑到新默认。
+     * 已在会话内用 // 切到其他智能体的记录（agent_id ≠ 旧默认）不会改动。
+     * 同时清理网关内该会话下旧的 Agent Core 缓存，避免仍用旧智能体上下文。
+     */
+    realignChannelSessionsOnDefaultAgentChange(
+        channelId: ChannelSessionPrefix,
+        previousDefaultAgentId: string,
+        newDefaultAgentId: string,
+    ): void {
+        const oldDef = (previousDefaultAgentId ?? 'default').trim() || 'default';
+        const newDef = (newDefaultAgentId ?? 'default').trim() || 'default';
+        if (oldDef === newDef) return;
+        const like = `channel:${channelId}:%`;
+        const targets = this.db.all<{ id: string }>(
+            "SELECT id FROM sessions WHERE id LIKE ? AND COALESCE(agent_id, 'default') = ?",
+            [like, oldDef],
+        );
+        if (!targets.length) return;
+        this.db.run(
+            "UPDATE sessions SET agent_id = ? WHERE id LIKE ? AND COALESCE(agent_id, 'default') = ?",
+            [newDef, like, oldDef],
+        );
+        this.db.persist();
+        for (const { id } of targets) {
+            void agentManager.deleteSessionsByBusinessId(id);
+        }
+        console.log(
+            `[AgentsService] 通道 ${channelId} 默认智能体 ${oldDef} → ${newDef}，已同步 ${targets.length} 个仍使用旧默认的会话`,
+        );
     }
 
     async deleteSession(sessionId: string): Promise<void> {

@@ -60,9 +60,13 @@ export async function handleChannelMessage(
     channel: IChannel,
     msg: UnifiedMessage
 ): Promise<void> {
+    if (msg.channelId === "qq") {
+        console.log("[ChannelCore] QQ message handling, threadId=%s", msg.threadId);
+    }
     const sessionId = toSessionId(msg.channelId, msg.threadId);
     const defaultAgentId = channel.defaultAgentId ?? "default";
-    // 当前 agent：已存（DB）> 通道默认，保证对话中切换 agent 后下次仍用新 agent
+    // 当前 agent：已存（DB）> 通道默认，保证对话中切换 agent 后下次仍用新 agent。
+    // 修改通道默认智能体并保存后，AgentsService 会把仍使用「旧默认」的会话改绑到新默认（见 ConfigService.updateConfig）。
     const persistence = getChannelSessionPersistence();
     const currentAgentId = persistence?.getSession(sessionId)?.agentId ?? defaultAgentId;
 
@@ -110,6 +114,7 @@ export async function handleChannelMessage(
             });
             persistChannelAssistantMessage(sessionId, directResponse);
             sendSessionMessage(sessionId, { type: "system", code: "command.result", payload: { text: directResponse } });
+            await outbound.send(threadId, { text: directResponse }).catch((e) => console.warn("[ChannelCore] directResponse send failed:", e));
             await msg.ack?.({ text: directResponse });
             return;
         }

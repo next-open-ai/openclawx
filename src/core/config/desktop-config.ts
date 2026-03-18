@@ -73,6 +73,7 @@ export interface ChannelsConfig {
     dingtalk?: { enabled?: boolean; clientId?: string; clientSecret?: string; defaultAgentId?: string };
     telegram?: { enabled?: boolean; botToken?: string; defaultAgentId?: string };
     wechat?: { enabled?: boolean; puppet?: string; defaultAgentId?: string };
+    qq?: { enabled?: boolean; appId?: string; token?: string; appSecret?: string; defaultAgentId?: string; sandbox?: boolean };
 }
 
 /** 与 Nest ConfigService 使用的 config.json 结构一致 */

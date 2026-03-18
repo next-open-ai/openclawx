@@ -1,6 +1,6 @@
 # Channel configuration
 
-OpenClawX supports **channels** to connect the agent to Feishu, DingTalk, Telegram, and WeChat. Channels register when the gateway starts; inbound messages are normalized and sent to the agent; replies are sent back via the channel.
+OpenClawX supports **channels** to connect the agent to Feishu, DingTalk, Telegram, WeChat, and QQ. Channels register when the gateway starts; inbound messages are normalized and sent to the agent; replies are sent back via the channel.
 
 ---
 
@@ -12,8 +12,9 @@ OpenClawX supports **channels** to connect the agent to Feishu, DingTalk, Telegr
 | **DingTalk** | dingtalk-stream SDK (Stream) | sessionWebhook POST | `channel:dingtalk:<conversationId>` |
 | **Telegram** | getUpdates long polling | sendMessage / editMessageText | `channel:telegram:<chat_id>` |
 | **WeChat** | Wechaty (Web/UOS) scan-to-login | say once (no streaming) | `channel:wechat:<thread_id>` |
+| **QQ** | QQ Open Platform WebSocket (official Node SDK) | OPENAPI postMessage / postDirectMessage | `channel:qq:<channel_or_dm_id>` |
 
-Each session uses the channel’s **defaultAgentId**. Configure under **Settings → Channels**; **restart the gateway** after changes.
+Each session uses the channel’s **defaultAgentId**. Configure under **Settings → Channels**, or edit `~/.openbot/desktop/config.json` (`channels.feishu`, `channels.dingtalk`, `channels.telegram`, `channels.wechat`, `channels.qq`). **Restart the gateway** after changes.
 
 **Switching agents in chat:** In Feishu, DingTalk, Telegram, and WeChat conversations, the same **`//` commands** work to list and switch the current session’s agent (e.g. `//select`, `//name`, `//` to switch back to default). Same behavior as Desktop and Web; see [Desktop usage → Switching agents in chat](../guides/desktop-usage.md#switching-agents-in-chat-commands).
 
@@ -43,6 +44,14 @@ Config: enabled, botToken, defaultAgentId. Get Bot Token from [@BotFather](https
 - **Config**: enabled, puppet (optional, e.g. `wechaty-puppet-wechat4u`), defaultAgentId.
 - **Usage**: In OpenClawX **Settings → Channels** enable WeChat, optionally set puppet; save and **restart the gateway**. After start, get the QR code from the settings page or `/server-api/wechat/qrcode`, then **scan with WeChat** to log in. After login, chat with the bot in WeChat; **`//` commands** work to list and switch agents.
 - **Account note**: WeChat restricts third-party protocol use. **Older, long-used WeChat accounts** tend to log in more successfully; new or restricted accounts may fail or be limited. Prefer trying with an older account first.
+
+---
+
+## QQ
+
+- **Description**: QQ channel uses the **QQ Open Platform** official Node SDK (qq-guild-bot), with getAppAccessToken for auth, WebSocket for receiving guild and direct messages, and OPENAPI for sending replies. Supports QQ guild subchannel messages and direct messages (DIRECT_MESSAGE).
+- **Config**: enabled, appId, appSecret, defaultAgentId, sandbox (optional).
+- **Usage**: Create a bot app in [QQ Open Platform](https://bot.q.qq.com/), obtain App ID and App Secret; in OpenClawX **Settings → Channels** enable QQ and set App ID, App Secret, optionally enable **Use sandbox**; save and **restart the gateway**. Chat with the bot in a QQ guild or in DMs; **`//` commands** work to list and switch agents.
 
 ---
 

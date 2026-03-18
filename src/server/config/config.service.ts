@@ -5,6 +5,7 @@ import { existsSync } from 'fs';
 import { homedir } from 'os';
 import { getProviderSupport, syncDesktopConfigToModelsJson, type ChannelsConfig } from '../../core/config/desktop-config.js';
 import { AgentConfigService } from '../agent-config/agent-config.service.js';
+import { AgentsService, type ChannelSessionPrefix } from '../agents/agents.service.js';
 
 /** 模型 cost 配置，写入 models.json；缺省均为 0 */
 export interface ModelCost {
@@ -92,7 +93,10 @@ export class ConfigService {
     private configPath: string;
     private config: AppConfig;
 
-    constructor(private readonly agentConfigService: AgentConfigService) {
+    constructor(
+        private readonly agentConfigService: AgentConfigService,
+        private readonly agentsService: AgentsService,
+    ) {
         const homeDir = process.env.HOME || process.env.USERPROFILE || homedir();
         const configDir = join(homeDir, '.openbot', 'desktop');
         this.configPath = join(configDir, 'config.json');
@@ -205,6 +209,10 @@ export class ConfigService {
     }
 
     async updateConfig(updates: Partial<AppConfig>): Promise<AppConfig> {
+        const prevChannels =
+            updates.channels != null
+                ? (JSON.parse(JSON.stringify(this.config.channels ?? {})) as AppConfig['channels'])
+                : null;
         this.config = { ...this.config, ...updates };
         this.config.defaultAgentId = this.getDefaultAgentId(this.config);
         const p = this.config.defaultProvider;
@@ -215,6 +223,24 @@ export class ConfigService {
             if (item?.modelItemCode) this.config.defaultModelItemCode = item.modelItemCode;
         }
         await this.saveConfig();
+        if (prevChannels != null && updates.channels != null) {
+            const keys: ChannelSessionPrefix[] = ['feishu', 'dingtalk', 'telegram', 'wechat', 'qq'];
+            for (const k of keys) {
+                const oldDef =
+                    String((prevChannels as Record<string, { defaultAgentId?: string }>)[k]?.defaultAgentId ?? 'default').trim() ||
+                    'default';
+                const newDef =
+                    String((this.config.channels as Record<string, { defaultAgentId?: string }> | undefined)?.[k]?.defaultAgentId ?? 'default').trim() ||
+                    'default';
+                if (oldDef !== newDef) {
+                    try {
+                        this.agentsService.realignChannelSessionsOnDefaultAgentChange(k, oldDef, newDef);
+                    } catch (e) {
+                        console.warn(`[ConfigService] realign channel ${k} sessions failed:`, e);
+                    }
+                }
+            }
+        }
         await this.agentConfigService.syncDefaultAgentFromConfig(this.config).catch((err) =>
             console.warn('[ConfigService] syncDefaultAgentFromConfig failed', err),
         );

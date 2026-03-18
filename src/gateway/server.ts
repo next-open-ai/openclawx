@@ -51,6 +51,7 @@ import { createFeishuChannel } from "./channel/adapters/feishu.js";
 import { createDingTalkChannel } from "./channel/adapters/dingtalk.js";
 import { createTelegramChannel } from "./channel/adapters/telegram.js";
 import { createWechatChannel, getWechatQrCode, getWechatStatus, refreshWechatQrCode } from "./channel/adapters/wechat.js";
+import { createQQChannel } from "./channel/adapters/qq.js";
 import { setChannelSessionPersistence } from "./channel/session-persistence.js";
 import {
     setSessionCurrentAgentResolver,
@@ -395,6 +396,25 @@ export async function startGatewayServer(port: number = 38080): Promise<{
         }
     }
 
+    const qqCfg = channelsConfig.qq;
+    const qqAppId = qqCfg?.appId?.trim();
+    const qqAppSecret = qqCfg?.appSecret?.trim();
+    if (qqCfg?.enabled && qqAppId && qqAppSecret) {
+        try {
+            const qqChannel = createQQChannel({
+                appId: qqAppId,
+                appSecret: qqAppSecret,
+                defaultAgentId: qqCfg.defaultAgentId?.trim() || "default",
+                sandbox: !!qqCfg.sandbox,
+            });
+            registerChannel(qqChannel);
+            console.log("[Channel] QQ channel registered");
+        } catch (e) {
+            console.warn("QQ channel register failed:", e);
+        }
+    } else if (qqCfg?.enabled) {
+        console.warn("[Channel] QQ is enabled but appId and appSecret are required (AccessToken auth). Check Settings → Channels.");
+    }
 
     await startAllChannels();
 
