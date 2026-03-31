@@ -129,11 +129,10 @@ program
     .option("-a, --agent <id>", "指定智能体 ID，不传则使用桌面配置中的缺省智能体")
     .option("-p, --prompt <text>", "用户提示词（与位置参数二选一）")
     .option("--dry-run", "只输出组装的 system/user 内容，不调用 LLM")
-    .option("--model <id>", "模型 ID", "deepseek-chat")
+    .option("--model <id>", "模型 ID（不传则使用桌面配置，最终兜底 deepseek-chat）")
     .option(
         "--provider <name>",
-        "Provider（pi ModelRegistry）；可选 deepseek、dashscope、openai",
-        "deepseek",
+        "Provider（pi ModelRegistry）；可选 deepseek、dashscope、openai（不传则使用桌面配置）",
     )
     .option(
         "--agent-dir <path>",
