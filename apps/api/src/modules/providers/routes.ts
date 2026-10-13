@@ -259,7 +259,7 @@ export const providerRoutes: FastifyPluginAsync = async (app) => {
   app.post('/providers/test-model-capability', { bodyLimit: 4 * 1024 * 1024 }, async (request, reply) => {
     const value = asRecord(request.body);
     const capability = String(value.capability || '');
-    if (!['chat', 'vision', 'image', 'tts', 'asr', 'embedding', 'quantum-code', 'decision', 'ontology'].includes(capability)) return reply.code(400).send({ message: '不支持该模型能力测试。' });
+    if (!['chat', 'vision', 'image', 'video', 'tts', 'asr', 'embedding', 'quantum-code', 'decision', 'ontology'].includes(capability)) return reply.code(400).send({ message: '不支持该模型能力测试。' });
     const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-model-test-'));
     const startedAt = Date.now();
     try {
@@ -313,6 +313,7 @@ export const providerRoutes: FastifyPluginAsync = async (app) => {
         await writeFile(path.join(workspaceRoot, `input/sample.${extension}`), bytes);
       }
       const input = capability === 'image' ? { prompt: String(value.prompt || '一只放在木桌上的青花瓷杯，柔和自然光，产品摄影'), size: String(value.size || '1024x1024') }
+        : capability === 'video' ? { prompt: String(value.prompt || '一只橘猫在阳光下的草地上缓慢奔跑，镜头平稳跟随'), size: String(value.size || '1920x1080') }
         : capability === 'tts' ? { text: String(value.prompt || '你好，这是 Workmate 语音模型测试。'), ...(value.voice ? { voice: String(value.voice) } : {}), format: 'mp3' }
           : capability === 'asr' ? { path: `input/sample.${String(value.audioExtension || 'wav').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) || 'wav'}`, outputFormat: 'text' }
           : capability === 'embedding' ? { texts: [String(value.prompt || 'Workmate 模型测试')] }
@@ -320,9 +321,9 @@ export const providerRoutes: FastifyPluginAsync = async (app) => {
       const result = (await tool.execute('model-test', input, undefined)).details as any;
       if (result?.ok === false) throw new Error(String(result.error || '模型返回失败。'));
       let media: { mimeType: string; base64: string } | undefined;
-      if (result?.path && (capability === 'image' || capability === 'tts')) {
+      if (result?.path && (capability === 'image' || capability === 'video' || capability === 'tts')) {
         const bytes = await readFile(path.join(workspaceRoot, String(result.path)));
-        media = { mimeType: capability === 'image' ? `image/${path.extname(result.path).slice(1).replace('jpg', 'jpeg')}` : String(result.mimeType || 'audio/mpeg'), base64: bytes.toString('base64') };
+        media = { mimeType: capability === 'image' ? `image/${path.extname(result.path).slice(1).replace('jpg', 'jpeg')}` : capability === 'video' ? 'video/mp4' : String(result.mimeType || 'audio/mpeg'), base64: bytes.toString('base64') };
       }
       return { ok: true, latencyMs: Date.now() - startedAt, result, media };
     } catch (error) {

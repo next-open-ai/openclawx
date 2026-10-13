@@ -116,7 +116,7 @@ function modelCapabilitiesFor(employeeId: string, raw: unknown, enabled = true):
   const models = settings.models ?? [];
   const instances = settings.providerInstances ?? [];
   const bindings = settings.capabilityBindings ?? [];
-  const supported = new Set(['quantum-code', 'image', 'vision', 'embedding', 'asr', 'tts', 'ontology']);
+  const supported = new Set(['quantum-code', 'image', 'video', 'vision', 'embedding', 'asr', 'tts', 'ontology']);
   return bindings.flatMap((binding) => {
     const capability = String(binding.capability || '');
     if (!supported.has(capability) || binding.enabled === false) return [];
@@ -132,7 +132,7 @@ function modelCapabilitiesFor(employeeId: string, raw: unknown, enabled = true):
       capability: capability as ModelCapabilityRuntime['capability'],
       provider: provider.type as ModelCapabilityRuntime['provider'],
       providerLabel: provider.name,
-      baseUrl: resolveProviderServiceEndpoint({ provider: provider.type, baseUrl: provider.baseUrl, workspaceId: provider.workspaceId, service: provider.service, endpoints: provider.endpoints, endpoint: capability === 'image' ? 'image' : capability === 'embedding' ? 'embedding' : capability === 'asr' ? 'asr' : capability === 'tts' ? 'tts' : 'chat' }),
+      baseUrl: resolveProviderServiceEndpoint({ provider: provider.type, baseUrl: provider.baseUrl, workspaceId: provider.workspaceId, service: provider.service, endpoints: provider.endpoints, endpoint: capability === 'image' || capability === 'video' ? 'image' : capability === 'embedding' ? 'embedding' : capability === 'asr' ? 'asr' : capability === 'tts' ? 'tts' : 'chat' }),
       apiKey: provider.apiKey || (provider.type === 'ollama' ? 'ollama' : ''),
       ...(provider.appId ? { appId: provider.appId } : {}),
       ...(provider.apiSecret ? { apiSecret: provider.apiSecret } : {}),
@@ -220,7 +220,7 @@ function profileFor(
     PRESET_DEFAULT_INSTRUCTIONS[employeeId] ||
     '按要求完成任务，不虚构执行结果。';
   const roleBrief = description ? ` Role brief: ${description}` : '';
-  const instructions = `${name}（QuantumAI 数字员工）。${roleBrief} ${focus}`.trim();
+  const instructions = `${name}（Workmate 数字员工）。自我介绍时使用当前员工名称，客观说明能力，不夸大。${roleBrief} ${focus}`.trim();
   return { id: employeeId, name, instructions, toolIds: [] };
 }
 

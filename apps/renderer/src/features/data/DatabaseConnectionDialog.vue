@@ -71,7 +71,7 @@ async function submit() {
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4" @click.self="!busy && emit('close')">
     <section ref="dialog" role="dialog" aria-modal="true" aria-labelledby="database-dialog-title" class="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl" @keydown="keepFocus" @keydown.esc.stop="!busy && emit('close')">
       <header class="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--border)] px-6 py-5">
-        <div><h2 id="database-dialog-title" class="text-xl font-bold">{{ refresh ? '刷新数据库快照' : '连接数据库' }}</h2><p class="mt-1 text-sm text-[var(--muted)]">{{ refresh ? '保持现有表与标注，重新读取原库数据。' : '只读接入 MySQL 或 PostgreSQL，随后完善业务标注。' }}</p></div>
+        <div><h2 id="database-dialog-title" class="text-xl font-bold">{{ refresh ? '刷新数据库本地副本' : '导入数据库本地副本' }}</h2><p class="mt-1 text-sm text-[var(--muted)]">{{ refresh ? '保持现有表与标注，重新读取原库数据。' : '只读导入 MySQL 或 PostgreSQL 数据，不创建实时连接。' }}</p></div>
         <button type="button" aria-label="关闭连接窗口" class="rounded-lg px-2 py-1 text-xl text-[var(--muted)] disabled:opacity-40" :disabled="Boolean(busy)" @click="emit('close')">×</button>
       </header>
       <form id="database-connect-form" class="min-h-0 overflow-y-auto px-6 py-5" @submit.prevent="submit">

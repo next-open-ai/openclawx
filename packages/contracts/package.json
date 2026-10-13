@@ -5,5 +5,5 @@
   "type": "module",
   "exports": { ".": { "types": "./src/index.ts", "default": "./dist/index.js" } },
   "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit" },
-  "dependencies": { "zod": "^3.24.4" }
+  "dependencies": { "zod": "^3.24.4", "zod-to-json-schema": "3.25.2" }
 }

@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import { createServer } from '../apps/renderer/node_modules/vite/dist/node/index.js';
+
+const vite = await createServer({ root: 'apps/renderer', server: { middlewareMode: true }, appType: 'custom', logLevel: 'silent' });
+try {
+  const { appendProjectDelta, mergeProjectMessages, mergeLiveTranscript, openProjectStream } = await vite.ssrLoadModule('/src/features/projects/project-live-state.ts');
+  assert.equal(appendProjectDelta('甲乙丙', '乙丙', 1), '甲乙丙', 'checkpoint-covered delta is not duplicated');
+  assert.equal(appendProjectDelta('甲乙', '乙丙', 1), '甲乙丙', 'partial overlap appends only unseen suffix');
+  assert.equal(appendProjectDelta('甲', '丁', 3), '甲', 'missing prefix waits for authoritative checkpoint');
+  assert.equal(appendProjectDelta('甲乙丙', '丁', 3), '甲乙丙丁');
+  assert.equal(appendProjectDelta('旧服务', '追加'), '旧服务追加');
+  const old = { id: 'old-run', role: 'assistant', content: '原报告已交付', taskId: 'writer', createdAt: 1, activities: [{ invocationId: 'old-tool', toolName: 'write', summary: '写入原报告', status: 'completed', durationMs: 200 }], assets: [{ id: 'original' }] };
+  const live = { id: 'new-run', role: 'assistant', content: '正在读取原文件并修改', taskId: 'writer', createdAt: 3, activities: [{ invocationId: 'new-tool', toolName: 'read', summary: '读取', status: 'completed' }], assets: [] };
+  const server = { status: 'running', activeRunId: 'schedule-2', messages: [{ ...old, activities: undefined, assets: undefined }, { id: 'question', role: 'user', content: '修改结论', createdAt: 2 }], tasks: [{ id: 'writer', runId: 'new-run', status: 'running' }] };
+  const merged = mergeProjectMessages(server, [old, live]);
+  assert.deepEqual(merged.map(message => message.id), ['old-run', 'question', 'new-run']);
+  assert.equal(merged[0].assets[0].id, 'original');
+  assert.equal(merged[2].content, live.content, 'PC-T6: polling does not erase uncheckpointed streaming reply');
+  assert.equal(mergeProjectMessages({ ...server, tasks: [{ runId: 'third-run', status: 'running' }] }, [old, live]).length, 2, 'old volatile attempt excluded');
+  assert.equal(mergeProjectMessages({ ...server, status: 'completed' }, [old, live]).length, 2, 'settled server thread is authoritative');
+  assert.equal(mergeProjectMessages({ ...server, messages: [], tasks: [] }, [old, live]).length, 0, 'full reschedule never revives old messages');
+  const checkpoint = { runId: 'new-run', assistantContent: '正在读取', reasoningContent: '', activities: [{ invocationId: 'new-tool', toolName: 'read', summary: '读取', status: 'running' }], approvals: [], assets: [] };
+  const ahead = { ...checkpoint, assistantContent: live.content, activities: live.activities };
+  const hydrated = mergeLiveTranscript(checkpoint, ahead, true);
+  assert.equal(hydrated.assistantContent, live.content);
+  assert.equal(hydrated.activities.length, 1); assert.equal(hydrated.activities[0].status, 'completed');
+  assert.equal(mergeLiveTranscript(checkpoint, ahead, false).assistantContent, checkpoint.assistantContent);
+  assert.equal(mergeLiveTranscript({ ...checkpoint, runId: 'third-run' }, ahead, true).assistantContent, checkpoint.assistantContent);
+  let listener; let status; let closed = 0; const events = [];
+  const subscribe = (_id, onEvent, options) => { listener = onEvent; status = options.onStatus; return () => { closed++; }; };
+  const stream = openProjectStream('project', subscribe, event => events.push(event), 50);
+  status('open'); await stream.ready;
+  listener({ type: 'run.started', runId: 'new-run' });
+  listener({ type: 'run.delta', runId: 'new-run', text: '即时输出' });
+  assert.equal(events.length, 0, 'PC-T7: buffer before HTTP admission');
+  stream.activate(); assert.equal(events.length, 2);
+  listener({ type: 'run.delta', runId: 'new-run', text: '后续输出' }); assert.equal(events.length, 3);
+  stream.stop(); listener({ type: 'run.delta', text: 'late' }); assert.equal(events.length, 3); assert.equal(closed, 1);
+  const fallback = openProjectStream('project', subscribe, () => {}, 10); await fallback.ready; fallback.stop();
+  const failed = openProjectStream('project', subscribe, () => assert.fail('stopped listener'), 50); status('error'); await failed.ready; failed.stop();
+  console.log('PC-T6/T7 PASS: live reply retention, stable historical assets, monotonic checkpoint merge, admission buffering, bounded fallback and cleanup.');
+} finally { await vite.close(); }

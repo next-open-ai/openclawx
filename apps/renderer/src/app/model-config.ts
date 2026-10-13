@@ -10,7 +10,7 @@ export type { AgentCapabilityAssignment, AgentCapabilityMode, CapabilityBinding,
 
 export const imageGenerationProtocols: ImageGenerationProtocol[] = ['openai-images', 'dashscope-multimodal', 'dashscope-image-async'];
 
-export const modelCapabilities: ModelCapability[] = ['chat', 'quantum-code', 'image', 'vision', 'embedding', 'asr', 'tts', 'realtime', 'decision', 'ontology'];
+export const modelCapabilities: ModelCapability[] = ['chat', 'quantum-code', 'image', 'video', 'vision', 'embedding', 'asr', 'tts', 'realtime', 'decision', 'ontology'];
 
 /** Connection instance — same provider type can appear multiple times. */
 export interface ProviderInstance {
@@ -128,8 +128,8 @@ export const providerSuggestedChatModels: Partial<Record<ProviderId, string[]>> 
   anthropic: ['claude-sonnet-4-5', 'claude-haiku-4-5', 'claude-opus-4-5'],
   google: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'],
   deepseek: ['deepseek-chat', 'deepseek-reasoner', 'deepseek-v4-flash'],
-  glm: ['glm-4.5-flash', 'glm-4.5', 'glm-4-plus', 'glm-4-air'],
-  qwen: ['qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen3.5:4b'],
+  glm: ['glm-5.3', 'glm-5.3-flash', 'glm-5.3-flashx', 'glm-5.2', 'glm-4.7-flash'],
+  qwen: ['qwen3.8-flash', 'qwen3.8-max', 'qwen3.7-plus', 'qwen3.7-flash', 'qwen-plus'],
   volcengine: ['doubao-seed-2-1-pro-260628'],
   ollama: ['llama3.2', 'qwen2.5', 'deepseek-r1', 'mistral'],
   'openai-compatible': [],
@@ -150,13 +150,19 @@ export const providerSuggestedByCapability: Partial<Record<ProviderId, Partial<R
     embedding: ['text-embedding-004'],
   },
   deepseek: { chat: providerSuggestedChatModels.deepseek },
-  glm: { chat: providerSuggestedChatModels.glm, vision: ['glm-4.5v', 'glm-4v-plus'], image: ['glm-image', 'cogview-4-250304'], embedding: ['embedding-3'] },
+  glm: {
+    chat: providerSuggestedChatModels.glm,
+    vision: ['glm-4.6v-flash', 'glm-5.3-flash', 'glm-5.3-flashx', 'glm-5v-turbo'],
+    image: ['cogview-3-flash', 'glm-image', 'cogview-4-250304'],
+    video: ['cogvideox-flash', 'cogvideox-3', 'cogvideox-2'],
+    embedding: ['embedding-3'],
+  },
   qwen: {
     chat: providerSuggestedChatModels.qwen,
-    vision: ['qwen3-vl-flash', 'qwen-vl-max', 'qwen-vl-plus'],
+    vision: ['qwen3.8-flash', 'qwen3.8-max', 'qwen3.7-plus', 'qwen3.7-flash', 'qwen3.5-ocr', 'qwen3-vl-flash', 'qwen-vl-max', 'qwen-vl-plus'],
     image: ['qwen-image-3.0-pro', 'qwen-image-3.0', 'qwen-image', 'wan2.7-image-pro', 'wan2.7-image', 'wan2.6-t2i', 'wan2.5-t2i-preview', 'wan2.2-t2i-flash'],
     embedding: ['text-embedding-v4', 'text-embedding-v3'],
-    asr: ['paraformer-v2', 'paraformer-8k-v2'],
+    asr: ['qwen-audio-3.1-asr-flash-filetrans', 'qwen-audio-3.0-asr-flash-filetrans', 'paraformer-v2', 'paraformer-8k-v2'],
     tts: ['qwen-audio-3.1-tts-flash', 'qwen-audio-3.0-tts-flash', 'cosyvoice-v3-flash', 'cosyvoice-v2'],
     realtime: ['qwen-audio-3.1-realtime-plus', 'qwen3.8-omni-flash-realtime'],
   },
@@ -165,7 +171,7 @@ export const providerSuggestedByCapability: Partial<Record<ProviderId, Partial<R
   ollama: { chat: providerSuggestedChatModels.ollama },
   // Compatible services are intentionally vendor-neutral. eSight is entered
   // as a model ID under `quantum-code`, never as a provider protocol/type.
-  'openai-compatible': { chat: [], 'quantum-code': [], image: [], vision: [], embedding: [], asr: [], tts: [], realtime: [], decision: [], ontology: [] },
+  'openai-compatible': { chat: [], 'quantum-code': [], image: [], video: [], vision: [], embedding: [], asr: [], tts: [], realtime: [], decision: [], ontology: [] },
 };
 
 const providerAutoProfiles: Partial<Record<ProviderId, Partial<Record<ModelCapability, string>>>> = {
@@ -173,8 +179,10 @@ const providerAutoProfiles: Partial<Record<ProviderId, Partial<Record<ModelCapab
   anthropic: { chat: 'claude-sonnet-4-5', vision: 'claude-sonnet-4-5' },
   google: { chat: 'gemini-2.5-flash', vision: 'gemini-2.5-flash', image: 'gemini-2.5-flash-image', embedding: 'text-embedding-004' },
   deepseek: { chat: 'deepseek-chat' },
-  glm: { chat: 'glm-4.5-flash', vision: 'glm-4.5v', image: 'glm-image', embedding: 'embedding-3' },
-  qwen: { chat: 'qwen-plus', vision: 'qwen3-vl-flash', image: 'wan2.2-t2i-flash', embedding: 'text-embedding-v4', asr: 'paraformer-v2', tts: 'qwen-audio-3.1-tts-flash', realtime: 'qwen-audio-3.1-realtime-plus' },
+  // Official catalog checked 2026-10-09: image/vision Flash models are free;
+  // GLM-5.3 and embedding-3 are not covered by that free-model policy.
+  glm: { chat: 'glm-5.3', vision: 'glm-4.6v-flash', image: 'cogview-3-flash', video: 'cogvideox-flash', embedding: 'embedding-3' },
+  qwen: { chat: 'qwen3.8-flash', vision: 'qwen3.8-flash', image: 'qwen-image-3.0', embedding: 'text-embedding-v4', asr: 'qwen-audio-3.1-asr-flash-filetrans', tts: 'qwen-audio-3.1-tts-flash', realtime: 'qwen-audio-3.1-realtime-plus' },
   volcengine: { chat: 'doubao-seed-2-1-pro-260628', asr: 'bigmodel', tts: 'volc-tts', realtime: '1.2.6.1' },
   iflytek: { asr: 'ifasr', tts: 'online-tts' },
   ollama: { chat: 'llama3.2' },
@@ -232,7 +240,7 @@ export function applyRecommendedProviderSetup(
     delete profile.tts;
     delete profile.realtime;
   } else if (instance.service === 'speech' || instance.service === 'realtime') {
-    for (const capability of ['chat', 'vision', 'image', 'embedding', 'decision', 'ontology', 'quantum-code'] as ModelCapability[]) delete profile[capability];
+    for (const capability of ['chat', 'vision', 'image', 'video', 'embedding', 'decision', 'ontology', 'quantum-code'] as ModelCapability[]) delete profile[capability];
     if (instance.service === 'speech') delete profile.realtime;
     if (instance.service === 'realtime') { delete profile.asr; delete profile.tts; }
   }
@@ -247,7 +255,7 @@ export function applyRecommendedProviderSetup(
     if (!model) {
       model = {
         id: newId(), providerInstanceId: instance.id, capability, modelId,
-        ...(capability === 'chat' && ['openai', 'anthropic', 'google'].includes(instance.type) ? { supportsVision: true } : {}),
+        ...(capability === 'chat' && ['openai', 'anthropic', 'google', 'qwen'].includes(instance.type) ? { supportsVision: true } : {}),
         ...(capability === 'chat' && instance.type === 'qwen' ? { supportsBuiltinWebSearch: true } : {}),
         ...(capability === 'image' ? { imageProtocol: inferImageGenerationProtocol(instance.type, modelId) } : {}),
         ...(capability === 'tts' ? { voice: suggestedSpeechVoices(instance.type, modelId)[0] } : {}),
@@ -285,6 +293,7 @@ export function modelLikelySupportsCapability(modelId: string, capability: Model
   const id = modelId.toLowerCase();
   const patterns: Partial<Record<ModelCapability, RegExp>> = {
     image: /(image|text.?to.?image|t2i|wan\d|cogview|seedream|dall-e)/,
+    video: /(video|text.?to.?video|t2v|cogvideo|vidu)/,
     embedding: /(embed|embedding|vector)/,
     asr: /(asr|speech.?to.?text|transcri|whisper|paraformer|recogn)/,
     tts: /(tts|text.?to.?speech|speech.?synth|cosyvoice)/,
@@ -317,7 +326,7 @@ export const providerDefaults: Record<ProviderId, Omit<ProviderConfig, 'apiKey' 
   anthropic: { provider: 'anthropic', baseUrl: '', chatModel: 'claude-sonnet-4-5', chatModels: ['claude-sonnet-4-5'], disableThinking: false, supportsBuiltinWebSearch: false, imageModel: '', embeddingModel: '', asrModel: '', ttsModel: '' },
   google: { provider: 'google', baseUrl: '', chatModel: 'gemini-2.5-flash', chatModels: ['gemini-2.5-flash'], disableThinking: false, supportsBuiltinWebSearch: false, imageModel: 'gemini-2.5-flash-image', embeddingModel: 'text-embedding-004', asrModel: '', ttsModel: '' },
   deepseek: { provider: 'deepseek', baseUrl: defaultBaseUrl.deepseek, chatModel: 'deepseek-chat', chatModels: ['deepseek-chat'], disableThinking: false, supportsBuiltinWebSearch: false, imageModel: '', embeddingModel: '', asrModel: '', ttsModel: '' },
-  glm: { provider: 'glm', baseUrl: defaultBaseUrl.glm, chatModel: 'glm-4.5-flash', chatModels: ['glm-4.5-flash'], disableThinking: false, supportsBuiltinWebSearch: false, imageModel: '', embeddingModel: '', asrModel: '', ttsModel: '' },
+  glm: { provider: 'glm', baseUrl: defaultBaseUrl.glm, chatModel: 'glm-5.3', chatModels: ['glm-5.3'], disableThinking: false, supportsBuiltinWebSearch: false, imageModel: '', embeddingModel: '', asrModel: '', ttsModel: '' },
   qwen: { provider: 'qwen', baseUrl: defaultBaseUrl.qwen, chatModel: 'qwen-plus', chatModels: ['qwen-plus'], disableThinking: false, supportsBuiltinWebSearch: false, imageModel: '', embeddingModel: '', asrModel: '', ttsModel: '' },
   volcengine: { provider: 'volcengine', baseUrl: defaultBaseUrl.volcengine, chatModel: '', chatModels: [], disableThinking: false, supportsBuiltinWebSearch: false, imageModel: '', embeddingModel: '', asrModel: '', ttsModel: '' },
   iflytek: { provider: 'iflytek', baseUrl: defaultBaseUrl.iflytek, chatModel: '', chatModels: [], disableThinking: false, supportsBuiltinWebSearch: false, imageModel: '', embeddingModel: '', asrModel: '', ttsModel: '' },
@@ -517,8 +526,8 @@ export function providerDerivedEndpoints(instance: ProviderInstance) {
   const capabilities: ModelCapability[] = instance.service === 'speech' || instance.service === 'realtime'
     ? ['asr', 'tts']
     : instance.service === 'language'
-      ? ['chat', 'image', 'embedding']
-      : ['chat', 'image', 'embedding', 'asr', 'tts'];
+      ? ['chat', 'image', 'video', 'embedding']
+      : ['chat', 'image', 'video', 'embedding', 'asr', 'tts'];
   const rows = capabilities.map((capability) => ({ capability, url: effectiveProviderBaseUrl(instance, capability) }));
   if (instance.service === 'realtime' || instance.service === 'unified') {
     rows.push({ capability: 'realtime' as ModelCapability, url: resolveProviderServiceEndpoint({
@@ -530,7 +539,7 @@ export function providerDerivedEndpoints(instance: ProviderInstance) {
 }
 
 export function endpointKindForCapability(capability: ModelCapability): ProviderEndpointKind {
-  if (capability === 'image') return 'image';
+  if (capability === 'image' || capability === 'video') return 'image';
   if (capability === 'embedding') return 'embedding';
   if (capability === 'asr') return 'asr';
   if (capability === 'tts') return 'tts';

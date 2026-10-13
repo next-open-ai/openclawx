@@ -8,6 +8,7 @@ type Dictionary = Record<string, string>;
 
 const messages: Record<Locale, Dictionary> = {
   'zh-CN': {
+    'nav.workflows': '工作流', 'nav.algorithms': '算法',
     'nav.newChat': '新对话', 'nav.newConversation': '新建对话', 'nav.workspace': '对话工作台', 'nav.employees': '数字员工', 'nav.projects': '项目', 'nav.capabilities': '技能与连接', 'nav.knowledge': '知识库', 'nav.automations': '自动化与任务', 'nav.assets': '资产库', 'nav.remote': '远程办公', 'nav.docs': '用户手册', 'nav.recent': '最近对话', 'nav.settings': '设置',
     'capabilities.title': '技能与连接', 'capabilities.subtitle': '集中治理技能、MCP 和员工授权；只在任务需要时按需加载能力。', 'capabilities.skills': 'Skills', 'capabilities.mcp': 'MCP 连接器', 'capabilities.catalog': '技能库', 'capabilities.discover': '发现与安装', 'capabilities.develop': '本地开发', 'capabilities.search': '搜索已安装技能', 'capabilities.progressiveHint': '员工只获取授权候选技能，完整指令按需加载。', 'capabilities.discoverTitle': '发现开放技能', 'capabilities.discoverHelp': '先在技能注册表审阅来源、用途与维护者；高风险能力应由系统管理员复核后再安装。', 'capabilities.openRegistry': '打开 skills.sh', 'capabilities.installTitle': '由系统管理员安装', 'capabilities.installHelp': '输入已审阅的 package 引用。安装会调用 Skills CLI，并写入当前用户的 .workmate/skills。', 'capabilities.install': '安装技能', 'capabilities.installing': '正在安装…', 'capabilities.installed': '安装完成。请选择本地 SKILL.md 导入到技能库。', 'capabilities.invalidManifest': '该文件不是有效的 SKILL.md（需要 name 与 description）。', 'capabilities.created': '本地 Skill 模板已创建并加入技能库。', 'capabilities.importTitle': '导入现有 Skill', 'capabilities.importHelp': '选择标准 SKILL.md；Workmate 仅登记其元数据，运行前仍需授予员工权限。', 'capabilities.importSkill': '选择 SKILL.md', 'capabilities.createTitle': '创建本地 Skill', 'capabilities.description': '简短说明', 'capabilities.create': '创建模板', 'capabilities.addSkill': '导入 Skill', 'capabilities.addMcp': '添加 MCP', 'capabilities.emptySkills': '尚未导入本地 Skill。', 'capabilities.emptyMcp': '尚未配置 MCP 连接器。', 'capabilities.name': '名称', 'capabilities.url': '服务地址', 'capabilities.transport': '传输方式', 'capabilities.save': '保存',
     'chat.greeting': 'Workmate，今天我能帮你什么？', 'chat.subheading': '选择一位数字员工，开始一段专注的协作。',
@@ -31,6 +32,7 @@ const messages: Record<Locale, Dictionary> = {
     'common.openSettings': '前往设置', 'common.close': '关闭', 'recent.empty': '还没有最近对话',
   },
   'en-US': {
+    'nav.workflows': 'Workflows', 'nav.algorithms': 'Algorithms',
     'nav.newChat': 'New chat', 'nav.newConversation': 'New conversation', 'nav.workspace': 'Chat workspace', 'nav.employees': 'Employees', 'nav.projects': 'Projects', 'nav.capabilities': 'Skills & connections', 'nav.knowledge': 'Knowledge', 'nav.automations': 'Automations & Tasks', 'nav.assets': 'Assets', 'nav.remote': 'Remote', 'nav.docs': 'User manual', 'nav.recent': 'Recent chats', 'nav.settings': 'Settings',
     'capabilities.title': 'Skills & connections', 'capabilities.subtitle': 'Govern skills, MCP, and employee permissions centrally; load capabilities only when a task needs them.', 'capabilities.skills': 'Skills', 'capabilities.mcp': 'MCP connectors', 'capabilities.catalog': 'Skill library', 'capabilities.discover': 'Discover & install', 'capabilities.develop': 'Develop locally', 'capabilities.search': 'Search installed skills', 'capabilities.progressiveHint': 'Employees receive only allowed candidates; full instructions load on demand.', 'capabilities.discoverTitle': 'Discover open skills', 'capabilities.discoverHelp': 'Review source, purpose, and maintainer in the registry before installation. The system administrator should review high-risk capabilities.', 'capabilities.openRegistry': 'Open skills.sh', 'capabilities.installTitle': 'Install through system administrator', 'capabilities.installHelp': 'Enter a reviewed package reference. Installation uses Skills CLI and writes to the current user’s .workmate/skills.', 'capabilities.install': 'Install skill', 'capabilities.installing': 'Installing…', 'capabilities.installed': 'Installed. Select its local SKILL.md to register it in the library.', 'capabilities.invalidManifest': 'This is not a valid SKILL.md (name and description are required).', 'capabilities.created': 'A local Skill template was created and registered.', 'capabilities.importTitle': 'Import an existing Skill', 'capabilities.importHelp': 'Choose a standard SKILL.md. Workmate records metadata only; grant employee access separately.', 'capabilities.importSkill': 'Choose SKILL.md', 'capabilities.createTitle': 'Create a local Skill', 'capabilities.description': 'Short description', 'capabilities.create': 'Create template', 'capabilities.addSkill': 'Import skill', 'capabilities.addMcp': 'Add MCP', 'capabilities.emptySkills': 'No local skills have been imported yet.', 'capabilities.emptyMcp': 'No MCP connector has been configured yet.', 'capabilities.name': 'Name', 'capabilities.url': 'Server URL', 'capabilities.transport': 'Transport', 'capabilities.save': 'Save',
     'chat.greeting': 'How can Workmate help today?', 'chat.subheading': 'Choose an employee and start focused collaboration.',
@@ -193,6 +195,7 @@ Object.assign(messages['zh-CN'], {
   'settings.capability.chat': '对话',
   'settings.capability.quantum-code': '量子编程',
   'settings.capability.image': '图片生成',
+  'settings.capability.video': '视频生成',
   'settings.imageProtocol': '图片接口协议',
   'settings.imageProtocolHelp': '系统会按服务和模型自动推荐；仅在供应商文档要求时手动调整。',
   'settings.imageProtocolAuto': '自动选择（推荐）',
@@ -754,6 +757,7 @@ Object.assign(messages['en-US'], {
   'settings.capability.chat': 'Chat',
   'settings.capability.quantum-code': 'Quantum coding',
   'settings.capability.image': 'Image generation',
+  'settings.capability.video': 'Video generation',
   'settings.imageProtocol': 'Image API protocol',
   'settings.imageProtocolHelp': 'Recommended from the service and model; override only when required by provider documentation.',
   'settings.imageProtocolAuto': 'Auto (recommended)',

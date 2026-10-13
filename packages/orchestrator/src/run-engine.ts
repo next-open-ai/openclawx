@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { diagnoseModelFailure } from '@workmate/agent-core';
 import type { AgentEvent, ChatRequest } from '@workmate/contracts';
 import type { OrcEvent } from './events.js';
 import type { EventHub } from './hub.js';
@@ -31,6 +32,8 @@ export interface ExecuteAttemptOptions {
   timeoutMs?: number;
   /** Extra hub topics to publish structural events onto (e.g. project:<id>). */
   extraTopics?: string[];
+  /** Trusted server-side delivery boundary; never supplied by HTTP clients. */
+  finalizeCompleted?: (run: Readonly<RunRecord>, emit: (event: AgentEvent) => void) => Promise<void>;
 }
 
 export const RUN_NS = 'run';
@@ -200,7 +203,7 @@ export class RunEngine {
     const emit = (event: AgentEvent) => {
       if (event.type === 'reasoning.delta' && event.text) {
         run.reasoning = `${run.reasoning || ''}${event.text}`;
-        publish({ type: 'run.reasoning.delta', runId, sessionId: options.sessionId, text: event.text });
+        publish({ type: 'run.reasoning.delta', runId, sessionId: options.sessionId, text: event.text, textOffset: run.reasoning.length - event.text.length });
         scheduleCheckpoint();
         return;
       }
@@ -219,11 +222,11 @@ export class RunEngine {
         }
         if (reasoning) {
           run.reasoning = `${run.reasoning || ''}${reasoning}`;
-          publish({ type: 'run.reasoning.delta', runId, sessionId: options.sessionId, text: reasoning });
+          publish({ type: 'run.reasoning.delta', runId, sessionId: options.sessionId, text: reasoning, textOffset: run.reasoning.length - reasoning.length });
         }
         if (visible) {
           run.transcript += visible;
-          publish({ type: 'run.delta', runId, sessionId: options.sessionId, text: visible });
+          publish({ type: 'run.delta', runId, sessionId: options.sessionId, text: visible, textOffset: run.transcript.length - visible.length });
         }
         if (visible || reasoning) scheduleCheckpoint();
         return;
@@ -438,7 +441,7 @@ export class RunEngine {
       if (signal.aborted) abortController.abort();
       else signal.addEventListener('abort', onAbort, { once: true });
     }
-    const timeoutMs = Math.min(7_200_000, Math.max(5_000, options.timeoutMs ?? this.runTimeoutMs));
+    const timeoutMs = Math.min(7_200_000, Math.max(5_000, options.timeoutMs ?? options.request.runTimeoutMs ?? this.runTimeoutMs));
     const timeoutId = setTimeout(() => abortController.abort(new Error(`Run timed out after ${Math.round(timeoutMs / 1000)}s`)), timeoutMs);
 
     try {
@@ -447,6 +450,7 @@ export class RunEngine {
       const request: ChatRequest = {
         ...options.request,
         runId,
+        runTimeoutMs: timeoutMs,
         // Used by preview_server_start to map conversation SITE asset bundles.
         // Does not change run workspace isolation.
         ...(conversationId ? { conversationId } : {}),
@@ -462,29 +466,26 @@ export class RunEngine {
         execute: () => this.runner.start(request, emit, { abortSignal: abortController.signal }),
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Model request failed.';
-      const friendly = /connection\s*error|failed to fetch|fetch failed|terminated|econnreset|econnrefused|enotfound|eai_again|broken pipe|network|ssl|tls|timed?\s*out|timeout|stream idle|remote end closed|temporarily unavailable|socket hang up|ECONNABORTED|UND_ERR/i.test(message)
-        ? '网络连接超时或中断了，这次没能完成回答。请检查网络后重试；若正在使用 VPN，也可先切换网络再试。'
-        : message;
+      const diagnosed = diagnoseModelFailure(error, { phase: 'execution', elapsedMs: Date.now() - run.startedAt });
       if (!abortController.signal.aborted) {
         run.status = 'failed';
-        run.error = friendly;
+        run.error = diagnosed.message;
+        run.failure = diagnosed.failure;
       }
     } finally {
-      clearTimeout(timeoutId);
       if (checkpointTimer) clearTimeout(checkpointTimer);
       checkpointDirty = false;
-      if (signal) signal.removeEventListener('abort', onAbort);
     }
 
     // Agent-core already emits run.completed / run.failed / run.cancelled as
     // events; map terminal state from the event log when needed.
     const lastTerminal = [...run.eventLog].reverse().find((event) => event.type === 'run.completed' || event.type === 'run.failed' || event.type === 'run.cancelled');
-    if (lastTerminal) {
+    if (lastTerminal && run.status !== 'failed') {
       switch (lastTerminal.type) {
         case 'run.failed':
           run.status = 'failed';
           run.error = lastTerminal.message;
+          run.failure = lastTerminal.failure;
           break;
         case 'run.cancelled':
           run.status = 'cancelled';
@@ -513,6 +514,30 @@ export class RunEngine {
     if (run.status === 'completed' && pending.length > 0) {
       run.status = 'waiting-approval';
     }
+    // A provider may report completion while ignoring an already cancelled signal.
+    if (abortController.signal.aborted && (run.status === 'completed' || run.status === 'waiting-approval')) {
+      run.status = 'cancelled';
+      run.error = abortController.signal.reason instanceof Error ? abortController.signal.reason.message : '已中止当前执行。';
+      run.cancelReason = signal?.aborted ? 'user' : 'timeout';
+    }
+    if (run.status === 'completed' && options.finalizeCompleted) {
+      try { await options.finalizeCompleted(run, emit); }
+      catch (cause) {
+        run.status = 'failed';
+        run.error = cause instanceof Error ? cause.message : '交付处理失败。';
+        emit({ type: 'run.failed', runId, message: run.error });
+      } finally {
+        // Finalizer events use the same recorder, but cannot leave a late checkpoint.
+        if (checkpointTimer) clearTimeout(checkpointTimer);
+        checkpointDirty = false;
+      }
+    }
+    // Completed local copies survive cancellation, but cannot announce success.
+    if (abortController.signal.aborted && run.status === 'completed') {
+      run.status = 'cancelled';
+      run.error = abortController.signal.reason instanceof Error ? abortController.signal.reason.message : '已中止当前执行。';
+      run.cancelReason = signal?.aborted ? 'user' : 'timeout';
+    }
     // Close any activity rows that never received tool.completed (lost events / parallel same-name).
     for (const activity of run.activities) {
       if (activity.status !== 'running') continue;
@@ -528,9 +553,11 @@ export class RunEngine {
       activity.at = now;
       publish({ type: 'run.activity', runId, activity: { ...activity } });
     }
+    clearTimeout(timeoutId);
+    if (signal) signal.removeEventListener('abort', onAbort);
     run.finishedAt = Date.now();
     await this.save(run);
-    publish({ type: 'run.settled', runId, sessionId: options.sessionId, status: run.status, error: run.error });
+    publish({ type: 'run.settled', runId, sessionId: options.sessionId, status: run.status, error: run.error, failure: run.failure });
     if (run.usage) {
       // Dynamic import avoids a circular init with usage.ts; compaction is best-effort.
       void import('./usage.js')

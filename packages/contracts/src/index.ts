@@ -1,5 +1,6 @@
 import { z } from 'zod';
 export * from './task-templates.js';
+export * from './workspace-write.js';
 
 export const HealthResponseSchema = z.object({
   status: z.literal('ok'),
@@ -55,7 +56,7 @@ export const AgentSkillRuntimeSchema = z.object({
 });
 export type AgentSkillRuntime = z.infer<typeof AgentSkillRuntimeSchema>;
 
-export const ModelCapabilitySchema = z.enum(['chat', 'quantum-code', 'image', 'vision', 'embedding', 'asr', 'tts', 'realtime', 'decision', 'ontology']);
+export const ModelCapabilitySchema = z.enum(['chat', 'quantum-code', 'image', 'video', 'vision', 'embedding', 'asr', 'tts', 'realtime', 'decision', 'ontology']);
 export type ModelCapability = z.infer<typeof ModelCapabilitySchema>;
 export const ImageGenerationProtocolSchema = z.enum([
   'openai-images',
@@ -104,6 +105,16 @@ export const RunModelRefSchema = z.object({
 });
 export type RunModelRef = z.infer<typeof RunModelRefSchema>;
 
+export const RunFailureSchema = z.object({
+  code: z.enum(['MODEL_IDLE_TIMEOUT', 'UPSTREAM_BALANCE', 'UPSTREAM_RATE_LIMIT', 'UPSTREAM_AUTH', 'UPSTREAM_SERVICE', 'CONNECTION_INTERRUPTED', 'TOOL_ARGUMENTS', 'MODEL_ABORTED', 'MODEL_ERROR']),
+  phase: z.enum(['first-response', 'after-tool', 'streaming', 'execution']),
+  elapsedMs: z.number().nonnegative(),
+  status: z.number().int().optional(),
+  transportCode: z.string().max(40).optional(),
+  signature: z.string().max(120),
+});
+export type RunFailure = z.infer<typeof RunFailureSchema>;
+
 export const AgentEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('run.started'),
@@ -143,7 +154,7 @@ export const AgentEventSchema = z.discriminatedUnion('type', [
     stepIndex: z.number().int().nonnegative().optional(),
   }),
   z.object({ type: z.literal('run.completed'), runId: z.string() }),
-  z.object({ type: z.literal('run.failed'), runId: z.string(), message: z.string() }),
+  z.object({ type: z.literal('run.failed'), runId: z.string(), message: z.string(), failure: RunFailureSchema.optional() }),
   z.object({
     type: z.literal('run.cancelled'),
     runId: z.string(),
@@ -693,6 +704,8 @@ export const ChatModelMessageSchema = z.object({
 export type ChatModelMessage = z.infer<typeof ChatModelMessageSchema>;
 
 export const ChatRequestSchema = z.object({
+  /** Pure text inference: no tools, filesystem, Skill/MCP or backend execution. */
+  responseMode: z.literal('text-only').optional(),
   profile: AgentProfileSchema,
   messages: z.array(ChatModelMessageSchema).min(1),
   model: ModelConfigSchema,
@@ -735,6 +748,7 @@ export const ChatRequestSchema = z.object({
   engine: AgentEngineIdSchema.optional(),
 });
 export type ChatRequest = z.infer<typeof ChatRequestSchema>;
+export * from './agent-data-query.js';
 
 /* ------------------------------------------------------------------ *
  * Conversation durable tasks
@@ -804,6 +818,20 @@ export const DurableTaskSchema = z.object({
 export type DurableTask = z.infer<typeof DurableTaskSchema>;
 
 export * from './data-schema.js';
+export * from './data-query.js';
+export * from './workflow-schema.js';
+export * from './project-instruction.js';
+export * from './run-text.js';
 export * from './voice-work.js';
 export * from './mobile-voice.js';
 export * from './voice-asr.js';
+export * from './project-conversation.js';
+export * from './project-application.js';
+
+export * from './task-parameter-ui.js';
+export * from './task-schedule.js';
+export {TaskReportUiSchema,TaskReportProjectPreviewSchema,type TaskReportUi} from './task-parameter-ui.js';
+export * from './data-app-query.js';
+export * from './data-schema-change.js';
+export * from './query-assets.js';
+export * from './experience.js';

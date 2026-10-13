@@ -11,3 +11,4 @@
 | [features/README.md](features/README.md) | 功能阶段测试结果与证据 |
 | [releases/README.md](releases/README.md) | 版本回归、验收和已知问题 |
 | [测试控制台 V1](../sdd/features/test-console-v1/requirements.md) | 独立测试网站的需求、安全边界与验证规格 |
+| [2026-10-13 文档同步](features/documentation-sync-20261013.md) | 当前功能、用户手册、应用内派生产物与验证范围 |

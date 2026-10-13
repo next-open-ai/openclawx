@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import type { ProjectInstruction } from '@workmate/contracts';
 import type {
   Employee,
   EmployeeId,
@@ -27,13 +28,18 @@ import {
 import { useProjectTemplates } from "../../app/project-templates.js";
 import { buildDependencyBlock, buildSummaryEvidence, fitObjective } from "../../app/context-budget.js";
 import ProjectConversationWorkspace from "./ProjectConversationWorkspace.vue";
+import ProjectSharingButton from "./ProjectSharingButton.vue";
 import ProjectDagPreview from "./ProjectDagPreview.vue";
 import * as orch from "../../services/orchestration.js";
+import { appendProjectDelta, mergeProjectMessages, mergeLiveTranscript, openProjectStream, type ProjectStream } from './project-live-state.js';
 import { isDesktopShell } from "../../app/platform.js";
 import { getCurrentUser, listLocalUsers } from "../../services/auth.js";
 
 type Transcript = ProjectTaskTranscript;
 const props = defineProps<{
+  returnToChatProjectId?: string;
+  returnToTemplateProjectId?: string;
+  returnToDataProjectId?: string;
   employees: Employee[];
   models: ProviderConfig[];
   generateDraft: (
@@ -56,6 +62,7 @@ const props = defineProps<{
     onDelta?: (delta: string) => void,
   ) => Promise<Transcript>;
 }>();
+const emit = defineEmits<{ returnToChat: []; returnToTemplate: [projectId: string]; returnToData: [projectId: string]; openWorkflows: [] }>();
 const { load: loadSkills, allowedSkillsFor } = useCapabilities();
 const { load: loadRuntimePrefs, get: getRuntimePrefs } = useEmployeeRuntimePrefs();
 const { connections: mcpConnections, load: loadMcp } = useMcpConfig();
@@ -98,9 +105,12 @@ function managedModel(): string {
 
 function serverToTranscript(run: orch.ServerRunRecord): Transcript {
   return {
+    error: run.error,
+    failure: run.failure,
     assistantContent: run.transcript,
     reasoningContent: run.reasoning,
     activities: run.activities.map((activity) => ({
+      ...activity,
       toolName: activity.toolName,
       summary: activity.summary,
       status:
@@ -109,6 +119,7 @@ function serverToTranscript(run: orch.ServerRunRecord): Transcript {
           : ("running" as const),
     })),
     approvals: run.approvals.map((approval) => ({
+      id: approval.id,
       skillId: approval.skillId,
       capability: approval.capability,
       summary: approval.summary,
@@ -160,7 +171,10 @@ function adoptServerProject(sp: orch.ServerProject, previous?: Project): Project
     coordinatorProvider: provider,
     coordinatorModel: model,
     mode: sp.mode,
+    kind: sp.kind,
+    defaultEmployeeId: sp.defaultEmployeeId,
     workspacePath: sp.workspacePath,
+    executionWorkspaceMode: sp.executionWorkspaceMode,
     tasks: sp.tasks.map((task) => {
       const old = previousTasks.get(task.id);
       const sameAttempt = Boolean(old?.runId && task.runId && old.runId === task.runId);
@@ -196,53 +210,27 @@ function adoptServerProject(sp: orch.ServerProject, previous?: Project): Project
     changeSets: sp.changeSets,
     managedServer: true,
   };
-  const runChanged = Boolean(previous?.activeRunId && sp.activeRunId && previous.activeRunId !== sp.activeRunId);
-  if (runChanged || !previousMessages.length) {
-    for (const message of sp.messages) {
-      project.messages.push({
-        id: message.id,
-        role: message.role,
-        content: message.content,
-        employeeId: message.employeeId,
-        taskId: message.taskId,
-        createdAt: message.createdAt,
-        runId: message.runId ?? sp.activeRunId,
-        assets: [],
-        activities: [],
-      });
-    }
-  } else {
-    const known = new Map(previousMessages.map((message) => [message.id, message]));
-    for (const message of sp.messages) {
-      const old = known.get(message.id);
-      if (old) {
-        project.messages.push({
-          ...old,
-          content: message.content || old.content,
-          runId: message.runId ?? old.runId ?? sp.activeRunId,
-        });
-      } else {
-        project.messages.push({
-          id: message.id,
-          role: message.role,
-          content: message.content,
-          employeeId: message.employeeId,
-          taskId: message.taskId,
-          createdAt: message.createdAt,
-          runId: message.runId ?? sp.activeRunId,
-          assets: [],
-          activities: [],
-        });
-      }
-    }
-  }
+  project.messages = mergeProjectMessages(sp, previousMessages);
   return project;
 }
 
-async function refreshManaged(projectId: string): Promise<boolean> {
+const managedRefreshes = new Map<string, Promise<boolean>>();
+function refreshManaged(projectId: string): Promise<boolean> {
+  const pending = managedRefreshes.get(projectId);
+  if (pending) return pending;
+  const work = refreshManagedOnce(projectId).finally(() => { managedRefreshes.delete(projectId); });
+  managedRefreshes.set(projectId, work);
+  return work;
+}
+function pollManaged(projectId: string): void {
+  void refreshManaged(projectId).catch(() => {
+    error.value = "暂时无法同步项目状态，请稍后刷新；已有运行记录仍保留。";
+  });
+}
+async function refreshManagedOnce(projectId: string): Promise<boolean> {
   const count = (managedPollCounts.get(projectId) ?? 0) + 1;
   managedPollCounts.set(projectId, count);
-  // 防失控：超过约 15 分钟仍未结束则停轮询，避免无限刷请求。
+  // 三秒间隔最多跟踪约一小时；不是模型执行时限。
   if (count > 1200) { stopManagedPoll(projectId); return false; }
   const sp = await orch.getProject(projectId);
   const index = projects.value.findIndex((item) => item.id === projectId);
@@ -253,17 +241,15 @@ async function refreshManaged(projectId: string): Promise<boolean> {
   const next = adoptServerProject(sp, projects.value[index]);
   projects.value = [...projects.value.slice(0, index), next, ...projects.value.slice(index + 1)];
 
-  for (const task of next.tasks) {
-    if (task.status === "completed" && !task.transcript) {
-      void hydrateManagedTask(next, task.id);
-    } else if (task.status === "failed" && !task.transcript && task.runId) {
-      void hydrateManagedTask(next, task.id);
+  await Promise.all(next.tasks.map(async (task) => {
+    if ((task.status === "completed" || task.status === "failed" || task.status === "cancelled") && task.runId) {
+      await hydrateManagedTask(next, task.id);
     } else if (task.status === "running" && task.runId) {
-      void hydrateManagedTask(next, task.id, { allowRefresh: true });
+      await hydrateManagedTask(next, task.id, { allowRefresh: true });
     } else if (task.status === "running" && /等待审批|approval/i.test(task.error ?? "")) {
-      void hydratePendingApprovals(next, task);
+      await hydratePendingApprovals(next, task);
     }
-  }
+  }));
 
   const settled =
     !sp.activeRunId ||
@@ -283,11 +269,13 @@ async function hydrateManagedTask(
   taskId: string,
   options: { allowRefresh?: boolean } = {},
 ): Promise<void> {
-  const key = `${project.id}:${taskId}`;
+  const task = project.tasks.find((item) => item.id === taskId);
+  const key = `${project.id}:${taskId}:${task?.runId ?? ''}`;
   if (hydratedKeys.has(key) && !options.allowRefresh) return;
   if (!options.allowRefresh) hydratedKeys.add(key);
-  const task = project.tasks.find((item) => item.id === taskId);
-  const run = task ? await orch.projectTranscript(project.id, taskId) : null;
+  let run: orch.ServerRunRecord | null;
+  try { run = task ? await orch.projectTranscript(project.id, taskId) : null; }
+  catch (error) { hydratedKeys.delete(key); throw error; }
   if (!task || !run) {
     if (!options.allowRefresh) hydratedKeys.delete(key);
     return;
@@ -300,20 +288,20 @@ async function hydrateManagedTask(
   else if (run.status === "completed" || run.status === "failed" || run.status === "cancelled") {
     hydratedKeys.add(key);
   }
-  task.transcript = serverToTranscript(run);
+  task.transcript = mergeLiveTranscript(serverToTranscript(run), task.transcript, run.status === 'running');
   task.runId = run.id;
   const existingMsg = project.messages.find(
-    (message) => message.taskId === taskId && message.role === "assistant",
+    (message) => message.id === run.id && message.role === "assistant",
   );
   if (existingMsg) {
     // Finalize the live-streamed message with the authoritative transcript.
-    existingMsg.content = run.transcript || existingMsg.content;
-    existingMsg.reasoning = run.reasoning || existingMsg.reasoning;
+    existingMsg.content = task.transcript.assistantContent || existingMsg.content;
+    existingMsg.reasoning = task.transcript.reasoningContent || existingMsg.reasoning;
     existingMsg.activities = task.transcript.activities;
     existingMsg.assets = task.transcript.assets;
   } else {
     project.messages.push({
-      id: crypto.randomUUID(),
+      id: run.id,
       role: "assistant",
       employeeId: task.employeeId,
       taskId,
@@ -324,7 +312,7 @@ async function hydrateManagedTask(
       createdAt: Date.now(),
     });
   }
-  if (project.workspacePath && run.id) {
+  if (project.kind !== 'conversation' && project.workspacePath && run.id && run.status !== "running" && run.status !== "waiting-approval") {
     try {
       await syncWorkspaceRun(project.workspacePath, run.id);
     } catch {
@@ -344,17 +332,24 @@ async function finishManagedRun(project: Project): Promise<void> {
     managedPollers.delete(project.id);
   }
   stopManagedStream(project.id);
-  if (!current.summary && (current.status === "completed" || current.status === "failed")) {
+  if (current.kind === 'conversation') {
+    // Per-turn replies/diagnostics own the result; there is no coordinator model.
+    current.summary = undefined;
+    projects.value = [...projects.value];
+    return;
+  }
+  if (current.status === "completed" || current.status === "failed" || current.status === "cancelled") {
     const completed = current.tasks.filter((task) => task.status === "completed").length;
     const failed = current.tasks.filter((task) => task.status === "failed").length;
-    current.summary = failed
+    current.summary ||= current.status === "cancelled" ? "本轮执行已取消；已有文件仍保留。" : current.status === "failed"
       ? `项目已结束：${completed} 项任务完成，${failed} 项失败。${current.tasks.find((task) => task.error)?.error ?? ""}`
       : `项目已完成：${completed} 项任务成功。`;
-    if (!current.messages.some((message) => message.role === "system" && message.content.startsWith("本轮调度已结束"))) {
+    const content = current.status === "cancelled" ? "本轮执行已取消；已有文件和应用仍保留。" : current.status === "failed" ? "本轮执行未完成。请查看失败任务的原因；已有文件和应用仍保留。" : "本轮执行已完成，请查看交付物；数据应用以实际页面绑定状态为准。";
+    if (!current.messages.some((message) => message.role === "system" && message.content === content)) {
       current.messages.push({
         id: crypto.randomUUID(),
         role: "system",
-        content: "本轮调度已结束，服务端已完成任务编排。",
+        content,
         createdAt: Date.now(),
       });
     }
@@ -372,22 +367,35 @@ async function finishManagedRun(project: Project): Promise<void> {
  * The 800ms poll remains the source of truth for task status; this live pass
  * is purely additive (delta text + activity/approval/asset progress).
  * ------------------------------------------------------------------ */
-const managedStreams = new Map<string, () => void>();
+const managedStreams = new Map<string, ProjectStream>();
 
 function stopManagedStream(projectId: string): void {
   const stop = managedStreams.get(projectId);
   if (stop) {
-    stop();
+    stop.stop();
     managedStreams.delete(projectId);
   }
 }
 
-function startManagedStream(projectId: string): void {
-  if (managedStreams.has(projectId)) return;
-  const stop = orch.subscribeProjectEvents(projectId, (event) => {
+function startManagedStream(projectId: string, paused = false): ProjectStream {
+  const existing = managedStreams.get(projectId);
+  if (existing) return existing;
+  const stream = openProjectStream(projectId, orch.subscribeProjectEvents, (event) => {
     applyManagedEvent(projectId, event);
   });
-  managedStreams.set(projectId, stop);
+  managedStreams.set(projectId, stream);
+  if (!paused) stream.activate();
+  return stream;
+}
+
+function trackManagedProject(projectId: string): void {
+  stopManagedPoll(projectId);
+  if (projects.value.find(item => item.id === projectId)?.status !== 'running') {
+    stopManagedStream(projectId);
+    return;
+  }
+  managedPollers.set(projectId, setInterval(() => pollManaged(projectId), 3000));
+  startManagedStream(projectId);
 }
 
 function taskForEvent(project: Project, event: orch.OrcEvent): ProjectTask | undefined {
@@ -415,13 +423,12 @@ function ensureTaskTranscript(task: ProjectTask): NonNullable<ProjectTask["trans
 function ensureTaskMessage(project: Project, task: ProjectTask): ProjectMessage {
   const existing = project.messages.find(
     (message) =>
-      message.taskId === task.id
+      message.id === task.runId
       && message.role === "assistant"
-      && (!project.activeRunId || !message.runId || message.runId === project.activeRunId),
   );
   if (existing) return existing;
   const message: ProjectMessage = {
-    id: crypto.randomUUID(),
+    id: task.runId ?? crypto.randomUUID(),
     role: "assistant",
     employeeId: task.employeeId,
     taskId: task.id,
@@ -444,18 +451,25 @@ function applyManagedEvent(projectId: string, event: orch.OrcEvent): void {
   if (!project || project.status !== "running") return;
   const task = taskForEvent(project, event);
   if (!task) return;
+  if (event.type !== 'run.started' && event.runId && task.runId && event.runId !== task.runId) return;
 
   if (event.type === "run.started") {
+    // SSE can arrive before the status poll adopts the new attempt. Never reset
+    // the previous run's message just because both attempts share a task ID.
+    if (event.runId) task.runId = event.runId;
     // A new attempt is beginning: reset the previous attempt's streamed state so
     // an approval-resumed (or retried) run does not append onto stale content.
     if (task.transcript && (task.transcript.assistantContent || task.transcript.activities.length)) {
+      task.transcript.error = undefined;
+      task.transcript.failure = undefined;
       task.transcript.assistantContent = "";
       task.transcript.reasoningContent = "";
       task.transcript.activities = [];
       task.transcript.approvals = [];
       task.transcript.assets = [];
+      task.transcript.runId = task.runId;
     }
-    const message = project.messages.find((m) => m.taskId === task.id && m.role === "assistant");
+    const message = project.messages.find((m) => m.id === task.runId && m.role === "assistant");
     if (message) {
       message.content = "";
       message.reasoning = "";
@@ -466,15 +480,15 @@ function applyManagedEvent(projectId: string, event: orch.OrcEvent): void {
     bumpProject();
   } else if (event.type === "run.delta" && event.text) {
     const transcript = ensureTaskTranscript(task);
-    transcript.assistantContent += event.text;
+    transcript.assistantContent = appendProjectDelta(transcript.assistantContent, event.text, event.textOffset);
     const message = ensureTaskMessage(project, task);
-    message.content += event.text;
+    message.content = appendProjectDelta(message.content, event.text, event.textOffset);
     bumpProject();
   } else if (event.type === "run.reasoning.delta" && event.text) {
     const transcript = ensureTaskTranscript(task);
-    transcript.reasoningContent = `${transcript.reasoningContent || ""}${event.text}`;
+    transcript.reasoningContent = appendProjectDelta(transcript.reasoningContent || '', event.text, event.textOffset);
     const message = ensureTaskMessage(project, task);
-    message.reasoning = `${message.reasoning || ""}${event.text}`;
+    message.reasoning = appendProjectDelta(message.reasoning || '', event.text, event.textOffset);
     bumpProject();
   } else if (event.type === "run.activity" && event.activity) {
     const transcript = ensureTaskTranscript(task);
@@ -497,6 +511,13 @@ function applyManagedEvent(projectId: string, event: orch.OrcEvent): void {
   } else if (event.type === "project.file.published") {
     fileTreeEpoch.value += 1;
     bumpProject();
+  } else if (event.type === "run.settled") {
+    const transcript = ensureTaskTranscript(task);
+    transcript.error = event.error;
+    transcript.failure = event.failure;
+    task.error = event.error;
+    bumpProject();
+    void refreshManaged(projectId).catch(() => { error.value = "暂时无法同步项目状态，请稍后刷新；已有运行记录仍保留。"; });
   } else if (event.type === "project.task" && event.taskId && event.status) {
     const target = project.tasks.find((task) => task.id === event.taskId);
     if (target && target.status !== event.status) target.status = event.status as ProjectTask["status"];
@@ -538,9 +559,10 @@ async function loadManagedProjects(): Promise<void> {
     if (existingIndex >= 0) next[existingIndex] = adopted;
     else next.unshift(adopted);
     if (sp.status === "running") {
+      stopManagedPoll(sp.id);
       managedPollers.set(
         sp.id,
-        setInterval(() => void refreshManaged(sp.id), 800),
+        setInterval(() => pollManaged(sp.id), 3000),
       );
       startManagedStream(sp.id);
     }
@@ -550,22 +572,25 @@ async function loadManagedProjects(): Promise<void> {
 
 async function runManagedProject(project: Project): Promise<void> {
   error.value = "";
+  stopManagedStream(project.id);
+  const stream = startManagedStream(project.id, true);
   try {
-    await orch.confirmProject(project.id);
-    await refreshManaged(project.id);
+    await stream.ready;
+    const accepted = await orch.confirmProject(project.id, {
+      resumeIncomplete: project.status === "failed" || project.status === "cancelled",
+    });
+    const index = projects.value.findIndex(item => item.id === project.id);
+    if (index >= 0) projects.value[index] = adoptServerProject(accepted.project, projects.value[index]);
+    stream.activate();
+    await refreshManaged(project.id).catch(() => { error.value = '任务已启动，状态暂未更新，正在重新同步。'; });
   } catch (cause) {
+    stopManagedStream(project.id);
     error.value = cause instanceof Error ? cause.message : "服务端编排启动失败。";
     // 启动失败仍为草稿：允许下次进入对话时再次自动尝试。
     autoStartedDrafts.delete(project.id);
     return;
   }
-  const existing = managedPollers.get(project.id);
-  if (existing) clearInterval(existing);
-  managedPollers.set(
-    project.id,
-    setInterval(() => void refreshManaged(project.id), 3000),
-  );
-  startManagedStream(project.id);
+  trackManagedProject(project.id);
 }
 
 async function cancelManagedProject(project: Project): Promise<void> {
@@ -640,6 +665,45 @@ const accessScope = ref<"private" | "org-shared" | "delegated">("private");
 const delegatedPermissions = ref<Record<string, "read" | "write">>({});
 const localUsers = ref<AuthUser[]>([]);
 const currentUserId = ref<string>("");
+const currentUserRole = ref<'admin' | 'member'>('member');
+// Navigation only: never confirm/replan when opening or returning from invocation details.
+const workflowDetailTrail = ref<string[]>([]);
+const workflowDetailTarget = ref<string | null>(null);
+watch(selectedId, id => {
+  if (id !== workflowDetailTarget.value) {
+    workflowDetailTrail.value = [];
+    workflowDetailTarget.value = null;
+  }
+}, { flush: 'sync' });
+async function openWorkflowProject(id: string) {
+  const sourceId = selectedId.value;
+  if (!sourceId || sourceId === id) return;
+  let server;
+  try { server = await orch.getProject(id); }
+  catch { if (selectedId.value === sourceId) error.value = '暂时无法打开执行项目，来源项目已保留，请重试。'; return; }
+  if (selectedId.value !== sourceId) return;
+  if (!server) { error.value = '执行项目不存在或无权访问，来源项目已保留。'; return; }
+  const index = projects.value.findIndex(item => item.id === id);
+  const adopted = adoptServerProject(server, index >= 0 ? projects.value[index] : undefined);
+  projects.value = index >= 0 ? projects.value.map(item => item.id === id ? adopted : item) : [...projects.value, adopted];
+  if (server.status === 'running') trackManagedProject(id);
+  workflowDetailTrail.value.push(sourceId);
+  workflowDetailTarget.value = id;
+  selectedId.value = id;
+  await refreshManaged(id).catch(() => { error.value = '详情已打开，状态暂未同步，请稍后刷新。'; });
+}
+function backFromWorkflowProject() {
+  const origin = workflowDetailTrail.value.pop();
+  if (origin) {
+    workflowDetailTarget.value = projects.value.some(item => item.id === origin) ? origin : null;
+    selectedId.value = workflowDetailTarget.value;
+    return;
+  }
+  if (selected.value && selected.value.id === props.returnToTemplateProjectId) emit('returnToTemplate', selected.value.id);
+  else if (selected.value && selected.value.id === props.returnToDataProjectId) emit('returnToData', selected.value.id);
+  else if (selected.value?.id === props.returnToChatProjectId) emit('returnToChat');
+  else selectedId.value = null;
+}
 const visibilityFilter = ref<"all" | "mine" | "org-shared" | "delegated">("all");
 const searchQuery = ref("");
 const desktopBridge = () => (window as Window & { workmateDesktop?: any }).workmateDesktop;
@@ -832,6 +896,7 @@ function openCreate(method: "blank" | "template" = "blank", templateId = "") {
   draftTasks.value = [];
   coordinatorId.value = props.models[0]?.id ?? "";
   workspaceParent.value = "";
+  conversationDirectoryMode.value = 'system';
   accessScope.value = "private";
   delegatedPermissions.value = {};
   selectedTemplateId.value = "";
@@ -977,10 +1042,35 @@ async function confirmCreate() {
   closeCreate();
   autoStartIfDraft(adopted);
 }
+
+const creatingConversation = ref(false);
+const conversationDirectoryMode = ref<'system' | 'custom'>('system');
+const choosingDirectory = ref(false);
+async function createConversation() {
+  if (!name.value.trim() || creatingConversation.value || choosingDirectory.value || (conversationDirectoryMode.value === 'custom' && !workspaceParent.value.trim())) return;
+  creatingConversation.value = true;
+  error.value = '';
+  try {
+    const workspace = conversationDirectoryMode.value === 'custom'
+      ? { mode: 'custom' as const, parentPath: workspaceParent.value.trim() }
+      : { mode: 'system' as const };
+    const project = adoptServerProject(await orch.createConversationProject({ name: name.value.trim(), goal: goal.value.trim(), employeeId: 'general', workspace }));
+    projects.value = [project, ...projects.value];
+    selectedId.value = project.id;
+    closeCreate();
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : '创建失败，请重试';
+  } finally { creatingConversation.value = false; }
+}
 async function chooseWorkspaceParent() {
-  if (!isDesktopShell()) return;
-  const selected = await desktopBridge()?.pickProjectDirectory();
-  if (selected) workspaceParent.value = selected;
+  if (!isDesktopShell() || choosingDirectory.value) return;
+  choosingDirectory.value = true;
+  error.value = '';
+  try {
+    const selected = await desktopBridge()?.pickProjectDirectory();
+    if (selected) workspaceParent.value = selected;
+  } catch { error.value = '无法打开目录选择器，请重试或使用系统自动创建。'; }
+  finally { choosingDirectory.value = false; }
 }
 function applySavedTemplate(templateId: string) {
   const hit = savedTemplates.value.find((item) => item.id === templateId);
@@ -1039,6 +1129,7 @@ async function deleteSavedTemplate(templateId: string) {
 const autoStartedDrafts = new Set<string>();
 /** 进入项目对话即自动启动（仅草稿项目触发一次；状态离开 draft 后允许再次进入时重试）。 */
 function autoStartIfDraft(project: Project | null | undefined) {
+  if (project?.kind === 'conversation') return;
   if (!project || project.status !== "draft") return;
   if (autoStartedDrafts.has(project.id)) return;
   autoStartedDrafts.add(project.id);
@@ -1046,6 +1137,7 @@ function autoStartIfDraft(project: Project | null | undefined) {
 }
 
 function openProject(project: Project) {
+  workflowDetailTrail.value = [];
   selectedId.value = project.id;
   detailTaskId.value =
     project.tasks.find((task) => task.status === "running")?.id ??
@@ -1066,8 +1158,9 @@ function removeSelectedProject() {
   void deleteProject(selectedProject.value);
   selectedId.value = null;
 }
-function dispatchSelectedProject(input: { employeeId: EmployeeId; content: string }) {
-  if (selectedProject.value) void dispatchProjectInstruction(selectedProject.value, input);
+async function dispatchSelectedProject(input: ProjectInstruction) {
+  if (!selectedProject.value) throw new Error('项目不可用，请重新打开。');
+  await dispatchProjectInstruction(selectedProject.value, input);
 }
 function addMemberToSelectedProject(employeeId: EmployeeId) {
   if (selectedProject.value) void addProjectMember(selectedProject.value, employeeId);
@@ -1497,28 +1590,32 @@ async function removeProjectMember(project: Project, employeeId: EmployeeId) {
 
 async function dispatchProjectInstruction(
   project: Project,
-  input: { employeeId: EmployeeId; content: string },
+  input: ProjectInstruction,
 ) {
-  if (project.status === "running" || rosterBusy.value) return;
+  if (project.status === "running" || rosterBusy.value) throw new Error('项目正在执行，请等待完成或停止后再发送。');
   if (project.managedServer) {
     error.value = "";
+    stopManagedStream(project.id);
+    const stream = startManagedStream(project.id, true);
     try {
-      await orch.dispatchProjectInstruction(project.id, {
+      await stream.ready;
+      const accepted = await orch.dispatchProjectInstruction(project.id, {
+        requestId: input.requestId,
+        fileIds: input.fileIds,
         employeeId: input.employeeId,
         content: input.content,
         employeeLabel: employeeName(input.employeeId),
       });
-      await refreshManaged(project.id);
-      const existing = managedPollers.get(project.id);
-      if (existing) clearInterval(existing);
-      managedPollers.set(
-        project.id,
-        setInterval(() => void refreshManaged(project.id), 3000),
-      );
-      startManagedStream(project.id);
+      const index = projects.value.findIndex(item => item.id === project.id);
+      if (index >= 0) projects.value[index] = adoptServerProject(accepted.project, projects.value[index]);
+      stream.activate();
+      await refreshManaged(project.id).catch(() => { error.value = '问题已发送，状态暂未更新，正在重新同步。'; });
+      trackManagedProject(project.id);
     } catch (cause) {
+      stopManagedStream(project.id);
       error.value =
         cause instanceof Error ? cause.message : "服务端调度追加指令失败。";
+      throw cause;
     }
     return;
   }
@@ -1536,7 +1633,7 @@ async function dispatchProjectInstruction(
     project.tasks.find((task) => task.employeeId === input.employeeId);
   if (!target) {
     error.value = "所选员工不在当前项目成员中。";
-    return;
+    throw new Error(error.value);
   }
   target.objective = `${target.objective}\n\n本轮项目指令：${input.content}`;
   target.status = "stale";
@@ -1567,6 +1664,7 @@ onMounted(async () => {
   ]);
   localUsers.value = users;
   currentUserId.value = me?.id ?? "";
+  currentUserRole.value = me?.role ?? 'member';
   await loadManagedProjects();
   const focusId = await readStored("projects.focus-id");
   if (focusId && projects.value.some((project) => project.id === focusId)) {
@@ -1596,7 +1694,6 @@ onBeforeUnmount(() => {
         </div>
         <div class="flex flex-wrap gap-2">
           <button class="rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white" @click="openCreate('blank')">＋ 创建项目</button>
-          <button class="rounded-xl border border-[var(--accent)]/40 bg-[var(--surface)] px-4 py-2.5 text-sm font-semibold text-[var(--accent)]" @click="openCreate('template')">从模板创建</button>
         </div>
       </header>
 
@@ -1606,8 +1703,42 @@ onBeforeUnmount(() => {
       </div>
 
       <div :class="[selected ? 'min-h-0 flex-1 overflow-hidden flex flex-col' : 'mt-6 min-h-0 flex-1 overflow-y-auto pr-1']">
-        <!-- 新建项目向导：①信息与规划 → ②确认运行 -->
-        <section v-if="creating" class="rounded-2xl border border-[var(--accent)]/30 bg-[var(--surface)] shadow-sm">
+        <section v-if="creating && createMethod === 'blank'" class="mx-auto w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm sm:p-8">
+          <div class="flex items-start justify-between gap-4">
+            <div><h2 class="text-xl font-bold">创建项目</h2><p class="mt-2 text-sm leading-6 text-[var(--muted)]">一个持续对话的工作空间。成果集中保存，后续可以继续修改。</p></div>
+            <button type="button" class="shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-sm hover:bg-[var(--surface-muted)] disabled:opacity-40" :disabled="creatingConversation" @click="closeCreate">关闭</button>
+          </div>
+          <form class="mt-6 space-y-5" @submit.prevent="createConversation">
+            <label class="block text-sm font-semibold">项目名称
+              <input v-model="name" required maxlength="80" autofocus :disabled="creatingConversation" class="mt-2 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-3 font-normal outline-none focus:border-[var(--accent)]" placeholder="例如：月度经营分析" />
+            </label>
+            <label class="block text-sm font-semibold">项目说明 <span class="font-normal text-[var(--muted)]">可选</span>
+              <textarea v-model="goal" maxlength="8000" rows="4" :disabled="creatingConversation" class="mt-2 w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-3 font-normal outline-none focus:border-[var(--accent)]" placeholder="希望长期解决什么问题？也可以进入项目后再补充。" />
+            </label>
+            <fieldset class="min-w-0 rounded-xl border border-[var(--border)] p-4" :disabled="creatingConversation || choosingDirectory">
+              <legend class="px-1 text-sm font-semibold">项目保存位置</legend>
+              <div class="flex flex-wrap gap-x-6 gap-y-3 text-sm">
+                <label class="flex cursor-pointer items-center gap-2"><input v-model="conversationDirectoryMode" type="radio" value="system" name="conversation-directory" />系统自动创建 <span class="text-xs text-[var(--muted)]">推荐</span></label>
+                <label class="flex cursor-pointer items-center gap-2"><input v-model="conversationDirectoryMode" type="radio" value="custom" name="conversation-directory" />自选保存位置</label>
+              </div>
+              <div v-if="conversationDirectoryMode === 'custom'" class="mt-4 space-y-2">
+                <template v-if="isDesktopShell()">
+                  <button type="button" class="rounded-lg border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--surface-muted)]" @click="chooseWorkspaceParent">{{ workspaceParent ? '更换位置' : '选择文件夹' }}</button>
+                  <p v-if="workspaceParent" class="break-all rounded-lg bg-[var(--surface-muted)] p-3 text-xs leading-5" aria-label="已选保存位置">{{ workspaceParent }}</p>
+                </template>
+                <label v-else class="block text-xs text-[var(--muted)]">API 服务所在电脑的目录（绝对路径）
+                  <input v-model="workspaceParent" required class="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--text)]" placeholder="请输入已存在且可写的目录" />
+                </label>
+              </div>
+              <p class="mt-3 text-xs leading-5 text-[var(--muted)]">{{ conversationDirectoryMode === 'system' ? '在系统项目空间创建专属目录，无需额外设置。' : '在所选位置新建独立项目子目录，不修改原有文件。' }} 多轮成果将持续保存在此处。</p>
+            </fieldset>
+            <p class="rounded-xl bg-[var(--surface-muted)] p-3 text-xs leading-6 text-[var(--muted)]">默认仅自己可见。创建不会调用模型；进入后发送消息或上传材料开始工作，需要多人协作时再调用工作流。</p>
+            <p v-if="error" role="alert" class="text-sm text-rose-600">{{ error }}</p>
+            <div class="flex justify-end"><button type="submit" :disabled="!name.trim() || creatingConversation || choosingDirectory || (conversationDirectoryMode === 'custom' && !workspaceParent.trim())" class="rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white disabled:opacity-40">{{ creatingConversation ? '正在创建…' : '创建项目' }}</button></div>
+          </form>
+        </section>
+        <!-- Legacy template wizard retained for backward-compatible saved drafts. -->
+        <section v-else-if="creating" class="rounded-2xl border border-[var(--accent)]/30 bg-[var(--surface)] shadow-sm">
           <div class="flex items-start justify-between gap-4 border-b border-[var(--border)] px-6 py-5">
             <div class="min-w-0">
               <p class="text-[10px] font-bold tracking-[0.14em] text-[var(--accent)]">CREATE · PLAN · RUN</p>
@@ -1939,47 +2070,42 @@ onBeforeUnmount(() => {
           </div>
           <template v-if="projects.length">
             <div class="grid gap-4 md:grid-cols-2">
-              <button
+              <article
                 v-for="project in filteredProjects"
                 :key="project.id"
-                class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 text-left hover:border-[var(--accent)]/60"
+                class="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-left hover:border-[var(--accent)]/60"
+              >
+              <button
+                type="button"
+                class="block w-full p-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
                 @click="openProject(project)"
               >
                 <div class="flex justify-between gap-3">
                   <div class="flex flex-wrap gap-2">
-                    <span class="rounded-lg bg-[var(--accent-soft)] px-2 py-1 text-[11px] font-bold text-[var(--accent)]">{{ modeName(project.mode) }}</span>
+                    <span class="rounded-lg bg-[var(--accent-soft)] px-2 py-1 text-[11px] font-bold text-[var(--accent)]">{{ project.kind === 'conversation' ? '持续对话' : modeName(project.mode) }}</span>
                     <span class="rounded-lg bg-[var(--surface-muted)] px-2 py-1 text-[11px] font-semibold text-[var(--muted)]">{{ accessScopeLabel(project.accessScope) }}</span>
                   </div>
                   <span :class="['rounded-full px-2 py-1 text-[10px] font-bold', statusStyle(project.status)]">{{ statusText(project.status) }}</span>
                 </div>
                 <h2 class="mt-4 text-lg font-bold">{{ project.name }}</h2>
                 <p class="mt-2 line-clamp-2 text-sm text-[var(--muted)]">{{ project.goal }}</p>
-                <p class="mt-5 text-xs text-[var(--muted)]">{{ project.tasks.length }} 个任务 · 更新于 {{ date(project.updatedAt) }}</p>
+                <p class="mt-5 text-xs text-[var(--muted)]">{{ project.tasks.length }} {{ project.kind === 'conversation' ? '轮对话' : '个任务' }} · 更新于 {{ date(project.updatedAt) }}</p>
               </button>
+              <div v-if="project.managedServer" class="flex justify-end border-t border-[var(--border)] px-5 py-3">
+                <ProjectSharingButton :project="project" :users="localUsers" :current-user-id="currentUserId" />
+              </div>
+              </article>
             </div>
             <div v-if="!filteredProjects.length" class="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-10 text-center text-sm text-[var(--muted)]">
               当前筛选下暂无项目。
             </div>
           </template>
           <div v-else class="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-14 text-center">
-            <h2 class="text-xl font-bold">创建一个由规划器驱动的 DAG 项目</h2>
-            <p class="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-[var(--muted)]">录入基本信息后，协调员会直接产出可编辑的 DAG 任务图；你也可以复用已保存模板。</p>
+            <h2 class="text-xl font-bold">让工作在同一个项目里持续推进</h2>
+            <p class="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-[var(--muted)]">从对话开始，集中保存文件和成果。需要多人协作时，再调用工作流。</p>
             <div class="mt-6 flex justify-center gap-2">
               <button class="rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white" @click="openCreate('blank')">创建第一个项目</button>
-              <button class="rounded-xl border border-[var(--accent)]/40 px-4 py-2.5 text-sm font-semibold text-[var(--accent)]" @click="openCreate('template')">从模板创建</button>
             </div>
-          </div>
-          <div>
-            <h2 class="text-lg font-bold">项目模板</h2>
-            <div v-if="savedTemplates.length" class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <button v-for="item in savedTemplates" :key="item.id" class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left hover:border-[var(--accent)]" @click="openCreate('template', item.id)">
-                <span class="text-lg font-bold text-[var(--accent)]">◇</span>
-                <strong class="mt-3 block">{{ item.name }}</strong>
-                <p class="mt-1 text-xs leading-relaxed text-[var(--muted)]">{{ item.basic.goal || '已保存的项目基础信息与 DAG 任务图。' }}</p>
-                <span class="mt-3 inline-block text-[11px] font-semibold text-[var(--accent)]">{{ item.tasks.length }} 个任务</span>
-              </button>
-            </div>
-            <p v-else class="mt-3 text-sm text-[var(--muted)]">还没有保存过模板。先规划一个项目，再点击“存为模板”即可复用。</p>
           </div>
         </section>
 
@@ -1990,14 +2116,18 @@ onBeforeUnmount(() => {
             :employees="employees"
             :users="localUsers"
             :current-user-id="currentUserId"
+            :current-user-role="currentUserRole"
             :template-name="modeName(selected?.mode)"
             :running="selected?.status === 'running' || rosterBusy"
             :file-tree-epoch="fileTreeEpoch"
-            @back="selectedId = null"
+            :submit-instruction="dispatchSelectedProject"
+            :back-label="workflowDetailTrail.length ? '返回来源项目' : selected.id === returnToDataProjectId ? '返回数据对象' : selected.id === returnToTemplateProjectId ? '返回任务模板' : selected.id === returnToChatProjectId ? '返回对话工作台' : undefined"
+            @back="backFromWorkflowProject"
+            @open-workflow-project="openWorkflowProject"
+            @open-workflows="emit('openWorkflows')"
             @start="runSelectedProject"
             @cancel="cancelSelectedProject"
             @remove="removeSelectedProject"
-            @dispatch="dispatchSelectedProject"
             @add-member="addMemberToSelectedProject"
             @remove-member="removeMemberFromSelectedProject"
           />

@@ -2,9 +2,17 @@
 
 > 状态：随实现演进维护；与 `README(.zh-CN)`、`docs/architecture/gateway-m*.md` 保持一致。
 > 目标读者：新成员快速建立全局观、评审人核对模块边界与数据流。
-> 2026-10-07 产品能力快照见 [`docs/current-state.md`](../current-state.md)。
+> 2026-10-13 产品能力快照见 [`docs/current-state.md`](../current-state.md)。
 
 ## 1. 产品定位与总览
+
+当前普通项目以持续对话和固定成果目录工作，不默认规划 DAG；旧项目及显式工作流保留计划调度。任务中心提供可选模板、周期执行和结构化运行记录。数据应用使用服务端网关校验登记 SQL，前端只有无凭据 SDK；MySQL 建表草稿独立审核。详见 [数据能力平台](data-capability-platform.md)与[任务模板](task-template-pilot.md)。
+
+经验与查询资产独立：agent-core 经验 SQLite 记录可信来源，JSON 副本异步有界写；固定知识库只按配置阶段可用状态后台同步/预取。Pi 每轮预召回，AgentScope 按需加载，DSH 暂不接。API 查询资产仅用户明确收藏成功查询时保存，按用户/组织隔离，复用网关复核权限，不自动保存业务结果。见 [经验规格](../sdd/features/experience-local-first/README.md)与[查询资产](../sdd/features/agent-data-query-v1/query-assets.md)。
+
+任务模板参数界面采用单一编辑入口：明确从编辑项目返回时，将最新有效 UI 同步至模板草稿，内容哈希未变则不增加 revision、不撤销验证。高级设置暂隐藏但不删除已有配置；最终验证与发布仍由用户明确操作，运行锁、权限及快照校验继续生效。详见 [任务模板架构](task-template-pilot.md)。
+
+任务报告采用同样的独立项目编辑与返回草稿流程，但 SDK 只读取当前运行结果，不复用参数数据查询权限。模板默认输出要求可由任务覆盖，结果与报告快照随运行保存；后续模板编辑不改变历史。默认结果界面无需定制，JSON 记录始终保留。
 
 Workmate 是**本地优先的数字员工工作台**：不是单一聊天工具，而是把「对话 / 项目编排 / Skills / 知识库 / 自动化 / 资产」组织在**数字员工**职责之下，并通过**本地通道网关**让外部 IM（Telegram/飞书）与**远程中继终端**也能调度同一套能力。
 
@@ -59,7 +67,7 @@ Workmate 是**本地优先的数字员工工作台**：不是单一聊天工具�
 语音服务在 API 内采用独立能力边界：`voice/routes.ts` 仅为组合根，`realtime-routes.ts` 管理全双工会话，`asr-routes.ts` 管理单向语音输入，`chat-mobile/voice.ts` 管理手机令牌范围适配。会话生命周期保持隔离；实时语音的凭证、端点、模型和音色由统一 Provider/模型配置提供，通话行为仍由语音偏好管理，旧独立配置只作兼容回退。详见 `docs/sdd/features/voice-services-modularization-v1/` 与 `unified-provider-connections-v1/`。
 
 ### 渲染层「远程办公/连接」门户（P1）
-侧栏新增 `remote` 视图：Telegram/飞书凭证卡片、白名单文本、默认员工、网关状态徽标与重启按钮；主进程提供 `get/save-channel-settings`、`gateway-status`、`gateway-restart` IPC。用户/身份体系未实现（按要求暂不建），白名单为字符串列表、默认拒绝。
+侧栏 `remote` 视图提供 Telegram/飞书凭证、白名单、默认员工及网关状态/重启；主进程提供对应 IPC。Workmate 已有本地用户/组织及 admin/member 登录体系；通道白名单仍是独立的入口控制，不能视为完整的数据调用者委托授权。
 
 ## 4. 模块与边界（packages）
 
@@ -73,6 +81,14 @@ Workmate 是**本地优先的数字员工工作台**：不是单一聊天工具�
 | `channel` | 通道协议与核心 | 传输无关 |
 | `storage` / `ui-kit` | 占位 | 待接入 |
 
+### 4.1 通用资源访问边界
+
+`ResourceAccessPolicy` 与 `WorkspaceCapabilityKernel` 是文件访问授权的共享事实源，不通过提示文字判断是否开启。Pi 原生 read/write/edit/grep/find/ls/bash 和 AgentScope 宿主桥接统一检查：工作区按 read/write/full 权限访问；可信宿主登记的外部输入只允许逐文件读取，不扩展父目录或写权限。用户上传继续通过托管材料/附件工具提供，不接受模型自行声明路径授权。
+
+文件校验覆盖真实路径、符号链接、新建路径祖先、悬空链接，Skill 专用路径及资产提交/大文件落盘复用检查。授权 Skill 仍通过专用工具和现有审批；数据库/API 通过已授权连接。材料不足时的业务收敛独立于权限层。
+
+Shell 字符串检查仅拦截明显越界探查，不是任意代码沙箱，也不消除检查与使用之间的竞态。DSH 原生文件工具不经过宿主逐调用检查，本期只同步资源契约和成果提交边界；完整强隔离需独立插件或 OS 沙箱。详见 WA-V1.6。
+
 ## 5. `@workmate/orchestrator` 主要逻辑（M0 核心）
 
 文件构成：
@@ -81,6 +97,8 @@ Workmate 是**本地优先的数字员工工作台**：不是单一聊天工具�
 - `chat-session.ts`：会话 CRUD、消息回合（superseded 视图）、单会话单活动 run、审批决议与**续跑**；无 client context 时经 `contextResolver` 服务端组装；**Session Rolling Memory**（见 §5.1.1）。
 - `session-memory.ts`：滚动摘要预算/水位线/组装与 roll 纯逻辑。
 - `run-engine.ts`：一次 agent attempt 的执行与记录——结构事件持久化（tool/approval/artifact/sources/终态），`message.delta` 仅透传；审批出现则终态为 `waiting-approval`（停车）。
+
+对话与项目已共用 RunEngine、dispatcher、事件和 RunRecord。本轮收敛统一 attempt 超时：显式 timeoutMs 优先，其次 request.runTimeoutMs，再用引擎默认值；5 秒～2 小时限制后的同一值传入模型执行层。数据项目的完成交付通过仅服务端可信的 finalizeCompleted 边界处理，交付成功/失败落定后才持久化并发布唯一 run.settled。取消、审批停车、上游异常不进入完成晋升。领域差异（对话记忆、项目 DAG、续跑与工作区策略）仍由各自服务管理，不增加第二套执行器。规格见 [统一 attempt 第二期](../sdd/features/unified-attempt-v1/README.md)。
 - `project.ts` / `project-plan.ts`：项目 **Plan/Run/ChangeSet** 状态机与统一 DAG 调度器（strategy 仅建边与并发）、任务级审批停车、增量指令失效、成员 replan merge、取消/重试、协调汇总；并发写由 mutex 保护。
 - `types.ts` / `events.ts` / `hub.ts`：规范记录、统一 OrcEvent、进程内发布订阅（供 SSE）。
 - `runner.ts`/`echo-runner.ts`：真实 agent-core runner 与无网确定性 runner（验收/冒烟用）。
@@ -128,12 +146,14 @@ Workmate 是**本地优先的数字员工工作台**：不是单一聊天工具�
 规则：
 
 1. 工具默认只写 run workspace（`write_workspace_file` / `run_workspace_script`）。
-2. 项目任务请求注入 `projectWorkspacePath` + 与编排层一致的 `runId`。
-3. 推荐在交付就绪时调用 `publish_to_project` 即时晋升；**run 正常结束时平台还会自动扫一遍 run workspace 并晋升交付物**（`promoteWorkspaceDeliverablesToProject`），不依赖模型是否记得调用工具。过程脚本（`.py`/`.sh`、`tools/`/`scripts/`/`tmp/`）一律拒绝晋升。
-4. 客户端仍按 task `runId` 做 deliverable sync 兜底；若编排 `runId` 与 agent 实际工作区目录曾不一致，会从 `RunRecord.eventLog` 解析真实 workspace id。sync 的 `cpSync` filter **必须允许目录遍历**，否则根目录/子目录一旦返回 false 会整树跳过。
+2. 普通项目任务请求兼容注入 `projectWorkspacePath` + 与编排层一致的 `runId`；数据应用专属项目设置 `executionWorkspaceMode: isolated`，执行请求不携带固定项目写目录，文件晋升由 RunEngine 完成交付边界驱动。
+3. 普通项目推荐在交付就绪时调用 `publish_to_project` 即时晋升；agent-core 正常结束也会晋升。隔离数据项目由服务端 finalizeCompleted 晋升，晋升失败则 Run 失败，不先广播完成再修正。晋升使用 `promoteWorkspaceDeliverablesToProject`；过程脚本（`.py`/`.sh`、`tools/`/`scripts/`/`tmp/`）拒绝晋升。
+4. 客户端仅对已结束任务按 `runId` 做 deliverable sync 恢复，同一用户/root/run 单飞并短时去重；运行中依赖发布事件，文件树自动刷新不重复恢复。若编排 `runId` 与 agent 实际工作区目录曾不一致，会从 `RunRecord.eventLog` 解析真实 workspace id。sync 的 `cpSync` filter **必须允许目录遍历**，否则根目录/子目录一旦返回 false 会整树跳过。
 5. 事件：`project.file.published` → UI 刷新文件树。
 
 实现：`packages/agent-core/src/skill-runtime.ts`（`publish_to_project` / auto-promote）、`packages/orchestrator/src/project.ts`（注入路径）、`apps/desktop/.../index.cjs`（sync）、`apps/renderer/.../ProjectConversationWorkspace.vue`。
+
+普通对话和项目共用 RunEngine 的失败真相：模型层输出可选规范化 `failure`（分类码、阶段、耗时、HTTP 状态/传输码），编排层保存在 RunRecord 并通过 run.settled 传播。只保留允许的错误特征，不保存任意上游响应体、凭据或 Prompt；连接中断不直接归因为用户网络。项目终态读取完整运行记录，即使已有 SSE 文本也要补齐错误诊断。详见 `docs/sdd/features/run-diagnostics-v1/`。
 
 ### 5.1.3 多 session / 多用户并发治理
 
@@ -161,6 +181,14 @@ Workmate 是**本地优先的数字员工工作台**：不是单一聊天工具�
 - `docs/architecture/concurrency-verification.md`
 
 ### 5.2 项目编排：Plan / Run / ChangeSet（P0–P1）
+
+新建普通项目已轻量化为 `kind: conversation`：创建不调用模型或规划 DAG，发送消息才产生独立 Run。固定成果目录跨轮复用，隔离工作区成功后晋升，失败/取消保留已有成果；需要协作时显式调用独立工作流。旧项目、工作流执行与既有数据应用项目保留以下 DAG 规则，不迁移历史。详见 [LP-V1](../sdd/features/lightweight-project-v1/README.md)。
+
+持续对话项目另有显式本地静态应用发布：预览不可变快照，确认后切换 API 所有的发布指针，后续 Run 不自动覆盖；临时只读票据与隔离页面不携带登录凭据。此能力不执行服务器程序，不代替数据应用或公网部署，详见 [PA-V1](../sdd/features/project-application-v1/README.md)。
+
+数据应用关联的项目复用该快照预览，但注入无凭据数据 SDK，由已登录可信宿主调用数据网关，与数据应用发布页共用操作协议；普通静态项目不开放数据能力。AI 可直接生成参数化 SQL，网关 AST 校验后测试登记；写入定义必须经用户批准并明确开启对象写入，模型工具不执行实际写入。详见 [MDA-SQL](../sdd/features/managed-data-app-v1/sql-operations.md)。
+
+当前已批准的新增/修改/删除由页面直接提交，不逐次弹平台确认；网关仍每次鉴权、核对对象写入及定义版本。数据测试界面确认独立保留；MySQL 新业务表使用独立结构开关及审核，不混入 CRUD 授权。
 
 项目调度从「整表重写任务列表」升级为**版本化计划 + 增量失效 + 统一 DAG 执行**：
 
@@ -215,6 +243,8 @@ API：
 > 旧称「按 mode 分支串行/并行两套调度」已废弃；mode 只影响建图与并发。
 ### 5.3 域存储与密钥（单写者 + keyring）
 
+数据库密码的 IPC 和桌面开发模式共用主进程 safeStorage 密文存储。开发 supervisor 独立启动 API 时，经主进程 loopback 随机端口及运行期 capability 通道按需读取/写入，描述符仅允许内部桌面身份注册且不落盘；断桥不降级明文或临时内存。纯 Node API（无桌面）仍只有会话密码。详见 LDO-R8，所有域元数据仍由 API 单写，主进程仅写密文。
+
 - Main 的 `storage-get/set` → 转发 `/api/orch/kv`（失败降级旧 sql.js）；启动时一次性迁移旧域键（跳过密钥键）。
 - 模型/搜索/通道 token：Main sql.js + `safeStorage`；经 fork IPC（`workmate:secrets` / `workmate:channels:secrets`）一次性下发给子进程，绝不落盘 domain.json。
 
@@ -254,4 +284,4 @@ API：
 - 网关对 IM/中继的会话回复目前为**确定性轮询取终态**；SSE 直播（先订后发问题）待迭代。
 - 中继为**纯转发最小实现**：无订阅/广播/离线队列；外部终端 Web 控制台与设备配对 UI 待做。
 - `packages/storage`、`packages/ui-kit` 仍为占位；部分旧文档（`docs/architecture/overview.md`、`docs/sdd/*`）为早期描述，以本文档与 `docs/architecture/*` 为准。
-- 用户/身份体系未实现（白名单字符串、默认拒绝）。
+- 本地用户/组织身份已实现；跨用户数据委托、服务账号及企业级行列权限不在当前首期范围，通道白名单不能代替它们。

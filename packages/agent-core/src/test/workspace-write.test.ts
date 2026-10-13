@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { sanitizeToolPayloadsInMessages } from '../context-sanitize.js';
 import {
   MAX_STAGED_APPEND_CHARS,
   appendStagedWrite,
@@ -48,6 +49,28 @@ test('staged write start/append/finish assembles body in seq order', () => {
     assert.equal(done.session.path, 'output/index.html');
   }
   assert.equal(takeStagedWrite(session.id).ok, false);
+});
+
+test('TP-T5: staged source survives per-turn hygiene and finishes without restarting or exceeding budget', () => {
+  resetStagedWritesForTests();
+  const pieces = ['/* styles */\n', ':root{--primary:#4665df}\n', 'body{color:var(--primary)}\n', '@media(max-width:640px){body{margin:0}}'];
+  const session = startStagedWrite({ path: 'output/styles.css', totalParts: pieces.length });
+  const history: any[] = [];
+  for (let index = 0; index < pieces.length; index++) {
+    const args = { writeId: session.id, seq: index + 1, text: pieces[index] };
+    const accepted = appendStagedWrite(args.writeId, args.text!, { seq: args.seq });
+    assert.equal(accepted.ok, true);
+    history.push({ role: 'assistant', content: [{ type: 'toolCall', id: String(index), name: 'append_workspace_write', arguments: args }] },
+      { role: 'toolResult', toolCallId: String(index), toolName: 'append_workspace_write', isError: false,
+        content: [{ type: 'text', text: JSON.stringify({ ok: true, nextSeq: index + 2 }) }] });
+    const clean = sanitizeToolPayloadsInMessages(history);
+    // A model copying the previous call as a schema reference must still see text.
+    assert.deepEqual((clean.at(-2) as any).content[0].arguments, args);
+  }
+  const done = takeStagedWrite(session.id);
+  assert.equal(done.ok, true);
+  if (done.ok) assert.equal(done.body, pieces.join(''));
+  assert.equal(history.length / 2 + 2, 6, 'one start + four appends + one finish, no retries');
 });
 
 test('staged append rejects out-of-order seq', () => {

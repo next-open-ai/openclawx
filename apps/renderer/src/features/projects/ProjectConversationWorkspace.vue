@@ -19,6 +19,13 @@ import { readStored, writeStored } from "../../app/storage.js";
 import { useTheme } from "../../app/theme.js";
 import { exportWorkspaceZip, importWorkspaceZip, listWorkspaceFiles, materializeWorkspaceAssets, normalizeWorkspaceLayout, readWorkspaceFile, readWorkspaceInfo, syncWorkspaceRun, writeWorkspaceFile } from "../../services/api.js";
 import ProjectDagPreview from "./ProjectDagPreview.vue";
+import ProjectBrief from "./ProjectBrief.vue";
+import ProjectPreviewEntry from './ProjectPreviewEntry.vue';
+import ProjectComposer from "./ProjectComposer.vue";
+import ProjectTurnStatus from './ProjectTurnStatus.vue';
+import { conversationProgress, projectMessageAuthor, visibleProjectMessages } from './project-conversation-presentation.js';
+import ChatWorkflowPanel from '../workflows/ChatWorkflowPanel.vue';
+import type { ProjectInstruction } from '@workmate/contracts';
 
 const { resolvedTheme } = useTheme();
 const { runs: localRuns } = useProjects();
@@ -31,32 +38,35 @@ const props = defineProps<{
   employees: Employee[];
   users: AuthUser[];
   currentUserId?: string;
+  currentUserRole?: 'admin' | 'member';
   templateName: string;
   running: boolean;
+  submitInstruction: (input: ProjectInstruction) => Promise<void>;
   /** Incremented when a deliverable is published into the project workspace. */
   fileTreeEpoch?: number;
+  backLabel?: string;
 }>();
 const emit = defineEmits<{
   back: [];
+  openWorkflowProject: [id: string];
+  openWorkflows: [];
   start: [];
   cancel: [];
   remove: [];
-  dispatch: [input: { employeeId: EmployeeId; content: string }];
   "add-member": [employeeId: EmployeeId];
   "remove-member": [employeeId: EmployeeId];
   approve: [input: { taskId: string; approvalId: string; allow: boolean; scope: "session" | "always" }];
 }>();
 
-const draft = ref("");
 const desktopShell = isDesktopShell();
-const pickerOpen = ref(false);
-const mentionMenuOpen = ref(false);
-const mentionActiveIndex = ref(0);
-const selectedEmployeeId = ref<EmployeeId | null>(null);
+const workflowPanel = ref<InstanceType<typeof ChatWorkflowPanel>>();
+const canInvokeWorkflow = computed(() => !!props.currentUserId && (
+  (props.project.ownerUserId || props.project.userId) === props.currentUserId || props.currentUserRole === 'admin' ||
+  (props.project.accessScope === 'delegated' && props.project.accessGrants?.some(grant => grant.subjectType === 'user' && grant.subjectId === props.currentUserId && grant.permissions.includes('write') && (!grant.expiresAt || grant.expiresAt > Date.now())))
+));
 const detailEmployeeId = ref<EmployeeId | null>(null);
 const membersDockOpen = ref(false);
 const addMemberOpen = ref(false);
-const sending = ref(false);
 const refreshing = ref(false);
 const filesError = ref("");
 const historyRuns = ref<orch.ServerProjectRun[]>([]);
@@ -64,7 +74,17 @@ const historyOpen = ref(false);
 const historyLoading = ref(false);
 type FileEntry = ProjectFileEntry;
 const files = ref<FileEntry[]>([]);
+const draftFiles = ref<FileEntry[]>([]);
+const draftFilesError = ref('');
+const draftFilesTruncated = ref(false);
+const selectedDraftRunId = ref('');
+const draftRunId = computed(() => {
+  if (props.project.kind !== 'conversation') return '';
+  const task = props.project.tasks.at(-1);
+  return task?.runId && task.status !== 'completed' ? task.runId : '';
+});
 const selectedFile = ref('');
+let fileSelection = 0;
 const fileContent = ref('');
 const workspaceZipInput = ref<HTMLInputElement>();
 const importingZip = ref(false);
@@ -72,16 +92,14 @@ const exportingZip = ref(false);
 const normalizingLayout = ref(false);
 const layoutNotice = ref('');
 const persistedEntrypoint = ref('');
-const savingShare = ref(false);
-const shareScope = ref<"private" | "org-shared" | "delegated">("private");
-const sharePermissions = ref<Record<string, "read" | "write">>({});
 const editorHost = ref<HTMLElement>();
 const collapsedDirectories = ref(new Set<string>());
 let editor: monaco.editor.IStandaloneCodeEditor | undefined;
 (self as unknown as { MonacoEnvironment: { getWorker: () => Worker } }).MonacoEnvironment = { getWorker: () => new EditorWorker() };
 
 const members = computed(() => {
-  const ids = [...new Set(props.project.tasks.map((task) => task.employeeId))];
+  if (props.project.kind === 'conversation') return props.employees;
+  const ids = [...new Set(props.project.tasks.filter(task => task.status !== 'superseded').map((task) => task.employeeId))];
   return ids
     .map((id) => props.employees.find((employee) => employee.id === id))
     .filter(Boolean) as Employee[];
@@ -89,24 +107,17 @@ const members = computed(() => {
 const candidateMembers = computed(() =>
   props.employees.filter((employee) => !members.value.some((item) => item.id === employee.id)),
 );
-const mentionQuery = computed(() => {
-  const match = draft.value.match(/@([^\s]*)$/);
-  return (match?.[1] ?? "").toLowerCase();
-});
-const availableMentionEmployees = computed(() => {
-  const query = mentionQuery.value;
-  return members.value.filter((employee) => {
-    if (!query) return true;
-    const name = employeeName(employee.id).toLowerCase();
-    return name.includes(query) || employee.id.toLowerCase().includes(query);
-  });
-});
-const selectedEmployee = computed(
-  () =>
-    members.value.find(
-      (employee) => employee.id === selectedEmployeeId.value,
-    ) ?? null,
-);
+const preferredEmployeeId = computed(() => props.project.defaultEmployeeId ?? [...props.project.messages].reverse().find(message => message.role === 'assistant' && members.value.some(member => member.id === message.employeeId))?.employeeId ?? [...props.project.tasks].reverse().find(task => task.status !== 'superseded')?.employeeId);
+const conversation = computed(() => props.project.kind === 'conversation');
+const visibleMessages = computed(() => visibleProjectMessages(props.project.messages, conversation.value));
+const latestTurn = computed(() => props.project.tasks.at(-1));
+const unrepresentedTurn = computed(() => conversation.value && latestTurn.value &&
+  !props.project.messages.some(message => message.role === 'assistant' && message.taskId === latestTurn.value?.id)
+  ? latestTurn.value : undefined);
+function messageTurn(message: Project['messages'][number]) {
+  return conversation.value && message.role === 'assistant'
+    ? props.project.tasks.find(task => task.id === message.taskId && task.runId === message.id) : undefined;
+}
 const detailEmployee = computed(
   () =>
     members.value.find((employee) => employee.id === detailEmployeeId.value) ??
@@ -199,17 +210,6 @@ const formatNumber = (value?: number) => new Intl.NumberFormat("zh-CN").format(M
 const totalAssets = computed(() =>
   props.project.messages.flatMap((message) => message.assets ?? []),
 );
-const shareableUsers = computed(() =>
-  props.users.filter((user) => user.id !== (props.project.ownerUserId ?? props.currentUserId ?? "")),
-);
-const hasDelegatedUsers = computed(() => Object.keys(sharePermissions.value).length > 0);
-const shareSummary = computed(() => {
-  if (shareScope.value === "org-shared") return "同组织成员可读，owner/admin 可写";
-  if (shareScope.value === "delegated") return hasDelegatedUsers.value
-    ? `已委托 ${Object.keys(sharePermissions.value).length} 位用户`
-    : "请选择至少一位委托用户";
-  return "仅 owner 可读写";
-});
 const archivedHistoryRuns = computed(() => {
   if (props.project.managedServer) {
     return historyRuns.value.filter((run) => run.status !== "running" && (run.messages?.length || run.summary));
@@ -481,19 +481,20 @@ function fileGlyph(entry: FileEntry): { label: string; className: string } {
 }
 
 async function recoverProjectFiles() {
+  if (props.project.kind === 'conversation') return;
   if (!props.project.workspacePath) return;
   const assetIds = [...new Set(totalAssets.value.map((asset) => asset.id))];
   const runIds = new Set<string>();
   for (const task of props.project.tasks) {
+    if (task.status === 'running' || task.status === 'queued') continue;
     if (task.runId) runIds.add(task.runId);
   }
   for (const asset of totalAssets.value) {
     if ('runId' in asset && typeof (asset as { runId?: string }).runId === 'string') {
-      runIds.add((asset as { runId: string }).runId);
+      const runId = (asset as { runId: string }).runId;
+      if (!props.project.tasks.some(task => task.runId === runId && (task.status === 'running' || task.status === 'queued'))) runIds.add(runId);
     }
   }
-  try {
-  } catch { /* Keep run recovery best-effort even without desktop-only asset catalog. */ }
   for (const runId of runIds) {
     try { await syncWorkspaceRun(props.project.workspacePath, runId); } catch { /* Continue other run workspaces. */ }
   }
@@ -523,20 +524,35 @@ async function loadFiles(options: { recover?: boolean } = {}) {
     return;
   }
   refreshing.value = true;
+  const projectId = props.project.id, root = props.project.workspacePath, runId = draftRunId.value;
   try {
     // 先把本项目各任务的运行工作区(生成的文件)同步到项目目录，再读取文件树。
-    await syncRunWorkspacesIntoProject();
-    files.value = await listWorkspaceFiles(props.project.workspacePath);
-    persistedEntrypoint.value = (await readWorkspaceInfo(props.project.workspacePath)).entrypoint || '';
-    const hasTaskRuns = props.project.tasks.some((task) => Boolean(task.runId));
+    if (options.recover !== false) await syncRunWorkspacesIntoProject();
+    const listed = await listWorkspaceFiles(root);
+    if (props.project.id !== projectId) return;
+    files.value = listed;
+    const info = await readWorkspaceInfo(root);
+    if (props.project.id !== projectId) return;
+    persistedEntrypoint.value = info.entrypoint || '';
+    const hasTaskRuns = props.project.tasks.some((task) => Boolean(task.runId) && task.status !== 'running' && task.status !== 'queued');
     const needsRecover = options.recover !== false && !files.value.some((entry) => entry.type === 'file') && (totalAssets.value.length > 0 || hasTaskRuns);
     if (needsRecover) {
       await recoverProjectFiles();
-      files.value = await listWorkspaceFiles(props.project.workspacePath);
-      persistedEntrypoint.value = (await readWorkspaceInfo(props.project.workspacePath)).entrypoint || '';
+      const recovered = await listWorkspaceFiles(root), metadata = await readWorkspaceInfo(root);
+      if (props.project.id !== projectId) return;
+      files.value = recovered; persistedEntrypoint.value = metadata.entrypoint || '';
+    }
+    draftFilesError.value = ''; draftFiles.value = []; draftFilesTruncated.value = false;
+    if (runId) {
+      try {
+        const draft = await orch.listProjectDraftFiles(projectId, runId);
+        if (props.project.id === projectId && draftRunId.value === runId) { draftFiles.value = draft.files; draftFilesTruncated.value = draft.truncated; }
+      } catch (error) {
+        if (props.project.id === projectId) draftFilesError.value = error instanceof Error ? error.message : '无法读取本轮草稿。';
+      }
     }
   } catch (error) {
-    filesError.value = error instanceof Error ? error.message : '无法读取项目空间。';
+    if (props.project.id === projectId) filesError.value = error instanceof Error ? error.message : '无法读取项目空间。';
   } finally {
     refreshing.value = false;
     if (queuedFileReload) {
@@ -550,8 +566,9 @@ async function loadFiles(options: { recover?: boolean } = {}) {
 
 /** 复制所有已运行任务的生成文件到项目目录，使左侧文件树能看到运行工作区的产物。 */
 async function syncRunWorkspacesIntoProject() {
+  if (props.project.kind === 'conversation') return;
   if (!props.project.workspacePath) return;
-  const runIds = [...new Set(props.project.tasks.map((task) => task.runId).filter((runId): runId is string => Boolean(runId)))];
+  const runIds = [...new Set(props.project.tasks.filter((task) => task.status !== 'running' && task.status !== 'queued').map((task) => task.runId).filter((runId): runId is string => Boolean(runId)))];
   for (const runId of runIds) {
     try { await syncWorkspaceRun(props.project.workspacePath, runId); } catch { /* 单个运行失败不影响其它 */ }
   }
@@ -560,140 +577,48 @@ async function syncRunWorkspacesIntoProject() {
 async function selectFile(entry: FileEntry) {
   if (entry.type === 'directory') { toggleDirectory(entry); return; }
   if (!props.project.workspacePath) return;
+  const projectId = props.project.id, selection = ++fileSelection;
   const file = await readWorkspaceFile(props.project.workspacePath, entry.relative);
-  if (!file) return;
+  if (!file || props.project.id !== projectId || selection !== fileSelection) return;
+  selectedDraftRunId.value = '';
   selectedFile.value = entry.relative; fileContent.value = file.content;
   membersDockOpen.value = false;
   await nextTick();
+  if (selection !== fileSelection || props.project.id !== projectId) return;
   if (!editorHost.value) return;
   if (!editor) editor = monaco.editor.create(editorHost.value, { value: file.content, language: language(entry.relative), theme: monacoTheme(), automaticLayout: true, minimap: { enabled: false }, fontSize: 13, lineHeight: 21, wordWrap: 'on', scrollBeyondLastLine: false, padding: { top: 16 } });
   else { monaco.editor.setModelLanguage(editor.getModel()!, language(entry.relative)); editor.setValue(file.content); monaco.editor.setTheme(monacoTheme()); }
+  editor.updateOptions({ readOnly: false });
+}
+async function selectDraftFile(entry: FileEntry) {
+  const projectId = props.project.id, runId = draftRunId.value;
+  const selection = ++fileSelection;
+  try {
+    const file = await orch.readProjectDraftFile(projectId, runId, entry.relative);
+    if (props.project.id !== projectId || draftRunId.value !== runId || selection !== fileSelection) return;
+    closeEditor(); selectedDraftRunId.value = runId; selectedFile.value = entry.relative; fileContent.value = file.content;
+    const editorSelection = fileSelection;
+    await nextTick();
+    if (fileSelection !== editorSelection || props.project.id !== projectId) return;
+    if (editorHost.value) editor = monaco.editor.create(editorHost.value, { value: file.content, language: language(entry.relative), readOnly: true, theme: monacoTheme(), automaticLayout: true, minimap: { enabled: false }, wordWrap: 'on', fontSize: 13 });
+  } catch (error) { if (props.project.id === projectId) draftFilesError.value = error instanceof Error ? error.message : '草稿读取失败，请刷新重试。'; }
 }
 function closeEditor() {
+  fileSelection++;
+  selectedDraftRunId.value = '';
   selectedFile.value = '';
   editor?.dispose();
   editor = undefined;
   membersDockOpen.value = false;
 }
-async function saveFile() { if (!props.project.workspacePath || !selectedFile.value || !editor) return; const result = await writeWorkspaceFile(props.project.workspacePath, selectedFile.value, editor.getValue()); if (result) fileContent.value = result.content; }
+async function saveFile() { if (selectedDraftRunId.value || !props.project.workspacePath || !selectedFile.value || !editor) return; const result = await writeWorkspaceFile(props.project.workspacePath, selectedFile.value, editor.getValue()); if (result) fileContent.value = result.content; }
 
-async function dispatch() {
-  if (
-    !draft.value.trim() ||
-    !selectedEmployeeId.value ||
-    sending.value ||
-    props.running
-  )
-    return;
-  const content = draft.value
-    .replace(new RegExp(`@${employeeName(selectedEmployeeId.value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*`, "g"), "")
-    .trim();
-  if (!content) return;
-  sending.value = true;
-  try {
-    emit("dispatch", {
-      employeeId: selectedEmployeeId.value,
-      content,
-    });
-    draft.value = "";
-    selectedEmployeeId.value = null;
-    pickerOpen.value = false;
-    mentionMenuOpen.value = false;
-  } finally {
-    sending.value = false;
-  }
-}
-function handleDraftInput() {
-  const opened = /@[^\s]*$/.test(draft.value);
-  if (opened && !mentionMenuOpen.value) mentionActiveIndex.value = 0;
-  mentionMenuOpen.value = opened;
-  if (opened) pickerOpen.value = false;
-}
-function chooseMention(id: EmployeeId) {
-  selectedEmployeeId.value = id;
-  draft.value = draft.value.replace(/@[^\s]*$/, `@${employeeName(id)} `);
-  mentionMenuOpen.value = false;
-}
-function handleDraftKeydown(event: KeyboardEvent) {
-  if (mentionMenuOpen.value && availableMentionEmployees.value.length) {
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      mentionActiveIndex.value =
-        (mentionActiveIndex.value + 1) % availableMentionEmployees.value.length;
-      return;
-    }
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      mentionActiveIndex.value =
-        (mentionActiveIndex.value - 1 + availableMentionEmployees.value.length) %
-        availableMentionEmployees.value.length;
-      return;
-    }
-    if (event.key === "Enter") {
-      event.preventDefault();
-      const selected =
-        availableMentionEmployees.value[mentionActiveIndex.value] ??
-        availableMentionEmployees.value[0];
-      chooseMention(selected.id);
-      return;
-    }
-  }
-  if (event.key === "Escape" && mentionMenuOpen.value) {
-    event.preventDefault();
-    mentionMenuOpen.value = false;
-    return;
-  }
-  if (event.key === "Enter" && !event.shiftKey) {
-    event.preventDefault();
-    void dispatch();
-  }
-}
 async function download(assetId: string) {
   await downloadAssetBestEffort(assetId);
 }
 function openMember(employeeId: EmployeeId) {
   detailEmployeeId.value = employeeId;
   membersDockOpen.value = false;
-}
-function toggleDelegatedUser(userId: string, checked: boolean) {
-  if (checked) sharePermissions.value = { ...sharePermissions.value, [userId]: sharePermissions.value[userId] ?? "write" };
-  else {
-    const next = { ...sharePermissions.value };
-    delete next[userId];
-    sharePermissions.value = next;
-  }
-}
-function handleShareUserToggle(userId: string, event: Event) {
-  toggleDelegatedUser(userId, (event.target as HTMLInputElement | null)?.checked === true);
-}
-function setSharePermission(userId: string, permission: "read" | "write") {
-  sharePermissions.value = { ...sharePermissions.value, [userId]: permission };
-}
-function handleSharePermissionChange(userId: string, event: Event) {
-  const value = (event.target as HTMLSelectElement | null)?.value;
-  setSharePermission(userId, value === "read" ? "read" : "write");
-}
-async function saveProjectSharing() {
-  if (!props.project.managedServer || savingShare.value) return;
-  if (shareScope.value === "delegated" && !hasDelegatedUsers.value) return;
-  savingShare.value = true;
-  try {
-    const updated = await orch.updateProjectAccess(props.project.id, {
-      accessScope: shareScope.value,
-      accessGrants: shareScope.value === "delegated"
-        ? Object.entries(sharePermissions.value).map(([userId, permission]) => ({
-          subjectType: "user" as const,
-          subjectId: userId,
-          permissions: permission === "write" ? (["read", "write"] as Array<"read" | "write">) : (["read"] as Array<"read" | "write">),
-          createdAt: Date.now(),
-        }))
-        : [],
-    });
-    props.project.accessScope = updated.accessScope ?? "private";
-    props.project.accessGrants = updated.accessGrants ?? [];
-  } finally {
-    savingShare.value = false;
-  }
 }
 function requestAddMember(employeeId: EmployeeId) {
   if (props.running) return;
@@ -704,7 +629,6 @@ function requestRemoveMember(employeeId: EmployeeId, event?: Event) {
   event?.stopPropagation();
   if (props.running) return;
   if (members.value.length <= 1) return;
-  if (selectedEmployeeId.value === employeeId) selectedEmployeeId.value = null;
   if (detailEmployeeId.value === employeeId) detailEmployeeId.value = null;
   emit("remove-member", employeeId);
 }
@@ -723,7 +647,7 @@ onMounted(() => {
 let fileRefreshTimer: ReturnType<typeof setInterval> | undefined;
 function ensureFileRefresh() {
   if (props.project.status === "running" && !fileRefreshTimer) {
-    fileRefreshTimer = setInterval(() => { void loadFiles({ recover: true }); }, 5000);
+    fileRefreshTimer = setInterval(() => { void loadFiles({ recover: false }); }, 5000);
   } else if (props.project.status !== "running" && fileRefreshTimer) {
     clearInterval(fileRefreshTimer);
     fileRefreshTimer = undefined;
@@ -731,37 +655,24 @@ function ensureFileRefresh() {
 }
 ensureFileRefresh();
 watch(
-  () => [props.project.id, props.project.status, props.project.workspacePath, props.fileTreeEpoch ?? 0] as const,
+  [() => props.project.id, () => props.project.status, () => props.project.workspacePath, () => props.fileTreeEpoch ?? 0, draftRunId],
   () => {
     ensureFileRefresh();
     void loadFiles({ recover: true });
   },
 );
+watch(() => props.project.id, () => { closeEditor(); files.value = []; draftFiles.value = []; draftFilesError.value = ''; persistedEntrypoint.value = ''; });
 watch(
   () => [props.project.id, props.project.activeRunId, props.project.status] as const,
   () => {
     void loadHistoryRuns();
   },
 );
-watch(
-  () => [props.project.id, props.project.accessScope, JSON.stringify(props.project.accessGrants ?? [])] as const,
-  () => {
-    shareScope.value = props.project.accessScope ?? "private";
-    sharePermissions.value = Object.fromEntries(
-      (props.project.accessGrants ?? [])
-        .filter((grant) => grant.subjectType === "user" && grant.subjectId)
-        .map((grant) => [
-          grant.subjectId,
-          grant.permissions.includes("write") ? "write" : "read",
-        ]),
-    );
-  },
-  { immediate: true },
-);
 watch(resolvedTheme, () => {
   if (editor) monaco.editor.setTheme(monacoTheme());
 });
 onBeforeUnmount(() => {
+  fileSelection++;
   if (fileRefreshTimer) clearInterval(fileRefreshTimer);
   clearTimeout(pathCopiedTimer);
   editor?.dispose();
@@ -778,33 +689,34 @@ onBeforeUnmount(() => {
           class="rounded-lg px-2 py-1 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--accent-soft)]"
           @click="emit('back')"
         >
-          ← 项目列表
+          ← {{ backLabel || '项目列表' }}
         </button>
         <span class="hidden h-5 w-px bg-[var(--border)] sm:block" />
         <div class="min-w-0">
           <p class="text-[10px] font-bold tracking-[.14em] text-[var(--accent)]">
-            PROJECT WORKSPACE · {{ templateName }}
+            PROJECT WORKSPACE · {{ project.kind === 'conversation' ? '持续对话' : templateName }}
           </p>
           <h1 class="truncate text-lg font-bold">{{ project.name }}</h1>
         </div>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <ProjectPreviewEntry v-if="project.kind === 'conversation' && project.managedServer" :key="`application-${project.id}-${currentUserId}`" :project-id="project.id" :project-name="project.name" :running="running" :can-write="!!canInvokeWorkflow" />
         <span
-          v-if="project.plan?.version"
+          v-if="project.kind !== 'conversation' && project.plan?.version"
           class="rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-[11px] font-semibold text-[var(--muted)]"
           :title="project.plan.note || '当前执行计划版本'"
         >Plan v{{ project.plan.version }}</span>
-        <span :class="['rounded-full px-2.5 py-1 text-xs font-bold', statusClass(project.status)]">{{ statusText(project.status) }}</span>
+        <span :class="['rounded-full px-2.5 py-1 text-xs font-bold', statusClass(project.status)]">{{ project.kind === 'conversation' && ['draft', 'completed'].includes(project.status) ? '就绪' : statusText(project.status) }}</span>
         <button
           v-if="project.status === 'running'"
           class="rounded-lg border border-amber-500/40 px-3 py-2 text-xs font-semibold text-amber-700"
           @click="emit('cancel')"
         >取消</button>
         <button
-          v-else
+          v-else-if="project.kind !== 'conversation'"
           class="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white"
           @click="emit('start')"
-        >{{ project.status === "draft" ? "启动首轮" : "再次调度" }}</button>
+        >{{ project.status === "draft" ? "启动首轮" : project.status === "failed" || project.status === "cancelled" ? "恢复执行" : "再次调度" }}</button>
         <button
           class="rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-rose-600"
           @click="emit('remove')"
@@ -812,7 +724,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <div class="shrink-0 border-b border-[var(--border)] bg-[var(--background)]/35 px-6 py-4">
+    <div v-if="project.kind !== 'conversation'" class="shrink-0 border-b border-[var(--border)] bg-[var(--background)]/35 px-6 py-4">
       <div class="mb-3 flex items-center justify-between gap-3">
         <div>
           <p class="text-[10px] font-bold tracking-[0.14em] text-[var(--accent)]">DAG VIEW</p>
@@ -833,7 +745,7 @@ onBeforeUnmount(() => {
         resizingTree ? 'select-none' : '',
         editing
           ? 'xl:[grid-template-columns:var(--tree-width)_minmax(0,1.2fr)_minmax(340px,0.9fr)]'
-          : 'xl:[grid-template-columns:var(--tree-width)_minmax(0,1fr)_300px]',
+          : project.kind === 'conversation' ? 'xl:[grid-template-columns:var(--tree-width)_minmax(0,1fr)]' : 'xl:[grid-template-columns:var(--tree-width)_minmax(0,1fr)_300px]',
       ]"
       :style="{ '--tree-width': `${effectiveTreeWidth}px` }"
     >
@@ -959,7 +871,7 @@ onBeforeUnmount(() => {
                 'group flex w-full items-center gap-2 rounded-lg py-1.5 pr-2 text-left text-[13px] transition',
                 entry.type === 'directory'
                   ? 'font-medium text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'
-                  : selectedFile === entry.relative
+                  : !selectedDraftRunId && selectedFile === entry.relative
                     ? 'bg-[var(--accent-soft)] font-semibold text-[var(--accent)]'
                     : 'text-[var(--text)]/90 hover:bg-[var(--surface-muted)]',
               ]"
@@ -982,8 +894,16 @@ onBeforeUnmount(() => {
           </div>
           <p v-if="filesError" class="mt-4 px-1 text-xs leading-5 text-rose-600">{{ filesError }}</p>
           <p v-else-if="!deliverableFiles.length" class="mt-5 px-1 text-xs leading-5 text-[var(--muted)]">
-            暂无交付文件。过程脚本留在员工运行空间；最终产物会自动或经 publish_to_project 进入此处。
+            {{ conversation ? '暂无正式成果。本轮成功后会更新到这里；未完成文件可在下方草稿区查看。' : '暂无交付文件。过程脚本留在员工运行空间；最终产物会自动或经 publish_to_project 进入此处。' }}
           </p>
+          <section v-if="draftRunId" class="mt-5 border-t border-[var(--border)] pt-4" aria-label="本轮草稿">
+            <h3 class="text-xs font-semibold">本轮草稿 <span class="font-normal text-amber-700">只读 · 尚未交付</span></h3>
+            <p class="mt-2 text-[11px] leading-5 text-[var(--muted)]">不会覆盖上方正式成果或已发布应用。可继续对话修正后重新交付。</p>
+            <button v-for="entry in draftFiles" :key="entry.relative" type="button" class="mt-1 block w-full truncate rounded-lg px-2 py-2 text-left text-xs hover:bg-[var(--surface-muted)]" :title="entry.relative" @click="selectDraftFile(entry)">{{ entry.relative }}</button>
+            <p v-if="draftFilesError" role="alert" class="mt-2 text-xs text-rose-600">{{ draftFilesError }}</p>
+            <p v-else-if="!draftFiles.length" class="mt-2 text-[11px] leading-5 text-[var(--muted)]">{{ refreshing ? '正在读取…' : '尚无已落盘草稿；分片写入需要完成后才会出现文件。' }}</p>
+            <p v-if="draftFilesTruncated" class="mt-2 text-xs text-amber-700">草稿列表过大，仅显示部分文件。</p>
+          </section>
           <div
             class="absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize touch-none hover:bg-[var(--accent)]/25 active:bg-[var(--accent)]/40"
             title="拖动调整目录树宽度"
@@ -996,12 +916,12 @@ onBeforeUnmount(() => {
       <main v-if="editing" class="flex min-h-0 flex-col border-r border-[var(--border)] bg-[var(--surface)]">
         <header class="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
           <div class="min-w-0">
-            <p class="text-[10px] font-bold tracking-[.12em] text-[var(--accent)]">PROJECT FILE EDITOR</p>
+            <p class="text-[10px] font-bold tracking-[.12em] text-[var(--accent)]">{{ selectedDraftRunId ? '运行草稿 · 只读查看' : 'PROJECT FILE EDITOR' }}</p>
             <strong class="block truncate text-sm">{{ selectedFile }}</strong>
           </div>
           <div class="flex gap-2">
             <button class="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs" type="button" @click="closeEditor">关闭编辑器</button>
-            <button class="rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-xs font-semibold text-white" type="button" @click="saveFile">保存</button>
+            <button v-if="!selectedDraftRunId" class="rounded-lg bg-[var(--accent)] px-2.5 py-1.5 text-xs font-semibold text-white" type="button" @click="saveFile">保存</button>
           </div>
         </header>
         <div ref="editorHost" class="min-h-0 flex-1" />
@@ -1015,14 +935,14 @@ onBeforeUnmount(() => {
       >
         <div class="border-b border-[var(--border)] px-6 py-4">
           <div class="mx-auto flex max-w-3xl items-start justify-between gap-3">
-            <div class="min-w-0">
-              <p class="text-sm font-semibold">{{ project.goal }}</p>
+            <div class="min-w-0 flex-1">
+              <ProjectBrief :key="project.id" :goal="project.goal" />
               <p class="mt-1 text-xs text-[var(--muted)]">
-                {{ editing ? '正在编辑项目文件；对话移至右侧，成员可从右下角小窗展开。' : '项目对话居中；成员与资产在右侧。点击左侧文件可打开编辑器。' }}
+                {{ project.kind === 'conversation' ? '在这里持续提问和修改，成功成果集中保存在左侧目录。' : editing ? '正在编辑项目文件；对话移至右侧，成员可从右下角小窗展开。' : '项目对话居中；成员与资产在右侧。点击左侧文件可打开编辑器。' }}
               </p>
             </div>
             <button
-              v-if="editing"
+              v-if="editing && project.kind !== 'conversation'"
               class="shrink-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left shadow-sm hover:border-[var(--accent)]"
               type="button"
               @click="membersDockOpen = !membersDockOpen"
@@ -1056,8 +976,8 @@ onBeforeUnmount(() => {
                 <div class="flex items-center justify-between gap-3">
                   <div>
                     <p class="text-[10px] font-bold tracking-[0.14em] text-[var(--accent)]">HISTORY</p>
-                    <strong class="text-sm">历史调度 · {{ archivedHistoryRuns.length }}</strong>
-                    <p class="mt-1 text-xs text-[var(--muted)]">上一轮对话已归档到这里；当前会话从新一轮开始。</p>
+                    <strong class="text-sm">{{ conversation ? '历史运行' : '历史调度' }} · {{ archivedHistoryRuns.length }}</strong>
+                    <p class="mt-1 text-xs text-[var(--muted)]">{{ conversation ? '查看以往运行记录；可以在当前项目中继续对话。' : '上一轮对话已归档到这里；当前会话从新一轮开始。' }}</p>
                   </div>
                   <span class="rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-[10px] font-semibold text-[var(--muted)]">
                     {{ historyOpen ? "收起" : "展开" }}
@@ -1078,15 +998,15 @@ onBeforeUnmount(() => {
                     </div>
                     <span class="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-bold text-[var(--muted)]">{{ run.id.slice(0, 8) }}</span>
                   </div>
-                  <p v-if="run.summary" class="mt-2 whitespace-pre-wrap text-xs leading-5 text-[var(--muted)]">{{ run.summary }}</p>
+                  <p v-if="run.summary && !conversation" class="mt-2 whitespace-pre-wrap text-xs leading-5 text-[var(--muted)]">{{ run.summary }}</p>
                   <div v-if="run.messages?.length" class="mt-3 max-h-56 space-y-2 overflow-y-auto">
                     <div
-                      v-for="message in run.messages"
+                      v-for="message in visibleProjectMessages(run.messages ?? [], conversation)"
                       :key="message.id"
                       class="rounded-lg bg-[var(--surface)] px-2.5 py-2 text-xs"
                     >
                       <p class="text-[10px] font-semibold text-[var(--muted)]">
-                        {{ message.role === "user" ? "你" : message.role === "system" ? "调度器" : employeeName(message.employeeId) }}
+                        {{ projectMessageAuthor(message.role, conversation) ?? employeeName(message.employeeId) }}
                       </p>
                       <p class="mt-1 whitespace-pre-wrap leading-5 text-[var(--text)]">{{ message.content }}</p>
                     </div>
@@ -1095,7 +1015,7 @@ onBeforeUnmount(() => {
               </div>
             </details>
             <article
-              v-for="message in project.messages"
+              v-for="message in visibleMessages"
               :key="message.id"
               :class="['flex gap-2.5', message.role === 'user' ? 'self-end' : '']"
             >
@@ -1105,7 +1025,7 @@ onBeforeUnmount(() => {
               >{{ props.employees.find((item) => item.id === message.employeeId)?.initials ?? "AI" }}</span>
               <div :class="message.role === 'user' ? 'max-w-[88%]' : 'min-w-0 max-w-[94%] flex-1'">
                 <div class="mb-1 flex gap-2 text-[11px] text-[var(--muted)]">
-                  <span>{{ message.role === "user" ? "你" : message.role === "system" ? "调度器" : employeeName(message.employeeId) }}</span>
+                  <span>{{ projectMessageAuthor(message.role, conversation) ?? employeeName(message.employeeId) }}</span>
                   <span>{{ date(message.createdAt) }}</span>
                 </div>
                 <p
@@ -1118,6 +1038,7 @@ onBeforeUnmount(() => {
                         : 'rounded-tl-md border border-[var(--border)] bg-[var(--surface)] shadow-sm',
                   ]"
                 >{{ message.content || "正在生成项目任务结果…" }}</p>
+                <ProjectTurnStatus v-if="conversation" :task="messageTurn(message)" :content="message.content" />
                 <details
                   v-if="message.role === 'assistant' && message.reasoning"
                   class="mt-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-xs"
@@ -1181,10 +1102,16 @@ onBeforeUnmount(() => {
                 </div>
               </div>
             </article>
-            <article v-if="project.summary" class="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+            <ProjectTurnStatus v-if="unrepresentedTurn" :task="unrepresentedTurn" />
+            <p v-if="conversation && running" role="status" class="flex items-center gap-2 px-1 text-xs text-[var(--muted)]">
+              <span class="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[var(--accent)]" />
+              {{ employeeName(latestTurn?.employeeId) }} · {{ conversationProgress(latestTurn, hasPendingApproval) }}
+            </p>
+            <article v-if="project.summary && !conversation" class="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
               <p class="text-xs font-bold text-emerald-700">协调员汇总</p>
               <p class="mt-2 whitespace-pre-wrap text-sm leading-6">{{ project.summary }}</p>
             </article>
+            <ChatWorkflowPanel v-if="project.managedServer" :key="project.id" ref="workflowPanel" hide-trigger :project-id="project.id" :visible="true" :disabled="running" :read-only="!canInvokeWorkflow" :employee-ids="employees.filter(item => !item.system).map(item => item.id)" :ensure-session="async () => project.id" @open-project="emit('openWorkflowProject', $event)" @open-workflows="emit('openWorkflows')" />
           </div>
         </div>
 
@@ -1196,96 +1123,14 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="shrink-0 border-t border-[var(--border)] bg-[var(--surface)] px-6 py-4">
-          <div :class="['relative mx-auto rounded-2xl border border-[var(--border)] bg-[var(--background)] p-3 shadow-sm', editing ? 'max-w-none' : 'max-w-3xl']">
-            <textarea
-              v-model="draft"
-              rows="3"
-              class="w-full resize-none bg-transparent px-1 text-sm outline-none"
-              :disabled="running"
-              placeholder="输入 @ 选择项目员工，再下达补充指令；调度器会按依赖触发下游任务…"
-              @input="handleDraftInput"
-              @keydown="handleDraftKeydown"
-            />
-            <div
-              v-if="mentionMenuOpen"
-              class="absolute bottom-[108px] left-3 z-30 w-[280px] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-xl"
-            >
-              <div class="border-b border-[var(--border)] px-3 py-2">
-                <p class="text-xs font-bold">@ 选择项目员工</p>
-                <p class="mt-1 text-[11px] text-[var(--muted)]">仅显示当前项目成员；指令仍经调度器执行</p>
-              </div>
-              <div class="max-h-52 overflow-y-auto p-2">
-                <button
-                  v-for="employee in availableMentionEmployees"
-                  :key="employee.id"
-                  :class="[
-                    'flex w-full items-center gap-2 rounded-lg p-2 text-left text-sm hover:bg-[var(--surface-muted)]',
-                    availableMentionEmployees[mentionActiveIndex]?.id === employee.id
-                      ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                      : '',
-                  ]"
-                  type="button"
-                  @click="chooseMention(employee.id)"
-                >
-                  <span class="relative grid h-7 w-7 place-items-center rounded-lg text-[10px] font-bold text-white" :style="{ background: employee.color }">
-                    {{ employee.initials }}
-                    <span :class="['absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white', statusDotClass(statusFor(employee.id))]" />
-                  </span>
-                  <span class="min-w-0 flex-1">
-                    <strong class="block">{{ employeeName(employee.id) }}</strong>
-                    <small class="text-[11px] text-[var(--muted)]">{{ statusText(statusFor(employee.id)) }}</small>
-                  </span>
-                </button>
-                <p v-if="!availableMentionEmployees.length" class="px-2 py-3 text-xs text-[var(--muted)]">
-                  没有可选择的项目成员。请先在右侧新增员工。
-                </p>
-              </div>
-            </div>
-            <div class="mt-2 flex items-center gap-2">
-              <div class="relative">
-                <button
-                  class="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold"
-                  type="button"
-                  :disabled="running"
-                  @click="pickerOpen = !pickerOpen; mentionMenuOpen = false"
-                >@ {{ selectedEmployee ? employeeName(selectedEmployee.id) : "选择项目员工" }}</button>
-                <div
-                  v-if="pickerOpen"
-                  class="absolute bottom-10 left-0 z-20 w-64 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-xl"
-                >
-                  <p class="border-b border-[var(--border)] px-3 py-2 text-[11px] text-[var(--muted)]">仅显示本项目已分配的员工</p>
-                  <button
-                    v-for="employee in members"
-                    :key="employee.id"
-                    class="flex w-full items-center gap-2 p-3 text-left text-sm hover:bg-[var(--surface-muted)]"
-                    type="button"
-                    @click="selectedEmployeeId = employee.id; pickerOpen = false"
-                  >
-                    <span class="relative grid h-7 w-7 place-items-center rounded-lg text-[10px] font-bold text-white" :style="{ background: employee.color }">
-                      {{ employee.initials }}
-                      <span :class="['absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white', statusDotClass(statusFor(employee.id))]" />
-                    </span>
-                    <span>
-                      <strong class="block">{{ employeeName(employee.id) }}</strong>
-                      <small :class="['text-[11px] font-semibold', statusClass(statusFor(employee.id)), 'rounded px-1 py-0.5']">{{ statusText(statusFor(employee.id)) }}</small>
-                    </span>
-                  </button>
-                </div>
-              </div>
-              <span v-if="selectedEmployee" class="text-xs text-[var(--muted)]">将由调度器评估 {{ employeeName(selectedEmployee.id) }} 及下游依赖。</span>
-              <button
-                class="ml-auto rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
-                type="button"
-                :disabled="!draft.trim() || !selectedEmployee || running"
-                @click="dispatch"
-              >发送指令</button>
-            </div>
-          </div>
+          <ProjectComposer :key="project.id" :project-id="project.id" :running="running" :conversation="project.kind === 'conversation'" :managed="!!project.managedServer && (project.kind === 'conversation' || project.executionWorkspaceMode !== 'isolated')" :members="members.map(employee => ({ id: employee.id, name: employeeName(employee.id) }))" :preferred-employee-id="preferredEmployeeId" :submit="submitInstruction" :class="editing ? 'max-w-none' : 'mx-auto max-w-3xl'" @cancel="emit('cancel')">
+            <template #tools="{ disabled }"><button v-if="project.managedServer && canInvokeWorkflow" type="button" class="rounded-lg border border-[var(--border)] px-2.5 py-2 text-xs font-semibold hover:border-[var(--accent)] disabled:opacity-40" :disabled="disabled || workflowPanel?.opening || workflowPanel?.busy" @click="workflowPanel?.open()">{{ workflowPanel?.opening ? '正在准备…' : '调用工作流' }}</button></template>
+          </ProjectComposer>
         </div>
 
         <!-- 编辑模式下的成员小窗 -->
         <div
-          v-if="editing && membersDockOpen"
+          v-if="editing && membersDockOpen && project.kind !== 'conversation'"
           class="absolute bottom-28 right-6 z-30 w-72 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl"
         >
           <div class="flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
@@ -1358,68 +1203,9 @@ onBeforeUnmount(() => {
 
       <!-- 未选文件：成员与资产固定最右侧 -->
       <aside
-        v-if="!editing"
+        v-if="!editing && project.kind !== 'conversation'"
         class="flex min-h-0 flex-col border-l border-[var(--border)] bg-[var(--surface)]"
       >
-        <div
-          v-if="project.managedServer"
-          class="border-b border-[var(--border)] px-4 py-4"
-        >
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <h2 class="text-sm font-bold">共享设置</h2>
-              <p class="mt-1 text-xs text-[var(--muted)]">{{ shareSummary }}</p>
-            </div>
-            <span class="rounded-full bg-[var(--surface-muted)] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">{{ shareScope }}</span>
-          </div>
-          <div class="mt-3 space-y-2">
-            <label class="flex items-start gap-2 rounded-xl border border-[var(--border)] px-3 py-2 text-xs">
-              <input v-model="shareScope" type="radio" value="private" />
-              <span><strong class="block text-sm text-[var(--text)]">仅自己</strong><span class="text-[var(--muted)]">只有 owner 可读写，适合个人草稿与私有项目。</span></span>
-            </label>
-            <label class="flex items-start gap-2 rounded-xl border border-[var(--border)] px-3 py-2 text-xs">
-              <input v-model="shareScope" type="radio" value="org-shared" />
-              <span><strong class="block text-sm text-[var(--text)]">组织共享</strong><span class="text-[var(--muted)]">同组织成员可读，owner/admin 可写。</span></span>
-            </label>
-            <label class="flex items-start gap-2 rounded-xl border border-[var(--border)] px-3 py-2 text-xs">
-              <input v-model="shareScope" type="radio" value="delegated" />
-              <span><strong class="block text-sm text-[var(--text)]">指定用户</strong><span class="text-[var(--muted)]">仅选中的本地用户可读写该项目。</span></span>
-            </label>
-          </div>
-          <div v-if="shareScope === 'delegated'" class="mt-3 space-y-2">
-            <label
-              v-for="user in shareableUsers"
-              :key="user.id"
-              class="flex items-center gap-3 rounded-xl border border-[var(--border)] px-3 py-2 text-sm"
-            >
-              <input
-                :checked="Boolean(sharePermissions[user.id])"
-                type="checkbox"
-                @change="handleShareUserToggle(user.id, $event)"
-              />
-              <span class="min-w-0 flex-1">
-                <strong class="block truncate">{{ user.displayName }}</strong>
-                <span class="block text-xs text-[var(--muted)]">{{ user.username }} · {{ user.role }}</span>
-              </span>
-              <select
-                v-if="sharePermissions[user.id]"
-                :value="sharePermissions[user.id]"
-                class="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs"
-                @change="handleSharePermissionChange(user.id, $event)"
-              >
-                <option value="write">可编辑</option>
-                <option value="read">只读</option>
-              </select>
-            </label>
-            <p v-if="!shareableUsers.length" class="text-xs text-[var(--muted)]">当前没有可委托的其他本地用户。</p>
-          </div>
-          <button
-            class="mt-3 w-full rounded-xl bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
-            type="button"
-            :disabled="savingShare || (shareScope === 'delegated' && !hasDelegatedUsers)"
-            @click="saveProjectSharing"
-          >{{ savingShare ? '保存中…' : '保存共享设置' }}</button>
-        </div>
         <div class="border-b border-[var(--border)] px-4 py-4">
           <div class="flex items-center justify-between gap-2">
             <h2 class="text-sm font-bold">项目成员</h2>
@@ -1534,6 +1320,14 @@ onBeforeUnmount(() => {
               v-if="task.transcript?.assistantContent"
               class="mt-3 max-h-60 overflow-y-auto whitespace-pre-wrap rounded-xl bg-[var(--surface-muted)] p-3 font-sans text-xs leading-5"
             >{{ task.transcript.assistantContent }}</pre>
+            <div v-if="task.error || task.transcript?.error" role="alert" class="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs leading-5 text-red-700">
+              {{ task.error || task.transcript?.error }}
+              <details v-if="task.transcript?.failure" class="mt-1">
+                <summary class="cursor-pointer">运行诊断</summary>
+                <p>{{ task.transcript.failure.code }} · {{ task.transcript.failure.phase }} · {{ Math.round(task.transcript.failure.elapsedMs / 1000) }} 秒</p>
+                <p>{{ task.transcript.failure.signature }}</p>
+              </details>
+            </div>
             <details
               v-if="task.transcript?.reasoningContent"
               class="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-xs"
@@ -1587,10 +1381,6 @@ onBeforeUnmount(() => {
               v-else-if="task.status === 'running' && !task.transcript?.activities?.length"
               class="mt-3 text-xs leading-5 text-[var(--muted)]"
             >正在执行中。若长时间无过程输出，可能是进程刚重启，系统会自动回收卡住的任务。</p>
-            <p
-              v-else-if="task.error"
-              class="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-800"
-            >{{ task.error }}</p>
           </article>
           <p v-if="!detailTasks.length" class="text-sm text-[var(--muted)]">该成员尚无任务记录。</p>
         </div>

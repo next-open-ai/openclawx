@@ -1,4 +1,5 @@
 import type { ProjectMessage } from './types.js';
+import type { RunTextDeltaPosition } from '@workmate/contracts';
 import type { RunActivity, RunApproval, RunRecord, RunStatus } from './types.js';
 
 /**
@@ -10,15 +11,15 @@ export type OrcEvent =
   /* runs */
   | { type: 'run.started'; runId: string; sessionId: string; kind: 'chat' | 'project-task'; taskId?: string; attemptNo: number; engine?: 'pi' | 'agentscope' | 'dsh' }
   | { type: 'run.engine'; runId: string; sessionId: string; engine: 'pi' | 'agentscope' | 'dsh' }
-  | { type: 'run.reasoning.delta'; runId: string; sessionId: string; text: string }
-  | { type: 'run.delta'; runId: string; sessionId: string; text: string }
+  | ({ type: 'run.reasoning.delta'; runId: string; sessionId: string; text: string } & RunTextDeltaPosition)
+  | ({ type: 'run.delta'; runId: string; sessionId: string; text: string } & RunTextDeltaPosition)
   | { type: 'run.activity'; runId: string; activity: RunActivity }
   | { type: 'run.approval'; runId: string; approval: RunApproval }
   | { type: 'run.artifact'; runId: string; artifact: { path: string } }
   | { type: 'project.file.published'; runId: string; path: string; projectPath: string; projectId?: string }
   | { type: 'run.sources'; runId: string; sources: RunRecord['sources'] }
   | { type: 'run.usage'; runId: string; sessionId: string; usage: NonNullable<RunRecord['usage']>; model?: RunRecord['model'] }
-  | { type: 'run.settled'; runId: string; sessionId: string; status: RunStatus; error?: string }
+  | { type: 'run.settled'; runId: string; sessionId: string; status: RunStatus; error?: string; failure?: import('@workmate/contracts').RunFailure }
   /* chat sessions */
   | { type: 'session.updated'; sessionId: string }
   | { type: 'session.deleted'; sessionId: string }

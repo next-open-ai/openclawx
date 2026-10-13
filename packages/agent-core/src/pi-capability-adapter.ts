@@ -1,5 +1,6 @@
 import type { AgentTool } from '@mariozechner/pi-agent-core';
 import path from 'node:path';
+import { homedir } from 'node:os';
 import {
   createCodingTools,
   createReadOnlyTools,
@@ -21,11 +22,28 @@ import {
 export function createPiCapabilityTools(context: CapabilityContext): AgentTool<any>[] {
   const kernel = new WorkspaceCapabilityKernel(context);
   const cwd = kernel.root;
-  const nativeTools = context.workspaceAccess === 'read'
+  const rawNativeTools = context.workspaceAccess === 'read'
     ? createReadOnlyTools(cwd)
     : createCodingTools(cwd, {
       bash: { spawnHook: (spawn) => ({ ...spawn, cwd, command: kernel.assertCommand(spawn.command) }) },
     });
+  const nativeTools = rawNativeTools.map((tool) => ({
+    ...tool,
+    execute: async (id: string, args: any, signal?: AbortSignal, update?: any) => {
+      signal?.throwIfAborted();
+      if (tool.name === 'bash') {
+        kernel.assertCommand(String(args.command ?? ''));
+        return tool.execute(id, args, signal, update);
+      }
+      // Match Pi path expansion before checking; pass the authorized absolute
+      // path onward so @/~ and Unicode-space handling cannot bypass the gate.
+      let requested = String(args.path ?? '.').replace(/^@/, '').replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, ' ');
+      if (requested === '~' || requested.startsWith('~/')) requested = homedir() + requested.slice(1);
+      const authorized = await kernel.authorizeFile(requested, tool.name === 'write' || tool.name === 'edit' ? 'write' : 'read');
+      signal?.throwIfAborted();
+      return tool.execute(id, { ...args, path: authorized }, signal, update);
+    },
+  }));
   const commitArtifact = defineAgentTool({
     name: 'commit_artifact',
     label: 'commit_artifact',
@@ -44,7 +62,8 @@ export function createPiCapabilityTools(context: CapabilityContext): AgentTool<a
         path: Type.String({ minLength: 8, maxLength: 240 }),
         totalParts: Type.Integer({ minimum: 1, maximum: 512 }),
       }),
-      execute: ({ path: relative, totalParts }) => {
+      execute: async ({ path: relative, totalParts }) => {
+        await kernel.authorizeFile(relative, 'write');
         const safePath = kernel.assertWritePath(path.resolve(kernel.root, relative));
         const session = startArtifactSourceWrite({
           workspaceRoot: kernel.root,

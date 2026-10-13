@@ -64,6 +64,11 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: 'SDD 索引', link: '/sdd/README' },
+          { text: '轻量项目', link: '/sdd/features/lightweight-project-v1/README' },
+          { text: '任务模板', link: '/architecture/task-template-pilot' },
+          { text: '数据应用 SQL 与建表', link: '/sdd/features/managed-data-app-v1/sql-operations' },
+          { text: '可信查询资产', link: '/sdd/features/agent-data-query-v1/query-assets' },
+          { text: '本地优先经验', link: '/sdd/features/experience-local-first/README' },
           { text: 'UTI-001 · 统一 Tool Interface', link: '/sdd/features/unified-tool-interface/README' },
           { text: 'AMC-001 · 通用应用模型', link: '/sdd/features/application-model-capabilities/README' },
           { text: 'AMC-IMG-001 · 图片生成协议', link: '/sdd/features/application-model-capabilities/image-generation-protocols' },

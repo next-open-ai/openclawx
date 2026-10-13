@@ -36,7 +36,7 @@ function normalize(row: Partial<ExperienceRecord> & Record<string, unknown>, age
   };
 }
 
-/** JSON metadata store (source of truth). */
+/** Legacy agent-scoped JSON reader; current tool source of truth is local-store.ts SQLite. */
 export function listExperiences(agentId: string): ExperienceRecord[] {
   const raw = readJsonFile<unknown[]>(metaPath(agentId), []);
   if (!Array.isArray(raw)) return [];

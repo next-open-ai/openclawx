@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { copyFile, mkdir, rename, stat, unlink } from 'node:fs/promises';
+import { ResourceAccessPolicy } from './resource-access.js';
 
 /**
  * Engine-neutral execution boundary. Adapters (Pi today, other runtimes later)
@@ -13,6 +14,8 @@ export type CapabilityContext = {
   workspaceRoot: string;
   workspaceAccess: 'read' | 'write' | 'full';
   workspaceMode: 'conversation' | 'project';
+  /** Trusted host-selected files only. Not model- or HTTP-supplied grants. */
+  readOnlyFiles?: readonly string[];
 };
 
 export type CapabilityResult = {
@@ -44,20 +47,27 @@ function relativeTo(root: string, candidate: string) {
 
 export class WorkspaceCapabilityKernel {
   readonly root: string;
+  readonly resources: ResourceAccessPolicy;
 
   constructor(readonly context: CapabilityContext) {
     this.root = path.resolve(context.workspaceRoot);
+    this.resources = new ResourceAccessPolicy(this.root, context.readOnlyFiles);
+  }
+
+  async authorizeFile(candidate: string, access: 'read' | 'write'): Promise<string> {
+    if (access === 'write') this.assertWritePath(path.resolve(this.root, candidate));
+    return this.resources.authorizeFile(candidate, access);
   }
 
   assertReadPath(candidate: string) {
-    return relativeTo(this.root, path.resolve(candidate));
+    return relativeTo(this.root, path.resolve(this.root, candidate));
   }
 
   assertWritePath(candidate: string) {
     if (this.context.workspaceAccess !== 'write' && this.context.workspaceAccess !== 'full') {
       throw new Error('Workspace write is not permitted for this run.');
     }
-    return relativeTo(this.root, path.resolve(candidate));
+    return relativeTo(this.root, path.resolve(this.root, candidate));
   }
 
   assertCommand(command: string) {
@@ -67,6 +77,7 @@ export class WorkspaceCapabilityKernel {
     if (BLOCKED_COMMAND.test(command)) {
       throw new Error('This command is blocked by the workspace execution policy. Use a safe local build command instead.');
     }
+    this.resources.assertCommand(command);
     return command;
   }
 
@@ -82,6 +93,7 @@ export class WorkspaceCapabilityKernel {
       const requested = normalizedRelative(relativePath);
       const source = path.resolve(this.root, requested);
       const sourceRelative = this.assertReadPath(source);
+      await this.authorizeFile(source, 'read');
       if (PROCESS_DIRECTORIES.has(sourceRelative.split('/')[0] || '')) {
         throw new Error('Process files cannot be committed as business artifacts.');
       }
@@ -97,9 +109,11 @@ export class WorkspaceCapabilityKernel {
         : `output/${path.basename(sourceRelative)}`;
       const target = path.resolve(this.root, outputRelative);
       this.assertWritePath(target);
+      await this.authorizeFile(target, 'write');
       if (target !== source) {
         await mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
         const temporary = `${target}.workmate-${this.context.runId}.tmp`;
+        await this.authorizeFile(temporary, 'write');
         await copyFile(source, temporary);
         // The staging file lives beside target, so this final replacement is
         // atomic on the workspace filesystem.

@@ -275,6 +275,11 @@ test('dispatchInstruction invalidates target+downstream as ChangeSet without wip
     const before = await orch.projects.getProject(project.id);
     assert.ok(before?.tasks.every((task) => task.status === 'completed'));
     const callsBefore = fake.calls.length;
+    const upstreamRunId = before?.tasks.find(task => task.id === 'a')?.runId;
+    const previousReply = (await orch.engine.load(before!.tasks.find(task => task.id === 'b')!.runId!))!.transcript;
+    const previousMessageIds = before!.messages.map(message => message.id);
+    const originalReplies = before!.messages.filter(message => message.role === 'assistant');
+    assert.equal(originalReplies.length, 3, 'PC-T2: each settled task reply is durable');
 
     await orch.projects.dispatchInstruction(
       project.id,
@@ -289,9 +294,28 @@ test('dispatchInstruction invalidates target+downstream as ChangeSet without wip
     assert.equal(after?.changeSets?.at(-1)?.kind, 'instruction');
     const upstream = after?.tasks.find((task) => task.id === 'a');
     assert.equal(upstream?.status, 'completed');
+    assert.equal(upstream?.runId, upstreamRunId, 'PC-T2: completed upstream is not restarted');
+    assert.ok(previousMessageIds.every(id => after?.messages.some(message => message.id === id)), 'PC-T2: project conversation stays visible');
+    const nextRequest = fake.calls.slice(callsBefore).find(call => call.messages.at(-1)?.content.includes('补充修订中游'));
+    assert.equal(nextRequest?.projectWorkspacePath, project.workspacePath);
+    assert.ok(nextRequest?.messages.some(message => message.role === 'assistant' && message.content === previousReply.slice(-6000)));
     assert.ok(fake.calls.length > callsBefore);
     // Mid + downstream re-executed; upstream kept.
-    assert.ok(fake.calls.length - callsBefore >= 2);
+    assert.equal(fake.calls.length - callsBefore, 2);
+    const secondPreviousRun = after!.tasks.find(task => task.id === 'c')!.runId!;
+    const secondReply = (await orch.engine.load(secondPreviousRun))!.transcript;
+    const secondCallsBefore = fake.calls.length;
+    await orch.projects.dispatchInstruction(project.id, { employeeId: 'code', content: '只解释当前交付文件的位置' }, { defaultContext: runContext() });
+    await waitFor(async () => (await orch.projects.getProject(project.id))?.status === 'completed');
+    assert.equal(fake.calls.length - secondCallsBefore, 1, 'PC-T2: repeated follow-up to a leaf runs only that leaf');
+    assert.equal((await orch.projects.getProject(project.id))?.tasks.find(task => task.id === 'a')?.runId, upstreamRunId);
+    assert.ok(fake.calls.at(-1)?.messages.some(message => message.role === 'assistant' && message.content === secondReply.slice(-6000)));
+    const final = (await orch.projects.getProject(project.id))!;
+    for (const reply of originalReplies) {
+      assert.equal(final.messages.find(message => message.id === reply.id)?.content, reply.content, 'PC-T2: follow-up never replaces an old task reply');
+    }
+    assert.equal(final.messages.filter(message => message.id === secondPreviousRun).length, 1);
+    assert.equal(final.messages.find(message => message.id === secondPreviousRun)?.content, secondReply);
   } finally {
     await orch.close();
   }

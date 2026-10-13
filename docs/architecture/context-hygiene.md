@@ -15,7 +15,8 @@
 | 目标 | 策略 |
 |------|------|
 | 丢掉 think | 从 assistant content 中移除 `type: thinking` 块 |
-| 写文件只留路径 | 历史 `write_workspace_file` 参数仅保留 path/mode/bytes，**正文永不回灌**；文案明确「磁盘已写入，非传输失败」 |
+| 成功写文件只留路径 | 仅对有匹配成功 toolResult（同 toolCallId，非 isError，ok:true）的历史 `write_workspace_file` 参数保留 path/mode/bytes；失败/未执行调用不伪装已写入 |
+| 分段调用保持合法 | `append_workspace_write` / `append_artifact_source_write` 保留原始 text/content、seq、writeId；不替换为缺必填字段的摘要模板。长度由工具契约限制，整体由既有上下文压缩控制 |
 | 命令结果可识别且不灌爆 | 将含 stdout/stderr 的工具结果包装为 `[command-result]…[/command-result]`，头尾截断 |
 | 达阈值压缩 | 先卫生再估 token；触发后：保留最近轮次 + LLM 摘要 + **确定性事实锚点**（路径/错误/任务目标） |
 
@@ -60,6 +61,8 @@ LLM turn
 ```
 
 禁止使用 `_omittedBody` / `_note` 作为模型可见字段名（易被误判为传输故障）。
+
+2026-10-11 TP-R5：压缩不修改原始运行历史。失败/待执行写入不能声明 written/accepted；确定性 writtenPaths 仅采纳成功工具结果，不以模型提出调用作为已落盘证据。分段写入正文是下一次调用的重要格式参照，禁止生成可被模型复用但缺少必填参数的伪调用。
 
 ## 命令结果包装
 

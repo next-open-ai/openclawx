@@ -8,7 +8,11 @@
  * convention as services/api.ts.
  */
 
-import type { ChatFileAttachment, ChatImageAttachment, DurableTask, DurableTaskStatus } from '@workmate/contracts';
+import type { ChatFileAttachment, ChatImageAttachment, DurableTask, DurableTaskStatus, RunTextDeltaPosition } from '@workmate/contracts';
+import type { AlgorithmDefinition, WorkflowDefinition, CreateConversationProject } from '@workmate/contracts';
+import type { ProjectApplicationStatus, ProjectApplicationView, ProjectApplicationSnapshot, PublishProjectApplication } from '@workmate/contracts';
+import type { ProjectDraftFiles } from '@workmate/contracts';
+import type { WorkflowExecutionInput, WorkflowExecutionSummary, WorkflowInvocationInput, WorkflowInvocationResult } from '@workmate/contracts';
 
 const apiBase = () =>
   window.location.protocol === 'file:' ? 'http://127.0.0.1:47832' : '';
@@ -85,6 +89,7 @@ export interface ServerRunRecord {
   status: 'running' | 'completed' | 'failed' | 'cancelled' | 'waiting-approval';
   error?: string;
   engine?: 'pi' | 'agentscope' | 'dsh';
+  failure?: import('@workmate/contracts').RunFailure;
   startedAt: number;
   finishedAt?: number;
   transcript: string;
@@ -242,6 +247,8 @@ export interface ServerProjectChangeSet {
 }
 
 export interface ServerProject {
+  kind?: 'conversation';
+  defaultEmployeeId?: string;
   id: string;
   orgId?: string;
   ownerUserId?: string;
@@ -253,6 +260,7 @@ export interface ServerProject {
   status: ServerProjectStatus;
   mode: ServerProjectMode;
   workspacePath: string;
+  executionWorkspaceMode?: 'isolated';
   tasks: ServerTask[];
   messages: ServerMessage[];
   createdAt: number;
@@ -288,7 +296,7 @@ export interface ServerProjectRun {
  * OrcEvent (mirror of packages/orchestrator/src/events.ts)
  * ------------------------------------------------------------------ */
 
-export interface OrcEvent {
+export interface OrcEvent extends RunTextDeltaPosition {
   type: string;
   projectId?: string;
   sessionId?: string;
@@ -309,6 +317,7 @@ export interface OrcEvent {
   message?: ServerMessage;
   error?: string;
   ts?: number;
+  failure?: import('@workmate/contracts').RunFailure;
 }
 
 /* ------------------------------------------------------------------ *
@@ -325,6 +334,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(body?.message || `Orchestration request failed: ${response.status}`);
   }
   return body;
+}
+
+export function listProjectDraftFiles(projectId: string, runId: string) {
+  return request<ProjectDraftFiles>(`/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/draft-files`);
+}
+export function readProjectDraftFile(projectId: string, runId: string, relative: string) {
+  return request<{ relative: string; content: string }>(`/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/draft-file?${new URLSearchParams({ relative })}`);
 }
 
 /* ------------------------------------------------------------------ *
@@ -350,6 +366,64 @@ export async function listProjects(): Promise<ServerProject[]> {
   return result.projects;
 }
 
+export async function createConversationProject(input: { name: string; goal?: string; employeeId?: string; workspace?: CreateConversationProject['workspace'] }): Promise<ServerProject> {
+  const result = await request<{ project: ServerProject }>('/projects/conversations', { method: 'POST', body: JSON.stringify(input) });
+  return result.project;
+}
+
+export function getProjectApplication(projectId: string): Promise<ProjectApplicationStatus> {
+  return request(`/projects/${encodeURIComponent(projectId)}/application`);
+}
+export function previewProjectApplication(projectId: string): Promise<ProjectApplicationView> {
+  return request(`/projects/${encodeURIComponent(projectId)}/application/preview`, { method: 'POST' });
+}
+export function viewPublishedProjectApplication(projectId: string): Promise<ProjectApplicationView> {
+  return request(`/projects/${encodeURIComponent(projectId)}/application/view`, { method: 'POST' });
+}
+export async function publishProjectApplication(projectId: string, input: PublishProjectApplication): Promise<ProjectApplicationSnapshot> {
+  return (await request<{ published: ProjectApplicationSnapshot }>(`/projects/${encodeURIComponent(projectId)}/application/publish`, { method: 'POST', body: JSON.stringify(input) })).published;
+}
+export function projectApplicationViewUrl(view: ProjectApplicationView): string {
+  return `${apiBase()}${view.viewPath}`;
+}
+
+export function listDefinitions(kind: 'workflows'): Promise<{ items: WorkflowDefinition[] }>;
+export function listDefinitions(kind: 'algorithms'): Promise<{ items: AlgorithmDefinition[] }>;
+export function listDefinitions(kind: 'workflows' | 'algorithms'): Promise<{ items: Array<WorkflowDefinition | AlgorithmDefinition> }> {
+  return request(`/definitions/${kind}`);
+}
+export async function saveDefinition(kind: 'workflows' | 'algorithms', definition: WorkflowDefinition | AlgorithmDefinition): Promise<void> {
+  await request(`/definitions/${kind}/${encodeURIComponent(definition.id)}`, { method: 'PUT', body: JSON.stringify(definition) });
+}
+export async function deleteDefinition(kind: 'workflows' | 'algorithms', id: string): Promise<void> {
+  await request(`/definitions/${kind}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export function prepareWorkflowRun(id: string, input: WorkflowExecutionInput): Promise<{ projectId: string }> {
+  return request(`/definitions/workflows/${encodeURIComponent(id)}/runs`, { method: 'POST', body: JSON.stringify(input) });
+}
+export function listWorkflowRuns(id: string): Promise<{ items: WorkflowExecutionSummary[] }> {
+  return request(`/definitions/workflows/${encodeURIComponent(id)}/runs`);
+}
+export function invokeChatWorkflow(sessionId: string, workflowId: string, input: WorkflowInvocationInput): Promise<WorkflowInvocationResult> {
+  return request(`/sessions/${encodeURIComponent(sessionId)}/workflows/${encodeURIComponent(workflowId)}/invocations`, { method: 'POST', body: JSON.stringify(input) });
+}
+export function listChatWorkflowInvocations(sessionId: string): Promise<{ items: WorkflowExecutionSummary[] }> {
+  return request(`/sessions/${encodeURIComponent(sessionId)}/workflow-invocations`);
+}
+export function resumeChatWorkflowInvocation(sessionId: string, requestId: string): Promise<WorkflowInvocationResult> {
+  return request(`/sessions/${encodeURIComponent(sessionId)}/workflow-invocations/${encodeURIComponent(requestId)}/resume`, { method: 'POST', body: '{}' });
+}
+export function invokeProjectWorkflow(projectId: string, workflowId: string, input: WorkflowInvocationInput): Promise<WorkflowInvocationResult> {
+  return request(`/projects/${encodeURIComponent(projectId)}/workflows/${encodeURIComponent(workflowId)}/invocations`, { method: 'POST', body: JSON.stringify(input) });
+}
+export function listProjectWorkflowInvocations(projectId: string): Promise<{ items: WorkflowExecutionSummary[] }> {
+  return request(`/projects/${encodeURIComponent(projectId)}/workflow-invocations`);
+}
+export function resumeProjectWorkflowInvocation(projectId: string, requestId: string): Promise<WorkflowInvocationResult> {
+  return request(`/projects/${encodeURIComponent(projectId)}/workflow-invocations/${encodeURIComponent(requestId)}/resume`, { method: 'POST', body: '{}' });
+}
+
 export async function getProject(id: string): Promise<ServerProject | null> {
   try {
     const result = await request<{ project: ServerProject }>(`/projects/${encodeURIComponent(id)}`);
@@ -357,6 +431,10 @@ export async function getProject(id: string): Promise<ServerProject | null> {
   } catch {
     return null;
   }
+}
+
+export function workflowResultEvidence(sessionId: string, requestId: string): Promise<{ evidence: import('@workmate/contracts').WorkflowResultEvidence }> {
+  return request(`/sessions/${encodeURIComponent(sessionId)}/workflow-invocations/${encodeURIComponent(requestId)}/evidence`);
 }
 
 export async function deleteProject(id: string): Promise<void> {
@@ -375,10 +453,10 @@ export async function updateProjectAccess(
 }
 
 /** Start the server scheduler (contexts are assembled server-side). */
-export async function confirmProject(id: string): Promise<{ project: ServerProject; run: ServerProjectRun }> {
+export async function confirmProject(id: string, options: { resumeIncomplete?: boolean } = {}): Promise<{ project: ServerProject; run: ServerProjectRun }> {
   const result = await request<{ project: ServerProject; run: ServerProjectRun }>(
     `/projects/${encodeURIComponent(id)}/confirm`,
-    { method: 'POST', body: JSON.stringify({}) },
+    { method: 'POST', body: JSON.stringify(options) },
   );
   return result;
 }
@@ -401,7 +479,7 @@ export async function replanProject(
 /** Follow-up instruction through the scheduler (resets target + downstream). */
 export async function dispatchProjectInstruction(
   id: string,
-  input: { employeeId: string; content: string; employeeLabel?: string },
+  input: { employeeId: string; content: string; employeeLabel?: string; requestId?: string; fileIds?: string[] },
 ): Promise<{ project: ServerProject; run: ServerProjectRun }> {
   const result = await request<{ project: ServerProject; run: ServerProjectRun }>(
     `/projects/${encodeURIComponent(id)}/instructions`,
@@ -453,6 +531,7 @@ export async function resolveTaskApproval(input: {
  * ------------------------------------------------------------------ */
 
 export interface ServerChatMessage {
+  workflowResult?: import('@workmate/contracts').WorkflowResultReference;
   attachments?: ChatImageAttachment[];
   fileAttachments?: ChatFileAttachment[];
   id: string;
@@ -523,7 +602,7 @@ export async function clearChatSession(id: string): Promise<ServerChatSession> {
  * Send a chat message. `context` is optional: the server assembles the run
  * context for the session's employee (domain KV + keyring) when omitted.
  */
-export async function sendChatMessage(id: string, input: { content: string; attachments?: ChatImageAttachment[]; fileAttachments?: ChatFileAttachment[]; employeeId?: string; context?: Record<string, unknown> }): Promise<{ runId: string; turnId: string; attemptNo: number }> {
+export async function sendChatMessage(id: string, input: { content: string; attachments?: ChatImageAttachment[]; fileAttachments?: ChatFileAttachment[]; employeeId?: string; context?: Record<string, unknown>; workflowResult?: import('@workmate/contracts').WorkflowResultReference }): Promise<{ runId: string; turnId: string; attemptNo: number }> {
   return request(`/sessions/${encodeURIComponent(id)}/messages`, { method: 'POST', body: JSON.stringify(input) });
 }
 
@@ -535,6 +614,24 @@ export async function uploadChatFile(sessionId: string, file: File): Promise<{ a
   });
   const body = await response.json().catch(() => ({})) as { attachment?: ChatFileAttachment; warning?: string; message?: string };
   if (!response.ok || !body.attachment) throw new Error(body.message || `附件上传失败：${response.status}`);
+  return { attachment: body.attachment, warning: body.warning };
+}
+
+export async function uploadWorkflowDocument(workflowId: string, requestId: string, file: File): Promise<{ attachment: ChatFileAttachment; warning?: string }> {
+  const response = await fetch(`${apiBase()}/api/orch/definitions/workflows/${encodeURIComponent(workflowId)}/uploads/${encodeURIComponent(requestId)}`, {
+    method: 'POST', headers: { 'content-type': 'application/octet-stream', 'x-workmate-file-name': encodeURIComponent(file.name) }, body: file,
+  });
+  const body = await response.json().catch(() => ({})) as { attachment?: ChatFileAttachment; warning?: string; message?: string };
+  if (!response.ok || !body.attachment) throw new Error(body.message || '文档上传失败');
+  return { attachment: body.attachment, warning: body.warning };
+}
+
+export async function uploadProjectDocument(projectId: string, requestId: string, file: File): Promise<{ attachment: ChatFileAttachment; warning?: string }> {
+  const response = await fetch(`${apiBase()}/api/orch/projects/${encodeURIComponent(projectId)}/uploads/${encodeURIComponent(requestId)}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Workmate-File-Name': encodeURIComponent(file.name) }, body: file,
+  });
+  const body = await response.json().catch(() => ({})) as { attachment?: ChatFileAttachment; warning?: string; message?: string };
+  if (!response.ok || !body.attachment) throw new Error(body.message || '文档上传失败');
   return { attachment: body.attachment, warning: body.warning };
 }
 

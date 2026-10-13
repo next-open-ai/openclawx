@@ -1,13 +1,12 @@
 import type { ModelConfig } from '@workmate/contracts';
 import { Type } from '@sinclair/typebox';
 import { defineAgentTool, type AgentTool } from '../pi-tools.js';
-import { getExperienceRecallReadiness } from './readiness.js';
+import { currentExperienceContext,withExperienceContext } from './context.js';
 import { loadExperience, saveExperience } from './service.js';
 import { EXPERIENCE_LIMITS, formatExperienceCard } from './types.js';
 
 /**
- * Agent-scoped experience tools as native pi AgentTools.
- * agentId is closed over from the run profile (cannot be spoofed by the model).
+ * Native experience tools. Agent ID and trusted user context are captured by the host.
  */
 export function createExperienceTools(input: {
   agentId: string;
@@ -16,9 +15,8 @@ export function createExperienceTools(input: {
   minScore?: number;
 }): AgentTool[] {
   const agentId = String(input.agentId || '').trim();
-  if (!agentId || input.enabled === false) return [];
-  // No system-wide embedding model → skip tools entirely (zero catalog/prompt tax).
-  if (!getExperienceRecallReadiness({ model: input.model }).ok) return [];
+  const ctx=currentExperienceContext();
+  if (!agentId || input.enabled === false || ctx===null || ctx?.settings.enabled===false) return [];
 
   const minScore = input.minScore ?? EXPERIENCE_LIMITS.minScore;
 
@@ -26,9 +24,9 @@ export function createExperienceTools(input: {
     defineAgentTool({
       name: 'save_experience',
       description:
-        'Save a short reusable experience for THIS agent after a meaningful complex task '
+        'Save a short reusable experience to the local shared experience pool after a meaningful complex task '
         + '(successful approach, hard-won pitfall, or durable project convention). '
-        + 'Keep fields concise. Do not dump raw chat logs. Skip trivial one-shot answers.',
+        + 'User and agent provenance are recorded by the host. Keep fields concise. Never include credentials, private business data or raw chat logs. Skip trivial one-shot answers.',
       parameters: Type.Object({
         title: Type.String({ minLength: 2, maxLength: EXPERIENCE_LIMITS.title }),
         situation: Type.String({ minLength: 8, maxLength: EXPERIENCE_LIMITS.situation, description: 'When this experience applies.' }),
@@ -39,7 +37,7 @@ export function createExperienceTools(input: {
       }),
       execute: async ({ title, situation, action, pitfall, whenNot, tags }) => {
         try {
-          const saved = await saveExperience({
+          const saved = await withExperienceContext(ctx,()=>saveExperience({
             agentId,
             title,
             situation,
@@ -48,13 +46,16 @@ export function createExperienceTools(input: {
             whenNot,
             tags,
             model: input.model,
-          });
+          }));
           return {
             ok: true,
             id: saved.id,
             merged: saved.merged,
             backend: saved.backend,
             title: saved.title,
+            mirrorSaved:saved.mirrorSaved,
+            mirrorState:saved.mirrorState,
+            syncState:saved.syncState,
           };
         } catch (error) {
           return {
@@ -67,8 +68,8 @@ export function createExperienceTools(input: {
     defineAgentTool({
       name: 'load_experience',
       description:
-        'Load high-confidence past experiences for THIS agent by semantic similarity to a query. '
-        + `Only returns items with score >= ${minScore}; otherwise empty. `
+        'Load shared experiences across users and agents. Local text matching is immediate; completed knowledge semantic cache may enrich results. '
+        + 'The backend states text versus semantic; never claim text matching is vector retrieval. '
         + 'Use when starting or pivoting a complex task that may match prior work.',
       parameters: Type.Object({
         query: Type.String({ minLength: 2, maxLength: 400 }),
@@ -76,13 +77,13 @@ export function createExperienceTools(input: {
       }),
       execute: async ({ query, topK }) => {
         try {
-          const loaded = await loadExperience({
+          const loaded = await withExperienceContext(ctx,()=>loadExperience({
             agentId,
             query,
             topK,
             minScore,
             model: input.model,
-          });
+          }));
           return {
             ok: true,
             count: loaded.count,

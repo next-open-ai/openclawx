@@ -8,10 +8,12 @@ export function readAnnotations(raw?: unknown): DataObjectAnnotations {
 export function modelReadableSchema(source: {
   id: string; name: string; fileType: string; annotations: DataObjectAnnotations;
   tables?: DataResource[];
+  accessMode?: 'live' | 'snapshot' | 'local';
   api?: { method: string; baseUrl: string; path: string; itemsPath: string; description: string } | null;
 }) {
   return dataObjectModelSchema.parse({
     id: source.id, name: source.name, kind: source.fileType, annotations: source.annotations,
+    storageMode: source.accessMode,
     resources: (source.tables || []).map(table => ({
       id: table.id, name: table.name, sheetName: table.sheetName, description: table.description || '',
       columns: table.columns.map(({ sample: _sample, ...column }) => column),

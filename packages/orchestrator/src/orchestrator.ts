@@ -24,7 +24,7 @@ export interface OrchestratorOptions {
   maxConcurrentRunsPerUser?: number;
   maxQueueWaitMs?: number;
   /** Fallback server-side run-context assembly (see ProjectServiceOptions). */
-  contextResolver?: (task: ProjectTask) => ChatRunContext | null | Promise<ChatRunContext | null>;
+  contextResolver?: (task: ProjectTask, ownerUserId?: string) => ChatRunContext | null | Promise<ChatRunContext | null>;
   /** Fallback chat run-context assembly by employee id (see ChatSessionService). */
   chatContextResolver?: (
     employeeId: string,

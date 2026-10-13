@@ -11,13 +11,15 @@ import { chatRoutes } from './modules/chat/routes.js';
 import { knowledgeRoutes } from './modules/knowledge/routes.js';
 import { assetRoutes, resolveConversationSiteBundleRoot } from './modules/assets/routes.js';
 import { mcpRoutes } from './modules/mcp/routes.js';
-import { orchestrationRoutes } from './modules/orchestration/routes.js';
+import { orchestrationRoutes, getOrchestrator } from './modules/orchestration/routes.js';
+import {experienceRoutes} from './modules/experience/routes.js';
+import { projectSiteRoutes } from './modules/orchestration/project-application-routes.js';
 import { providerRoutes } from './modules/providers/routes.js';
 import { remoteRoutes } from './modules/remote/routes.js';
 import { settingsRoutes } from './modules/settings/routes.js';
 import { skillRoutes } from './modules/skills/routes.js';
 import { workspaceRoutes } from './modules/workspace/routes.js';
-import { dataRoutes, publicDataAppRoutes } from './modules/data/routes.js';
+import { dataRoutes, publicDataAppRoutes, createManagedAppQueries } from './modules/data/routes.js';
 import { chatMobileRoutes, publicChatMobileRoutes } from './modules/chat-mobile/routes.js';
 import { templateTaskRoutes } from './modules/tasks/routes.js';
 import { voiceRoutes } from './modules/voice/routes.js';
@@ -32,6 +34,8 @@ export async function createApp() {
   await app.register(authRoutes, { prefix: '/api' });
   await app.register(publicDataAppRoutes, { prefix: '/api' });
   await app.register(publicChatMobileRoutes, { prefix: '/api' });
+  await app.register(projectSiteRoutes, { prefix: '/api', orchestrator: getOrchestrator,
+    dataApp: async (projectId, owner) => (await createManagedAppQueries()).projectApp(projectId, owner) });
   await app.register(async (secured) => {
     secured.addHook('preHandler', authGuard());
     await secured.register(chatRoutes, { prefix: '/api' });
@@ -41,6 +45,7 @@ export async function createApp() {
     await secured.register(providerRoutes, { prefix: '/api' });
     await secured.register(remoteRoutes, { prefix: '/api' });
     await secured.register(settingsRoutes, { prefix: '/api' });
+    await secured.register(experienceRoutes, {prefix:'/api',store:()=>getOrchestrator().store});
     await secured.register(skillRoutes, { prefix: '/api' });
     await secured.register(workspaceRoutes, { prefix: '/api' });
     await secured.register(dataRoutes, { prefix: '/api' });

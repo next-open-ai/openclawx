@@ -99,3 +99,9 @@ export type { UsageStats, UsageBucketTotals, UsageRollup } from './usage.js';
 export type { RunModelInfo, RunUsage, RunUsageStep } from './types.js';
 
 export { withKeyLock } from './lock.js';
+
+export * from './template-agent.js';
+
+export type { TaskOwner } from './template-tasks.js';
+export { parameterUiHtml } from './task-parameter-ui.js';
+export {reportUiHtml,validateReportUi,defaultReportSource,reportPreviewResult} from './task-report-ui.js';

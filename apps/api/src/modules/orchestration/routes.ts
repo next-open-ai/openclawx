@@ -1,14 +1,26 @@
 import path from 'node:path';
 import os from 'node:os';
+import { randomUUID } from 'node:crypto';
+import { CreateConversationProjectSchema } from '@workmate/contracts';
+import { createConversationDirectory, ProjectDirectoryError } from './conversation-directory.js';
+import { registerProjectApplicationRoutes } from './project-application-routes.js';
+import { registerProjectDraftFileRoutes } from './project-draft-files.js';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { getSharedAgentscopeRuntimeStats, saveChatImage, readChatImage, ImageInputError } from '@workmate/agent-core';
 import { ChatFilesSchema, ChatImagesSchema, DurableTaskArtifactRoleSchema, DurableTaskStatusSchema } from '@workmate/contracts';
 import { JsonFileStore, Orchestrator, createScriptedRunner, type AgentRunner, type OrcEvent } from '@workmate/orchestrator';
 import type { ChatRunContext, ConfirmProjectInput, CreateProjectDraftInput, ProjectTask, ResolveProjectApprovalInput, UpdateProjectAccessInput } from '@workmate/orchestrator';
-import { requireAuth } from '../auth/service.js';
+import { requireAuth, activeDataRunOwner } from '../auth/service.js';
+import { createStructuredDataGateway, createManagedAppQueries } from '../data/routes.js';
+import { createDataAgentRunner } from '../data/agent-query.js';
+import {createExperienceRunner} from '../experience/routes.js';
 import { canReadOwnedResource, canWriteOwnedResource, requireSystemAdmin } from '../auth/ownership.js';
 import { resolveEmployeeMcpConnections, resolveTaskContext } from './context-assembler.js';
 import { applyParentSecrets } from './secrets.js';
+import { registerDefinitionRoutes } from './definition-routes.js';
+import { registerWorkflowRunRoutes } from './workflow-runs.js';
+import { resolveWorkflowResultQuestion } from './workflow-result-question.js';
+import { registerProjectInstructionRoutes } from './project-instructions.js';
 import { chatAttachmentStats, cleanupChatAttachments, deleteChatFile, deleteChatFiles, readChatFile, resolveChatFiles, saveChatFile } from './chat-attachments.js';
 
 /**
@@ -55,10 +67,10 @@ export function getOrchestrator(): Orchestrator {
   if (!instance) {
     const runner = scriptedRunner();
     const store = new JsonFileStore(path.join(dataDir(), 'domain.json'));
-    const contextResolver = async (task: ProjectTask): Promise<ChatRunContext | null> => {
+    const contextResolver = async (task: ProjectTask, ownerUserId?: string): Promise<ChatRunContext | null> => {
       // Remote confirm without client context → assemble from domain KV + keyring.
       try {
-        return await resolveTaskContext(store, task);
+        return await resolveTaskContext(store, task, ownerUserId);
       } catch {
         return null;
       }
@@ -85,7 +97,7 @@ export function getOrchestrator(): Orchestrator {
     };
     instance = new Orchestrator({
       store,
-      ...(runner ? { runner } : {}),
+      runner: runner ?? createExperienceRunner(store,activeDataRunOwner,createDataAgentRunner({ store, gateway: createStructuredDataGateway(), activeOwner: activeDataRunOwner, appQueries: createManagedAppQueries })),
       maxConcurrentRunsGlobal: positiveIntFromEnv('WORKMATE_MAX_CONCURRENT_RUNS_GLOBAL', 4),
       maxConcurrentRunsPerUser: positiveIntFromEnv('WORKMATE_MAX_CONCURRENT_RUNS_PER_USER', 2),
       maxQueueWaitMs: positiveIntFromEnv('WORKMATE_MAX_QUEUE_WAIT_MS', 120_000),
@@ -165,6 +177,12 @@ export const orchestrationRoutes: FastifyPluginAsync = async (app) => {
     await closeOrchestrator();
   });
   const orch = getOrchestrator();
+
+  registerDefinitionRoutes(app, orch.store);
+  registerWorkflowRunRoutes(app, orch);
+  registerProjectInstructionRoutes(app, orch);
+  registerProjectApplicationRoutes(app, orch);
+  registerProjectDraftFileRoutes(app, orch);
 
   /* ------------------------------------------------------------------ *
    * Legacy KV proxy — the Electron main process will re-point its
@@ -331,13 +349,14 @@ export const orchestrationRoutes: FastifyPluginAsync = async (app) => {
     const sessionId = String((request.params as Record<string, string>).sessionId);
     const session = await orch.chat.getChatSession(sessionId);
     if (!session || !canWriteOwnedResource(session, auth, { allowLegacyUnowned: true })) return fail(reply, new Error('Chat session not found.'));
-    const body = (request.body ?? {}) as { content?: string; employeeId?: string; context?: ChatRunContext; attachments?: unknown; fileAttachments?: unknown };
+    const body = (request.body ?? {}) as { content?: string; employeeId?: string; context?: ChatRunContext; attachments?: unknown; fileAttachments?: unknown; workflowResult?: unknown };
     if (!body.content) return fail(reply, new Error('content is required.'));
     const images = ChatImagesSchema.safeParse(body.attachments ?? []);
     if (!images.success) return reply.code(400).send({ message: '图片附件无效，每次最多 4 张。' });
     const files = ChatFilesSchema.safeParse(body.fileAttachments ?? []);
     if (!files.success) return reply.code(400).send({ message: '文件附件无效，每次最多 10 个。' });
     try {
+      const question = await resolveWorkflowResultQuestion(orch, auth, sessionId, { workflowResult: body.workflowResult, attachments: images.data, fileAttachments: files.data });
       const resolvedFiles = await resolveChatFiles(sessionId, files.data, body.content);
       return await orch.chat.sendUserMessage(sessionId, {
         content: body.content,
@@ -346,9 +365,14 @@ export const orchestrationRoutes: FastifyPluginAsync = async (app) => {
         attachmentContext: resolvedFiles.context,
         employeeId: body.employeeId,
         context: body.context,
+        ...question,
       });
     } catch (error) {
       if (error instanceof ImageInputError) return reply.code(400).send({ code: error.code, message: error.message });
+      if (error instanceof Error && error.message.startsWith('WORKFLOW_RESULT_')) {
+        const code = error.message;
+        return reply.code(code === 'WORKFLOW_RESULT_INVALID' ? 400 : code === 'WORKFLOW_RESULT_UNAVAILABLE' ? 404 : 409).send({ code, message: code === 'WORKFLOW_RESULT_CHANGED' ? '该工作流成果已更新，请重新点击“基于成果提问”。' : code === 'WORKFLOW_RESULT_INVALID' ? '成果引用无效，成果问答不能混入其他附件。' : code === 'WORKFLOW_RESULT_UNAVAILABLE' ? '成果不存在或无权访问，请重新选择。' : '当前成果尚不能用于问答，请查看执行详情后重新选择。' });
+      }
       throw error;
     }
   });
@@ -501,11 +525,31 @@ export const orchestrationRoutes: FastifyPluginAsync = async (app) => {
    * Projects
    * ------------------------------------------------------------------ */
 
+  app.post('/projects/conversations', async (request, reply) => {
+    const auth = requireAuth(request);
+    const parsed = CreateConversationProjectSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ message: '请检查项目名称（最多80字）和目录设置。' });
+    const id = randomUUID();
+    let workspacePath: string;
+    try { workspacePath = await createConversationDirectory(dataDir(), id, parsed.data.workspace); }
+    catch (cause) {
+      if (cause instanceof ProjectDirectoryError) return reply.code(400).send({ code: 'PROJECT_DIRECTORY_INVALID', message: cause.message });
+      throw cause;
+    }
+    const { workspace: _workspace, ...details } = parsed.data;
+    const project = await orch.projects.createDraftOnce(id, {
+      ...details, kind: 'conversation', defaultEmployeeId: parsed.data.employeeId,
+      mode: 'dag', tasks: [], workspacePath, executionWorkspaceMode: 'isolated',
+      orgId: auth.orgId, ownerUserId: auth.userId, accessScope: 'private',
+    });
+    return { project };
+  });
+
   app.post('/projects', async (request, reply) => {
     const auth = requireAuth(request);
     const input = (request.body ?? {}) as CreateProjectDraftInput;
     if (!input.goal || !Array.isArray(input.tasks)) return fail(reply, new Error('goal and tasks are required.'));
-    const project = await orch.projects.createDraft({ ...input, orgId: auth.orgId, ownerUserId: auth.userId });
+    const project = await orch.projects.createDraft({ ...input, kind: undefined, defaultEmployeeId: undefined, orgId: auth.orgId, ownerUserId: auth.userId });
     return { project };
   });
 
@@ -582,6 +626,7 @@ export const orchestrationRoutes: FastifyPluginAsync = async (app) => {
       runContextByTask: body.runContextByTask,
       defaultContext: body.defaultContext,
       summaryContext: body.summaryContext,
+      resumeIncomplete: body.resumeIncomplete === true,
     });
     if (!result) return fail(reply, new Error('Project not found.'));
     return result;
@@ -609,40 +654,6 @@ export const orchestrationRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
-  /** Follow-up instruction → scheduler (target task + downstream deps). */
-  app.post('/projects/:projectId/instructions', async (request, reply) => {
-    const auth = requireAuth(request);
-    const projectId = String((request.params as Record<string, string>).projectId);
-    const existing = await orch.projects.getProject(projectId);
-    if (!existing || !canWriteOwnedResource(existing, auth, { allowLegacyUnowned: true })) return fail(reply, new Error('Project not found.'));
-    const body = (request.body ?? {}) as {
-      employeeId?: string;
-      content?: string;
-      employeeLabel?: string;
-    } & ConfirmProjectInput;
-    if (!body.employeeId || !body.content?.trim()) {
-      return fail(reply, new Error('employeeId and content are required.'));
-    }
-    try {
-      const result = await orch.projects.dispatchInstruction(
-        projectId,
-        {
-          employeeId: body.employeeId,
-          content: body.content,
-          employeeLabel: body.employeeLabel,
-        },
-        {
-          runContextByTask: body.runContextByTask,
-          defaultContext: body.defaultContext,
-          summaryContext: body.summaryContext,
-        },
-      );
-      if (!result) return fail(reply, new Error('Project not found.'));
-      return result;
-    } catch (error) {
-      return fail(reply, error instanceof Error ? error : new Error('Dispatch failed.'));
-    }
-  });
 
   app.post('/projects/:projectId/cancel', async (request, reply) => {
     const auth = requireAuth(request);
@@ -738,6 +749,9 @@ export const orchestrationRoutes: FastifyPluginAsync = async (app) => {
     for (const topic of topics) {
       unsubscribers.push(orch.subscribe(topic, send));
     }
+    // Flush a readiness frame after registration, rather than waiting for the
+    // first model event or the 15s heartbeat to make fetch() resolve.
+    reply.raw.write(': ready\n\n');
     const heartbeat = setInterval(() => {
       if (reply.raw.writableEnded || reply.raw.destroyed) return;
       reply.raw.write(': ping\n\n');

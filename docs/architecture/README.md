@@ -20,7 +20,9 @@
 | [agentscope-abi.md](agentscope-abi.md) | AgentScope Sidecar：WebSocket JSON-RPC ABI + AgentEvent 映射 | ✅ P0 |
 | [concurrency-runtime.md](concurrency-runtime.md) | 多 session / 多用户 / dispatcher / sidecar 池 的并发执行机制、进程拓扑与隔离模型 | ✅ 当前实现 |
 | [concurrency-verification.md](concurrency-verification.md) | 并发压测与验收清单：限流、优先级、sidecar 池、自愈、观测一致性 | ✅ 当前实现 |
-| [当前功能状态](../current-state.md) | 当前产品能力、默认端口和真实验收边界 | ✅ 2026-10-07 快照 |
+| [当前功能状态](../current-state.md) | 当前产品能力、默认端口和真实验收边界 | ✅ 2026-10-13 快照 |
+| [本地优先经验](../sdd/features/experience-local-first/README.md) | SQLite 事实源、异步文件副本、配置可用性门控及后台语义预取 | 当前实现，边界见状态 |
+| [可信查询资产](../sdd/features/agent-data-query-v1/query-assets.md) | 用户主动收藏成功查询、权限/Schema 复核，与经验独立 | 当前实现，无管理 UI |
 | [project-orchestration.md](project-orchestration.md) | 项目 Plan/Run/ChangeSet 数据模型与调度约定（P0–P1） | ✅ |
 | [embedding-provider-v1.md](embedding-provider-v1.md) | 本地 Docker embedding server 作为标准 provider 接入 `workmate` 的主案；覆盖 provider 抽象、OpenAI-compatible 协议、默认 embedding、知识库 override、索引重建与治理 | 📝 方案稿 |
 | [embedding-provider-v1-implementation-plan.md](embedding-provider-v1-implementation-plan.md) | `embedding-provider-v1` 的实施拆解；覆盖模块边界、配置补强、健康检查、索引签名、重建任务、测试清单与里程碑 | 📝 实施计划 |

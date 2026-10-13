@@ -27,7 +27,10 @@ gateway child ------ HTTP / SSE -------^   (Telegram / Feishu / remote relay)
 | Digital employees | Responsibility and authorization units with configurable model, Skills, runtime preferences, and permission tiers |
 | Execution backends | Unified `ExecutionBackend` registry with built-in `pi`, optional `AgentScope` sidecar pool, and `dsh` coding sidecar |
 | Skills (progressive disclosure) | Authorize metadata first, load `SKILL.md` on demand, then access resources/scripts inside an isolated run workspace |
-| Project orchestration | Goal -> **Plan vN** (DAG) -> confirm -> **Run**; follow-up instructions create **ChangeSet** invalidations instead of rewriting everything |
+| Projects and workflows | Ordinary projects use multi-turn conversations and a stable output directory without automatic DAG planning; explicit workflows and legacy DAG projects retain Plan/Run/ChangeSet |
+| Task center | Direct or template-based tasks, scheduled/recurring execution, optional parameter/report UIs, and persistent json-result records |
+| Data objects and apps | Live connections/local copies, controlled aggregates/JOINs, AI-generated parameterized SQL, reviewed CRUD, MySQL new-table drafts, and a full-window app gallery |
+| Query assets and experience | Explicitly saved successful queries; SQLite-first experience cards with asynchronous JSON mirrors and optional configuration-validated background knowledge sync |
 | Resumable approvals | Tool approvals park a run in `waiting-approval`; resolving an approval resumes the same turn automatically as a new attempt |
 | Session rolling memory | Per-session `memory.summary` plus watermark; long conversations compress automatically while the transcript remains the source of truth |
 | Durable tasks | Complex jobs preserve source files, checkpoints, and workspaces across runs, then settle automatically when complete |

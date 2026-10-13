@@ -9,6 +9,8 @@ import type {
   Message,
 } from "../../app/workspace";
 import ChatReplyPending from "./ChatReplyPending.vue";
+import ChatWorkflowPanel from '../workflows/ChatWorkflowPanel.vue';
+import WorkflowResultQuestion from '../workflows/WorkflowResultQuestion.vue';
 import ChatImagePreview from './ChatImagePreview.vue';
 import ChatAssetMediaPreview from './ChatAssetMediaPreview.vue';
 import type { ChatFileAttachment, ChatImageAttachment, DurableTask, VoiceWorkResult } from '@workmate/contracts';
@@ -38,6 +40,14 @@ import { VoiceCommandCandidate } from './voice-command';
 import { VoiceNoticePlayer, VoiceTaskMonitor, VOICE_NOTICE_TEXT } from '../../services/voice-task-notices';
 import { readStored, writeStored } from '../../app/storage';
 
+const chatWorkflowPanel = ref<InstanceType<typeof ChatWorkflowPanel>>();
+const resultQuestion = ref<InstanceType<typeof WorkflowResultQuestion>>();
+const resultEvidence = ref<import('@workmate/contracts').WorkflowResultEvidence | null>(null);
+function resultChanged(value: import('@workmate/contracts').WorkflowResultEvidence | null) {
+  resultEvidence.value = value;
+  if (value) { autoSchedule.value = false; collaboratorIds.value = []; collaboratorMenuOpen.value = false; attachmentMenuOpen.value = false; void nextTick(() => document.querySelector<HTMLTextAreaElement>('[aria-label="对话输入框"]')?.focus()); }
+}
+
 type EngineId = "pi" | "agentscope" | "dsh";
 function isEngineId(value: unknown): value is EngineId {
   return value === "pi" || value === "agentscope" || value === "dsh";
@@ -62,6 +72,7 @@ const props = defineProps<{
     attachments?: ChatImageAttachment[],
     fileAttachments?: ChatFileAttachment[],
     onRunAccepted?: (sessionId: string, runId: string) => void,
+    workflowResult?: import('@workmate/contracts').WorkflowResultReference,
   ) => Promise<void>;
   abortMessage?: () => void;
   approve: (
@@ -82,6 +93,8 @@ const emit = defineEmits<{
   openAssets: [];
   openData: [];
   openSettings: [];
+  openProject: [id: string];
+  openWorkflows: [];
   voiceActive: [active: boolean];
 }>();
 
@@ -536,7 +549,12 @@ function activityElapsedLabel(activity: ToolActivity) {
 async function submit() {
   if ((!draft.value.trim() && !files.value.length && !images.value.length && !recording.value) || !props.modelConfigured || inputBusy.value) return;
   const attachedImages = [...images.value];
-  if ((attachedImages.length || props.conversation?.messages.some((message) => message.attachments?.length)) && !visionReady.value) {
+  const workflowResult = resultEvidence.value?.reference;
+  if (resultQuestion.value?.loading) return;
+  if (workflowResult && (images.value.length || files.value.length || recording.value || autoSchedule.value || collaboratorIds.value.length)) {
+    notify.error(new Error('成果问答仅使用所选成果，请移除附件并关闭协作者或自动调度。')); return;
+  }
+  if (!workflowResult && (attachedImages.length || props.conversation?.messages.some((message) => message.attachments?.length)) && !visionReady.value) {
     notify.error(new Error(visionHelp.value)); return;
   }
   const attachedRecording = recording.value;
@@ -563,7 +581,7 @@ async function submit() {
   void nextTick(() => scrollMessagesToBottom(true));
   try {
     await props.sendMessage(text, selected, delivery, onlineSearch.value, useAutoSchedule, attachedImages, attachedFiles,
-      voiceSend ? (sessionId, runId) => voiceTaskMonitor.track(sessionId, runId) : undefined);
+      voiceSend ? (sessionId, runId) => voiceTaskMonitor.track(sessionId, runId) : undefined, workflowResult);
   } catch (cause) {
     if (voiceSend) voiceNoticePlayer.enqueue('failed');
     draft.value = text.split('\n\n录音附件：')[0];
@@ -593,8 +611,10 @@ function clearCurrentConversation() {
   if (
     props.conversation &&
     window.confirm("清空后将删除当前对话内容和临时上下文，但保留 Session、关联资产与持续任务记录。若要彻底删除 Session，请在最近对话中点击删除。是否继续？")
-  )
+  ) {
+    resultQuestion.value?.clear();
     emit("clearConversation", props.conversation.id);
+  }
 }
 
 function stopMobilePull() {
@@ -758,7 +778,7 @@ function closeCollaboratorMenu() {
   collaboratorMenuOpen.value = false;
 }
 function handleDraftInput() {
-  if (autoSchedule.value) {
+  if (autoSchedule.value || resultEvidence.value) {
     mentionMenuOpen.value = false;
     return;
   }
@@ -1020,6 +1040,7 @@ const chatScrollSignal = computed(() => {
 watch(
   () => props.conversation?.id,
   () => {
+    resultQuestion.value?.clear();
     stickToBottom.value = true;
     void nextTick(() => scrollMessagesToBottom(true));
     closeMobileShare();
@@ -1244,6 +1265,7 @@ onBeforeUnmount(() => {
           <div class="min-w-0 flex-1">
             <small class="inline-flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--muted)]">
               <span>{{ message.role === "user" ? t("chat.you") : t("chat.assistant") }}</span>
+              <span v-if="message.workflowResult" class="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] text-[var(--accent)]" :title="`工作流调用 ${message.workflowResult.invocationId}`">成果问答 · 仅解释</span>
               <span
                 v-if="message.role === 'assistant' && message.engine"
                 class="rounded-full bg-[var(--surface)] px-1.5 py-0.5 font-medium text-[10px] text-[var(--text)]"
@@ -1602,12 +1624,14 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="mx-auto mb-7 w-full max-w-[1560px] shrink-0 px-6 lg:px-10">
+      <ChatWorkflowPanel v-if="ensureServerSession" ref="chatWorkflowPanel" hide-trigger :session-id="conversation?.serverSessionId" :visible="visible !== false" :disabled="inputBusy || realtimeVoiceOpen" :employee-ids="employees.filter(item => !item.system).map(item => item.id)" :ensure-session="ensureServerSession" @open-project="emit('openProject', $event)" @open-workflows="emit('openWorkflows')" @select-result="resultQuestion?.select($event)" />
       <form
-        class="relative grid min-w-0 gap-3 rounded-[19px] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-lg transition focus-within:border-[var(--accent)]/35 focus-within:shadow-xl"
+        class="chat-composer relative grid min-w-0 gap-3 rounded-[19px] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-lg transition focus-within:border-[var(--accent)]/35 focus-within:shadow-xl"
         @submit.prevent="submit"
         @dragover.prevent
         @drop="dropAttachments"
       >
+        <WorkflowResultQuestion ref="resultQuestion" :session-id="conversation?.serverSessionId" :disabled="inputBusy || realtimeVoiceOpen" @change="resultChanged" />
         <RealtimeVoiceDialog v-if="realtimeVoiceOpen" class="min-w-0 max-w-full overflow-hidden" inline auto-start :caption-history="voiceCaptions" :conversation-id="voiceConversationId" @close="closeRealtimeVoice" @captions="updateVoiceCaption" @work-updated="voiceWorkUpdated" @open-work="(id, title) => props.followMobileSession?.(id, title)" />
         <VoiceInputDialog v-if="voiceInputOpen" inline auto-start @close="closeVoiceInput" @session-start="beginVoiceInput" @preview="previewVoiceText" @busy="voiceInputBusy = $event" />
         <div v-if="voiceMode === 'input'" class="flex flex-wrap items-center gap-3 px-1 text-[11px] text-[var(--muted)]">
@@ -1712,14 +1736,16 @@ onBeforeUnmount(() => {
             <option value="direct">交付：专家直接答复</option>
           </select>
         </div>
-        <div class="flex flex-wrap items-center gap-2 border-t border-[var(--border)]/70 pt-3">
+        <div class="composer-toolbar border-t border-[var(--border)]/70 pt-3" aria-label="对话工具栏">
+          <div class="composer-tools">
+          <div class="composer-input-tools">
           <div class="inline-flex items-center rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/70 p-1">
             <button type="button" class="grid h-8 w-8 place-items-center rounded-lg text-[var(--accent)] hover:bg-[var(--surface)]" :class="{ 'bg-[var(--accent-soft)]': voiceOpening || voiceInputOpen || realtimeVoiceOpen }" :aria-pressed="voiceOpening || voiceInputOpen || realtimeVoiceOpen" :aria-label="voiceOpening || voiceInputOpen || realtimeVoiceOpen ? '停止并关闭当前语音' : '开始所选语音模式'" :title="voiceOpening || voiceInputOpen || realtimeVoiceOpen ? '停止并关闭当前语音' : '开始所选语音模式'" @click="toggleVoice"><svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/></svg></button>
             <select v-model="voiceMode" aria-label="聊天语音模式" class="max-w-[165px] rounded-lg border-0 bg-transparent px-1 py-1.5 text-[11px] text-[var(--muted)] disabled:opacity-60" :disabled="voiceOpening || voiceInputOpen || realtimeVoiceOpen"><option value="input">语音输入 · 手动发送</option><option value="realtime">实时对话 · 自动回复</option></select>
           </div>
           <div class="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/70 p-1">
             <div class="relative">
-              <button type="button" class="grid h-8 w-8 place-items-center rounded-lg text-[var(--muted)] transition hover:bg-[var(--surface)] hover:text-[var(--accent)] disabled:opacity-35" :disabled="inputBusy || !modelConfigured" aria-label="添加附件" @click="attachmentMenuOpen = !attachmentMenuOpen">
+              <button type="button" class="grid h-8 w-8 place-items-center rounded-lg text-[var(--muted)] transition hover:bg-[var(--surface)] hover:text-[var(--accent)] disabled:opacity-35" :disabled="inputBusy || !modelConfigured || !!resultEvidence" aria-label="添加附件" @click="attachmentMenuOpen = !attachmentMenuOpen">
                 <svg aria-hidden="true" class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m21.4 11.6-8.9 8.9a6 6 0 0 1-8.5-8.5l9.6-9.6a4 4 0 0 1 5.7 5.7l-9.6 9.6a2 2 0 0 1-2.8-2.8l8.9-8.9"/></svg>
               </button>
               <div v-if="attachmentMenuOpen" class="absolute bottom-[calc(100%+10px)] left-0 z-40 w-72 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-2xl">
@@ -1731,13 +1757,20 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </div>
-          <span class="ml-auto hidden text-[10px] text-[var(--muted)] md:inline">拖放文件到输入框 · 最多 10 个 / 50 MB</span>
-          <span class="hidden h-6 w-px bg-[var(--border)] sm:block" aria-hidden="true" />
+          </div>
+          <span class="composer-divider" aria-hidden="true" />
+          <button
+            v-if="ensureServerSession"
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-2 text-xs font-semibold hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-40"
+            :disabled="inputBusy || realtimeVoiceOpen || chatWorkflowPanel?.opening || chatWorkflowPanel?.busy"
+            @click="chatWorkflowPanel?.open()"
+          ><svg aria-hidden="true" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="15" y="15" width="6" height="6" rx="1.5"/><path d="M9 6h6a3 3 0 0 1 3 3v6M6 9v9h9"/></svg>{{ chatWorkflowPanel?.opening ? '正在准备…' : '调用工作流' }}</button>
           <div class="relative">
             <button
               class="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-2 text-xs font-semibold hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-40"
               type="button"
-              :disabled="inputBusy || autoSchedule"
+              :disabled="inputBusy || autoSchedule || !!resultEvidence"
               :title="autoSchedule ? t('chat.autoScheduleBlocksCollaborators') : undefined"
               @click="collaboratorMenuOpen = !collaboratorMenuOpen"
             >
@@ -1812,7 +1845,7 @@ onBeforeUnmount(() => {
             type="button"
             role="switch"
             :aria-checked="autoSchedule"
-            :disabled="inputBusy"
+            :disabled="inputBusy || !!resultEvidence"
             :title="t('chat.autoScheduleHelp')"
             :class="[
               'group inline-flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs font-semibold transition',
@@ -1842,12 +1875,15 @@ onBeforeUnmount(() => {
             class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-2 text-xs font-semibold"
             :title="t('chat.onlineSearchHelp')"
           >
-            <input v-model="onlineSearch" type="checkbox" :disabled="inputBusy" />
+            <input v-model="onlineSearch" type="checkbox" :disabled="inputBusy || !!resultEvidence" />
             <span :class="onlineSearch ? 'text-[var(--accent)]' : 'text-[var(--muted)]'">{{ t('chat.onlineSearch') }}</span>
           </label>
+          </div>
+          <div class="composer-send-tools">
           <select
             v-if="availableModels.length"
-            class="max-w-[min(100%,280px)] truncate rounded-lg bg-[var(--surface-muted)] px-2 py-2 text-xs"
+            aria-label="对话模型"
+            class="composer-model truncate rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-2.5 text-xs"
             :value="chatEndpointToken"
             @change="
               handleEndpointChange($event)
@@ -1863,28 +1899,56 @@ onBeforeUnmount(() => {
           >          <button
             v-if="inputBusy && !voiceWorkBusy"
             type="button"
-            class="ml-auto grid h-9 w-9 place-items-center rounded-[10px] bg-[var(--danger,#c0392b)] text-sm font-semibold text-white"
+            class="composer-send grid h-9 w-9 place-items-center rounded-[10px] bg-[var(--danger,#c0392b)] text-sm font-semibold text-white"
             :title="t('chat.stop')"
+            :aria-label="t('chat.stop')"
             @click="stopGeneration"
           >
             ■
           </button>
           <span
             v-else-if="voiceWorkBusy"
-            class="ml-auto inline-flex h-9 items-center gap-2 rounded-[10px] bg-[var(--surface-muted)] px-3 text-[11px] font-semibold text-[var(--muted)]"
+            class="inline-flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-[var(--surface-muted)] px-3 text-[11px] font-semibold text-[var(--muted)]"
             title="语音关联工作执行期间，输入区暂时锁定"
           ><span class="h-2 w-2 animate-pulse rounded-full bg-[var(--accent)]"></span>工作执行中</span>
           <button
             v-else
             type="submit"
-            class="ml-auto grid h-9 w-9 place-items-center rounded-[10px] bg-[var(--accent)] text-xl text-white disabled:opacity-35"
-            :disabled="!draft.trim() || !modelConfigured"
+            class="composer-send grid h-9 w-9 place-items-center rounded-[10px] bg-[var(--accent)] text-xl text-white disabled:opacity-35"
+            :disabled="!draft.trim() || !modelConfigured || resultQuestion?.loading"
             :title="voiceInputOpen ? '发送当前文字并结束录入' : '发送消息'"
+            :aria-label="voiceInputOpen ? '发送当前文字并结束录入' : '发送消息'"
           >
             ↑
           </button>
+          </div>
         </div>
       </form>
     </div>
   </section>
 </template>
+
+<style scoped>
+.chat-composer { container-type: inline-size; box-shadow: 0 4px 18px rgb(25 39 78 / .06), 0 1px 3px rgb(25 39 78 / .04); }
+.composer-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+.composer-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.composer-input-tools { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.composer-tools > button, .composer-tools > label, .composer-tools > .relative > button:first-child { height: 36px; display: inline-flex; align-items: center; white-space: nowrap; flex-shrink: 0; border-radius: 10px; }
+.composer-input-tools > div { height: 36px; border-radius: 10px; }
+.composer-input-tools > div > button, .composer-input-tools > div > .relative > button { height: 28px; }
+.composer-divider { width: 1px; height: 22px; background: var(--border); margin: 0 2px; }
+.composer-send-tools { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-left: auto; min-width: 0; }
+.composer-model { height: 36px; width: 230px; min-width: 0; max-width: 100%; }
+.composer-send { flex-shrink: 0; }
+.composer-toolbar button:focus-visible, .composer-toolbar select:focus-visible, .composer-toolbar input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@container (max-width: 1000px) {
+  .composer-send-tools { flex-basis: 100%; padding-top: 10px; border-top: 1px solid var(--border); }
+}
+@container (max-width: 600px) {
+  .composer-tools { gap: 8px 6px; }
+  .composer-divider { display: none; }
+  .composer-model { flex: 1; width: 0; }
+  .composer-input-tools .relative, .composer-tools > .relative { position: static; }
+  .composer-input-tools .relative > div, .composer-tools > .relative > div { left: 0; bottom: calc(100% + 10px); max-width: 100cqw; }
+}
+</style>

@@ -8,6 +8,13 @@ import {
   stubWriteArgs,
 } from '../context-sanitize.js';
 
+test('MDA-R7: paged data metadata retains valid JSON beyond generic 2500-character tool limit', () => {
+  const payload = JSON.stringify({ ok: true, data: { columns: Array.from({ length: 30 }, (_, id) => ({ id, description: 'schema field'.repeat(20) })), pagination: { nextOffset: 30 } } });
+  assert.ok(payload.length > 2500 && payload.length < 16000);
+  const clean = sanitizeToolPayloadsInMessages([result('schema', 'data_get_schema', JSON.parse(payload))]) as any[];
+  assert.deepEqual(JSON.parse(clean[0].content[0].text), JSON.parse(payload));
+});
+
 function assistantWith(content: unknown[]) {
   return {
     role: 'assistant',
@@ -19,6 +26,11 @@ function assistantWith(content: unknown[]) {
     stopReason: 'toolUse',
     timestamp: Date.now(),
   } as any;
+}
+
+function result(id: string, toolName: string, value: unknown, isError = false) {
+  return { role: 'toolResult', toolCallId: id, toolName,
+    content: [{ type: 'text', text: JSON.stringify(value) }], isError, timestamp: Date.now() } as any;
 }
 
 test('sanitize strips thinking blocks from assistant messages', () => {
@@ -46,7 +58,7 @@ test('sanitize stubs write bodies to path-only without _omittedBody', () => {
     id: '1',
     name: 'write_workspace_file',
     arguments: { path: 'output/assets/css/style.css', content: big, mode: 'append' },
-  }])];
+  }]), result('1', 'write_workspace_file', { ok: true, path: 'output/assets/css/style.css' })];
 
   const out = sanitizeToolPayloadsInMessages(messages);
   const args = (out[0] as any).content[0].arguments;
@@ -64,6 +76,46 @@ test('stubWriteArgs always path-only', () => {
   assert.equal(stub.path, 'output/x.md');
   assert.equal(stub.content, undefined);
   assert.equal(stub.chunks, undefined);
+});
+
+test('TP-T5: failed, pending and mismatched writes never claim written; source history remains immutable', () => {
+  for (const outcome of ['pending', 'failed', 'error', 'unrelated', 'other-tool'] as const) {
+    const call = assistantWith([{ type: 'toolCall', id: 'write', name: 'write_workspace_file',
+      arguments: { path: 'output/styles.css', content: 'x'.repeat(12_001) } }]);
+    const messages = [call, ...(outcome === 'pending' ? [] : [result(outcome === 'unrelated' ? 'other' : 'write',
+      outcome === 'other-tool' ? 'read_workspace_file' : 'write_workspace_file', { ok: outcome !== 'failed', path: 'output/styles.css' }, outcome === 'error')])];
+    const before = JSON.stringify(messages);
+    const clean = sanitizeToolPayloadsInMessages(messages);
+    assert.equal((clean[0] as any).content[0].arguments.content.length, 12_001);
+    assert.equal((clean[0] as any).content[0].arguments.status, undefined);
+    assert.equal(JSON.stringify(messages), before);
+  }
+});
+
+for (const [name, field] of [['append_workspace_write', 'text'], ['append_artifact_source_write', 'content']]) {
+  test(`TP-T5: ${name} retains callable sequence arguments, even after success`, () => {
+    for (const ok of [true, false]) {
+      const args = { writeId: 'fixture-write-id', seq: 2, [field]: 'body'.repeat(500) };
+      const messages = [assistantWith([{ type: 'toolCall', id: 'piece', name, arguments: args }]),
+        result('piece', name, { ok, nextSeq: ok ? 3 : 2 }, !ok)];
+      const before = JSON.stringify(messages);
+      const once = sanitizeToolPayloadsInMessages(messages);
+      const twice = sanitizeToolPayloadsInMessages(once);
+      assert.deepEqual((twice[0] as any).content[0].arguments, args);
+      assert.equal((twice[0] as any).content[0].arguments.contextPolicy, undefined);
+      assert.equal(JSON.stringify(messages), before);
+    }
+  });
+}
+
+test('TP-T5: written anchors require successful persistence, not merely proposed or rejected writes', () => {
+  const messages = [assistantWith([{ type: 'toolCall', id: 'bad', name: 'write_workspace_file',
+    arguments: { path: 'output/failed.css', content: 'oversized' } }]),
+    result('bad', 'write_workspace_file', { ok: false, path: 'output/failed.css' }),
+    result('good', 'finish_workspace_write', { ok: true, path: 'output/done.css' }),
+    result('artifact', 'run_workspace_script', { ok: false, artifacts: ['output/not-created.pdf'] }),
+  ];
+  assert.deepEqual(extractContextAnchors(messages).writtenPaths, ['output/done.css']);
 });
 
 test('sanitize wraps script tool results as command-result envelopes', () => {
@@ -117,6 +169,7 @@ test('extractContextAnchors captures goal paths and errors', () => {
       name: 'write_workspace_file',
       arguments: { path: 'output/index.html', status: 'written', contextPolicy: 'path-only', bytes: 100 },
     }]),
+    result('1', 'write_workspace_file', { ok: true, path: 'output/index.html' }),
     {
       role: 'toolResult',
       toolCallId: '1',

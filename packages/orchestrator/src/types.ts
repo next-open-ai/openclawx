@@ -31,6 +31,8 @@ export interface ChatMessage {
   fileAttachments?: import('@workmate/contracts').ChatFileAttachment[];
   /** Server-produced, bounded attachment content for model context only. */
   attachmentContext?: string;
+  workflowResult?: import('@workmate/contracts').WorkflowResultReference;
+  responseMode?: 'text-only';
   createdAt: number;
   /** Turn id — the user message that started the exchange. */
   turnId?: string;
@@ -202,6 +204,7 @@ export interface RunRecord {
   status: RunStatus;
   error?: string;
   startedAt: number;
+  failure?: import('@workmate/contracts').RunFailure;
   finishedAt?: number;
   /** Accumulated assistant text (final). */
   transcript: string;
@@ -264,6 +267,8 @@ export interface ProjectTask {
   id: string;
   title: string;
   objective: string;
+  /** Latest project follow-up; previous answer is loaded from durable Run evidence. */
+  followUp?: { content: string; previousRunId?: string };
   employeeId: string;
   skillIds: string[];
   dependsOn: string[];
@@ -354,6 +359,9 @@ export interface ProjectRun {
 }
 
 export interface Project {
+  /** Absent on legacy DAG/workflow projects. */
+  kind?: 'conversation';
+  defaultEmployeeId?: string;
   id: string;
   orgId?: string;
   /** Canonical owner field for future sharing/RBAC evolution. */
@@ -369,6 +377,8 @@ export interface Project {
   status: ProjectStatus;
   mode: ProjectMode;
   workspacePath: string;
+  /** Opt-in isolated task execution; default preserves legacy project-root execution. */
+  executionWorkspaceMode?: 'isolated';
   tasks: ProjectTask[];
   messages: ProjectMessage[];
   createdAt: number;

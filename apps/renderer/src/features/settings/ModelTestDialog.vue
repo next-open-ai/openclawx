@@ -8,18 +8,20 @@ const props = defineProps<{ model: ConfiguredModel; instance: ProviderInstance }
 const emit = defineEmits<{ close: []; tested: [result: { ok: boolean; summary: string }] }>();
 const running = ref(false);
 const result = ref<{ ok: boolean; title: string; detail: string; latencyMs: number } | null>(null);
-const prompt = ref(({ image: '一只放在木桌上的青花瓷杯，柔和自然光，专业产品摄影，画面简洁', tts: '你好，这是 Workmate 语音模型测试。', embedding: 'Workmate 模型测试', 'quantum-code': '请给出一个创建 Bell 态的最小 Qiskit 示例。', decision: '这是一次低风险的连接测试，是否允许继续？', ontology: '问题“钱一直没退回来”是否与候选实体“退款未到账”语义一致？请简短回答。', chat: '请用一句话介绍你自己。', vision: '请描述上传图片的主要内容。', asr: '请上传一段音频进行转写测试。' } as Record<string, string>)[props.model.capability]);
+const prompt = ref(({ image: '一只放在木桌上的青花瓷杯，柔和自然光，专业产品摄影，画面简洁', video: '一只橘猫在阳光下的草地上缓慢奔跑，镜头平稳跟随', tts: '你好，这是 Workmate 语音模型测试。', embedding: 'Workmate 模型测试', 'quantum-code': '请给出一个创建 Bell 态的最小 Qiskit 示例。', decision: '这是一次低风险的连接测试，是否允许继续？', ontology: '问题“钱一直没退回来”是否与候选实体“退款未到账”语义一致？请简短回答。', chat: '请用一句话介绍你自己。', vision: '请描述上传图片的主要内容。', asr: '请上传一段音频进行转写测试。' } as Record<string, string>)[props.model.capability]);
 const media = ref<{ mimeType: string; base64: string } | null>(null);
 const sample = ref<{ name: string; dataUrl: string; base64: string; extension: string } | null>(null);
 const progress = ref(0);
 const elapsedSeconds = ref(0);
 let progressTimer: ReturnType<typeof setInterval> | null = null;
 
-const capabilityName = computed(() => ({ chat: '对话', vision: '图片理解', image: '图片生成', embedding: 'Embedding', asr: '语音识别', tts: '语音合成', 'quantum-code': '量子代码', decision: '决策判断', ontology: '本体语义匹配' } as Record<string, string>)[props.model.capability] || props.model.capability);
+const capabilityName = computed(() => ({ chat: '对话', vision: '图片理解', image: '图片生成', video: '视频生成', embedding: 'Embedding', asr: '语音识别', tts: '语音合成', 'quantum-code': '量子代码', decision: '决策判断', ontology: '本体语义匹配' } as Record<string, string>)[props.model.capability] || props.model.capability);
 const testDescription = computed(() => props.model.capability === 'embedding'
   ? '发送一段最小文本并验证返回向量及维度。'
   : props.model.capability === 'image'
     ? '使用下方测试需求真实生成一张 1024×1024 图片并在弹窗中预览；本次调用可能产生费用。'
+    : props.model.capability === 'video'
+      ? '使用下方测试需求提交真实视频生成任务，完成后在弹窗中预览；生成可能需要数分钟。'
     : props.model.capability === 'tts'
       ? '使用下方文本执行真实语音合成，并在弹窗中试听结果；本次调用可能产生费用。'
       : props.model.capability === 'decision'
@@ -33,8 +35,8 @@ const testDescription = computed(() => props.model.capability === 'embedding'
         : '使用下方预设需求发起真实对话并展示模型回答。');
 const progressStage = computed(() => {
   if (progress.value < 18) return '正在校验配置并连接模型…';
-  if (progress.value < 48) return props.model.capability === 'image' ? '生成任务已提交，模型正在构图…' : '请求已提交，等待模型响应…';
-  if (progress.value < 78) return props.model.capability === 'image' ? '模型正在渲染图片，请稍候…' : '模型正在处理测试内容…';
+  if (progress.value < 48) return props.model.capability === 'image' ? '生成任务已提交，模型正在构图…' : props.model.capability === 'video' ? '视频任务已提交，正在排队生成…' : '请求已提交，等待模型响应…';
+  if (progress.value < 78) return props.model.capability === 'image' ? '模型正在渲染图片，请稍候…' : props.model.capability === 'video' ? '模型正在生成视频，请耐心等待…' : '模型正在处理测试内容…';
   return '正在等待模型完成并整理结果…';
 });
 
@@ -74,9 +76,9 @@ async function runTest() {
   startProgress(startedAt);
   try {
     let detail = '';
-    const tested = await testConfiguredModelCapability({ type: props.instance.type, baseUrl: effectiveProviderBaseUrl(props.instance, props.model.capability), workspaceId: undefined, apiKey: props.instance.apiKey, apiSecret: props.instance.apiSecret, appId: props.instance.appId, model: props.model.modelId, capability: props.model.capability, voice: props.model.voice, imageProtocol: props.model.imageProtocol, prompt: prompt.value, size: '1024x1024', imageDataUrl: props.model.capability === 'vision' ? sample.value?.dataUrl : undefined, audioBase64: props.model.capability === 'asr' ? sample.value?.base64 : undefined, audioExtension: props.model.capability === 'asr' ? sample.value?.extension : undefined });
+    const tested = await testConfiguredModelCapability({ type: props.instance.type, baseUrl: effectiveProviderBaseUrl(props.instance, props.model.capability), workspaceId: undefined, apiKey: props.instance.apiKey, apiSecret: props.instance.apiSecret, appId: props.instance.appId, model: props.model.modelId, capability: props.model.capability, voice: props.model.voice, imageProtocol: props.model.imageProtocol, prompt: prompt.value, size: props.model.capability === 'video' ? '1920x1080' : '1024x1024', imageDataUrl: props.model.capability === 'vision' ? sample.value?.dataUrl : undefined, audioBase64: props.model.capability === 'asr' ? sample.value?.base64 : undefined, audioExtension: props.model.capability === 'asr' ? sample.value?.extension : undefined });
     media.value = tested.media || null;
-    detail = props.model.capability === 'embedding' ? `真实向量请求成功，返回 ${Array.isArray(tested.result.vectors) ? tested.result.vectors.length : 1} 组向量。` : props.model.capability === 'image' ? '图片生成成功，结果如下。' : props.model.capability === 'tts' ? '语音合成成功，可直接试听。' : props.model.capability === 'asr' ? String(tested.result.text || '转写成功。').slice(0, 1200) : String(tested.result.content || '模型调用成功。').slice(0, 1200);
+    detail = props.model.capability === 'embedding' ? `真实向量请求成功，返回 ${Array.isArray(tested.result.vectors) ? tested.result.vectors.length : 1} 组向量。` : props.model.capability === 'image' ? '图片生成成功，结果如下。' : props.model.capability === 'video' ? '视频生成成功，结果如下。' : props.model.capability === 'tts' ? '语音合成成功，可直接试听。' : props.model.capability === 'asr' ? String(tested.result.text || '转写成功。').slice(0, 1200) : String(tested.result.content || '模型调用成功。').slice(0, 1200);
     const value = { ok: true, title: `${capabilityName.value}模型测试通过`, detail, latencyMs: Math.round(performance.now() - startedAt) };
     result.value = value; emit('tested', { ok: true, summary: detail });
   } catch (cause) {
@@ -114,6 +116,7 @@ async function runTest() {
         <label v-if="model.capability === 'vision' || model.capability === 'asr'" class="flex cursor-pointer items-center justify-between rounded-2xl border border-dashed border-[var(--border)] px-4 py-3 text-xs hover:border-[var(--accent)]"><span>{{ sample?.name || (model.capability === 'vision' ? '选择测试图片' : '选择测试音频') }}</span><span class="font-semibold text-[var(--accent)]">浏览…</span><input class="hidden" type="file" :accept="model.capability === 'vision' ? 'image/*' : 'audio/*'" @change="selectSample" /></label>
         <img v-if="model.capability === 'vision' && sample" class="max-h-40 w-full rounded-2xl object-contain" :src="sample.dataUrl" alt="视觉模型测试样本" />
         <img v-if="media?.mimeType.startsWith('image/')" class="max-h-[min(20rem,42dvh)] w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] object-contain" :src="`data:${media.mimeType};base64,${media.base64}`" alt="模型测试生成结果" />
+        <video v-else-if="media?.mimeType.startsWith('video/')" class="max-h-[min(20rem,42dvh)] w-full rounded-2xl border border-[var(--border)] bg-black object-contain" :src="`data:${media.mimeType};base64,${media.base64}`" controls />
         <audio v-else-if="media?.mimeType.startsWith('audio/')" class="w-full" :src="`data:${media.mimeType};base64,${media.base64}`" controls />
         <div v-if="result" :class="['rounded-2xl border p-4', result.ok ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-rose-300 bg-rose-50 text-rose-900']" role="status">
           <div class="flex items-center justify-between gap-3"><strong class="text-sm">{{ result.title }}</strong><span class="text-[11px] tabular-nums">{{ result.latencyMs }} ms</span></div><p class="mt-2 text-xs leading-relaxed">{{ result.detail }}</p>

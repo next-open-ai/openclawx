@@ -10,8 +10,11 @@ try {
   const first = applyRecommendedProviderSetup(empty(), qwen, ['general']);
   assert.equal(first.manualRequired, false);
   assert.equal(first.addedModels, 7);
-  assert.equal(first.settings.models.find((item) => item.capability === 'image')?.modelId, 'wan2.2-t2i-flash');
-  assert.equal(first.settings.models.find((item) => item.capability === 'image')?.imageProtocol, 'dashscope-image-async');
+  assert.equal(first.settings.models.find((item) => item.capability === 'chat')?.modelId, 'qwen3.8-flash');
+  assert.equal(first.settings.models.find((item) => item.capability === 'vision')?.modelId, 'qwen3.8-flash');
+  assert.equal(first.settings.models.find((item) => item.capability === 'image')?.modelId, 'qwen-image-3.0');
+  assert.equal(first.settings.models.find((item) => item.capability === 'image')?.imageProtocol, 'openai-images');
+  assert.equal(first.settings.models.find((item) => item.capability === 'asr')?.modelId, 'qwen-audio-3.1-asr-flash-filetrans');
   assert.equal(first.settings.models.find((item) => item.capability === 'tts')?.voice, 'longanhuan_v3.1');
   assert.ok(first.settings.capabilityBindings.some((item) => item.capability === 'vision' && item.enabled));
   assert.ok(first.settings.agentCapabilityAssignments.some((item) => item.agentId === 'general' && item.capability === 'asr' && item.mode === 'auto'));
@@ -32,6 +35,8 @@ try {
   assert.equal(withWorkspace.settings.models.find((item) => item.capability === 'image')?.modelId, 'qwen-image-3.0');
   assert.equal(withWorkspace.settings.models.find((item) => item.capability === 'image')?.imageProtocol, 'openai-images');
   assert.ok(providerSuggestedByCapability.qwen.image.includes('qwen-image-3.0'));
+  assert.deepEqual(providerSuggestedByCapability.qwen.chat.slice(0, 2), ['qwen3.8-flash', 'qwen3.8-max']);
+  assert.deepEqual(providerSuggestedByCapability.qwen.vision.slice(0, 2), ['qwen3.8-flash', 'qwen3.8-max']);
   assert.equal(effectiveProviderBaseUrl({ ...qwen, service: 'unified' }, 'chat'), 'https://dashscope.aliyuncs.com/compatible-mode/v1');
   assert.equal(effectiveProviderBaseUrl({ ...qwen, service: 'unified' }, 'asr'), 'https://dashscope.aliyuncs.com/api/v1');
   assert.ok(providerDerivedEndpoints({ ...qwen, service: 'unified' }).some((item) => item.url === 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime'));
@@ -81,7 +86,25 @@ try {
 
   const zhipu = { id: 'glm-1', type: 'glm', name: '智谱 GLM', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', apiKey: 'test', service: 'language', disableThinking: false };
   const zhipuSetup = applyRecommendedProviderSetup(empty(), zhipu, ['general']);
-  assert.deepEqual(zhipuSetup.settings.models.map((item) => item.capability), ['chat', 'image', 'vision', 'embedding']);
+  assert.deepEqual(zhipuSetup.settings.models.map((item) => item.capability), ['chat', 'image', 'video', 'vision', 'embedding']);
+  for (const [capability, modelId] of Object.entries({ chat: 'glm-5.3', image: 'cogview-3-flash', video: 'cogvideox-flash', vision: 'glm-4.6v-flash' })) {
+    assert.equal(zhipuSetup.settings.models.find((item) => item.capability === capability)?.modelId, modelId);
+    assert.ok(providerSuggestedByCapability.glm[capability].includes(modelId));
+  }
+  assert.equal(zhipuSetup.settings.models.find((item) => item.capability === 'image')?.imageProtocol, 'openai-images');
+  assert.ok(zhipuSetup.settings.capabilityBindings.some((item) => item.capability === 'video' && item.enabled));
+  assert.equal(applyRecommendedProviderSetup(zhipuSetup.settings, zhipu, ['general']).addedModels, 0);
+  const oldGlm = empty();
+  oldGlm.providerInstances.push(zhipu);
+  oldGlm.models.push({ id: 'old-glm-chat', providerInstanceId: zhipu.id, capability: 'chat', modelId: 'glm-4.5-flash' });
+  oldGlm.models.push({ id: 'old-glm-image', providerInstanceId: zhipu.id, capability: 'image', modelId: 'glm-image', imageProtocol: 'openai-images' });
+  oldGlm.activeChatModelId = 'old-glm-chat';
+  oldGlm.capabilityBindings.push({ capability: 'image', modelId: 'old-glm-image', enabled: true, updatedAt: '2026-10-09T00:00:00.000Z' });
+  const upgradedGlm = applyRecommendedProviderSetup(oldGlm, zhipu, ['general']);
+  assert.equal(upgradedGlm.settings.activeChatModelId, 'old-glm-chat');
+  assert.equal(upgradedGlm.settings.capabilityBindings.find((item) => item.capability === 'image')?.modelId, 'old-glm-image');
+  assert.ok(upgradedGlm.settings.models.some((item) => item.modelId === 'glm-5.3'));
+  assert.ok(upgradedGlm.settings.models.some((item) => item.modelId === 'cogview-3-flash'));
 
   const existing = empty();
   existing.providerInstances.push({ id: 'custom', type: 'openai-compatible', name: '已有连接', baseUrl: 'https://example.test/v1', apiKey: 'x', disableThinking: false });

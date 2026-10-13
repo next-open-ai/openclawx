@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {TemplateTaskService} from '../template-tasks.js';
+import {MemoryStore} from '../storage/memory.js';
+import {businessSummaryTemplate} from '../task-skills/business-summary/index.js';
+
+test('TP-T21: optional interfaces support verify/publish/create/edit/run/default report and JSON',async()=>{
+  const owner={orgId:'org',userId:'optional-ui'};
+  const store=new MemoryStore();let calls=0;
+  const service=new TemplateTaskService(store,undefined,undefined,async(_owner,template,parameters,prompt)=>{
+    calls++;assert.equal(template.agent?.employeeId,'general');assert.equal(prompt,'执行任务');
+    assert.deepEqual(parameters,{});return {text:'任务完成'};
+  });
+  const {id:_id,version:_version,...base}=businessSummaryTemplate;
+  const config={...base,defaults:{},agent:{employeeId:'general',prompt:'执行任务'}};
+  let record=await service.saveDefinition(owner,config);
+  await assert.rejects(service.publish(owner,record.id,record.revision),/配置验证/);
+  assert.equal((await service.previewInput(owner,record.id)).html,'');
+  const trial=await service.trial(owner,record.id,record.revision);
+  assert.equal(trial.mode,'configuration');assert.equal(calls,0);assert.deepEqual(trial.data,{});
+  assert.ok(trial.checks.includes('使用默认任务报告界面'));
+  assert.ok(trial.checks.some(check=>check.includes('未定制参数界面')));
+  await assert.rejects(service.trial({...owner,userId:'other'},record.id,record.revision),/不存在/);
+  await assert.rejects(service.trial(owner,record.id,record.revision+1),/已更新/);
+  record=await service.publish(owner,record.id,record.revision);
+  assert.equal(await service.inputView(record.id,record.draft.version,owner),'');
+  assert.deepEqual(await service.validateParameters(owner,record.id,record.draft.version,{}),{});
+  await assert.rejects(service.validateParameters(owner,record.id,record.draft.version,[]),/JSON 对象/);
+  let task=await service.save(owner,{name:'无定制界面',templateId:record.id,templateVersion:record.draft.version,parameters:{}});
+  task=await service.save(owner,{name:'修改名称',templateId:record.id,templateVersion:record.draft.version,parameters:{}},task.id,task.revision);
+  const run=await service.run(owner,task.id,'first');
+  assert.equal(run.status,'completed');assert.equal(calls,1);
+  assert.equal(run.jsonResult?.kind,'json-result');assert.deepEqual(run.jsonResult?.input.parameters,{});
+  assert.equal(run.result?.data.text,'任务完成');
+  const result=await service.result(owner,task.id,run.id);assert.match(service.render(result).html??'',/任务完成/);
+  record=await service.saveDefinition(owner,{...config,defaults:{month:'九月'}},record.id,record.revision);
+  assert.deepEqual((await service.trial(owner,record.id,record.revision)).data,{month:'九月'});
+  assert.equal(calls,1);
+  assert.match(await service.inputView(businessSummaryTemplate.id,businessSummaryTemplate.version),/form/i,'Skill native form remains available');
+});

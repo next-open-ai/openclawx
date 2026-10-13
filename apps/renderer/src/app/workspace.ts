@@ -21,7 +21,7 @@ import {
 } from './employees.js';
 
 export type { Employee, EmployeeDraft, EmployeeId } from './employees.js';
-export type View = 'chat' | 'employees' | 'capabilities' | 'knowledge' | 'assets' | 'data' | 'automations' | 'projects' | 'remote' | 'env' | 'docs' | 'settings';
+export type View = 'chat' | 'employees' | 'capabilities' | 'knowledge' | 'assets' | 'data' | 'automations' | 'projects' | 'workflows' | 'algorithms' | 'remote' | 'env' | 'docs' | 'settings';
 export type CollaborationDelivery = 'synthesize' | 'direct';
 export interface CollaborationRun { employeeId: EmployeeId; task: string; status: 'running' | 'completed' | 'failed'; summary: string; activities: ToolActivity[]; error?: string; }
 export type ScheduleTaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -46,6 +46,7 @@ export interface ChatScheduleState {
   selectedTaskId?: string;
 }
 export interface Message {
+  workflowResult?: import('@workmate/contracts').WorkflowResultReference;
   attachments?: import('@workmate/contracts').ChatImageAttachment[];
   fileAttachments?: import('@workmate/contracts').ChatFileAttachment[];
   id: string;
@@ -81,6 +82,8 @@ export interface Conversation {
 }
 export interface ProjectTaskDraft { title: string; objective: string; employeeId: EmployeeId; skillIds: string[]; dependsOn?: number[]; contract?: { outputs?: string[]; acceptance?: string; maxSteps?: number; timeoutMs?: number; maxAttempts?: number } };
 export interface ProjectTaskTranscript {
+  error?: string;
+  failure?: import('@workmate/contracts').RunFailure;
   assistantContent: string;
   reasoningContent?: string;
   activities: ToolActivity[];
@@ -239,7 +242,7 @@ function profileInstructions(employee: Employee, extra = '') {
   const researchMode = employee.id === 'research'
     ? ' Research output mode: deliver a concise Markdown or structured research brief with findings, evidence/source pointers, uncertainty, and next actions. Do not narrate planning or self-correction. Use only the minimum relevant tools; after a failed file operation, state the concrete blocker instead of repeatedly retrying the same write/read path.'
     : '';
-  return `You are QuantumAI's digital employee "${role}" (${employee.id}).${roleBrief} ${focus} ${languageDirective} Reply in the user's language when it differs only because the user explicitly requests another language.${researchMode} ${extra}`.trim();
+  return `You are Workmate's digital employee "${role}" (${employee.id}). Introduce yourself using this employee name; describe capabilities accurately without exaggeration.${roleBrief} ${focus} ${languageDirective} Reply in the user's language when it differs only because the user explicitly requests another language.${researchMode} ${extra}`.trim();
 }
 
 function collaboratorFocus(employee: Employee) {
@@ -371,6 +374,7 @@ export function useWorkspace() {
         const base: Message = {
           attachments: message.attachments,
           fileAttachments: message.fileAttachments,
+          workflowResult: message.workflowResult,
           id: message.id,
           role: message.role,
           content: message.content || liveText || failedText || cancelledText || old?.content || '',
@@ -627,6 +631,7 @@ export function useWorkspace() {
         content: text,
         attachments: userMessage.attachments,
         fileAttachments: userMessage.fileAttachments,
+        workflowResult: userMessage.workflowResult,
         employeeId: conversation.employeeId,
         context,
       });
@@ -1032,9 +1037,10 @@ export function useWorkspace() {
       void writeStored('workspace.default-employee', currentEmployeeId.value);
     }
   };
-  const addMessage = async (content: string, model: ProviderConfig, options: { attachments?: import('@workmate/contracts').ChatImageAttachment[]; fileAttachments?: import('@workmate/contracts').ChatFileAttachment[]; employeeId?: EmployeeId; skillIds?: string[]; collaboratorIds?: EmployeeId[]; collaborationDelivery?: CollaborationDelivery; newConversation?: boolean; onlineSearch?: boolean; autoSchedule?: boolean; onRunAccepted?: (sessionId: string, runId: string) => void } = {}) => {
+  const addMessage = async (content: string, model: ProviderConfig, options: { workflowResult?: import('@workmate/contracts').WorkflowResultReference; attachments?: import('@workmate/contracts').ChatImageAttachment[]; fileAttachments?: import('@workmate/contracts').ChatFileAttachment[]; employeeId?: EmployeeId; skillIds?: string[]; collaboratorIds?: EmployeeId[]; collaborationDelivery?: CollaborationDelivery; newConversation?: boolean; onlineSearch?: boolean; autoSchedule?: boolean; onRunAccepted?: (sessionId: string, runId: string) => void } = {}) => {
     const text = content.trim(); if (!text) return undefined;
-    const hasImages = Boolean(options.attachments?.length || activeConversation.value?.messages.some((message) => message.attachments?.length));
+    if (options.workflowResult && (options.autoSchedule || options.collaboratorIds?.length || options.attachments?.length || options.fileAttachments?.length)) throw new Error('成果问答不支持自动调度、协作者或混入附件。');
+    const hasImages = !options.workflowResult && Boolean(options.attachments?.length || activeConversation.value?.messages.some((message) => message.attachments?.length));
     if (hasImages && (options.autoSchedule || options.collaboratorIds?.length)) throw new Error('含图片的会话暂只支持单员工对话，请关闭自动调度并移除协作者。');
     const effectiveModel = modelForEmployee(options.employeeId ?? activeConversation.value?.employeeId ?? currentEmployeeId.value, model) ?? model;
     const visionEmployeeId = options.employeeId ?? activeConversation.value?.employeeId ?? currentEmployeeId.value;
@@ -1049,7 +1055,7 @@ export function useWorkspace() {
       conversation = { id: crypto.randomUUID(), title: text.slice(0, 28), employeeId: currentEmployeeId.value, messages: [], updatedAt: Date.now() };
       conversations.value.unshift(conversation); activeConversationId.value = conversation.id;
     }
-    conversation.messages.push({ id: crypto.randomUUID(), role: 'user', content: text, attachments: options.attachments, fileAttachments: options.fileAttachments });
+    conversation.messages.push({ id: crypto.randomUUID(), role: 'user', content: text, workflowResult: options.workflowResult, attachments: options.attachments, fileAttachments: options.fileAttachments });
     const userMessage = conversation.messages[conversation.messages.length - 1];
     conversation.updatedAt = Date.now();
     conversations.value = [...conversations.value].sort((a, b) => b.updatedAt - a.updatedAt);
@@ -1423,7 +1429,7 @@ export function useWorkspace() {
     }
 
     const plannedCollaborators = [...new Set(options.collaboratorIds ?? [])].filter((cid) => cid !== employee.id).slice(0, 3);
-    if ((serverChatActive() || hasImages || options.onRunAccepted) && !plannedCollaborators.length) {
+    if ((serverChatActive() || hasImages || options.onRunAccepted || options.workflowResult) && !plannedCollaborators.length) {
       // M0 server-backed turn: the orchestration server owns the run/approval
       // state machine; UI only mirrors deltas and persists the local copy.
       // Skill hydration happens once inside serverChatTurn (avoid double IO here).
@@ -1755,7 +1761,7 @@ HARD PLANNING CONSTRAINTS (must obey):
 
     // Phase 1 — structure only (roles + edges).
     let structureOut = '';
-    const structurePrompt = `You are QuantumAI's project coordinator (phase 1: structure). Preferred collaboration mode: ${preferredMode}. ${modeGuide[preferredMode]} If the goal cannot honestly fit that mode, still propose the best graph and set suggestedMode accordingly.
+    const structurePrompt = `You are Workmate's project coordinator (phase 1: structure). Preferred collaboration mode: ${preferredMode}. ${modeGuide[preferredMode]} If the goal cannot honestly fit that mode, still propose the best graph and set suggestedMode accordingly.
 ${minimalRules}
 
 Available employees (choose only from these):
@@ -1854,7 +1860,7 @@ dependsOn are 0-based indices of prior tasks. Goal: ${goal}`;
 
     // Phase 2 — fill objectives + contracts for the fixed structure.
     let detailOut = '';
-    const detailPrompt = `You are QuantumAI's project coordinator (phase 2: objectives). Fill objectives for this fixed task structure. Return ONLY a JSON array aligned 1:1 with the structure (same length/order). Each item: {"objective":string,"skillIds":string[],"contract"?:{"outputs"?:string[],"acceptance"?:string,"maxSteps"?:number,"maxAttempts"?:number}}. The platform baseline is 50 tool steps for every project task. Omit contract.maxSteps when 50 is sufficient; set it only when a task clearly needs MORE than 50. Never set it below 50. Prefer concrete deliverable contracts when the goal clearly needs files, but do not force fixed filenames. Keep objectives focused — do not invent work that would require extra agents. Structure: ${JSON.stringify(structureTasks)}. Goal: ${goal}`;
+    const detailPrompt = `You are Workmate's project coordinator (phase 2: objectives). Fill objectives for this fixed task structure. Return ONLY a JSON array aligned 1:1 with the structure (same length/order). Each item: {"objective":string,"skillIds":string[],"contract"?:{"outputs"?:string[],"acceptance"?:string,"maxSteps"?:number,"maxAttempts"?:number}}. The platform baseline is 50 tool steps for every project task. Omit contract.maxSteps when 50 is sufficient; set it only when a task clearly needs MORE than 50. Never set it below 50. Prefer concrete deliverable contracts when the goal clearly needs files, but do not force fixed filenames. Keep objectives focused — do not invent work that would require extra agents. Structure: ${JSON.stringify(structureTasks)}. Goal: ${goal}`;
     await streamChat({
       profile: { id: 'project-coordinator-detail', name: 'Project coordinator', instructions: 'Output valid JSON array only.', toolIds: [] },
       messages: [{ role: 'user', content: detailPrompt }],

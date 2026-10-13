@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { prepareConversationWorkspace, publishConversationWorkspace } from './project-workspace.js';
 import os from 'node:os';
 import path from 'node:path';
 import { cleanWorkspaceScrap, promoteWorkspaceDeliverablesToProject } from '@workmate/agent-core';
@@ -42,6 +43,18 @@ const PROJECT_RUN_NS = 'project-run';
 
 const PARKED_POLL_MS = 400;
 
+/** Attempt identity prevents a follow-up from replacing an older answer to the same task. */
+function appendTaskReply(project: Project, task: ProjectTask, run: RunRecord, projectRunId?: string) {
+  if (run.status === 'running' || run.status === 'waiting-approval') return;
+  const transcript = run.transcript.trim();
+  const content = run.status === 'failed' && run.failure?.code === 'UPSTREAM_BALANCE' && run.error
+    ? [transcript, `⚠ 本次执行未完成：${run.error}`].filter(Boolean).join('\n\n')
+    : transcript || run.error;
+  if (!content || project.messages.some(message => message.id === run.id)) return;
+  project.messages.push({ id: run.id, role: 'assistant', content, employeeId: task.employeeId, taskId: task.id,
+    runId: projectRunId, createdAt: run.finishedAt ?? Date.now() });
+}
+
 function runWorkspaceRoot(runId: string) {
   return path.join(
     process.env.WORKMATE_WORKSPACES_DIR || path.join(os.homedir(), '.workmate', 'workspaces'),
@@ -77,10 +90,13 @@ export interface ProjectTaskDraft {
 }
 
 export interface CreateProjectDraftInput {
+  kind?: 'conversation';
+  defaultEmployeeId?: string;
   name?: string;
   goal: string;
   mode: 'waterfall' | 'parallel' | 'discussion' | 'dag';
   workspacePath: string;
+  executionWorkspaceMode?: 'isolated';
   orgId?: string;
   ownerUserId?: string;
   userId?: string;
@@ -104,10 +120,12 @@ export interface ProjectServiceOptions {
    * confirming a project). Return null to leave the task failed with a clear
    * message. Never persists secrets.
    */
-  contextResolver?: (task: ProjectTask) => ChatRunContext | null | Promise<ChatRunContext | null>;
+  contextResolver?: (task: ProjectTask, ownerUserId?: string) => ChatRunContext | null | Promise<ChatRunContext | null>;
 }
 
 export interface ConfirmProjectInput {
+  /** Explicit recovery of a failed/cancelled project; successful nodes stay intact. */
+  resumeIncomplete?: boolean;
   /** Per-task resolved run context (required unless `defaultContext` covers it). */
   runContextByTask?: Record<string, ChatRunContext>;
   /** Fallback context for tasks without an explicit entry. */
@@ -231,6 +249,8 @@ export class ProjectService {
   private readonly scheduleEpoch = new Map<string, number>();
   /** In-flight task starts for a project run (dedupe concurrent pulses). */
   private readonly launchingTasks = new Map<string, Set<string>>();
+  /** Ownership spans the entire scheduler, not only individual execute calls. */
+  private readonly liveProjectRuns = new Map<string, string>();
 
   constructor(options: ProjectServiceOptions) {
     this.store = options.store;
@@ -260,61 +280,67 @@ export class ProjectService {
     let projectsTouched = 0;
     let tasksTouched = 0;
     for (const id of ids) {
-      const project = await this.getProject(id);
-      if (!project || project.status !== 'running') continue;
-      let changed = false;
-      for (const task of project.tasks) {
-        if (task.status !== 'running' || !task.runId) continue;
-        // Live attempts register an AbortController; absence means orphaned.
-        if (this.taskAborts.has(task.id)) continue;
-        const run = await this.engine.load(task.runId);
-        if (run && run.status !== 'running') {
-          if (run.status === 'completed') {
-            task.status = 'completed';
-            task.error = run.error;
-          } else {
-            task.status = run.status === 'cancelled' ? 'cancelled' : 'failed';
-            task.error = run.error;
-          }
-          task.finishedAt = run.finishedAt ?? Date.now();
-          changed = true;
-          tasksTouched += 1;
-          continue;
-        }
-        const settled = await this.settleOrphanedTask(project, task, run);
-        if (settled) {
-          changed = true;
-          tasksTouched += 1;
-        }
-      }
-
-      // Scheduler orphan: project still "running" but no live execute() and no
-      // task currently running — remaining queued work will never start.
-      const hasLiveAttempt = project.tasks.some((task) => this.taskAborts.has(task.id));
-      const hasRunningTask = project.tasks.some((task) => task.status === 'running');
-      if (!hasLiveAttempt && !hasRunningTask && project.activeRunId) {
+      // Boot recovery may overlap the first API requests. Serialize with all
+      // scheduler writes and never save a snapshot captured before a live run.
+      const recovered = await withKeyLock(`project-doc:${id}`, async () => {
+        const project = await this.getProject(id);
+        if (!project || project.status !== 'running' || this.liveProjectRuns.has(id)) return null;
+        let changed = false;
         for (const task of project.tasks) {
-          if (task.status !== 'queued') continue;
-          task.status = 'failed';
-          task.error = '调度进程已中断，排队任务未执行。可点击「再次调度」继续。';
-          task.finishedAt = Date.now();
-          changed = true;
-          tasksTouched += 1;
+          if (task.status !== 'running' || !task.runId) continue;
+          // Live attempts register an AbortController; absence means orphaned.
+          if (this.taskAborts.has(task.id)) continue;
+          const run = await this.engine.load(task.runId);
+          if (run?.status === 'waiting-approval') continue;
+          if (run && run.status !== 'running') {
+            if (run.status === 'completed') {
+              task.status = 'completed';
+              task.error = run.error;
+            } else {
+              task.status = run.status === 'cancelled' ? 'cancelled' : 'failed';
+              task.error = run.error;
+            }
+            task.finishedAt = run.finishedAt ?? Date.now();
+            changed = true;
+            tasksTouched += 1;
+            continue;
+          }
+          const settled = await this.settleOrphanedTask(project, task, run);
+          if (settled) {
+            changed = true;
+            tasksTouched += 1;
+          }
         }
-      }
 
-      if (!changed && hasLiveAttempt) continue;
-      if (!changed && hasRunningTask) continue;
-      // Even with no task mutations, close a project whose tasks are all terminal.
-      const allTerminal = project.tasks.every(
-        (task) => task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled',
-      );
-      if (!changed && !(allTerminal && project.activeRunId)) continue;
+        // Scheduler orphan: project still "running" but no live execute() and no
+        // task currently running — remaining queued work will never start.
+        const hasLiveAttempt = project.tasks.some((task) => this.taskAborts.has(task.id));
+        const hasRunningTask = project.tasks.some((task) => task.status === 'running');
+        if (!hasLiveAttempt && !hasRunningTask && project.activeRunId) {
+          for (const task of project.tasks) {
+            if (task.status !== 'queued') continue;
+            task.status = 'failed';
+            task.error = '调度进程已中断，排队任务未执行。可点击「恢复执行」继续未完成步骤。';
+            task.finishedAt = Date.now();
+            changed = true;
+            tasksTouched += 1;
+          }
+        }
 
-      projectsTouched += 1;
-      await this.saveProject(project);
-      this.hub.publish(`project:${project.id}`, { type: 'project.updated', projectId: project.id });
-      await this.maybeFinish(project.id, project.activeRunId);
+        if (!changed && hasLiveAttempt) return null;
+        if (!changed && hasRunningTask) return null;
+        // Even with no task mutations, close a project whose tasks are all terminal.
+        const allTerminal = project.tasks.every(
+          (task) => task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled',
+        );
+        if (!changed && !(allTerminal && project.activeRunId)) return null;
+
+        projectsTouched += 1;
+        await this.saveProject(project);
+        this.hub.publish(`project:${project.id}`, { type: 'project.updated', projectId: project.id });
+        return { id: project.id, activeRunId: project.activeRunId };
+      });
+      if (recovered) await this.maybeFinish(recovered.id, recovered.activeRunId);
     }
     return { projects: projectsTouched, tasks: tasksTouched };
   }
@@ -323,7 +349,7 @@ export class ProjectService {
     if (!task.runId) return false;
     const workspaceRoot = runWorkspaceRoot(task.runId);
     let published = 0;
-    if (project.workspacePath) {
+    if (project.workspacePath && project.kind !== 'conversation') {
       try {
         published = (await promoteWorkspaceDeliverablesToProject(workspaceRoot, project.workspacePath)).length;
       } catch {
@@ -341,8 +367,8 @@ export class ProjectService {
       : '执行进程已中断，任务未正常结束。可重试该任务。';
 
     if (run && run.status === 'running') {
-      run.status = hasProgress ? 'completed' : 'failed';
-      run.error = hasProgress ? undefined : message;
+      run.status = 'failed';
+      run.error = message;
       run.finishedAt = now;
       if (hasProgress && !run.transcript.trim()) {
         run.transcript = `（任务产出已写入工作区；${message}）`;
@@ -361,9 +387,9 @@ export class ProjectService {
       this.hub.publish(`project:${project.id}`, settled);
     }
 
-    task.status = hasProgress ? 'completed' : 'failed';
+    task.status = 'failed';
     task.finishedAt = now;
-    task.error = hasProgress ? undefined : message;
+    task.error = message;
     this.hub.publish(`project:${project.id}`, {
       type: 'project.task',
       projectId: project.id,
@@ -378,10 +404,22 @@ export class ProjectService {
    * Project CRUD (draft state)
    * ------------------------------------------------------------------ */
 
-  async createDraft(input: CreateProjectDraftInput): Promise<Project> {
+  /** Trusted service entry for recoverable preparation across separate stores. */
+  async createDraftOnce(id: string, input: CreateProjectDraftInput): Promise<Project> {
+    return withKeyLock(`project-create:${id}`, async () => {
+      const existing = await this.getProject(id);
+      if (existing) {
+        if (existing.orgId !== input.orgId || (existing.ownerUserId ?? existing.userId) !== (input.ownerUserId ?? input.userId)) throw new Error('Project ownership mismatch.');
+        return existing;
+      }
+      return this.createDraft(input, id);
+    });
+  }
+
+  async createDraft(input: CreateProjectDraftInput, reservedId?: string): Promise<Project> {
     const now = Date.now();
     const ownerUserId = input.ownerUserId ?? input.userId;
-    const tasks = input.tasks.map(draftToTask);
+    const tasks = input.kind === 'conversation' ? [] : input.tasks.map(draftToTask);
     applyPlanningStrategy(input.mode, tasks);
     validateProjectTaskGraph(tasks);
     const plan = {
@@ -393,7 +431,9 @@ export class ProjectService {
     };
     for (const task of tasks) task.planVersion = 1;
     const project: Project = {
-      id: randomUUID(),
+      kind: input.kind,
+      defaultEmployeeId: input.defaultEmployeeId,
+      id: reservedId ?? randomUUID(),
       orgId: input.orgId,
       ownerUserId,
       userId: ownerUserId,
@@ -402,13 +442,14 @@ export class ProjectService {
       name: (input.name ?? '').trim() || input.goal.trim().slice(0, 32),
       goal: input.goal.trim(),
       status: 'draft',
-      mode: input.mode,
+      mode: input.kind === 'conversation' ? 'dag' : input.mode,
       workspacePath: input.workspacePath,
+      executionWorkspaceMode: input.kind === 'conversation' ? 'isolated' : input.executionWorkspaceMode,
       coordinator: input.coordinator,
       grantsSession: {},
       grantsAlways: {},
       tasks,
-      plan,
+      plan: input.kind === 'conversation' ? undefined : plan,
       planHistory: [],
       changeSets: [],
       messages: [
@@ -416,7 +457,7 @@ export class ProjectService {
           id: randomUUID(),
           role: 'system',
           content:
-            '项目已创建（Plan v1）。确认启动后，调度器按 DAG 依赖执行；waterfall/parallel 等仅用于生成边。',
+            input.kind === 'conversation' ? '项目已就绪。发送问题开始工作，成果将保存在当前项目目录。' : '项目已创建（Plan v1）。确认启动后，调度器按 DAG 依赖执行；waterfall/parallel 等仅用于生成边。',
           createdAt: now,
         },
       ],
@@ -431,6 +472,7 @@ export class ProjectService {
   async updateDraft(id: string, patch: { name?: string; goal?: string; mode?: Project['mode']; workspacePath?: string; tasks?: ProjectTaskDraft[] }): Promise<Project | null> {
     const out = await this.mutateProject(id, (project) => {
       if (project.status !== 'draft') throw new Error('Only draft projects can be edited.');
+      if (project.kind === 'conversation' && (patch.tasks || patch.mode || patch.workspacePath)) throw new Error('持续对话项目不能配置 DAG 或更换成果目录。');
       if (patch.name !== undefined) project.name = patch.name.trim().slice(0, 80) || project.name;
       if (patch.goal !== undefined) project.goal = patch.goal.trim();
       if (patch.mode !== undefined) project.mode = patch.mode;
@@ -481,6 +523,7 @@ export class ProjectService {
     if (!input.tasks?.length) throw new Error('tasks are required.');
     const out = await this.mutateProject(id, (project) => {
       if (project.status === 'running') throw new Error('Project is running.');
+      if (project.kind === 'conversation') throw new Error('持续对话项目不需要重新规划；请发送消息或调用工作流。');
       ensureProjectPlan(project);
       const incoming = input.tasks.map(draftToTask);
       applyPlanningStrategy(project.mode, incoming);
@@ -536,6 +579,14 @@ export class ProjectService {
     input: DispatchProjectInstructionInput,
     confirmInput: ConfirmProjectInput = {},
   ): Promise<{ project: Project; run: ProjectRun } | null> {
+    return withKeyLock(`project-turn:${id}`, () => this.dispatchInstructionUnlocked(id, input, confirmInput));
+  }
+
+  private async dispatchInstructionUnlocked(
+    id: string,
+    input: DispatchProjectInstructionInput,
+    confirmInput: ConfirmProjectInput = {},
+  ): Promise<{ project: Project; run: ProjectRun } | null> {
     const content = input.content.trim();
     if (!content) throw new Error('Instruction content is required.');
     const employeeId = input.employeeId.trim();
@@ -543,8 +594,18 @@ export class ProjectService {
     const label = (input.employeeLabel ?? employeeId).trim() || employeeId;
 
     let changeSetId: string | undefined;
-    await this.mutateProject(id, (project) => {
+    await this.mutateProject(id, async (project) => {
       if (project.status === 'running') throw new Error('Project is already running.');
+      if (project.kind === 'conversation') {
+        // Each send is an independent turn, not a replan of previous work.
+        const target = draftToTask({ title: content.slice(0, 80), objective: content, employeeId, skillIds: [], dependsOn: [] });
+        project.tasks.push(target);
+        project.defaultEmployeeId = employeeId;
+        changeSetId = target.id;
+        project.messages.push({ id: randomUUID(), role: 'user', content, employeeId, taskId: target.id, changeSetId, createdAt: Date.now() });
+        project.summary = undefined;
+        return;
+      }
       const plan = ensureProjectPlan(project);
       const target =
         [...project.tasks].reverse().find(
@@ -555,7 +616,15 @@ export class ProjectService {
         );
       if (!target) throw new Error('Selected employee is not a project member.');
 
+      // Older projects did not persist task replies in the project thread. Restore only real Run evidence.
+      for (const task of project.tasks) {
+        if (!task.runId || project.messages.some(message => message.id === task.runId)) continue;
+        const prior = await this.engine.load(task.runId);
+        if (prior && prior.status !== 'running') appendTaskReply(project, task, prior);
+      }
+
       const now = Date.now();
+      target.followUp = { content, previousRunId: target.runId ?? target.followUp?.previousRunId };
       target.objective = `${target.objective}\n\n本轮项目指令：${content}`;
       const invalidated = invalidateTaskCascade(project.tasks, target.id, {
         planVersion: plan.version,
@@ -651,18 +720,20 @@ export class ProjectService {
   async confirmProject(id: string, input: ConfirmProjectInput = {}): Promise<{ project: Project; run: ProjectRun } | null> {
     const out = await this.mutateProject(id, async (project) => {
       if (project.status === 'running') throw new Error('Project is already running.');
-      const plan = ensureProjectPlan(project);
-      applyPlanningStrategy(project.mode, project.tasks.filter((task) => task.status !== 'superseded'));
+      if (input.resumeIncomplete && project.status !== 'failed' && project.status !== 'cancelled') throw new Error('Only failed or cancelled projects can be resumed.');
+      if (project.kind === 'conversation' && !input.changeSetId) throw new Error('请发送新消息继续项目；不会自动重跑历史对话。');
+      const plan = project.kind === 'conversation' ? undefined : ensureProjectPlan(project);
+      if (project.kind !== 'conversation') applyPlanningStrategy(project.mode, project.tasks.filter((task) => task.status !== 'superseded'));
       validateProjectTaskGraph(project.tasks);
-      const activeTasks = project.tasks.filter((task) => task.status !== 'superseded');
+      const activeTasks = project.tasks.filter((task) => task.status !== 'superseded' && (project.kind !== 'conversation' || task.id === input.changeSetId));
       if (project.status === 'draft' && activeTasks.length === 0) throw new Error('Project has no tasks to run.');
       const now = Date.now();
-      const restartAll = project.status === 'completed' || project.status === 'failed' || project.status === 'cancelled';
+      const restartAll = !input.changeSetId && !input.resumeIncomplete && (project.status === 'completed' || project.status === 'failed' || project.status === 'cancelled');
 
-      // Archive the previous conversation onto the latest settled run before opening a fresh thread.
-      // Keep messages that belong to the ChangeSet opening this run (e.g. instruction dispatch).
-      const keepMessages = input.changeSetId
-        ? project.messages.filter((message) => message.changeSetId === input.changeSetId)
+      // Keep a historical snapshot; follow-ups and recovery retain the visible
+      // thread, while explicit full scheduling starts a fresh thread.
+      const keepMessages = input.changeSetId || input.resumeIncomplete
+        ? project.messages
         : [];
       const archiveMessages = input.changeSetId
         ? project.messages.filter((message) => message.changeSetId !== input.changeSetId)
@@ -688,7 +759,7 @@ export class ProjectService {
         startedAt: now,
         status: 'running',
         taskIds: activeTasks.map((task) => task.id),
-        planVersion: plan.version,
+        planVersion: plan?.version,
         changeSetId: input.changeSetId,
         messages: [],
       };
@@ -696,18 +767,21 @@ export class ProjectService {
       project.status = 'running';
       project.summary = undefined;
       project.messages = [
+        ...keepMessages,
         {
           id: randomUUID(),
           role: 'system',
-          content: archiveMessages.length
+          content: input.resumeIncomplete ? '已恢复未完成步骤，原对话与已完成成果保留。'
+            : input.changeSetId ? '已收到补充问题，正在原项目中继续处理。'
+            : archiveMessages.length
             ? '新一轮调度已开始。上一轮对话已归档到历史运行。'
             : '本轮调度已开始。',
           createdAt: now,
           runId: projectRun.id,
         },
-        ...keepMessages.map((message) => ({ ...message, runId: projectRun.id })),
       ];
       for (const task of project.tasks) {
+        if (project.kind === 'conversation' && !activeTasks.includes(task)) continue;
         // Full re-schedule after a terminal project resets completed work; otherwise keep successes.
         if (task.status === 'superseded') continue;
         if (!restartAll && task.status === 'completed') continue;
@@ -719,6 +793,9 @@ export class ProjectService {
         task.finishedAt = undefined;
       }
       await writeJson(this.store, this.projectRunKey(projectRun.id), projectRun);
+      // Register before releasing the document lock: boot recovery must not
+      // mistake the gap before runScheduler/execute for an abandoned run.
+      this.liveProjectRuns.set(id, projectRun.id);
       return { projectRun };
     });
     if (!out) return null;
@@ -766,7 +843,7 @@ export class ProjectService {
     if (project.status === 'draft') throw new Error('Project has not started yet.');
     if (task.status === 'running') throw new Error('Task is already running.');
 
-    const runContext = context ?? ((await this.contextResolver?.(task)) ?? undefined);
+    const runContext = context ?? ((await this.contextResolver?.(task, project.ownerUserId ?? project.userId)) ?? undefined);
     if (!runContext) throw new Error('No run context available; configure a model first.');
     const started = await this.startTask(projectId, task, runContext);
     if (started) await this.maybeFinish(projectId);
@@ -807,6 +884,7 @@ export class ProjectService {
         }
       });
       this.hub.publish(`project:${input.projectId}`, { type: 'project.task', projectId: input.projectId, taskId: task.id, status: 'cancelled', runId: run.id });
+      this.notifySchedule(input.projectId);
       return { resumed: false };
     }
 
@@ -817,7 +895,7 @@ export class ProjectService {
     // Allow: resume the same task as a new attempt. When the client sent no
     // context, assemble it server-side; also carry the granted network host into
     // the resumed context so the same tool call does not immediately re-park.
-    let resumeContext = input.resumeContext ?? ((await this.contextResolver?.(task)) ?? undefined);
+    let resumeContext = input.resumeContext ?? ((await this.contextResolver?.(task, project.ownerUserId ?? project.userId)) ?? undefined);
     if (!resumeContext) return { resumed: false };
     if (approval?.capability === 'network-access') this.grantNetworkHostToContext(resumeContext, approval.summary);
     const resumed = await this.startTask(input.projectId, task, resumeContext);
@@ -891,9 +969,12 @@ export class ProjectService {
       await this.drain(projectId, projectRunId, input);
       await this.maybeFinish(projectId, projectRunId);
     } finally {
-      this.scheduleWaiters.delete(projectId);
-      this.scheduleEpoch.delete(projectId);
-      this.launchingTasks.delete(projectId);
+      if (this.liveProjectRuns.get(projectId) === projectRunId) {
+        this.liveProjectRuns.delete(projectId);
+        this.scheduleWaiters.delete(projectId);
+        this.scheduleEpoch.delete(projectId);
+        this.launchingTasks.delete(projectId);
+      }
     }
   }
 
@@ -916,11 +997,12 @@ export class ProjectService {
   private async resolveTaskContext(
     task: ProjectTask,
     input: ConfirmProjectInput,
+    ownerUserId?: string,
   ): Promise<ChatRunContext | undefined> {
     let runContext = input.runContextByTask?.[task.id] ?? input.defaultContext;
     if (!runContext && this.contextResolver) {
       try {
-        runContext = (await this.contextResolver(task)) ?? undefined;
+        runContext = (await this.contextResolver(task, ownerUserId)) ?? undefined;
       } catch {
         runContext = undefined;
       }
@@ -951,7 +1033,8 @@ export class ProjectService {
       batch.map(async (task) => {
         try {
           if (!(await this.isAlive(projectId, projectRunId))) return;
-          const runContext = await this.resolveTaskContext(task, input);
+          const ownerProject = await this.getProject(projectId);
+          const runContext = await this.resolveTaskContext(task, input, ownerProject?.ownerUserId ?? ownerProject?.userId);
           if (!runContext) {
             await this.mutateProject(projectId, (fresh) => {
               const target = fresh.tasks.find((item) => item.id === task.id);
@@ -1001,19 +1084,15 @@ export class ProjectService {
       }
 
       const ready: ProjectTask[] = [];
+      let dependencyFailureChanged = false;
       for (const task of queued) {
         if (launching.has(task.id)) continue;
-        const depsOk = (task.dependsOn ?? []).every((depId) => {
-          const dep = project.tasks.find((item) => item.id === depId);
-          if (!dep) return true;
-          return isDependencySatisfied(dep.status);
-        });
-        if (!depsOk) continue;
         const blockedByFailure = (task.dependsOn ?? []).some((depId) => {
           const dep = project.tasks.find((item) => item.id === depId);
-          return dep?.status === 'failed';
+          return dep?.status === 'failed' || dep?.status === 'cancelled';
         });
         if (blockedByFailure) {
+          dependencyFailureChanged = true;
           await this.mutateProject(projectId, (fresh) => {
             const target = fresh.tasks.find((item) => item.id === task.id);
             if (target && target.status === 'queued') {
@@ -1023,8 +1102,18 @@ export class ProjectService {
           });
           continue;
         }
+        const depsOk = (task.dependsOn ?? []).every((depId) => {
+          const dep = project.tasks.find((item) => item.id === depId);
+          if (!dep) return true;
+          return isDependencySatisfied(dep.status);
+        });
+        if (!depsOk) continue;
         ready.push(task);
       }
+
+      // Reload before classifying deeper descendants: this pass used a snapshot
+      // from before their immediate predecessor was marked failed.
+      if (dependencyFailureChanged) continue;
 
       const slots = Math.max(0, limit - running.filter((task) => !parked.has(task.id)).length);
       if (ready.length > 0 && slots > 0) {
@@ -1078,11 +1167,12 @@ export class ProjectService {
 
       const activeRunId = project.activeRunId;
       const summaryContext = this.summaryContextByRun.get(activeRunId);
-      const active = project.tasks.filter((task) => task.status !== 'superseded');
+      const currentRun = await readJson<ProjectRun>(this.store, this.projectRunKey(project.activeRunId));
+      const active = project.tasks.filter((task) => task.status !== 'superseded' && (project.kind !== 'conversation' || currentRun?.taskIds.includes(task.id)));
       const hasFailures = active.some((task) => task.status === 'failed');
       const allDone = active.every((task) => isTerminalTaskStatus(task.status));
 
-      const status: ProjectRun['status'] = hasFailures ? 'failed' : allDone ? 'completed' : 'cancelled';
+      const status: ProjectRun['status'] = hasFailures ? 'failed' : project.kind === 'conversation' && active.some(task => task.status === 'cancelled') ? 'cancelled' : allDone ? 'completed' : 'cancelled';
       const run = await readJson<ProjectRun>(this.store, this.projectRunKey(activeRunId));
       if (run) {
         normalizeProjectRunOwnership(run);
@@ -1170,12 +1260,30 @@ export class ProjectService {
       ? `\n\n验收标准：\n${promptTask.contract.acceptance.trim()}`
       : '';
     const userContent = `${fitObjective(promptTask.objective)}${outputHint}${acceptanceHint}${buildDependencyBlock(dependencyEntries)}`;
+    const previousReply = promptTask.followUp?.previousRunId
+      ? (await this.engine.load(promptTask.followUp.previousRunId))?.transcript?.slice(-6_000)
+      : undefined;
     const request = {
       ...context,
       runId,
-      ...(project?.workspacePath ? { projectWorkspacePath: project.workspacePath } : {}),
-      messages: [{ role: 'user' as const, content: userContent }],
+      ...(project?.workspacePath && project.executionWorkspaceMode !== 'isolated' ? { projectWorkspacePath: project.workspacePath } : {}),
+      messages: [
+        { role: 'user' as const, content: userContent },
+        ...(previousReply ? [{ role: 'assistant' as const, content: previousReply }] : []),
+        ...(promptTask.followUp ? [{ role: 'user' as const, content: `继续当前项目对话，以本轮问题为准；原目标及上次回答是背景，不要无故重做已完成工作。需要核查文件时使用当前授权项目目录。\n\n本轮问题：${promptTask.followUp.content}` }] : []),
+      ],
     };
+    let workspaceRevision: string | undefined;
+    if (project?.kind === 'conversation') {
+      try { workspaceRevision = await prepareConversationWorkspace(project.workspacePath, runWorkspaceRoot(runId)); }
+      catch (cause) { this.taskAborts.delete(task.id); throw cause; }
+      const history = project.messages.filter(message => (message.role === 'user' || message.role === 'assistant') && message.taskId !== task.id).slice(-12);
+      request.messages = [
+        { role: 'user', content: `当前为持续项目对话。项目说明仅作背景：${project.goal.slice(0, 4000)}\n已有成果位于 output/；参考材料位于 inputs/。优先增量修改，不重做已完成工作。仅本轮成功后才会更新固定成果目录。` },
+        ...history.map(message => ({ role: message.role as 'user' | 'assistant', content: message.content.slice(-4000) })),
+        { role: 'user', content: userContent },
+      ];
+    }
     let run: RunRecord;
     try {
       run = await this.engine.execute({
@@ -1192,6 +1300,18 @@ export class ProjectService {
         signal,
         timeoutMs: promptTask.contract?.timeoutMs ?? this.projectTaskTimeoutMs,
         extraTopics: [`project:${projectId}`],
+        ...(project?.executionWorkspaceMode === 'isolated' && project.workspacePath ? {
+          finalizeCompleted: async (completed: Readonly<RunRecord>, emit: (event: import('@workmate/contracts').AgentEvent) => void) => {
+            try {
+              const published = project.kind === 'conversation'
+                ? await publishConversationWorkspace(runWorkspaceRoot(completed.id), project.workspacePath, signal, workspaceRevision)
+                : await promoteWorkspaceDeliverablesToProject(runWorkspaceRoot(completed.id), project.workspacePath, { strict: true });
+              for (const file of published) emit({ type: 'project.file.published', runId: completed.id, ...file });
+            } catch (cause) {
+              throw new Error(`项目交付目录写入失败：${cause instanceof Error ? cause.message : '无法发布文件'}`);
+            }
+          },
+        } : {}),
       });
     } finally {
       this.taskAborts.delete(task.id);
@@ -1201,6 +1321,7 @@ export class ProjectService {
       const target = latest.tasks.find((item) => item.id === task.id);
       if (!target || target.runId !== run.id) return;
       if (latest.status !== 'running' && latest.status !== 'cancelled') return;
+      appendTaskReply(latest, target, run, latest.activeRunId);
       target.finishedAt = Date.now();
       const maxAttempts = target.contract?.maxAttempts ?? 1;
       if (run.status === 'completed') {
@@ -1212,7 +1333,7 @@ export class ProjectService {
       } else if (run.status === 'waiting-approval') {
         target.status = 'running';
         target.error = '任务等待审批后继续。';
-      } else if (run.status === 'failed' && isStepBudgetFailureWithDeliverables(run)) {
+      } else if (project?.kind !== 'conversation' && run.status === 'failed' && isStepBudgetFailureWithDeliverables(run)) {
         // Files already landed in the project; treat as completed so downstream DAG can continue.
         target.status = 'completed';
         target.error = undefined;

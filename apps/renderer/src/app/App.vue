@@ -2,6 +2,7 @@
 import { computed, defineAsyncComponent, h, onMounted, onUnmounted, ref, watch } from 'vue';
 import { getHealth } from '../services/api';
 import AppSidebar from './AppSidebar.vue';
+import ApplicationGallery from '../features/applications/ApplicationGallery.vue';
 import ChatWorkspace from '../features/chat/ChatWorkspace.vue';
 import EmployeesPage from '../features/employees/EmployeesPage.vue';
 import SettingsPage from '../features/settings/SettingsPage.vue';
@@ -12,6 +13,10 @@ import DataWorkbenchPage from '../features/data/DataWorkbenchPage.vue';
 import { useWorkbenchNavigation } from '../features/data/workbench-navigation';
 import AutomationsPage from '../features/automations/AutomationsPage.vue';
 import ProjectsPage from '../features/projects/ProjectsPage.vue';
+import { projectChatReturnTarget, type ProjectChatOrigin } from './project-chat-navigation';
+import { projectTemplateReturnTarget, type ProjectTemplateOrigin } from './project-template-navigation';
+import { projectDataReturnTarget, type ProjectDataOrigin } from './project-data-navigation';
+import WorkflowAlgorithmPage from '../features/workflows/WorkflowAlgorithmPage.vue';
 import RemoteOfficePage from '../features/remote/RemoteOfficePage.vue';
 import EnvironmentPage from '../features/environment/EnvironmentPage.vue';
 import { runEnvironmentCheck } from '../services/environment';
@@ -177,9 +182,76 @@ const runScheduledAutomation = async (automation: Automation) => {
   }
   return runAutomation(automation, model);
 };
+const projectChatOrigin = ref<ProjectChatOrigin | null>(null);
+const projectDataOrigin = ref<ProjectDataOrigin | null>(null);
+watch(dataNavigationScope, () => { projectDataOrigin.value = null; }, { flush: 'sync' });
+watch(view, (next, previous) => { if (previous === 'projects' && next !== 'projects') projectDataOrigin.value = null; });
+async function openProjectFromData(projectId: string, startError?: string) {
+  const scope = dataNavigationScope.value, navigation = dataNavigation.value;
+  await writeStored('projects.focus-id', projectId);
+  if (!scope || scope !== dataNavigationScope.value) return;
+  projectChatOrigin.value = null; projectTemplateOrigin.value = null;
+  projectDataOrigin.value = navigation?.sourceId ? { projectId, scope, navigation: { ...navigation, tab: 'apps' } } : null;
+  if (startError) notify.error(new Error(`应用已准备，启动未完成：${startError}。请在原项目继续。`));
+  setView('projects');
+}
+function returnToProjectData(projectId: string) {
+  const target = projectDataReturnTarget(projectDataOrigin.value, projectId, dataNavigationScope.value);
+  if (!target) return;
+  rememberDataNavigation(target, dataNavigationScope.value);
+  projectDataOrigin.value = null;
+  setView('data');
+}
+const projectTemplateOrigin = ref<ProjectTemplateOrigin | null>(null);
+const returnDefinitionId = ref<string>();
+const returnTemplateProjectId=ref<string>();
+watch(view, (next, previous) => {
+  if (previous === 'projects' && next !== 'projects') projectTemplateOrigin.value = null;
+  if (previous === 'automations' && next !== 'automations') {returnDefinitionId.value = undefined;returnTemplateProjectId.value=undefined;}
+});
+watch(() => user.value?.id, () => { projectTemplateOrigin.value = null; returnDefinitionId.value = undefined;returnTemplateProjectId.value=undefined; });
+watch(view, (next, previous) => { if (previous === 'projects' && next !== 'projects') projectChatOrigin.value = null; });
+watch(() => user.value?.id, () => { projectChatOrigin.value = null; });
+async function openProjectFromChat(projectId: string) {
+  projectDataOrigin.value = null;
+  projectTemplateOrigin.value = null;
+  const conversationId = activeConversation.value?.id;
+  const userId = user.value?.id;
+  await writeStored('projects.focus-id', projectId);
+  if (!userId || user.value?.id !== userId) return;
+  projectChatOrigin.value = conversationId ? { projectId, conversationId, userId } : null;
+  setView('projects');
+}
+function returnToProjectChat() {
+  const origin = projectChatOrigin.value;
+  const target = projectChatReturnTarget(origin, origin?.projectId ?? '', user.value?.id, conversations.value);
+  if (target) selectConversation(target);
+  projectChatOrigin.value = null;
+  setView('chat');
+}
 async function openProjectFromAssets(projectId: string) {
+  projectDataOrigin.value = null;
+  projectChatOrigin.value = null;
+  projectTemplateOrigin.value = null;
   await writeStored('projects.focus-id', projectId);
   setView('projects');
+}
+async function openProjectFromTemplate(projectId: string, definitionId: string) {
+  projectDataOrigin.value = null;
+  const userId = user.value?.id;
+  await writeStored('projects.focus-id', projectId);
+  if (!userId || user.value?.id !== userId) return;
+  projectChatOrigin.value = null;
+  projectTemplateOrigin.value = { projectId, definitionId, userId };
+  setView('projects');
+}
+function returnToProjectTemplate(projectId: string) {
+  const target = projectTemplateReturnTarget(projectTemplateOrigin.value, projectId, user.value?.id);
+  if (!target) return;
+  returnDefinitionId.value = target;
+  returnTemplateProjectId.value=projectId;
+  projectTemplateOrigin.value = null;
+  setView('automations');
 }
 onMounted(async () => {
   await Promise.all([loadTheme(), loadLocale()]);
@@ -360,6 +432,8 @@ async function handleLogout() {
     authBusy.value = false;
   }
 }
+const galleryOpen = ref(false);
+watch(user, () => { galleryOpen.value=false; });
 </script>
 
 <template>
@@ -373,9 +447,9 @@ async function handleLogout() {
   />
   <div v-else-if="!authReady" class="grid h-screen place-items-center bg-[var(--background)] text-sm text-[var(--muted)]">正在恢复登录状态…</div>
   <div v-else class="flex h-screen min-h-[600px] overflow-hidden bg-[var(--background)] text-[var(--text)]">
-    <AppSidebar :collapsed="sidebarCollapsed" :view="view" :conversations="conversations" :active-conversation-id="activeConversation?.id ?? null" :service-ready="serviceReady" :current-user="user" @toggle="toggleSidebar" @navigate="setView" @new-chat="startChat()" @select-conversation="selectConversation" @delete-conversation="deleteConversation" @logout="handleLogout" />
+    <AppSidebar :collapsed="sidebarCollapsed" :view="view" :conversations="conversations" :active-conversation-id="activeConversation?.id ?? null" :service-ready="serviceReady" :current-user="user" @open-applications="galleryOpen = true" @toggle="toggleSidebar" @navigate="setView" @new-chat="startChat()" @select-conversation="selectConversation" @delete-conversation="deleteConversation" @logout="handleLogout" />
     <main :class="['relative min-w-0 flex-1 bg-[var(--background)]', view === 'chat' || view === 'capabilities' || view === 'knowledge' || view === 'assets' || view === 'data' || view === 'automations' || view === 'projects' ? 'overflow-hidden' : 'overflow-auto']">
-      <ChatWorkspace v-if="chatMounted" v-show="view === 'chat'" :visible="view === 'chat'" :employee="activeChatEmployee" :selected-employee-id="activeConversation?.employeeId || currentEmployeeId" :employees="employees" :conversation="activeConversation" :model-configured="configured" :model="modelConfig" :available-models="availableChatModels" :chat-endpoint-token="chatEndpointToken" :permission-tier="permissionTier" :send-message="async (content, collaboratorIds, collaborationDelivery, onlineSearch, autoSchedule, attachments, fileAttachments, onRunAccepted) => { await addMessage(content, modelConfig, { collaboratorIds, collaborationDelivery, onlineSearch, autoSchedule, attachments, fileAttachments, onRunAccepted }); }" :abort-message="() => { abortActiveRun(); }" :approve="(conversationId, approval, scope) => approveAndRetry(conversationId, approval, scope, modelConfig)" :ensure-server-session="ensureActiveServerSession" :pull-from-server="pullActiveConversationFromServer" :follow-mobile-session="followMobileChatSession" @voice-active="voiceActive = $event" @select-endpoint="selectChatEndpoint" @select-employee="startChat" @set-permission-tier="setPermissionTier" @clear-conversation="clearConversation" @open-assets="setView('assets')" @open-data="setView('data')" @open-settings="setView('settings')" />
+      <ChatWorkspace v-if="chatMounted" v-show="view === 'chat'" :visible="view === 'chat'" :employee="activeChatEmployee" :selected-employee-id="activeConversation?.employeeId || currentEmployeeId" :employees="employees" :conversation="activeConversation" :model-configured="configured" :model="modelConfig" :available-models="availableChatModels" :chat-endpoint-token="chatEndpointToken" :permission-tier="permissionTier" :send-message="async (content, collaboratorIds, collaborationDelivery, onlineSearch, autoSchedule, attachments, fileAttachments, onRunAccepted, workflowResult) => { await addMessage(content, modelConfig, { collaboratorIds, collaborationDelivery, onlineSearch, autoSchedule, attachments, fileAttachments, onRunAccepted, workflowResult }); }" :abort-message="() => { abortActiveRun(); }" :approve="(conversationId, approval, scope) => approveAndRetry(conversationId, approval, scope, modelConfig)" :ensure-server-session="ensureActiveServerSession" :pull-from-server="pullActiveConversationFromServer" :follow-mobile-session="followMobileChatSession" @voice-active="voiceActive = $event" @select-endpoint="selectChatEndpoint" @select-employee="startChat" @set-permission-tier="setPermissionTier" @clear-conversation="clearConversation" @open-assets="setView('assets')" @open-data="setView('data')" @open-settings="setView('settings')" @open-project="openProjectFromChat" @open-workflows="setView('workflows')" />
       <EmployeesPage
         v-if="view === 'employees'"
         :employees="employees"
@@ -395,9 +469,11 @@ async function handleLogout() {
         :key="dataNavigationScope"
         :navigation="dataNavigation"
         :navigation-scope="dataNavigationScope"
+        :employee-id="currentEmployeeId"
+        :permission-tier="permissionTier"
         @remember-navigation="rememberDataNavigation"
         @start-chat="startChat"
-        @start-customize="(prompt) => { void startChatWithPrompt(prompt, modelConfig); }"
+        @open-project="openProjectFromData"
       />
       <AutomationsPage
         v-else-if="view === 'automations'"
@@ -405,9 +481,13 @@ async function handleLogout() {
         :models="availableChatModels"
         :conversations="conversations"
         :run-automation="runScheduledAutomation"
-        :open-conversation="(id) => { selectConversation(id); setView('chat'); }"
+        :return-definition-id="returnDefinitionId"
+        :return-project-id="returnTemplateProjectId"
+        @open-project="openProjectFromTemplate"
+        :open-conversation="async (id) => { await followMobileChatSession(id); setView('chat'); }"
       />
-      <ProjectsPage v-else-if="view === 'projects'" :employees="employees" :models="availableChatModels" :generate-draft="generateProjectDraft" :run-task="runProjectTask" />
+      <ProjectsPage v-else-if="view === 'projects'" :employees="employees" :models="availableChatModels" :generate-draft="generateProjectDraft" :run-task="runProjectTask" :return-to-data-project-id="projectDataOrigin?.projectId" :return-to-chat-project-id="projectChatOrigin?.projectId" :return-to-template-project-id="projectTemplateOrigin?.projectId" @return-to-data="returnToProjectData" @return-to-template="returnToProjectTemplate" @return-to-chat="returnToProjectChat" @open-workflows="setView('workflows')" />
+      <WorkflowAlgorithmPage v-else-if="view === 'workflows' || view === 'algorithms'" :key="`${dataNavigationScope}:${view}`" :mode="view" :employees="employees" :models="availableChatModels" :generate-draft="generateProjectDraft" @open-project="openProjectFromAssets" @open-skills="setView('capabilities')" />
       <RemoteOfficePage v-else-if="view === 'remote'" />
       <EnvironmentPage v-else-if="view === 'env'" @close="closeEnvironmentPage" @back="closeEnvironmentPage" />
       <DocsPage v-else-if="view === 'docs'" :anchor="docsAnchor" @anchor-consumed="docsAnchor = null" />
@@ -433,6 +513,7 @@ async function handleLogout() {
       <button v-if="voiceActive && view !== 'chat'" type="button" class="fixed bottom-5 right-6 z-40 rounded-full border border-[var(--accent)]/30 bg-[var(--surface)] px-4 py-2 text-xs text-[var(--accent)] shadow-lg" @click="setView('chat')">● 语音进行中 · 返回对话</button>
     </main>
     <AppToastHost />
+    <ApplicationGallery v-if="galleryOpen" @close="galleryOpen = false" />
     <EnvironmentCheckDialog v-if="showEnvCheckDialog" @close="showEnvCheckDialog = false" @go="openEnvDetails" />
     <ModelSetupDialog v-if="showModelSetupDialog" :gaps="modelSetupGaps" @close="dismissModelSetup" @go="goModelSetup" @manual="openManualFromModelSetup" />
     <DshInstallProgressDialog

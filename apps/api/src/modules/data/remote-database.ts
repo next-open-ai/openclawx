@@ -4,6 +4,7 @@ import type { DataColumn, RemoteDatabaseConnection, RemoteDatabaseImport } from 
 
 export type RemoteSession = {
   query(sql: string, values?: unknown[]): Promise<Record<string, unknown>[]>;
+  execute?(sql: string, values?: unknown[]): Promise<number>;
   close(): Promise<void>; destroy(): void;
 };
 export type RemoteFactory = (connection: RemoteDatabaseConnection) => Promise<RemoteSession>;
@@ -18,17 +19,25 @@ export const remoteFactory: RemoteFactory = async c => {
         const [rows] = await client.query({ sql, timeout: 10_000 }, values);
         return Array.isArray(rows) ? rows as Record<string, unknown>[] : [];
       },
+      async execute(sql, values = []) {
+        const [result] = await client.query({ sql, timeout: 10_000 }, values);
+        return Number((result as { affectedRows?: number }).affectedRows || 0);
+      },
       close: () => client.end(), destroy: () => client.destroy(),
     };
   }
   const client = new pg.Client({ host: c.host, port: c.port, user: c.user, password: c.password,
     database: c.database || 'postgres', ssl: ssl || false, connectionTimeoutMillis: 10_000,
-    query_timeout: 10_000, statement_timeout: 10_000 });
+    query_timeout: 10_000, statement_timeout: 10_000,
+    // Preserve microseconds and timezone representation for primary keys and conflict checks.
+    types: { getTypeParser: (oid: number, format?: 'text' | 'binary') => [1082, 1114, 1184].includes(oid) && format !== 'binary' ? (value: string) => value : pg.types.getTypeParser(oid, format) },
+  });
   // Client-level errors must not become uncaught exceptions when an idle socket closes.
   client.on('error', () => undefined);
   try { await client.connect(); } catch (error) { await client.end().catch(() => undefined); throw error; }
   return {
     async query(sql, values = []) { return (await client.query(sql, values)).rows; },
+    async execute(sql, values = []) { return Number((await client.query(sql, values)).rowCount || 0); },
     close: () => client.end(), destroy: () => { void client.end().catch(() => undefined); },
   };
 };
@@ -52,7 +61,7 @@ export function remoteIdentifier(engine: RemoteDatabaseConnection['engine'], nam
 let activeOperations = 0;
 export class RemoteBusyError extends Error {}
 export class RemoteInputError extends Error {}
-async function session<T>(c: RemoteDatabaseConnection, factory: RemoteFactory, action: (s: RemoteSession) => Promise<T>): Promise<T> {
+export async function session<T>(c: RemoteDatabaseConnection, factory: RemoteFactory, action: (s: RemoteSession) => Promise<T>): Promise<T> {
   if (activeOperations >= 2) throw new RemoteBusyError('数据库连接任务较多，请稍后重试。');
   activeOperations++;
   let s: RemoteSession | undefined, timer: ReturnType<typeof setTimeout> | undefined;
@@ -62,7 +71,12 @@ async function session<T>(c: RemoteDatabaseConnection, factory: RemoteFactory, a
       (async () => {
         s = await factory(c);
         if (expired) { s.destroy(); throw new Error('连接已超时'); }
-        return action(s);
+        const actual = s;
+        return action({
+          query: (sql, values) => { if (expired) throw new Error('连接已超时'); return actual.query(sql, values); },
+          execute: actual.execute ? (sql, values) => { if (expired) throw new Error('连接已超时'); return actual.execute!(sql, values); } : undefined,
+          close: () => actual.close(), destroy: () => actual.destroy(),
+        });
       })(),
       new Promise<never>((_, reject) => { timer = setTimeout(() => { expired = true; s?.destroy(); reject(new Error('数据库操作超时')); }, 90_000); }),
     ]);
@@ -73,12 +87,12 @@ async function session<T>(c: RemoteDatabaseConnection, factory: RemoteFactory, a
   }
 }
 
-async function tables(s: RemoteSession, c: RemoteDatabaseConnection) {
+export async function tables(s: RemoteSession, c: RemoteDatabaseConnection) {
   const rows = c.engine === 'mysql'
-    ? await s.query("SELECT TABLE_SCHEMA AS schema_name, TABLE_NAME AS table_name, TABLE_COMMENT AS description FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME LIMIT 1001", [c.database])
+    ? await s.query("SELECT TABLE_SCHEMA AS schema_name, TABLE_NAME AS table_name, TABLE_COMMENT AS description, ENGINE AS table_engine FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME LIMIT 1001", [c.database])
     : await s.query("SELECT n.nspname AS schema_name, c.relname AS table_name, COALESCE(obj_description(c.oid), '') AS description FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind IN ('r','p') AND n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%' AND has_table_privilege(c.oid,'SELECT') ORDER BY n.nspname, c.relname LIMIT 1001");
   if (rows.length > 1000) throw new RemoteInputError('数据库超过 1,000 张业务表，请接入较小的数据库。');
-  return rows.map(r => ({ schema: String(r.schema_name), name: String(r.table_name), description: String(r.description || '').slice(0, 4000) }));
+  return rows.map(r => ({ schema: String(r.schema_name), name: String(r.table_name), description: String(r.description || '').slice(0, 4000), transactional: c.engine === 'postgresql' || String(r.table_engine).toUpperCase() === 'INNODB' }));
 }
 
 export async function inspectRemoteDatabase(c: RemoteDatabaseConnection, factory = remoteFactory) {
@@ -90,14 +104,15 @@ export async function inspectRemoteDatabase(c: RemoteDatabaseConnection, factory
   });
 }
 
-function columnType(type: string): DataColumn['type'] {
+export function columnType(type: string): DataColumn['type'] {
   if (/bool/i.test(type)) return '布尔值';
+  if (/^bit(?:\(|$)/i.test(type)) return '整数';
   if (/int|serial/i.test(type)) return '整数';
   if (/numeric|decimal|float|double|real|money/i.test(type)) return '小数';
   if (/date|time/i.test(type)) return '日期';
   return '文本';
 }
-function cell(value: unknown): string | null {
+export function cell(value: unknown): string | null {
   if (value == null) return null;
   if (value instanceof Date) return value.toISOString();
   if (Buffer.isBuffer(value)) return '[二进制数据]';

@@ -1,4 +1,5 @@
-import { copyFile, mkdir, readFile, readdir, realpath, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, readdir, realpath, stat, writeFile,rename,unlink } from 'node:fs/promises';
+import {randomUUID} from 'node:crypto';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import type { AgentSkillRuntime } from '@workmate/contracts';
@@ -6,6 +7,7 @@ import { Type, StringEnum, defineAgentTool, type AgentTool } from './pi-tools.js
 import { PDF_SKILL_ID } from './builtin-skill-packages.js';
 import { pythonArgv, resolveWorkmatePython } from './python-runtime.js';
 import { resolveAgentWorkspaceRoot } from './workspace-mode.js';
+import { assertResourcePath } from './resource-access.js';
 import {
   MAX_FILE_BYTES,
   MAX_STAGED_APPEND_CHARS,
@@ -15,7 +17,7 @@ import {
   appendStagedWrite,
   resolveWriteBody,
   startStagedWrite,
-  takeStagedWrite,
+  beginStagedCommit,settleStagedCommit,statusStagedWrite,withWorkspaceWriteLock,
 } from './workspace-write.js';
 
 /** Agent-facing read cap — full 96KB dumps pollute context and derail subsequent tool JSON. */
@@ -121,6 +123,7 @@ function toOutputPath(relative: string, destName?: string) {
 export async function promoteWorkspaceDeliverablesToProject(
   workspaceRoot: string,
   projectRoot: string,
+  options: { strict?: boolean } = {},
 ): Promise<Array<{ path: string; projectPath: string }>> {
   const published: Array<{ path: string; projectPath: string }> = [];
   const root = path.resolve(workspaceRoot);
@@ -132,7 +135,8 @@ export async function promoteWorkspaceDeliverablesToProject(
     let entries: Array<{ name: string; isDirectory(): boolean; isFile(): boolean }>;
     try {
       entries = await readdir(folder, { withFileTypes: true });
-    } catch {
+    } catch (cause) {
+      if (options.strict && (cause as NodeJS.ErrnoException).code !== 'ENOENT') throw cause;
       return;
     }
     for (const entry of entries) {
@@ -160,8 +164,9 @@ export async function promoteWorkspaceDeliverablesToProject(
 
   try {
     await walk(outputRoot);
-  } catch {
-    /* best-effort */
+  } catch (cause) {
+    if (options.strict) throw cause;
+    /* Legacy callers keep best-effort promotion. */
   }
   return published;
 }
@@ -172,9 +177,7 @@ function truncate(value: string, limit: number) {
 
 async function pathInside(root: string, relative: string) {
   const resolvedRoot = await realpath(root);
-  const candidate = path.resolve(resolvedRoot, safeRelative(relative));
-  if (candidate !== resolvedRoot && !candidate.startsWith(`${resolvedRoot}${path.sep}`)) throw new Error('Path escapes its permitted root.');
-  return candidate;
+  return assertResourcePath(resolvedRoot, safeRelative(relative));
 }
 
 async function ensureWorkspaceScaffold(root: string, mode: 'conversation' | 'project' = 'conversation') {
@@ -403,6 +406,7 @@ export function createSkillExecutionTools(input: {
     projectWorkspacePath: projectRoot || undefined,
   });
   const workspaceAccess = input.workspaceAccess ?? 'write';
+  const writeScope=JSON.stringify([input.runId,workspaceRoot]);
   const canWriteWorkspace = workspaceAccess === 'write' || workspaceAccess === 'full';
   // "write" is the normal task tier. It must retain the controlled local
   // execution needed to produce artifacts (for example, a PDF renderer).
@@ -461,7 +465,9 @@ export function createSkillExecutionTools(input: {
     body: string;
     mode: 'replace' | 'append';
     deliverable?: boolean;
+    signal?: AbortSignal;
   }) => {
+    input.signal?.throwIfAborted();
     const requested = safeRelative(input.relative);
     const body = input.body;
     const writeMode = input.mode;
@@ -498,23 +504,52 @@ export function createSkillExecutionTools(input: {
 
     if (!textFilePattern.test(targetRel)) return { ok: false as const, error: 'Only approved text formats can be written.' };
     if (Buffer.byteLength(body) > MAX_FILE_BYTES) {
-      return { ok: false as const, error: `Single write exceeds ${MAX_FILE_BYTES} bytes. Use start/append/finish staged writes.` };
+      return { ok: false as const, error: `File exceeds ${MAX_FILE_BYTES} UTF-8 bytes. Reduce content; staged writes have the same file limit.` };
     }
     const file = await workspacePath(targetRel);
-    await mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
-    if (writeMode === 'append') await writeFile(file, body, { encoding: 'utf8', flag: 'a', mode: 0o600 });
-    else await writeFile(file, body, { encoding: 'utf8', mode: 0o600 });
-    const size = (await stat(file)).size;
-    return {
-      ok: true as const,
-      path: targetRel,
-      bytes: Buffer.byteLength(body),
-      totalBytes: size,
-      mode: writeMode,
-      deliverable: asDeliverable,
-      workspaceMode: projectBound ? 'project' as const : 'conversation' as const,
-    };
+    return withWorkspaceWriteLock(file, async () => {
+      input.signal?.throwIfAborted();
+      await workspacePath(targetRel);
+      await mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
+      let complete = body;
+      if (writeMode === 'append') {
+        try {
+          const existing = await stat(file);
+          if (existing.size + Buffer.byteLength(body) > MAX_FILE_BYTES) {
+            return { ok: false as const, error: `Append would exceed ${MAX_FILE_BYTES} UTF-8 bytes. File unchanged.` };
+          }
+          complete = (await readFile(file, 'utf8')) + body;
+        } catch (cause) {
+          if ((cause as NodeJS.ErrnoException).code !== 'ENOENT') throw cause;
+        }
+      }
+      if (Buffer.byteLength(complete) > MAX_FILE_BYTES) {
+        return { ok: false as const, error: `File exceeds ${MAX_FILE_BYTES} UTF-8 bytes. File unchanged.` };
+      }
+      const temporary = path.join(path.dirname(file), `.workmate-write-${randomUUID()}.tmp`);
+      try {
+        await writeFile(temporary, complete, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
+        await workspacePath(targetRel);
+        input.signal?.throwIfAborted();
+        await rename(temporary, file);
+      } finally {
+        await unlink(temporary).catch(cause => {
+          if ((cause as NodeJS.ErrnoException).code !== 'ENOENT') throw cause;
+        });
+      }
+      return {
+        ok: true as const,
+        path: targetRel,
+        bytes: Buffer.byteLength(body),
+        totalBytes: Buffer.byteLength(complete),
+        mode: writeMode,
+        deliverable: asDeliverable,
+        workspaceMode: projectBound ? 'project' as const : 'conversation' as const,
+      };
+    });
   };
+
+  const finishedWrites=new Map<string,Awaited<ReturnType<typeof persistWorkspaceText>>>();
 
   const tools: AgentTool[] = [
     defineAgentTool({
@@ -571,8 +606,8 @@ export function createSkillExecutionTools(input: {
     defineAgentTool({
       name: 'write_workspace_file',
       description: projectBound
-        ? 'Write a UTF-8 text file into the shared project workspace root. Prefer ONE content write only for ≤8KB. Larger / full sites: start_workspace_write → append_workspace_write(seq) → finish_workspace_write. chunks=string[] joins in order in one call (each ≤4KB). encoding defaults to utf8; base64 only as last-resort escape hatch.'
-        : 'Write a UTF-8 text file to this run\'s conversation workspace. Deliverables: output/ path or deliverable=true. Prefer ONE content write only for ≤8KB. Full styled pages: start_workspace_write → append_workspace_write with seq=1..N → finish (in-memory join, then one replace). Never one-shot a large HTML+CSS document. Prefer utf8; base64 only if JSON escaping keeps failing.',
+        ? 'Write UTF-8 text directly at the shared project root. Complete content up to 32000 chars is accepted; prefer concise files. For larger/unfinished output use start → append(seq, recommended ≤8000 chars) → finish, omit totalParts unless known. chunks joins in order (each ≤16000 chars), same 96000 UTF-8 byte file limit. No shell merge needed. Prefer utf8, base64 only as last resort.'
+        : 'Write UTF-8 text in this run workspace; deliverables use output/. Complete content up to 32000 chars is accepted. Larger files: start → append(seq, recommended ≤8000 chars) → finish, omit totalParts unless known. chunks joins in order (each ≤16000 chars), same 96000 UTF-8 byte file limit. Query workspace_write_status on failure; do not rewrite accepted pieces or create merge scripts.',
       parameters: Type.Object({
         path: Type.String({ minLength: 1, maxLength: 240 }),
         content: Type.Optional(Type.String({ maxLength: MAX_WRITE_CONTENT })),
@@ -581,8 +616,9 @@ export function createSkillExecutionTools(input: {
         mode: Type.Optional(StringEnum(['replace', 'append'] as const)),
         deliverable: Type.Optional(Type.Boolean()),
       }),
-      execute: async ({ path: relative, content, chunks, encoding, mode, deliverable }) => {
+      execute: async ({ path: relative, content, chunks, encoding, mode, deliverable },ctx) => {
         if (!canWriteWorkspace) return writeDenied();
+        ctx.signal?.throwIfAborted();
         const resolved = resolveWriteBody({ content, chunks, encoding });
         if (!resolved.ok) return { ok: false, error: resolved.error };
         return persistWorkspaceText({
@@ -590,12 +626,13 @@ export function createSkillExecutionTools(input: {
           body: resolved.body,
           mode: mode === 'append' ? 'append' : 'replace',
           deliverable,
+          signal:ctx.signal,
         });
       },
     }),
     defineAgentTool({
       name: 'start_workspace_write',
-      description: 'Begin a format-agnostic staged write. Assembly is in-memory; finish does one disk write (default replace). Then append_workspace_write with seq=1,2,3… (≤3.5KB UTF-8 each), then finish_workspace_write. Optional totalParts locks the expected piece count.',
+      description: 'Begin run-scoped staged text assembly; nothing on disk until finish. Append seq=1,2,3…; recommend ≤8000 chars per piece (hard cap16000). Omit totalParts by default: finish when complete. On failure query workspace_write_status and continue, do not restart or create merge scripts.',
       parameters: Type.Object({
         path: Type.String({ minLength: 1, maxLength: 240 }),
         mode: Type.Optional(StringEnum(['replace', 'append'] as const)),
@@ -613,6 +650,7 @@ export function createSkillExecutionTools(input: {
           mode: mode === 'append' ? 'append' : 'replace',
           deliverable,
           totalParts,
+          scope:writeScope,
         });
         return {
           ok: true,
@@ -622,13 +660,14 @@ export function createSkillExecutionTools(input: {
           nextSeq: 1,
           totalParts: session.totalParts,
           maxAppendChars: MAX_STAGED_APPEND_CHARS,
-          hint: `Next: append_workspace_write({ writeId: "${session.id}", seq: 1, text: "<≤${MAX_STAGED_APPEND_CHARS} UTF-8 chars>" }). Require increasing seq; use reset=true+seq=1 only to discard and restart.`,
+          maxFileBytes:MAX_FILE_BYTES,
+          hint: `Next: append_workspace_write({ writeId: "${session.id}", seq: 1, text: "<recommended ≤8000 chars>" }). Copy nextSeq from results. Omit total. Finish when complete; query workspace_write_status to recover, not restart.`,
         };
       },
     }),
     defineAgentTool({
       name: 'append_workspace_write',
-      description: `Append one UTF-8 piece to a staged write (≤${MAX_STAGED_APPEND_CHARS} chars). seq is required and must be the next expected index (1-based). Optional total locks piece count. reset=true+seq=1 discards prior pieces and restarts. Out-of-order seq is rejected — no format-specific guessing.`,
+      description: `Append UTF-8 text (recommended ≤8000, hard cap${MAX_STAGED_APPEND_CHARS} chars). Use nextSeq from result. Identical seq/text retry is safe; changed or skipped seq rejected. Omit total by default. Wrong total? workspace_write_status({writeId,totalParts:null}) preserves pieces. reset=true+seq=1 explicitly discards prior pieces.`,
       parameters: Type.Object({
         writeId: Type.String({ minLength: 8, maxLength: 80 }),
         text: Type.String({ minLength: 1, maxLength: MAX_STAGED_APPEND_CHARS }),
@@ -638,8 +677,8 @@ export function createSkillExecutionTools(input: {
       }),
       execute: async ({ writeId, text, seq, total, reset }) => {
         if (!canWriteWorkspace) return writeDenied();
-        const result = appendStagedWrite(writeId, text, { seq, total, reset: reset === true });
-        if (!result.ok) return { ok: false, error: result.error };
+        const result = appendStagedWrite(writeId, text, { seq, total, reset: reset === true,scope:writeScope });
+        if (!result.ok) return result;
         return {
           ok: true,
           writeId,
@@ -650,6 +689,7 @@ export function createSkillExecutionTools(input: {
           parts: result.session.parts.length,
           totalParts: result.session.totalParts,
           path: result.session.path,
+          ...(result.duplicate?{duplicate:true}:{}),
           ...(result.reset
             ? { reset: true, hint: 'Assembly restarted from seq=1; prior pieces discarded.' }
             : {}),
@@ -657,21 +697,36 @@ export function createSkillExecutionTools(input: {
       },
     }),
     defineAgentTool({
+      name:'workspace_write_status',
+      description:'Inspect this run staged write without reading content. Returns accepted parts/bytes and nextSeq. Optional totalParts explicitly corrects declared count; null removes count restriction without losing accepted pieces. Never use reset merely to fix a mistaken total.',
+      parameters:Type.Object({writeId:Type.String({minLength:8,maxLength:80}),totalParts:Type.Optional(Type.Union([Type.Integer({minimum:1,maximum:64}),Type.Null()]))}),
+      execute:async({writeId,totalParts})=>canWriteWorkspace?statusStagedWrite(writeId,writeScope,totalParts):writeDenied(),
+    }),
+    defineAgentTool({
       name: 'finish_workspace_write',
-      description: 'Commit a staged write: join accepted pieces in seq order and write once to disk. Fails if totalParts was declared and not all pieces arrived. Returns the same shape as write_workspace_file.',
+      description: 'Commit accepted pieces atomically. Incomplete declared total returns recovery state. Persistence failure retains assembly for retry. Repeated successful finish is idempotent in this run tool instance. Returns committed path/bytes only after success.',
       parameters: Type.Object({
         writeId: Type.String({ minLength: 8, maxLength: 80 }),
       }),
-      execute: async ({ writeId }) => {
+      execute: async ({ writeId },ctx) => {
         if (!canWriteWorkspace) return writeDenied();
-        const taken = takeStagedWrite(writeId);
-        if (!taken.ok) return { ok: false, error: taken.error };
-        return persistWorkspaceText({
+        ctx.signal?.throwIfAborted();
+        const finished=finishedWrites.get(writeId);if(finished)return {...finished,duplicate:true};
+        const taken = beginStagedCommit(writeId,writeScope);
+        if (!taken.ok) return taken;
+        let committed=false;
+        try{
+        const result=await persistWorkspaceText({
           relative: taken.session.path,
           body: taken.body,
           mode: taken.session.mode,
           deliverable: taken.session.deliverable,
+          signal:ctx.signal,
         });
+        committed=result.ok;
+        if(committed)finishedWrites.set(writeId,result);
+        return result;
+        }finally{settleStagedCommit(writeId,writeScope,committed);}
       },
     }),
     defineAgentTool({

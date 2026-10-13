@@ -4,7 +4,7 @@ import { ref, watch, type Ref } from 'vue';
 export interface WorkbenchNavigation {
   sourceId: string | null;
   tableId: string | null;
-  tab: 'overview' | 'schema' | 'preview' | 'apps';
+  tab: 'overview' | 'schema' | 'preview' | 'analysis' | 'apps';
   category: 'all' | 'files' | 'sqlite' | 'mysql' | 'other';
   query: string;
 }

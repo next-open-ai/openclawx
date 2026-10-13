@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { assertResourcePath } from './resource-access.js';
 
 /** Host-side transport for a large, single-file deliverable. */
 export const ARTIFACT_SOURCE_MAX_BYTES = 2_500_000;
@@ -76,6 +77,8 @@ export async function finishArtifactSourceWrite(writeId: string) {
   const relative = path.relative(session.root, target).split(path.sep).join('/');
   if (relative !== session.relativePath || relative.startsWith('../')) throw new Error('Artifact target is outside the workspace.');
   const temporary = path.join(path.dirname(target), `.${path.basename(target)}.${session.id}.tmp`);
+  await assertResourcePath(session.root, target);
+  await assertResourcePath(session.root, temporary);
   try {
     await mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
     await writeFile(temporary, body, 'utf8');

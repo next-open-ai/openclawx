@@ -18,6 +18,7 @@ import { SpeechProviderHttpError, synthesizeDashScope, synthesizeIflytek, synthe
 export const MODEL_CAPABILITY_BY_TOOL = {
   quantum_code_generate: 'quantum-code',
   model_generate_image: 'image',
+  model_generate_video: 'video',
   model_understand_images: 'vision',
   model_embed_text: 'embedding',
   model_transcribe_audio: 'asr',
@@ -73,15 +74,6 @@ function imageProtocol(config: ModelCapabilityRuntime): ImageGenerationProtocol 
   return 'dashscope-multimodal';
 }
 
-function assertImageConfiguration(config: ModelCapabilityRuntime) {
-  if (config.provider !== 'qwen' || !/^qwen-image-3(?:\.|-|$)/i.test(config.modelId)) return;
-  let hostname = '';
-  try { hostname = new URL(config.baseUrl).hostname; } catch { return; }
-  if (hostname.includes('dashscope') && !hostname.endsWith('.maas.aliyuncs.com')) {
-    throw new Error('Qwen-Image 3.0 requires a Bailian Workspace endpoint. Configure Workspace ID under Settings → Provider connections → Qwen.');
-  }
-}
-
 function dashscopeConfig(config: ModelCapabilityRuntime): ModelCapabilityRuntime {
   const baseUrl = config.baseUrl.replace(/\/$/, '').replace(/\/(?:compatible-mode\/v1|api\/v1)$/, '');
   return { ...config, baseUrl };
@@ -103,12 +95,14 @@ function imageUrlsFromDashScope(data: any): string[] {
 type ProgressReporter = (summary: string, progress?: number) => void;
 
 async function generateImage(config: ModelCapabilityRuntime, prompt: string, size?: string, report: ProgressReporter = () => undefined) {
-  assertImageConfiguration(config);
   const protocol = imageProtocol(config);
   if (protocol === 'openai-images') {
     report('正在向图片模型提交生成请求…', 10);
     const data = await jsonRequest(config, '/images/generations', {
-      model: config.modelId, prompt, size: normalizeImageSize(size, 'x'), n: 1, response_format: 'b64_json',
+      model: config.modelId, prompt, size: normalizeImageSize(size, 'x'),
+      // BigModel's image API returns temporary URLs and does not document
+      // OpenAI's n/response_format options. Keep other providers unchanged.
+      ...(config.provider === 'glm' ? {} : { n: 1, response_format: 'b64_json' }),
     }, 180_000);
     const row = data?.data?.[0];
     if (row?.b64_json) { report('图片生成完成，正在保存到工作区…', 85); return { bytes: Buffer.from(row.b64_json, 'base64') }; }
@@ -235,6 +229,57 @@ async function downloadGeneratedImage(urlValue: string, report: ProgressReporter
   return { bytes, extension: imageExtension(contentType, bytes) };
 }
 
+const MAX_GENERATED_VIDEO_BYTES = 200 * 1024 * 1024;
+
+async function generateVideo(config: ModelCapabilityRuntime, prompt: string, size: string | undefined, duration: number | undefined, report: ProgressReporter) {
+  if (config.provider !== 'glm') throw new Error('Video generation currently supports the GLM provider protocol only.');
+  report('正在提交异步视频生成任务…', 5);
+  const submitted = await jsonRequest(config, '/videos/generations', {
+    model: config.modelId,
+    prompt: prompt.slice(0, 512),
+    ...(size ? { size: normalizeImageSize(size, 'x') } : {}),
+    ...(config.modelId.toLowerCase() === 'cogvideox-3' && duration ? { duration } : {}),
+  }, 60_000);
+  const taskId = String(submitted?.id || submitted?.request_id || '');
+  if (!taskId) throw new Error('GLM video provider returned no task ID.');
+  const deadline = Date.now() + 10 * 60_000;
+  const startedAt = Date.now();
+  while (Date.now() < deadline) {
+    const task = await jsonRequest(config, `/async-result/${encodeURIComponent(taskId)}`, undefined, 30_000, { method: 'GET' });
+    const status = String(task?.task_status || '').toUpperCase();
+    if (status === 'SUCCESS' || status === 'SUCCEEDED') {
+      const url = String(task?.video_result?.[0]?.url || '');
+      if (!url) throw new Error(`GLM video task ${taskId} completed without a video URL.`);
+      report('视频生成完成，正在下载临时视频…', 82);
+      return { url, taskId };
+    }
+    if (['FAIL', 'FAILED', 'CANCELED', 'CANCELLED'].includes(status)) {
+      throw new Error(`GLM video task ${taskId} ${status.toLowerCase()}: ${String(task?.error?.message || task?.message || 'unknown error')}`);
+    }
+    const elapsedSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1_000));
+    report(`视频正在生成（${status || '排队中'}，已等待 ${elapsedSeconds} 秒）…`, Math.min(78, 12 + Math.floor(elapsedSeconds / 8)));
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+  }
+  throw new Error(`GLM video task ${taskId} timed out after 600000ms.`);
+}
+
+async function downloadGeneratedVideo(urlValue: string) {
+  let url: URL;
+  try { url = new URL(urlValue); } catch { throw new Error('Video provider returned an invalid video URL.'); }
+  if (!['https:', 'http:'].includes(url.protocol)) throw new Error('Video provider returned a non-HTTP video URL.');
+  const response = await providerFetch(url.toString(), { redirect: 'follow' }, undefined, 180_000, 'Generated video download');
+  if (!response.ok) throw new Error(`Generated video download failed: HTTP ${response.status}.`);
+  const declaredSize = Number(response.headers.get('content-length') || 0);
+  if (declaredSize > MAX_GENERATED_VIDEO_BYTES) throw new Error('Generated video exceeds the 200 MB download limit.');
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (!bytes.byteLength) throw new Error('Video provider download returned an empty file.');
+  if (bytes.byteLength > MAX_GENERATED_VIDEO_BYTES) throw new Error('Generated video exceeds the 200 MB download limit.');
+  const contentType = (response.headers.get('content-type') || '').toLowerCase();
+  const hasMp4Signature = bytes.byteLength > 12 && String.fromCharCode(...bytes.slice(4, 8)) === 'ftyp';
+  if (!contentType.startsWith('video/') && !hasMp4Signature) throw new Error(`Video provider download returned unsupported content type: ${contentType || 'unknown'}.`);
+  return bytes;
+}
+
 function safeWorkspacePath(root: string, relative: string) {
   const target = path.resolve(root, relative);
   const rel = path.relative(root, target);
@@ -337,6 +382,24 @@ export function createModelCapabilityTools(input: { configs?: ModelCapabilityRun
         deliverable: true,
         ...(result.taskId ? { taskId: result.taskId } : {}),
       };
+    },
+  }));
+
+  const video = configFor(configs, 'video');
+  if (video) tools.push(defineAgentTool({
+    name: 'model_generate_video',
+    description: 'Generate a short video with the authorized video model and save it in the run workspace. Video generation is asynchronous and may take several minutes.',
+    parameters: Type.Object({
+      prompt: Type.String({ minLength: 1, maxLength: 512 }),
+      size: Type.Optional(Type.String({ maxLength: 40 })),
+      duration: Type.Optional(Type.Union([Type.Literal(5), Type.Literal(10)])),
+    }),
+    execute: async ({ prompt, size, duration }, { reportProgress }) => {
+      const report: ProgressReporter = (summary, progress) => reportProgress({ summary, ...(progress !== undefined ? { progress } : {}) });
+      const generated = await generateVideo(video, prompt, size, duration, report);
+      const bytes = await downloadGeneratedVideo(generated.url);
+      report('正在保存视频到运行工作区…', 94);
+      return { ok: true, capability: 'video', modelId: video.modelId, path: await writeOutput(input.workspaceRoot, 'mp4', bytes), mimeType: 'video/mp4', deliverable: true, taskId: generated.taskId };
     },
   }));
 

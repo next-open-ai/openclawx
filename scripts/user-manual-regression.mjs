@@ -1,5 +1,6 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { gzipSync } from 'node:zlib';
 
 const root = process.cwd();
 const assetsDir = path.join(root, 'apps/renderer/dist/assets');
@@ -38,6 +39,16 @@ const docsChunkPath = path.join(assetsDir, docsChunkName);
 const docsChunk = await readFile(docsChunkPath, 'utf8');
 const docsChunkSize = (await stat(docsChunkPath)).size;
 const generatedHtml = generated.sections.map((section) => section.html).join('');
+// DOC-SYNC-20261013: the app manual must ship current guidance, not only build successfully.
+for (const anchor of ['query-assets', 'experience-settings']) {
+  if (!generated.headings.some((heading) => heading.id === anchor)) throw new Error(`DOC-SYNC-20261013: missing manual anchor ${anchor}`);
+}
+for (const text of ['2026-10-13', 'SQLite', 'JSON', '后台', '应用大厅', '事务试写', '开启写入', '可信查询资产', '配置验证']) {
+  if (!generatedHtml.includes(text)) throw new Error(`DOC-SYNC-20261013: missing current guidance ${text}`);
+}
+for (const obsolete of ['也不支持 CRUD', '可信宿主逐次确认', '选择主要表；新应用', '本手册已同步 2026-10-07']) {
+  if (generatedHtml.includes(obsolete)) throw new Error(`DOC-SYNC-20261013: obsolete guidance ${obsolete}`);
+}
 const assertions = [
   ['chapter split marker', docsChunk.includes('manual-overview')],
   ['loading state', docsChunk.includes('正在准备用户手册')],
@@ -50,8 +61,10 @@ const assertions = [
 for (const [label, passed] of assertions) {
   if (!passed) throw new Error(`manual regression failed: ${label}`);
 }
-if (docsChunkSize > 100 * 1024) {
-  throw new Error(`DocsPage chunk unexpectedly large: ${docsChunkSize} bytes`);
+// The 2026-10-13 content expansion has an explicit bounded budget; no runtime Markdown parser.
+const docsGzipSize = gzipSync(docsChunk).length;
+if (docsChunkSize > 128 * 1024 || docsGzipSize > 48 * 1024) {
+  throw new Error(`DocsPage exceeds documented budget: ${docsChunkSize} bytes raw/${docsGzipSize} bytes gzip`);
 }
 
-console.log(`manual regression passed: ${docsChunkName} (${docsChunkSize} bytes)`);
+console.log(`manual regression passed: ${docsChunkName} (${docsChunkSize} bytes raw/${docsGzipSize} bytes gzip)`);

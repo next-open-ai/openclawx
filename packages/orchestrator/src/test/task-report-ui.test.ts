@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {Script,createContext} from 'node:vm';
+import {TaskReportUiSchema,TaskTemplateConfigurationSchema,type TaskReportUi} from '@workmate/contracts';
+import {reportUiHtml,validateReportUi} from '../task-report-ui.js';
+import {TemplateTaskService} from '../template-tasks.js';
+import {MemoryStore} from '../storage/memory.js';
+import {businessSummaryTemplate} from '../task-skills/business-summary/index.js';
+
+const ui:TaskReportUi={version:1,projectId:'report',revision:'a'.repeat(64),files:{'index.html':'<html><head><link href="styles.css" rel="stylesheet"></head><body><h1>自定义报告</h1><script src="main.js"></script></body></html>','styles.css':'body{color:navy}','main.js':'platform.ready.then(()=>{window.result=platform.getResult()})'}};
+test('TP-T18: report contract is bounded, local-only and SDK safely injects exact result without query authority',()=>{
+  assert.ok(TaskReportUiSchema.safeParse(ui).success);
+  assert.equal(TaskReportUiSchema.safeParse({...ui,files:{'../escape.js':''}}).success,false);
+  assert.equal(TaskReportUiSchema.safeParse({...ui,files:{'index.html':'x'.repeat(256001)}}).success,false);
+  assert.throws(()=>validateReportUi({...ui,files:{'index.html':'<script src="https://evil.test/main.js"></script>'}}),/未打包/);
+  assert.throws(()=>validateReportUi({...ui,files:{'index.html':'<script>const = broken;</script>'}}),/脚本语法/);
+  const data={title:'</script><script>window.leaked=true</script>',data:{text:'财务 <>& 数据',value:7}};
+  const html=reportUiHtml(ui,data);
+  assert.match(html,/connect-src 'none'/);assert.match(html,/body\{color:navy/);assert.doesNotMatch(html,/<script src=/);
+  const context=createContext({window:{addEventListener(){}}});const sdk=html.match(/<script>([\s\S]*?)<\/script>/)![1];
+  new Script(sdk).runInContext(context);
+  const platform=(context.window as any).platform;
+  assert.deepEqual(JSON.parse(JSON.stringify(platform.getResult())),data);
+  platform.getResult().data.value=99;assert.equal(platform.getResult().data.value,7);
+  assert.equal(platform.request,undefined);assert.equal(platform.submit,undefined);assert.equal((context.window as any).leaked,undefined);
+});
+test('TP-T18: template output defaults, explicit task override, published report history and default agent view',async()=>{
+  const owner={orgId:'org',userId:'alice'};const prompts:string[]=[];
+  const service=new TemplateTaskService(new MemoryStore(),undefined,undefined,async(_o,_t,_p,prompt)=>{prompts.push(prompt);return {text:'真实结果',sessionId:'s',agentRunId:'r'};});
+  const {id:_id,version:_version,...base}=businessSummaryTemplate;
+  assert.ok(TaskTemplateConfigurationSchema.safeParse(base).success,'legacy template remains valid');
+  const parameterUi={version:1,projectId:'input',revision:'b'.repeat(64),files:{'index.html':'<script>platform.submit({})</script>','input.schema.json':'{"type":"object","properties":{},"additionalProperties":false}'}};
+  let record=await service.saveDefinition(owner,{...base,parameterUi,reportUi:ui,agent:{employeeId:'general',prompt:'执行'},resultOutput:{destination:'task-results',instructions:'输出关键指标'}});
+  await service.trial(owner,record.id,record.revision,{});record=await service.publish(owner,record.id,record.revision);assert.equal(prompts.length,0);
+  const task=await service.save(owner,{name:'报告任务',templateId:record.id,templateVersion:record.draft.version,parameters:{}});
+  assert.equal(task.resultOutput?.instructions,'输出关键指标');
+  const run=await service.run(owner,task.id,'report-run');assert.equal(run.status,'completed');assert.match(prompts[0],/输出关键指标/);assert.equal(run.jsonResult?.output.destination,'task-results');
+  assert.match(service.render(run.result!).html!,/自定义报告/);
+  const changed={...ui,revision:'c'.repeat(64),files:{'index.html':'<h1>新报告</h1>'}};
+  const {id:_draftId,version:_draftVersion,...config}=record.draft;
+  await service.saveDefinition(owner,{...config,reportUi:changed},record.id,record.revision);
+  const historical=await service.result(owner,task.id,run.id);assert.match(service.render(historical).html!,/自定义报告/);assert.doesNotMatch(service.render(historical).html!,/新报告/);
+  const override=await service.save(owner,{name:'覆盖要求',templateId:record.id,templateVersion:record.draft.version,parameters:{},resultOutput:{destination:'task-results',instructions:'覆盖要求'}});
+  await service.run(owner,override.id,'override-run');assert.match(prompts[1],/覆盖要求/);assert.doesNotMatch(prompts[1],/输出关键指标/);
+  const direct=await service.save(owner,{mode:'direct',name:'默认报告',employeeId:'general',prompt:'完成'});
+  const directRun=await service.run(owner,direct.id,'direct-view');assert.match(service.render(directRun.result!).html!,/真实结果/);
+  await assert.rejects(service.save(owner,{name:'非法输出',templateId:record.id,templateVersion:record.draft.version,parameters:{},resultOutput:{destination:'/tmp/arbitrary'}}));
+});

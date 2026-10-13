@@ -32,7 +32,7 @@ export async function testVisionCapabilityDataUrl(config: ModelCapabilityRuntime
   const bytes = Buffer.from(match[2], 'base64');
   if (!bytes.length || bytes.length > 10 * 1024 * 1024) throw new ImageInputError('IMAGE_SIZE_INVALID', '测试图片须小于等于 10 MB。');
   const effectiveModelId = effectiveVisionModelId(config);
-  const runtimeModel = { provider: config.provider, baseUrl: config.baseUrl, apiKey: config.apiKey, chatModel: effectiveModelId, supportsVision: true };
+  const runtimeModel = { provider: config.provider, baseUrl: config.baseUrl, apiKey: config.apiKey, chatModel: effectiveModelId, supportsVision: true, disableThinking: config.provider === 'qwen' };
   const response = await complete(toPiModel(runtimeModel), {
     systemPrompt: 'You are a focused image-understanding specialist. Describe only visible evidence, distinguish facts from inference, and answer concisely in the user language.',
     messages: [{ role: 'user', timestamp: Date.now(), content: [
@@ -55,6 +55,7 @@ export async function testVisionCapabilityDataUrl(config: ModelCapabilityRuntime
  * catalogs may expose dated snapshots that the deployment route never serves. */
 export function effectiveVisionModelId(config: Pick<ModelCapabilityRuntime, 'provider' | 'baseUrl' | 'modelId'>) {
   if (config.provider !== 'qwen') return config.modelId;
+  if (config.modelId.toLowerCase() === 'qwen3-vl-flash') return 'qwen3.8-flash';
   let host = '';
   try { host = new URL(config.baseUrl || '').hostname.toLowerCase(); } catch { return config.modelId; }
   if (!host.endsWith('.maas.aliyuncs.com')) return config.modelId;
@@ -116,7 +117,7 @@ export function createVisionCapabilityTool(config: ModelCapabilityRuntime, conte
         const blocks = await resolveChatImages({ role: 'user', content: originalQuestion, attachments: selected }, context.conversationId);
         const readDurationMs = Date.now() - readStartedAt;
         const effectiveModelId = effectiveVisionModelId(config);
-        const runtimeModel = { provider: config.provider, baseUrl: config.baseUrl, apiKey: config.apiKey, chatModel: effectiveModelId, supportsVision: true };
+        const runtimeModel = { provider: config.provider, baseUrl: config.baseUrl, apiKey: config.apiKey, chatModel: effectiveModelId, supportsVision: true, disableThinking: config.provider === 'qwen' };
         const deadline = AbortSignal.timeout(90_000);
         reportProgress({ summary: `临时图片读取完成（${formatVisionDuration(readDurationMs)}），正在提交至视觉模型 ${effectiveModelId}…`, progress: 20 });
         const modelStartedAt = Date.now();

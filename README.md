@@ -39,7 +39,10 @@ AgentScope 迁移说明见 `docs/migrations/agentscope.md`；协议 ABI 见 `doc
 | 数字员工 | 职责与授权载体：可配模型、Skills、运行时偏好与权限档位（read-only/default/extended/full） |
 | 执行后端 | 统一 `ExecutionBackend` 抽象，内置 `pi`，可选 `AgentScope` sidecar 池与 `dsh` 编码 sidecar |
 | Skill（渐进加载） | 先授权元信息 → 按需读 `SKILL.md` → 才可在隔离运行工作区访问资源/执行脚本 |
-| 项目编排 | 目标 → **Plan vN**（DAG）→ 确认 → **Run**；补充指令走 **ChangeSet** 增量失效下游；成员变更升 Plan 并尽量保留已完成节点 |
+| 项目与工作流 | 普通项目持续对话、选中员工直接执行、固定成果目录，不默认规划 DAG；显式工作流及旧 DAG 保留 Plan/Run/ChangeSet |
+| 任务中心 | 直接/模板创建、定时周期、可选参数与报告界面、结构化 json-result；模板入口位于任务管理 |
+| 数据对象与应用 | 实时连接/本地副本、受控聚合/JOIN、AI 参数化 SQL、审核后 CRUD、MySQL 新表草稿与全屏应用大厅 |
+| 查询资产与经验 | 用户主动收藏成功查询；经验卡 SQLite 本地优先、JSON 异步副本、配置验证可用后后台知识库同步 |
 | 可续跑审批 | 工具审批把运行停在 `waiting-approval`；决议后自动以同 turn 新 attempt 续跑 |
 | 会话滚动记忆 | 本会话 `memory.summary` + 水位线；超预算自动摘要，切换会话 flush；消息全文仍是真相 |
 | 持续任务 | 复杂任务保存源文件、检查点和工作区，可跨 run 继续；完成后自动收敛，清空消息不删除 Session |

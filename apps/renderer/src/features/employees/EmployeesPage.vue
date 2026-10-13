@@ -24,6 +24,7 @@ import { useNotify } from '../../app/notify';
 import { mcpSummaryLine, useMcpConfig, isAssociableMcp } from '../../app/mcp-config';
 import { knowledgeProviderMeta, useKnowledgeConfig } from '../../app/kb-config';
 import { getServerRuntimeConfig } from '../../services/api';
+import EmployeeDataObjects from './EmployeeDataObjects.vue';
 import {
   EMPLOYEE_COLOR_PRESETS,
   defaultEmployeeDraft,
@@ -607,6 +608,7 @@ watch(employeeModelSupportsBuiltinSearch, (ok) => {
               </div>
             </label>
 
+            <EmployeeDataObjects v-if="selected" :key="selected" :employee-id="selected" :engine="draftEngine" />
             <div class="grid gap-1.5 text-xs font-semibold text-[var(--muted)] sm:col-span-2">
               <span>{{ t('employee.mcpTitle') }}</span>
               <p class="font-normal text-[11px]">{{ t('employee.mcpHelp') }}</p>

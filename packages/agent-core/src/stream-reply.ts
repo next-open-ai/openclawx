@@ -11,6 +11,7 @@ import {
 import { loadExecutionRoutingConfig } from './execution-routing-config.js';
 import { attachBuiltinSkillPackages } from './builtin-skill-packages.js';
 import { assertVisionSupported } from './image-input.js';
+import { streamTextOnlyReply } from './text-only-reply.js';
 
 export { DEFAULT_RUN_TIMEOUT_MS };
 export {
@@ -51,6 +52,10 @@ export async function* streamAgentReply(
   input: ExecutionBackendStreamInput,
   resolve?: BackendResolveInput,
 ): AsyncGenerator<AgentEvent> {
+  if (input.responseMode === 'text-only') {
+    yield* streamTextOnlyReply(input);
+    return;
+  }
   const preparedInput: ExecutionBackendStreamInput = {
     ...input,
     skills: await attachBuiltinSkillPackages(input.skills ?? []),

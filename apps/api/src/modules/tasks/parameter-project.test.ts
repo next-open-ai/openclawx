@@ -1,0 +1,100 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { Script, createContext } from 'node:vm';
+import { mkdtemp, readFile, writeFile, symlink, rm } from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import { Orchestrator, TemplateTaskService } from '@workmate/orchestrator';
+import { ParameterProjects } from './parameter-project.js';
+import {parameterSkillOptions} from './parameter-skill-options.js';
+import {MemoryStore} from '@workmate/orchestrator';
+
+test('TP-T6/T10: Skill options expose only own ready public metadata; empty scoped catalog is authoritative',async()=>{
+ const store=new MemoryStore();
+ await store.set('capabilities.skills.v2',JSON.stringify([{id:'legacy',status:'ready'}]));
+ await store.set('user:alice:capabilities.skills.v2',JSON.stringify([{id:'a',name:'技能一',description:'说明',status:'ready',path:'/secret',instructions:'private',execution:{full:true}},{id:'b',status:'disabled'},{id:'system',status:'ready',systemOnly:true}]));
+ await store.set('user:bob:capabilities.skills.v2','[]');
+ assert.deepEqual(await parameterSkillOptions(store,{orgId:'org',userId:'alice'}),{skills:[{id:'a',name:'技能一',description:'说明'}]});
+ assert.deepEqual(await parameterSkillOptions(store,{orgId:'org',userId:'bob'}),{skills:[]});
+ assert.equal((await parameterSkillOptions(store,{orgId:'org',userId:'legacy-user'})).skills[0].id,'legacy');
+});
+
+const owner={orgId:'org',userId:'alice'};
+const base={name:'文档任务',description:'test',input:{skillId:'business-summary',version:'1.0.0',entry:'prepare'},execution:{skillId:'business-summary',version:'1.0.0',entry:'execute'},output:{skillId:'business-summary',version:'1.0.0',entry:'format'},view:{skillId:'business-summary',version:'1.0.0',entry:'report'},resultType:'business-summary',resultVersion:'1.0.0',agent:{employeeId:'general',prompt:'整理用户文档'}};
+test('TP-T18: report editor separate association, idle preview/import, ownership and history protection',async()=>{
+ const root=await mkdtemp(path.join(os.tmpdir(),'workmate-report-project-'));let calls=0;
+ const orch=Orchestrator.open(path.join(root,'domain.json'),{runner:{async start(){calls++}}});
+ const tasks=new TemplateTaskService(orch.store),reports=new ParameterProjects(orch,tasks,root,'report'),parameters=new ParameterProjects(orch,tasks,root);
+ try{
+  let record=await tasks.saveDefinition(owner,base);
+  const first=await reports.open(owner,record.id,record.revision,'general');
+  assert.equal((await reports.open(owner,record.id,record.revision,'general')).projectId,first.projectId);assert.equal(calls,0);
+  const input=await parameters.open(owner,record.id,record.revision,'general');assert.notEqual(input.projectId,first.projectId);
+  const project=(await orch.projects.getProject(first.projectId))!;
+  assert.match(project.goal,/getResult/);assert.match(await readFile(path.join(project.workspacePath,'index.html'),'utf8'),/task-report.js/);
+  const preview=await reports.previewReport(owner,first.projectId);assert.match(preview.html,/getResult/);assert.match(preview.html,/设计预览/);
+  assert.equal((await tasks.definition(owner,record.id)).revision,record.revision);
+  await assert.rejects(reports.previewReport({...owner,userId:'bob'},first.projectId),/不存在/);
+  record=await reports.import(owner,record.id,record.revision);assert.ok(record.draft.reportUi);assert.equal(record.draft.parameterUi,undefined);
+  assert.deepEqual(await reports.import(owner,record.id,record.revision),record);
+  await writeFile(path.join(project.workspacePath,'index.html'),'<h1>新版报告</h1>');
+  const next=await reports.import(owner,record.id,record.revision);assert.equal(next.revision,record.revision+1);assert.equal(next.verifiedRevision,undefined);
+  await assert.rejects(reports.import(owner,record.id,record.revision),/已更新/);
+  await symlink('/etc/hosts',path.join(project.workspacePath,'escape.js'));await assert.rejects(reports.previewReport(owner,first.projectId),/符号链接/);await rm(path.join(project.workspacePath,'escape.js'));
+  await orch.store.set(`projects:${project.id}`,JSON.stringify({...project,status:'running'}));
+  await assert.rejects(reports.import(owner,record.id,next.revision),/正在编辑/);
+ }finally{await orch.store.close();await rm(root,{recursive:true,force:true});}
+});
+test('TP-T2: create/reopen without AI execution, import preserves versions, rejects unauthorized/stale/running/symlink',async()=>{
+ const root=await mkdtemp(path.join(os.tmpdir(),'workmate-parameter-project-'));let calls=0;
+ const orch=Orchestrator.open(path.join(root,'domain.json'),{runner:{async start(){calls++}}});
+ const tasks=new TemplateTaskService(orch.store);const service=new ParameterProjects(orch,tasks,root);
+ try {
+  let record=await tasks.saveDefinition(owner,base);
+  const [first,second]=await Promise.all([service.open(owner,record.id,record.revision,'general',{units:[{id:'real-table',fields:[]}]}),service.open(owner,record.id,record.revision,'general')]);
+  assert.equal(first.projectId,second.projectId);assert.equal(calls,0);
+  const project=(await orch.projects.getProject(first.projectId))!;assert.equal(project.kind,'conversation');assert.equal(project.ownerUserId,'alice');assert.equal(project.messages.filter(message=>message.role!=='system').length,0);
+  assert.match(await readFile(path.join(project.workspacePath,'README.md'),'utf8'),/platform.submit/);
+  assert.match(await readFile(path.join(project.workspacePath,'DATA-CATALOG.json'),'utf8'),/real-table/);
+  const reference=JSON.parse(await readFile(path.join(project.workspacePath,'API-REFERENCE.json'),'utf8'));
+  assert.equal(reference.readOnly,true);assert.equal(reference.endpoints.length,4);assert.ok(reference.endpoints.every((item:any)=>item.method==='GET'));
+  assert.match(reference.authentication,/不向页面提供密钥/);
+  const previewWindow:any={};
+  new Script(await readFile(path.join(project.workspacePath,'task-platform.js'),'utf8')).runInContext(createContext({window:previewWindow}));
+  assert.equal((await previewWindow.platform.request('/api/data/gateway/units')).units[0].id,'real-table');
+  await assert.rejects(previewWindow.platform.request('/api/unknown'),/导入模板/);
+  assert.match(await readFile(path.join(project.workspacePath,'index.html'),'utf8'),/task-platform.js/);
+  await assert.rejects(service.open({...owner,userId:'bob'},record.id,record.revision,'general'),/不存在/);
+  const beforePreview=await tasks.definition(owner,record.id);
+  assert.deepEqual(await service.info(owner,project.id),{definitionId:record.id});
+  assert.deepEqual(await service.info({...owner,userId:'bob'},project.id),{definitionId:null});
+  await assert.rejects(service.preview({...owner,userId:'bob'},project.id),/不存在/);
+  const preview=await service.preview(owner,project.id);
+  assert.match(preview.html,/window.platform=/);
+  assert.match(preview.html,/connect-src 'none'/);
+  assert.equal(preview.definitionId,record.id);
+  assert.equal(preview.revision.length,64);
+  assert.deepEqual(await tasks.definition(owner,record.id),beforePreview,'preview never mutates the template');
+  const originalSchema=await readFile(path.join(project.workspacePath,'input.schema.json'),'utf8');
+  await writeFile(path.join(project.workspacePath,'input.schema.json'),'not-json');
+  await assert.rejects(service.preview(owner,project.id),/参数 UI 暂不可预览/);
+  await writeFile(path.join(project.workspacePath,'input.schema.json'),originalSchema);
+  record=await service.import(owner,record.id,record.revision);assert.ok(record.draft.parameterUi);assert.equal(record.revision,2);
+  await tasks.trial(owner,record.id,record.revision);record=await tasks.publish(owner,record.id,record.revision);
+  const same=await service.import(owner,record.id,record.revision);
+  assert.deepEqual(same,record,'TP-T17: unchanged return snapshot preserves revision, verification and publication');
+  await writeFile(path.join(project.workspacePath,'index.html'),'<form><h1>第二版参数</h1></form><script>platform.submit({})</script>');
+  assert.match((await service.preview(owner,project.id)).html,/第二版参数/);
+  assert.deepEqual(await tasks.definition(owner,record.id),record,'preview preserves published version and verification');
+  const updated=await service.import(owner,record.id,record.revision);
+  assert.match((await tasks.previewInput(owner,record.id)).html,/第二版/);assert.doesNotMatch(await tasks.inputView(record.id,record.draft.version,owner),/第二版/);
+  await assert.rejects(service.import(owner,record.id,record.revision),/已更新/);
+  await symlink('/etc/hosts',path.join(project.workspacePath,'escape.js'));
+  await assert.rejects(service.import(owner,record.id,updated.revision),/符号链接/);await rm(path.join(project.workspacePath,'escape.js'));
+  await symlink('/etc/hosts',path.join(project.workspacePath,'escape.js'));
+  await assert.rejects(service.preview(owner,project.id),/符号链接/);await rm(path.join(project.workspacePath,'escape.js'));
+  await orch.store.set(`projects:${project.id}`,JSON.stringify({...project,status:'running'}));
+  await assert.rejects(service.import(owner,record.id,updated.revision),/正在编辑/);
+  await assert.rejects(service.preview(owner,project.id),/正在编辑/);
+ }finally{await orch.store.close();await rm(root,{recursive:true,force:true});}
+});

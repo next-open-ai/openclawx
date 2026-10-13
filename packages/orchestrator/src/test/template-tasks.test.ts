@@ -7,6 +7,35 @@ import { TemplateTaskService } from '../template-tasks.js';
 import { MemoryStore } from '../storage/memory.js';
 import { JsonFileStore } from '../storage/json-file.js';
 import { businessSummarySkill, businessSummaryTemplate } from '../task-skills/business-summary/index.js';
+import {TaskRunJsonResultSchema} from '@workmate/contracts';
+
+test('TP-T9: direct task runs with employee/prompt/output snapshot, no template, stable JSON and idempotency',async()=>{
+  const store=new MemoryStore();let calls=0;
+  const service=new TemplateTaskService(store,undefined,undefined,async(_owner,template,params,prompt,link)=>{
+    calls++;assert.equal(template.agent?.employeeId,'research');assert.deepEqual(params,{});assert.match(prompt,/关键指标/);await link('session','agent-run');return {text:'分析完成',metrics:{total:7}};
+  });
+  const input={mode:'direct',name:'直接分析',employeeId:'research',prompt:'分析业务',resultOutput:{destination:'task-results',instructions:'输出关键指标'}};
+  const task=await service.save(owner,input);assert.equal(task.mode,'direct');assert.equal((await service.definitions(owner)).length,0);
+  const [first,retry]=await Promise.all([service.run(owner,task.id,'direct-run'),service.run(owner,task.id,'direct-run')]);
+  assert.equal(calls,1);assert.equal(first.result?.id,retry.result?.id);
+  const json=TaskRunJsonResultSchema.parse(first.jsonResult);assert.equal(json.kind,'json-result');assert.equal(json.status,'completed');assert.deepEqual(json.data?.metrics,{total:7});assert.equal(json.input.employeeId,'research');assert.equal(json.input.prompt,'分析业务');
+  await service.save(owner,{...input,prompt:'新一轮提示词'},task.id,1);
+  const reopened=new TemplateTaskService(store);assert.equal((await reopened.detail(owner,task.id)).runs[0].jsonResult?.input.prompt,'分析业务');
+  assert.equal((await reopened.runs(owner))[0].mode,'direct');assert.deepEqual(await reopened.runs({...owner,userId:'stranger'}),[]);
+  await assert.rejects(service.save(owner,{...input,employeeId:''}));await assert.rejects(service.save(owner,{...input,prompt:''}));
+  await assert.rejects(service.save(owner,{...input,resultOutput:{destination:'/tmp/arbitrary'}}));
+  await assert.rejects(service.save(owner,{name:'switch',templateId:'business-summary',templateVersion:'1.0.0',parameters:{period:'2026-09',rows:[{name:'A',revenue:1,cost:0}]}},task.id,2),/创建方式/);
+});
+test('TP-T9: failed, restarted and legacy runs expose structured JSON without inventing successful output',async()=>{
+  const store=new MemoryStore();const service=new TemplateTaskService(store,undefined,undefined,async()=>{throw Error('余额不足');});
+  const task=await service.save(owner,{mode:'direct',name:'失败任务',employeeId:'general',prompt:'执行'});
+  const run=await service.run(owner,task.id,'failure');assert.equal(run.jsonResult?.data,null);assert.equal(run.jsonResult?.error,'余额不足');assert.equal(run.jsonResult?.status,'failed');
+  const key=(await store.keys('template-runs:'))[0];
+  const old={...run,jsonResult:undefined,status:'running',finishedAt:undefined};await store.set(key,JSON.stringify(old));
+  await service.recoverInterrupted();const recovered=(await service.detail(owner,task.id)).runs[0];assert.equal(recovered.jsonResult?.status,'failed');assert.match(recovered.jsonResult!.error!,/服务重启/);
+  await store.set(key,JSON.stringify({...run,jsonResult:undefined,executionSnapshot:undefined}));
+  const before=await store.get(key);assert.equal((await service.runs(owner))[0].run.jsonResult?.kind,'json-result');assert.equal(await store.get(key),before,'legacy projection does not mutate persisted history');
+});
 
 const owner = { orgId: 'org1', userId: 'user1' };
 const input = () => ({ name: '月度试验', templateId: 'business-summary', templateVersion: '1.0.0', parameters: {
@@ -190,4 +219,13 @@ test('export policy, escaping and zero-income calculations hold for configured t
   await service.run(owner, task.id, 'r');
   await assert.rejects(service.exportResult(owner, task.id, 'r', 'html'), /未启用/);
   assert.match((await service.exportResult(owner, task.id, 'r', 'csv')).content, /'=HYPERLINK/);
+});
+test('TP-T13: Skill trial executes explicit test parameters while leaving defaults empty',async()=>{
+ const service=new TemplateTaskService(new MemoryStore());
+ const config=configuration(),parameters=structuredClone(config.defaults);
+ const record=await service.saveDefinition(owner,{...config,defaults:{}});
+ const result=await service.trial(owner,record.id,record.revision,parameters);
+ assert.equal(result.mode,'execution');assert.match(result.html,/报告|汇总/);
+ assert.deepEqual((await service.definition(owner,record.id)).draft.defaults,{});
+ assert.equal((await service.publish(owner,record.id,record.revision)).published.length,1);
 });

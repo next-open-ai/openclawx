@@ -1,35 +1,30 @@
 import type { ModelConfig } from '@workmate/contracts';
-import { resolveExperienceEmbed } from './embed.js';
+import {currentExperienceContext} from './context.js';
 
-/**
- * Pre-turn experience recall readiness.
- *
- * Single gate aligned with product settings: the system-wide embedding /
- * vector model (ModelConfig.embeddingModel, filled from
- * Settings → activeEmbeddingModelId). If that is not configured, vector
- * features are not ready — skip with zero network cost.
+/** Optional knowledge enrichment uses only the host's config-stage availability state.
+ * Local save/load remain enabled independently; no network health probing here.
  */
 
-export type ExperienceRecallReadyReason = 'ok' | 'no-embedding';
+export type ExperienceRecallReadyReason = 'ok' | 'knowledge-unavailable';
 
 export type ExperienceRecallReadiness = {
   ok: boolean;
   reason: ExperienceRecallReadyReason;
 };
 
-/** Sync: global vector model configured on this run's ModelConfig? */
+/** Sync read of the trusted runtime gate; model credentials do not imply availability. */
 export function getExperienceRecallReadiness(input: {
   model?: ModelConfig;
 }): ExperienceRecallReadiness {
-  if (!resolveExperienceEmbed(input.model)) {
-    return { ok: false, reason: 'no-embedding' };
+  if (!currentExperienceContext()?.settings.available || !currentExperienceContext()?.target) {
+    return { ok: false, reason: 'knowledge-unavailable' };
   }
   return { ok: true, reason: 'ok' };
 }
 
 /** @deprecated no-op kept for call-site compatibility after saves */
 export function invalidateExperienceRecallReadiness(_agentId?: string) {
-  /* readiness is derived from ModelConfig each call; nothing to cache */
+  /* readiness is supplied by host configuration; nothing to probe */
 }
 
 /** @deprecated no-op — circuit breaker removed in favor of global config gate */

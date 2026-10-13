@@ -10,6 +10,79 @@ import { createModelCapabilityTools } from '../model-capability-runtime.js';
 import { iflytekTtsUrl } from '../speech-provider-adapters.js';
 import { transcribeDashScope, transcribeIflytek } from '../speech-provider-adapters.js';
 
+test('free CogView submits native parameters and saves the returned image URL', async () => {
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-cogview-'));
+  let submitted: unknown;
+  let baseUrl = '';
+  const server = createServer(async (request, response) => {
+    if (request.url === '/images/generations') {
+      let body = ''; for await (const chunk of request) body += chunk.toString();
+      submitted = JSON.parse(body);
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify({ data: [{ url: `${baseUrl}/image.png` }] }));
+    } else if (request.url === '/image.png') {
+      assert.equal(request.headers.authorization, undefined, 'download must not leak the model key');
+      response.setHeader('content-type', 'image/png');
+      response.end(Buffer.from('png'));
+    } else { response.statusCode = 404; response.end(); }
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address(); assert.ok(address && typeof address === 'object');
+  baseUrl = `http://127.0.0.1:${address.port}`;
+  try {
+    const [tool] = createModelCapabilityTools({ workspaceRoot, configs: [{
+      id: 'free-image', capability: 'image', provider: 'glm', baseUrl,
+      apiKey: 'test-key', modelId: 'cogview-3-flash', mode: 'auto', imageProtocol: 'openai-images',
+    }] });
+    const result = (await tool.execute('cogview', { prompt: '海边日落' }, undefined)).details as any;
+    assert.equal(result.ok, true);
+    assert.deepEqual(submitted, { model: 'cogview-3-flash', prompt: '海边日落', size: '1024x1024' });
+    assert.equal((await readFile(path.join(workspaceRoot, result.path))).toString(), 'png');
+  } finally {
+    const closed = new Promise<void>((resolve) => server.close(() => resolve()));
+    server.closeAllConnections(); await closed;
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test('free CogVideoX submits an async task, polls it and saves the MP4 result', async () => {
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-cogvideo-'));
+  let submitted: unknown;
+  let baseUrl = '';
+  const server = createServer(async (request, response) => {
+    response.setHeader('content-type', 'application/json');
+    if (request.url === '/videos/generations') {
+      let body = ''; for await (const chunk of request) body += chunk.toString();
+      submitted = JSON.parse(body);
+      response.end(JSON.stringify({ id: 'video-task' }));
+    } else if (request.url === '/async-result/video-task') {
+      response.end(JSON.stringify({ task_status: 'SUCCESS', video_result: [{ url: `${baseUrl}/result.mp4` }] }));
+    } else if (request.url === '/result.mp4') {
+      assert.equal(request.headers.authorization, undefined, 'download must not leak the model key');
+      response.setHeader('content-type', 'video/mp4');
+      response.end(Buffer.from('0000ftypisom-video'));
+    } else { response.statusCode = 404; response.end(); }
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address(); assert.ok(address && typeof address === 'object');
+  baseUrl = `http://127.0.0.1:${address.port}`;
+  try {
+    const [tool] = createModelCapabilityTools({ workspaceRoot, configs: [{
+      id: 'free-video', capability: 'video', provider: 'glm', baseUrl,
+      apiKey: 'test-key', modelId: 'cogvideox-flash', mode: 'auto',
+    }] });
+    const result = (await tool.execute('cogvideo', { prompt: '海边日落', size: '1920x1080' }, undefined)).details as any;
+    assert.equal(result.ok, true);
+    assert.deepEqual(submitted, { model: 'cogvideox-flash', prompt: '海边日落', size: '1920x1080' });
+    assert.equal(result.mimeType, 'video/mp4');
+    assert.equal((await readFile(path.join(workspaceRoot, result.path))).toString(), '0000ftypisom-video');
+  } finally {
+    const closed = new Promise<void>((resolve) => server.close(() => resolve()));
+    server.closeAllConnections(); await closed;
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test('Volcengine realtime models expose curated popular voices while preserving custom IDs', () => {
   assert.deepEqual(suggestedSpeechVoices('volcengine', '1.2.6.1'), [
     'zh_female_vv_jupiter_bigtts',
@@ -398,17 +471,25 @@ test('disabled specialist models are not exposed to the controller model', () =>
   assert.equal(tools.length, 0);
 });
 
-test('Qwen Image 3 fails locally with actionable guidance when workspace endpoint is missing', async () => {
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-qwen-workspace-required-'));
+test('Qwen Image 3 can use the shared endpoint when Workspace ID is omitted', async () => {
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-qwen-default-workspace-'));
+  const nativeFetch = globalThis.fetch;
+  let requestedUrl = '';
   try {
+    globalThis.fetch = (async (input: string | URL | Request) => {
+      requestedUrl = String(input);
+      return new Response(JSON.stringify({ data: [{ b64_json: Buffer.from('png').toString('base64') }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch;
     const tools = createModelCapabilityTools({
       workspaceRoot,
       configs: [{ id: 'qwen-image', capability: 'image', provider: 'qwen', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKey: 'key', modelId: 'qwen-image-3.0', mode: 'auto' }],
     });
-    const output = (await tools[0].execute('test', { prompt: 'test' }, undefined)).details as { ok: false; error: string };
-    assert.equal(output.ok, false);
-    assert.match(output.error, /requires a Bailian Workspace endpoint/);
+    const output = (await tools[0].execute('test', { prompt: 'test' }, undefined)).details as any;
+    assert.equal(output.ok, true);
+    assert.equal(requestedUrl, 'https://dashscope.aliyuncs.com/compatible-mode/v1/images/generations');
+    assert.equal((await readFile(path.join(workspaceRoot, output.path))).toString(), 'png');
   } finally {
+    globalThis.fetch = nativeFetch;
     await rm(workspaceRoot, { recursive: true, force: true });
   }
 });

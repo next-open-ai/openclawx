@@ -228,6 +228,12 @@ export function requireAuth(request: FastifyRequest) {
   return currentPrincipal(request);
 }
 
+/** Trusted background run identity; never resolves an HTTP/model-supplied token. */
+export function activeDataRunOwner(userId: string, orgId: string): { userId: string; orgId: string } | null {
+  const user = readStore().users.find(item => item.id === userId && item.orgId === orgId && !item.disabled);
+  return user ? { userId: user.id, orgId: user.orgId } : null;
+}
+
 export function requireAdmin(request: FastifyRequest) {
   const auth = currentPrincipal(request);
   requireSystemAdmin(auth);

@@ -9,7 +9,7 @@ import SidebarIcon from './SidebarIcon.vue';
 import BrandLogo from './BrandLogo.vue';
 
 const props = defineProps<{ collapsed: boolean; view: View; conversations: Conversation[]; activeConversationId: string | null; serviceReady: boolean; currentUser?: AuthUser | null }>();
-const emit = defineEmits<{ toggle: []; navigate: [view: View]; newChat: []; selectConversation: [id: string]; deleteConversation: [id: string]; logout: [] }>();
+const emit = defineEmits<{ toggle: []; navigate: [view: View]; newChat: []; selectConversation: [id: string]; deleteConversation: [id: string]; logout: []; openApplications: [] }>();
 const { t } = useI18n();
 const { preference, cycleTheme } = useTheme();
 const accountMenuOpen = ref(false);
@@ -21,6 +21,7 @@ const navItems: NavItem[] = [
   { id: 'chat', labelKey: 'nav.workspace', icon: 'chat' },
   { id: 'employees', labelKey: 'nav.employees', icon: 'employees' },
   { id: 'projects', labelKey: 'nav.projects', icon: 'projects' },
+  { id: 'workflows', labelKey: 'nav.workflows', icon: 'automations' },
   { id: 'capabilities', labelKey: 'nav.capabilities', icon: 'capabilities' },
   { id: 'knowledge', labelKey: 'nav.knowledge', icon: 'knowledge' },
   { id: 'automations', labelKey: 'nav.automations', icon: 'automations' },
@@ -100,10 +101,10 @@ onBeforeUnmount(() => {
 <template>
   <aside :class="['flex shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar)] transition-[width] duration-200', collapsed ? 'w-[72px] px-2 py-3' : 'w-[248px] p-3']">
     <div :class="['mb-5 flex items-center', collapsed ? 'justify-center' : 'justify-between px-1']">
-      <div class="flex items-center gap-2.5">
+      <button type="button" data-app-gallery-entry class="flex items-center gap-2.5 rounded-lg outline-offset-4 hover:opacity-80" title="打开应用大厅" aria-label="打开应用大厅" @click="emit('openApplications')">
         <BrandLogo />
         <span v-if="!collapsed" class="text-sm font-extrabold tracking-[.06em]">Workmate</span>
-      </div>
+      </button>
       <button v-if="!collapsed" class="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]" type="button" title="收起侧栏" @click="emit('toggle')">
         <SidebarIcon name="chevron-left" />
       </button>
@@ -122,7 +123,7 @@ onBeforeUnmount(() => {
       <span v-if="!collapsed">{{ t('nav.newConversation') }}</span>
     </button>
 
-    <nav class="grid gap-0.5" :aria-label="t('nav.workspace')">
+    <nav class="grid max-h-[62vh] shrink-0 gap-0.5 overflow-y-auto" :aria-label="t('nav.workspace')">
       <button
         v-for="item in visibleNavItems"
         :key="item.id"

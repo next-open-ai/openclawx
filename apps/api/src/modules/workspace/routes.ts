@@ -345,6 +345,10 @@ export const workspaceRoutes: FastifyPluginAsync = async (app) => {
   app.post('/workspace/sync-run', async (request, reply) => {
     const body = request.body && typeof request.body === 'object' ? (request.body as Record<string, unknown>) : {};
     try {
+      const { getOrchestrator } = await import('../orchestration/routes.js');
+      const target = projectRoot(String(body.root || ''));
+      const managed = (await getOrchestrator().projects.listProjects()).find(project => project.kind === 'conversation' && path.resolve(project.workspacePath) === target);
+      if (managed) return reply.code(409).send({ message: '持续对话项目由服务端在成功后更新成果，不允许从历史运行目录回收覆盖' });
       return syncRunWorkspaceToProject(String(body.root || ''), String(body.runId || ''));
     } catch (error) {
       return reply.code(400).send({ message: error instanceof Error ? error.message : String(error) });

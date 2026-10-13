@@ -2,10 +2,30 @@
 import DataTaskDemo from './DataTaskDemo.vue';
 import DataObjectAnnotationsEditor from './DataObjectAnnotationsEditor.vue';
 import DatabaseConnectionDialog from './DatabaseConnectionDialog.vue';
+import LiveDatabaseDialog from './LiveDatabaseDialog.vue';
+import LiveDataTester from './LiveDataTester.vue';
+import StructuredDataQuery from './StructuredDataQuery.vue';
 import DataAppCreateDialog, { type DataAppCreateDraft } from './DataAppCreateDialog.vue';
 import { dataObjectAnnotationsSchema, type DataObjectAnnotations } from '@workmate/contracts';
 const demoOpen = ref(false);
 const databaseDialogOpen = ref(false);
+const liveDatabaseOpen = ref(false);
+const createCredentialRequired = ref(false);
+const repairConnectionId = ref('');
+function repairCreateConnection() { repairConnectionId.value = selected.value?.liveConnection?.connectionId || ''; liveDatabaseOpen.value = true; }
+function connectionCredentialSaved(id: string) {
+  if (id !== repairConnectionId.value || id !== selected.value?.liveConnection?.connectionId) return;
+  liveDatabaseOpen.value = false; repairConnectionId.value = '';
+  createError.value = ''; createCredentialRequired.value = false;
+  createNotice.value = '连接测试与密码保存成功。应用名称和需求已保留，请点击“创建并开始”继续。';
+}
+async function liveDatabaseSaved(source: DataSource) {
+  liveDatabaseOpen.value = false;
+  sources.value = await listDataSources();
+  await chooseSource(source.id);
+  notice.value = '实时数据对象已创建，默认只读。可以补充字段说明并进入数据测试。';
+}
+function liveAccessUpdated(source: DataSource) { selected.value = source; notice.value = ''; modelSchema.value = ''; }
 const databaseRefreshSource = ref<DataSource | null>(null);
 function openDatabase(source: DataSource | null = null) { databaseRefreshSource.value = source; databaseDialogOpen.value = true; }
 async function databaseSaved(source: DataSource) {
@@ -21,8 +41,8 @@ import {
   createSqliteDataSource,
   createApiDataSource,
   createMobileDataUploadSession,
-  createDataApp,
-  customizeDataApp,
+  createDataAppProject,
+  executeDataAppProject,
   deleteDataApp,
   deleteDataSource,
   getDataSource,
@@ -31,7 +51,6 @@ import {
   importDataFile,
   listDataApps,
   listDataSources,
-  optimizeDataApp,
   renameDataSource,
   syncDataSource,
   updateApiDataSource,
@@ -46,13 +65,13 @@ import {
 import { qrDataUrl } from '../../app/qr-data-url.js';
 import { openExternalBestEffort } from '../../app/platform-actions';
 import DataAppOperator from './DataAppOperator.vue';
-import { appPresentation, matchesSource, sourceNextStep } from './workbench-presentation';
+import { appPresentation, matchesSource, sourceNextStep, sortDataApps, formatAppTime, type AppSort } from './workbench-presentation';
 import type { WorkbenchNavigation } from './workbench-navigation';
 
 type SourceCategory = 'all' | 'files' | 'sqlite' | 'mysql' | 'other';
 
-const props = defineProps<{ navigation?: WorkbenchNavigation; navigationScope?: string }>();
-const emit = defineEmits<{ startChat: []; startCustomize: [prompt: string]; rememberNavigation: [navigation: WorkbenchNavigation, scope: string] }>();
+const props = defineProps<{ navigation?: WorkbenchNavigation; navigationScope?: string; employeeId?: string; permissionTier?: 'read-only' | 'default' | 'full' }>();
+const emit = defineEmits<{ startChat: []; openProject: [projectId: string, startError?: string]; rememberNavigation: [navigation: WorkbenchNavigation, scope: string] }>();
 let pendingNavigation = props.navigation;
 const sources = ref<DataSource[]>([]);
 const selected = ref<DataSource | null>(null);
@@ -74,6 +93,9 @@ const notice = ref('');
 const fileInput = ref<HTMLInputElement | null>(null);
 const activeApp = ref<DataAppDetail | null>(null);
 const sourceApps = ref<DataApp[]>([]);
+const appSort = ref<AppSort>('updated');
+const sortedApps = computed(() => sortDataApps(sourceApps.value, appSort.value));
+const latestAppId = computed(() => sortDataApps(sourceApps.value)[0]?.id);
 const deletingId = ref('');
 const deletingSourceId = ref('');
 const renameOpen = ref(false);
@@ -117,13 +139,22 @@ const mobileUploadExpiresAt = ref(0);
 
 const createOpen = ref(false);
 const createBusy = ref(false);
+let createIntent = { fingerprint: '', requestId: '' };
+let optimizeIntent = { fingerprint: '', requestId: '' };
+function intentId(kind: 'create' | 'optimize', fingerprint: string) {
+  let intent = kind === 'create' ? createIntent : optimizeIntent;
+  if (intent.fingerprint !== fingerprint || !intent.requestId) intent = { fingerprint, requestId: crypto.randomUUID() };
+  if (kind === 'create') createIntent = intent; else optimizeIntent = intent;
+  return intent.requestId;
+}
 const createError = ref('');
+const createNotice = ref('');
 
 const qrByApp = ref<Record<string, string>>({});
 const navigator = window.navigator;
 
 const hasSources = computed(() => sources.value.length > 0);
-const summary = computed(() => selected.value ? `${selected.value.tableCount} 张表 · ${selected.value.rowCount.toLocaleString()} 条` : '');
+const summary = computed(() => selected.value ? `${selected.value.tableCount} 张表 · ${selected.value.accessMode === 'live' ? '实时连接' : selected.value.rowCount.toLocaleString() + ' 条'}` : '');
 function categoryOf(source: DataSource): Exclude<SourceCategory, 'all'> {
   if (source.fileType === 'Excel' || source.fileType === 'CSV') return 'files';
   if (source.fileType === 'SQLite') return 'sqlite';
@@ -150,13 +181,15 @@ const acceptedFiles = computed(() => importKind.value === 'sqlite' ? '.sqlite,.s
 const currentAnnotations = computed(() => selected.value?.annotations || dataObjectAnnotationsSchema.parse({}));
 const annotationCount = computed(() => selected.value?.tables?.reduce((sum, table) => sum + table.columns.filter(column => column.description?.trim()).length, 0) || 0);
 const fieldCount = computed(() => selected.value?.tables?.reduce((sum, table) => sum + table.columns.length, 0) || 0);
-const nextStep = computed(() => sourceNextStep(Boolean(currentAnnotations.value.description.trim()), annotationCount.value, fieldCount.value));
+const nextStep = computed(() => selected.value?.accessMode === 'live' ? { action: 'test', label: '测试实时数据', note: '通过 Gateway 验证查询；补充业务说明后供后续智能体与应用使用。' } : sourceNextStep(Boolean(currentAnnotations.value.description.trim()), annotationCount.value, fieldCount.value));
 function followNextStep() {
+  if (nextStep.value.action === 'test') { objectTab.value = 'preview'; return; }
   if (nextStep.value.action === 'description') annotationsOpen.value = true;
   else if (nextStep.value.action === 'fields') objectTab.value = 'schema';
   else openCreateWebsite();
 }
 function openAppIteration(app: DataApp) {
+  optimizeIntent = { fingerprint: '', requestId: '' };
   optimizeApp.value = app;
   optimizeIdea.value = appPresentation(app).pending ? '继续完成尚未交付的部分，检查已有页面，并将最终页面绑定到这个应用。' : '';
 }
@@ -235,6 +268,7 @@ async function openPublishedApp(app: DataApp) {
 async function chooseTable(table: DataTable) {
   if (!selected.value) return;
   selectedTable.value = table;
+  if (selected.value.accessMode === 'live') { preview.value = { columns: [], rows: [] }; return; }
   const sourceId = selected.value.id;
   try {
     const rows = await getDataTableRows(sourceId, table.id);
@@ -430,40 +464,35 @@ function showCatalog(category: SourceCategory = 'all') { selectionRequest++; pen
 
 function openCreateWebsite() {
   if (!selectedTable.value) return;
+  createCredentialRequired.value = false;
   createError.value = '';
+  createNotice.value = '';
+  createIntent = { fingerprint: '', requestId: '' };
   createOpen.value = true;
 }
 
 async function submitCreate(draft: DataAppCreateDraft) {
   if (!selected.value || createBusy.value || !selected.value.tables?.some(table => table.id === draft.tableId)) return;
   const sourceId = selected.value.id;
-  createBusy.value = true; createError.value = ''; error.value = '';
+  createBusy.value = true; createError.value = ''; createNotice.value = ''; error.value = ''; createCredentialRequired.value = false;
   try {
-    if (draft.mode === 'template') {
-      activeApp.value = await createDataApp({
-        sourceId,
-        tableId: draft.tableId,
-        appType: draft.appType,
-        name: draft.name,
-      });
-      createOpen.value = false;
-      notice.value = `已创建「${activeApp.value.name}」，本机站点已就绪。`;
-    } else {
       const idea = draft.idea.trim();
       if (!idea) { createError.value = '请先描述你希望应用做什么。'; return; }
-      const result = await customizeDataApp({
+      if (!props.employeeId) { createError.value = '请先选择可执行的数字员工。'; return; }
+      const input = {
+        queryMode: 'managed-readonly' as const,
         sourceId,
         tableId: draft.tableId,
         idea,
         name: draft.name,
-        appType: draft.appType,
-      });
+        employeeId: props.employeeId, permissionTier: props.permissionTier || 'default',
+      };
+      const result = await createDataAppProject({ ...input, requestId: intentId('create', JSON.stringify(input)) });
       sourceApps.value = [...sourceApps.value.filter(app => app.id !== result.app.id), result.app];
       objectTab.value = 'apps';
       createOpen.value = false;
-      notice.value = `已准备「${result.app.name}」。正在打开对话；定制页面绑定后才算交付。`;
-      emit('startCustomize', result.prompt);
-    }
+      notice.value = `已准备「${result.app.name}」。正在打开项目；页面绑定后才算交付。`;
+      openAppProject(result.projectId, result.startError);
     // A refresh failure must not turn a successful creation into a retryable
     // creation error. Keep the result and do not issue a second create request.
     try {
@@ -472,7 +501,7 @@ async function submitCreate(draft: DataAppCreateDraft) {
     } catch (cause) {
       error.value = `应用已创建，但列表刷新失败。请点击刷新，不要重复创建。${friendlyError(cause)}`;
     }
-  } catch (cause) { createError.value = friendlyError(cause); }
+  } catch (cause) { createError.value = friendlyError(cause); createCredentialRequired.value = (cause as { code?: string })?.code === 'DATABASE_CREDENTIAL_REQUIRED'; }
   finally { createBusy.value = false; }
 }
 
@@ -531,17 +560,23 @@ async function removeSource(source: DataSource, event?: Event) {
   finally { deletingSourceId.value = ''; }
 }
 async function submitOptimize() {
-  if (!optimizeApp.value || !optimizeIdea.value.trim()) return;
+  if (!optimizeApp.value || !optimizeIdea.value.trim() || optimizeBusy.value) return;
   optimizeBusy.value = true; error.value = '';
   try {
-    const result = await optimizeDataApp(optimizeApp.value.id, optimizeIdea.value.trim());
+    const input = { idea: optimizeIdea.value.trim(), employeeId: props.employeeId, permissionTier: props.permissionTier || 'default' };
+    const result = await executeDataAppProject(optimizeApp.value.id, { ...input, requestId: intentId('optimize', JSON.stringify({ appId: optimizeApp.value.id, ...input })) });
     optimizeApp.value = null; optimizeIdea.value = '';
     objectTab.value = 'apps';
-    emit('startCustomize', result.prompt);
+    openAppProject(result.projectId, result.startError);
   } catch (cause) { error.value = friendlyError(cause); }
   finally { optimizeBusy.value = false; }
 }
 
+function openAppProject(id: string, startError?: string) {
+  emit('rememberNavigation', { sourceId: selected.value?.id || null, tableId: selectedTable.value?.id || null,
+    tab: 'apps', category: activeCategory.value, query: sourceQuery.value }, props.navigationScope || '');
+  emit('openProject', id, startError);
+}
 onMounted(load);
 onUnmounted(() => {
   disposed = true;
@@ -563,7 +598,8 @@ onUnmounted(() => {
         <p class="mt-2 text-sm text-[var(--muted)]">接入数据，补充结构说明，让 AI 基于真实数据创建应用。</p>
       </div>
       <div class="flex max-w-full flex-wrap items-center gap-2">
-        <details class="relative"><summary class="cursor-pointer rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white">接入数据</summary><div class="absolute right-0 z-20 mt-2 w-56 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg"><button type="button" class="block w-full rounded-lg p-2 text-left text-sm hover:bg-[var(--surface-muted)]" @click="openPicker('files')">导入 Excel / CSV</button><button type="button" class="block w-full rounded-lg p-2 text-left text-sm hover:bg-[var(--surface-muted)]" @click="openPicker('sqlite')">导入 SQLite 数据库</button><button type="button" class="block w-full rounded-lg p-2 text-left text-sm hover:bg-[var(--surface-muted)]" @click="openDatabase()">连接 MySQL / PostgreSQL</button><button type="button" class="block w-full rounded-lg p-2 text-left text-sm hover:bg-[var(--surface-muted)]" @click="openPicker('json')">导入 JSON</button><button type="button" class="block w-full rounded-lg p-2 text-left text-sm hover:bg-[var(--surface-muted)]" @click="openCreateApi">连接 API</button></div></details>
+        <button type="button" class="rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-semibold" @click="liveDatabaseOpen = true">数据库连接</button>
+        <details class="relative"><summary class="cursor-pointer rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white">接入数据</summary><div class="absolute right-0 z-20 mt-2 w-56 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg"><button type="button" class="block w-full rounded-lg p-2 text-left text-sm hover:bg-[var(--surface-muted)]" @click="openPicker('files')">导入 Excel / CSV</button><button type="button" class="block w-full rounded-lg p-2 text-left text-sm hover:bg-[var(--surface-muted)]" @click="openPicker('sqlite')">导入 SQLite 数据库</button><button type="button" class="block w-full rounded-lg p-2 text-left text-sm hover:bg-[var(--surface-muted)]" @click="liveDatabaseOpen = true">创建实时数据库对象</button><button type="button" class="block w-full rounded-lg p-2 text-left text-sm hover:bg-[var(--surface-muted)]" @click="openDatabase()">导入数据库本地副本</button><button type="button" class="block w-full rounded-lg p-2 text-left text-sm hover:bg-[var(--surface-muted)]" @click="openPicker('json')">导入 JSON</button><button type="button" class="block w-full rounded-lg p-2 text-left text-sm hover:bg-[var(--surface-muted)]" @click="openCreateApi">连接 API</button></div></details>
         <button class="rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-semibold hover:bg-[var(--surface-muted)]" type="button" @click="demoOpen = true">体验示例</button>
         <button class="rounded-xl border border-[var(--border)] px-3 py-2 text-sm font-semibold hover:bg-[var(--surface-muted)]" type="button" :disabled="loading" @click="load">{{ loading ? '刷新中…' : '刷新' }}</button>
         <input ref="fileInput" class="hidden" type="file" :accept="acceptedFiles" @change="upload" />
@@ -670,16 +706,17 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <nav class="mt-6 flex gap-1 overflow-x-auto border-b border-[var(--border)]" aria-label="数据对象详情"><button v-for="tab in [{ id: 'overview', name: '对象说明' }, { id: 'schema', name: '字段说明' }, { id: 'preview', name: '数据预览' }, { id: 'apps', name: '应用' }]" :key="tab.id" type="button" :aria-current="objectTab === tab.id ? 'page' : undefined" class="shrink-0 border-b-2 px-4 py-3 text-sm font-semibold" :class="objectTab === tab.id ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[var(--muted)]'" @click="objectTab = tab.id as typeof objectTab">{{ tab.name }}<span v-if="tab.id === 'apps'" class="ml-1.5 text-xs opacity-70">{{ sourceApps.length }}</span></button></nav>
+        <nav class="mt-6 flex gap-1 overflow-x-auto border-b border-[var(--border)]" aria-label="数据对象详情"><button v-for="tab in [{ id: 'overview', name: '对象说明' }, { id: 'schema', name: '字段说明' }, { id: 'preview', name: selected.accessMode === 'live' ? '数据测试' : '数据预览' }, { id: 'analysis', name: '查询分析' }, { id: 'apps', name: '应用' }]" :key="tab.id" type="button" :aria-current="objectTab === tab.id ? 'page' : undefined" class="shrink-0 border-b-2 px-4 py-3 text-sm font-semibold" :class="objectTab === tab.id ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[var(--muted)]'" @click="objectTab = tab.id as typeof objectTab">{{ tab.name }}<span v-if="tab.id === 'apps'" class="ml-1.5 text-xs opacity-70">{{ sourceApps.length }}</span></button></nav>
 
         <div v-if="objectTab === 'overview'" class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[var(--accent-soft)] px-4 py-3">
           <div class="min-w-0"><p class="text-sm font-semibold">建议下一步：{{ nextStep.label }}</p><p class="mt-1 text-xs leading-5 text-[var(--muted)]">{{ nextStep.note }}</p></div>
           <button type="button" class="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--accent)]" :disabled="nextStep.action === 'create' && !selectedTable" @click="followNextStep">{{ nextStep.label }}</button>
         </div>
+        <div v-if="objectTab === 'overview' && selected.liveConnection" class="mt-5 rounded-xl border border-[var(--border)] p-4 text-sm"><b>实时数据库 · {{ selected.liveConnection.writeEnabled ? '已开启原库写入' : '默认只读' }}</b><p class="mt-2 text-xs text-[var(--muted)]">数据库：{{ selected.liveConnection.database }}。业务数据不复制到本机；请在“数据测试”查询，按对象单独开启写入。</p></div>
 
         <section v-if="objectTab === 'overview'" class="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
           <div v-if="selected.databaseConnection" class="mb-5 rounded-xl bg-[var(--surface-muted)] p-4 text-sm">
-            <div class="flex flex-wrap items-center justify-between gap-2"><b>{{ selected.fileType }} 数据快照</b><span class="text-xs text-[var(--muted)]">最近刷新 {{ new Date(selected.databaseConnection.lastSyncedAt).toLocaleString() }}</span></div>
+            <div class="flex flex-wrap items-center justify-between gap-2"><b>{{ selected.fileType }} · 本地副本</b><span class="text-xs text-[var(--muted)]">最近刷新 {{ new Date(selected.databaseConnection.lastSyncedAt).toLocaleString() }}</span></div>
             <p class="mt-2 break-all text-[var(--muted)]">{{ selected.databaseConnection.host }}:{{ selected.databaseConnection.port }} / {{ selected.databaseConnection.database }}</p>
             <p class="mt-2 text-xs text-[var(--muted)]">应用使用本地副本，不回写原数据库。密码未保存，刷新时再次输入。</p>
             <p v-if="selected.databaseConnection.truncatedTables.length" class="mt-2 break-words text-xs text-amber-700">以下表仅导入前 20,000 行：{{ selected.databaseConnection.truncatedTables.join('、') }}</p>
@@ -732,20 +769,23 @@ onUnmounted(() => {
               <h3 class="text-lg font-bold">数据应用</h3>
               <p class="mt-1 text-xs text-[var(--muted)]">本机部署，局域网可扫码打开。</p>
             </div>
-            <span class="text-xs text-[var(--muted)]">{{ sourceApps.length }} 个</span>
+            <div class="flex shrink-0 items-center gap-3"><span class="text-xs text-[var(--muted)]">{{ sourceApps.length }} 个</span><label class="text-xs text-[var(--muted)]">排序 <select v-model="appSort" class="ml-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-2 text-xs"><option value="updated">最近修改优先</option><option value="created">最新创建优先</option><option value="name">按名称排序</option></select></label></div>
           </div>
 
+          <p class="rounded-xl bg-[var(--surface-muted)] p-4 text-xs leading-5 text-[var(--muted)]">应用通过网关执行已登记的 SQL 或查询，默认只读。项目预览可直接用当前账号验证；发布页须登录。写操作需要你审核启用；授权后新增和保存直接执行，删除也直接执行，且对象已开启写入，链接不授予数据权限。</p>
+          <details class="mb-3 rounded-xl border border-[var(--border)] p-3 text-xs text-[var(--muted)]"><summary class="cursor-pointer font-semibold">如何创建支持修改的应用？</summary><p class="mt-2 leading-6">1. 使用实时数据库对象，在“数据测试”中明确开启写入（需要所有者管理员权限；本地副本不能回写原库）。<br>2. 点击“创建应用”或“继续优化”，要求 AI 提供新增、修改、删除界面，并登记参数化 SQL 写操作。<br>3. 在项目“预览与发布”中审核并启用写操作，再测试页面；授权后新增和保存直接执行，删除也直接执行。首期支持单行新增，更新、删除需按完整主键定位。</p></details>
+          <p v-if="sourceApps.length" class="mb-3 text-xs text-[var(--muted)]">修改时间以已绑定页面为准；未交付应用按创建时间排序。项目中的未交付草稿不改变已交付版本。</p>
           <div v-if="!sourceApps.length" class="rounded-2xl border border-dashed border-[var(--border)] px-5 py-10 text-center">
             <p class="font-semibold">基于这份数据创建第一个应用</p>
-            <p class="mt-2 text-sm text-[var(--muted)]">选择现成模板，或告诉 AI 你想解决什么问题。</p>
+            <p class="mt-2 text-sm text-[var(--muted)]">告诉 AI 你想解决什么问题，在专属项目中制作并持续优化。</p>
             <button type="button" :disabled="!selectedTable" class="mt-4 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" @click="openCreateWebsite">创建应用</button>
           </div>
 
           <div v-else class="grid gap-4 lg:grid-cols-2">
-            <article v-for="app in sourceApps" :key="app.id" class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <article v-for="app in sortedApps" :key="app.id" class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                  <p class="truncate text-sm font-bold">{{ app.name }}</p>
+                  <p class="flex min-w-0 items-center gap-2 text-sm font-bold"><span class="truncate">{{ app.name }}</span><span v-if="app.id === latestAppId" class="shrink-0 rounded bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-medium text-[var(--accent)]">{{ app.customSite?.updatedAt ? '最近更新' : '最近创建' }}</span></p>
                   <p class="mt-1 text-xs text-[var(--muted)]">{{ app.appType }}</p>
                 </div>
                 <span
@@ -756,7 +796,10 @@ onUnmounted(() => {
                 </span>
               </div>
 
-              <p v-if="app.delivery?.status === 'awaiting-binding'" class="mt-3 text-xs leading-5 text-[var(--muted)]">定制页面尚未交付。请查看关联对话的执行结果，或继续创建；不会用模板页替代成果。</p>
+              <p class="mt-3 text-xs leading-5 text-[var(--muted)]">创建：{{ formatAppTime(app.createdAt) }}<br>页面修改：{{ app.customSite?.updatedAt ? formatAppTime(app.customSite.updatedAt) : '尚无页面修改记录' }}</p>
+
+              <p v-if="app.delivery?.status === 'awaiting-binding'" class="mt-3 text-xs leading-5 text-[var(--muted)]">页面尚未交付。请查看项目进度，或继续创建；只有成功绑定页面后才可用。</p>
+              <p v-if="app.queryMode === 'managed-readonly'" class="mt-2 text-xs text-[var(--muted)]">受控数据操作 · 已验证 {{ app.queryState?.verifiedCount || 0 }} 个查询 · 所有者登录后可用</p>
 
               <details v-if="appPresentation(app).canShare && (app.publishUrl || app.lanUrl)" class="mt-4 rounded-xl bg-[var(--surface-muted)] p-3"><summary class="cursor-pointer text-xs font-semibold text-[var(--muted)]">手机访问与分享</summary><div class="mt-3 flex items-start gap-3">
                 <img v-if="qrByApp[app.id]" :src="qrByApp[app.id]" alt="站点二维码" class="h-20 w-20 rounded-lg bg-white p-1" />
@@ -769,10 +812,10 @@ onUnmounted(() => {
 
               <div class="mt-4 flex flex-wrap gap-2">
                 <button class="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white" type="button" @click="appPresentation(app).pending ? openAppIteration(app) : openPublishedApp(app)">{{ appPresentation(app).primary }}</button>
-                <button v-if="!appPresentation(app).pending" class="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold hover:bg-[var(--surface-muted)]" type="button" @click="openAppIteration(app)">对话优化</button>
+                <button v-if="app.projectId" class="rounded-lg px-3 py-2 text-xs font-semibold text-[var(--accent)]" type="button" @click="openAppProject(app.projectId)">编辑应用</button>
                 <details class="relative"><summary class="cursor-pointer rounded-lg px-3 py-2 text-xs font-semibold text-[var(--muted)]">更多</summary><div class="absolute right-0 z-10 mt-1 w-44 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
                 <button v-if="appPresentation(app).pending" class="block w-full rounded px-3 py-2 text-left text-xs hover:bg-[var(--surface-muted)]" type="button" @click="openPublishedApp(app)">查看交付状态</button>
-                <button class="block w-full rounded px-3 py-2 text-left text-xs hover:bg-[var(--surface-muted)]" type="button" @click="openExistingApp(app)">查看与管理数据</button>
+                <button v-if="app.queryMode !== 'managed-readonly'" class="block w-full rounded px-3 py-2 text-left text-xs hover:bg-[var(--surface-muted)]" type="button" @click="openExistingApp(app)">查看与管理数据</button>
                 <button
                   class="block w-full rounded px-3 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
                   type="button"
@@ -786,8 +829,10 @@ onUnmounted(() => {
           </div>
         </section>
 
-        <section v-if="(objectTab === 'schema' || objectTab === 'preview') && selected.tables?.length" class="mt-5">
-          <div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="font-bold">{{ objectTab === 'preview' ? '数据预览' : '表与字段说明' }}</h3><p class="mt-1 text-xs text-[var(--muted)]">{{ objectTab === 'preview' ? '查看前 20 行，确认结构与数据内容。' : '补充字段含义、单位和统计口径，帮助 AI 正确使用数据。' }}</p></div><button v-if="selectedTable" class="rounded-xl border border-[var(--border)] px-3 py-2 text-xs font-semibold hover:bg-[var(--surface-muted)]" type="button" @click="editSchema">编辑字段说明</button></div>
+        <section v-if="(objectTab === 'schema' || objectTab === 'preview' || objectTab === 'analysis') && selected.tables?.length" class="mt-5">
+          <template v-if="objectTab !== 'analysis'">
+          <div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="font-bold">{{ objectTab === 'preview' ? selected.accessMode === 'live' ? '实时数据测试' : '数据预览' : '表与字段说明' }}</h3><p class="mt-1 text-xs text-[var(--muted)]">{{ objectTab === 'preview' ? selected.accessMode === 'live' ? '通过 Gateway 查询原库数据；写入需单独授权并确认。' : '查看前 20 行，确认结构与数据内容。' : '补充字段含义、单位和统计口径，帮助 AI 正确使用数据。' }}</p></div><button v-if="selectedTable" class="rounded-xl border border-[var(--border)] px-3 py-2 text-xs font-semibold hover:bg-[var(--surface-muted)]" type="button" @click="editSchema">编辑字段说明</button></div>
+          </template>
           <div class="mt-3 flex flex-wrap gap-2">
             <button
               v-for="table in selected.tables"
@@ -797,15 +842,17 @@ onUnmounted(() => {
               type="button"
               @click="chooseTable(table)"
             >
-              {{ table.name }} <span class="ml-1 text-xs opacity-70">{{ table.rowCount }}</span>
+              {{ table.name }} <span v-if="selected.accessMode !== 'live'" class="ml-1 text-xs opacity-70">{{ table.rowCount }}</span>
             </button>
           </div>
           <p v-if="selectedTable?.description" class="mt-3 whitespace-pre-wrap text-sm text-[var(--muted)]">{{ selectedTable.description }}</p>
+          <StructuredDataQuery v-if="objectTab === 'analysis' && selectedTable" :key="`${selected.id}:${selectedTable.id}`" :source="selected" :table="selectedTable" />
           <div v-if="selectedTable && objectTab === 'schema'" class="mt-4 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
             <div class="grid grid-cols-[100px_minmax(160px,1fr)_120px_80px_minmax(120px,1fr)] gap-3 border-b border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-[10px] font-bold tracking-wide text-[var(--muted)]"><span>字段 ID</span><span>字段名称</span><span>类型</span><span>可空</span><span>样例</span></div>
             <div v-for="column in selectedTable.columns" :key="column.id" class="min-w-[600px] border-b border-[var(--border)] px-4 py-3 text-xs last:border-0"><div class="grid grid-cols-[100px_minmax(160px,1fr)_120px_80px_minmax(120px,1fr)] gap-3"><code class="text-[var(--accent)]">{{ column.id }}</code><b>{{ column.name }}</b><span>{{ column.type }}</span><span>{{ column.nullable ? '是' : '否' }}</span><span class="truncate text-[var(--muted)]">{{ column.sensitive ? '敏感字段，样例隐藏' : column.sample }}</span></div><p class="mt-2 whitespace-pre-wrap break-words text-[var(--muted)]">{{ column.description || '尚未填写字段说明' }}{{ column.unit ? `；单位：${column.unit}` : '' }}{{ column.enumDescription ? `；枚举：${column.enumDescription}` : '' }}</p></div>
           </div>
-          <div v-if="objectTab === 'preview' && selectedTable && preview.columns.length" class="mt-4 overflow-hidden rounded-xl border border-[var(--border)]">
+          <LiveDataTester v-if="objectTab === 'preview' && selectedTable && selected.accessMode === 'live'" :key="selectedTable.id" :source="selected" :table="selectedTable" @updated="liveAccessUpdated" />
+          <div v-else-if="objectTab === 'preview' && selectedTable && preview.columns.length" class="mt-4 overflow-hidden rounded-xl border border-[var(--border)]">
             <div class="border-b border-[var(--border)] px-4 py-2 text-xs text-[var(--muted)]">{{ selectedTable.name }} · 前 20 行</div>
             <div class="overflow-auto">
               <table class="min-w-full text-left text-xs">
@@ -848,12 +895,13 @@ onUnmounted(() => {
               <div class="flex items-start justify-between gap-3">
                 <div class="flex flex-wrap items-center gap-1.5">
                   <span class="rounded-lg bg-[var(--accent-soft)] px-2 py-1 text-[10px] font-bold text-[var(--accent)]">{{ source.fileType }}</span>
+                  <span v-if="source.accessMode === 'live' || source.accessMode === 'snapshot'" class="rounded-lg bg-[var(--surface-muted)] px-2 py-1 text-[10px] font-bold text-[var(--muted)]">{{ source.accessMode === 'live' ? '实时连接' : '本地副本' }}</span>
                   <span v-if="source.isDefault" class="rounded-lg bg-[var(--surface-muted)] px-2 py-1 text-[10px] font-bold text-[var(--muted)]">默认</span>
                 </div>
                 <span class="text-xs text-[var(--muted)]">{{ new Date(source.createdAt).toLocaleDateString() }}</span>
               </div>
               <b class="mt-4 block truncate">{{ source.name }}</b>
-              <p class="mt-2 text-xs text-[var(--muted)]">{{ source.tableCount }} 张表 · {{ source.rowCount.toLocaleString() }} 条记录</p>
+              <p class="mt-2 text-xs text-[var(--muted)]">{{ source.tableCount }} 张表 · {{ source.accessMode === 'live' ? '按需查询原库' : source.rowCount.toLocaleString() + ' 条记录' }}</p>
               <p class="mt-3 line-clamp-2 text-xs leading-5 text-[var(--muted)]">{{ source.annotations?.description || source.summary }}</p>
             </button>
             <div v-if="canEditSource(source) || canDeleteSource(source)" class="mt-4 flex flex-wrap gap-2 border-t border-[var(--border)] pt-3">
@@ -882,6 +930,7 @@ onUnmounted(() => {
     </div>
 
     <DatabaseConnectionDialog v-if="databaseDialogOpen" :source="databaseRefreshSource" @close="databaseDialogOpen = false; databaseRefreshSource = null" @saved="databaseSaved" />
+    <LiveDatabaseDialog v-if="liveDatabaseOpen" :initial-connection-id="repairConnectionId" :credential-only="Boolean(repairConnectionId)" @close="liveDatabaseOpen = false; repairConnectionId = ''" @saved="liveDatabaseSaved" @credential-saved="connectionCredentialSaved" />
     <DataObjectAnnotationsEditor v-if="annotationsOpen && selected" :annotations="currentAnnotations" :api="isApiSource(selected)" :busy="annotationsSaving" :save-error="error" @close="annotationsOpen = false" @save="saveAnnotations" />
     <div v-if="mobileUploadOpen" class="absolute inset-0 z-30 grid place-items-center bg-slate-950/35 p-5 backdrop-blur-[2px]"><section class="w-full max-w-lg rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 text-center shadow-2xl"><button class="float-right text-lg text-[var(--muted)]" type="button" @click="mobileUploadOpen = false">×</button><p class="text-xs font-bold tracking-[.12em] text-[var(--accent)]">MOBILE UPLOAD</p><h2 class="mt-2 text-2xl font-bold">用手机上传 Excel / CSV</h2><p class="mt-2 text-sm leading-6 text-[var(--muted)]">手机和电脑连接同一局域网，扫码后选择文件。链接 30 分钟内有效。</p><img v-if="mobileUploadQr" :src="mobileUploadQr" alt="手机上传二维码" class="mx-auto mt-5 h-56 w-56 rounded-2xl border border-[var(--border)] bg-white p-3"><p class="mt-4 break-all rounded-xl bg-[var(--surface-muted)] p-3 text-left text-xs text-[var(--muted)]">{{ mobileUploadUrl }}</p><p class="mt-3 text-xs text-[var(--muted)]">有效期至 {{ new Date(mobileUploadExpiresAt).toLocaleTimeString() }}</p><div class="mt-5 flex justify-center gap-2"><button class="rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-semibold" type="button" @click="navigator.clipboard?.writeText(mobileUploadUrl)">复制链接</button><button class="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white" type="button" @click="mobileUploadOpen = false; load()">完成并刷新</button></div></section></div>
 
@@ -894,7 +943,7 @@ onUnmounted(() => {
         <textarea v-model="optimizeIdea" rows="5" class="mt-5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm outline-none focus:border-teal-600" placeholder="例如：增加按项目阶段筛选；金额用柱状图展示；移动端卡片更紧凑。" />
         <div class="mt-6 flex justify-end gap-2">
           <button class="rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-semibold" type="button" :disabled="optimizeBusy" @click="optimizeApp = null">取消</button>
-          <button class="rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" type="button" :disabled="optimizeBusy || !optimizeIdea.trim()" @click="submitOptimize">{{ optimizeBusy ? '准备中…' : '开始对话' }}</button>
+          <button class="rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" type="button" :disabled="optimizeBusy || !optimizeIdea.trim()" @click="submitOptimize">{{ optimizeBusy ? '准备中…' : '开始项目执行' }}</button>
         </div>
       </section>
     </div>
@@ -979,6 +1028,6 @@ onUnmounted(() => {
       </section>
     </div>
 
-    <DataAppCreateDialog v-if="createOpen && selected && selectedTable" :source="selected" :table-id="selectedTable.id" :busy="createBusy" :error="createError" @close="createOpen = false" @submit="submitCreate" />
+    <DataAppCreateDialog v-if="createOpen && selected && selectedTable" :source="selected" :table-id="selectedTable.id" :busy="createBusy" :error="createError" :notice="createNotice" :credential-required="createCredentialRequired" :suspended="liveDatabaseOpen" @repair-connection="repairCreateConnection" @close="createOpen = false" @submit="submitCreate" />
   </section>
 </template>

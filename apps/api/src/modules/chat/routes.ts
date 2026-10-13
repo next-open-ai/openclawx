@@ -1,9 +1,13 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { ChatRequestSchema } from '@workmate/contracts';
-import { streamAgentReply } from '@workmate/agent-core';
+import { streamAgentReply,withExperienceContext } from '@workmate/agent-core';
+import {requireAuth,activeDataRunOwner} from '../auth/service.js';
+import {experienceContextForOwner} from '../experience/routes.js';
+import {getOrchestrator} from '../orchestration/routes.js';
 
 export const chatRoutes: FastifyPluginAsync = async (app) => {
   app.post('/chat', async (request, reply) => {
+    const owner=requireAuth(request);
     const parsed = ChatRequestSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ message: 'Invalid chat request.', issues: parsed.error.issues });
@@ -29,10 +33,11 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     reply.raw.on('close', onClientGone);
 
     try {
-      for await (const event of streamAgentReply({ ...parsed.data, abortSignal: abort.signal })) {
+      const context=await experienceContextForOwner(getOrchestrator().store,owner.userId,owner.orgId,activeDataRunOwner);
+      await withExperienceContext(context,async()=>{for await (const event of streamAgentReply({ ...parsed.data, abortSignal: abort.signal })) {
         if (abort.signal.aborted || reply.raw.writableEnded || reply.raw.destroyed) break;
         reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
-      }
+      }});
     } catch (error) {
       if (!abort.signal.aborted && !reply.raw.writableEnded && !reply.raw.destroyed) {
         const message = error instanceof Error ? error.message : 'Model request failed.';

@@ -69,6 +69,8 @@ export interface SendUserMessageInput {
   attachments?: import('@workmate/contracts').ChatImageAttachment[];
   fileAttachments?: import('@workmate/contracts').ChatFileAttachment[];
   attachmentContext?: string;
+  workflowResult?: import('@workmate/contracts').WorkflowResultReference;
+  responseMode?: 'text-only';
   /** Resolved runtime context; when omitted the service uses its resolver. */
   context?: ChatRunContext;
   /** Override the session employee recorded with the message. */
@@ -322,11 +324,11 @@ export class ChatSessionService {
       : null;
     // Do not silently attach every later conversation turn to a paused/waiting
     // task. Only an actively running turn or an explicit resume continues it.
-    let durableTask = activeTask?.status === 'running' ? activeTask : null;
-    if (this.durableTasks && isDurableTaskResumeIntent(text)) {
+    let durableTask = input.responseMode !== 'text-only' && activeTask?.status === 'running' ? activeTask : null;
+    if (input.responseMode !== 'text-only' && this.durableTasks && isDurableTaskResumeIntent(text)) {
       durableTask = await this.durableTasks.latestResumable(session.id);
     }
-    if (!durableTask && this.durableTasks && shouldCreateDurableTask(text, fileAttachments.length + verifiedAttachments.length)) {
+    if (input.responseMode !== 'text-only' && !durableTask && this.durableTasks && shouldCreateDurableTask(text, fileAttachments.length + verifiedAttachments.length)) {
       durableTask = await this.durableTasks.create({ conversationId: session.id, objective: text });
     }
     const taskContext = durableTask
@@ -339,7 +341,7 @@ export class ChatSessionService {
       : '';
     const attachmentContext = [input.attachmentContext?.trim(), taskContext].filter(Boolean).join('\n\n').slice(0, 40_000);
     const taskFields = durableTask ? { durableTaskId: durableTask.id } : {};
-    const userMessage: ChatMessage = { id: randomUUID(), role: 'user', content: text, ...(verifiedAttachments.length ? { attachments: verifiedAttachments } : {}), ...(fileAttachments.length ? { fileAttachments } : {}), ...(attachmentContext ? { attachmentContext } : {}), ...taskFields, createdAt: now, turnId };
+    const userMessage: ChatMessage = { id: randomUUID(), role: 'user', content: text, ...(input.workflowResult ? { workflowResult: input.workflowResult } : {}), ...(input.responseMode ? { responseMode: input.responseMode } : {}), ...(verifiedAttachments.length ? { attachments: verifiedAttachments } : {}), ...(fileAttachments.length ? { fileAttachments } : {}), ...(attachmentContext ? { attachmentContext } : {}), ...taskFields, createdAt: now, turnId };
     const assistantMessage: ChatMessage = { id: randomUUID(), role: 'assistant', content: '', ...taskFields, createdAt: now, turnId, runId };
     const attemptNo = 1;
 
@@ -409,6 +411,14 @@ export class ChatSessionService {
    * uncovered history (or full history when no summary exists yet).
    */
   private requestForTurn(session: ChatSession, context: ChatRunContext, turnId: string): ChatRequest {
+    const current = session.messages.find(message => message.turnId === turnId && message.role === 'user');
+    if (current?.responseMode === 'text-only') return {
+      ...context, responseMode: 'text-only', conversationId: session.id,
+      model: { ...context.model, enableSearch: false },
+      skills: [], mcpConnections: [], searchProviders: [], knowledgeBases: [], modelCapabilities: [], decisionRuntime: undefined,
+      projectWorkspacePath: undefined, workspaceAccess: 'read',
+      messages: [{ role: 'user', content: `${current.content}\n\n${current.attachmentContext || ''}` }],
+    };
     const history = buildSessionModelMessages(session, { turnId });
     return { ...context, conversationId: session.id, messages: history };
   }

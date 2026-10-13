@@ -29,6 +29,7 @@ document.getElementById('sample').onclick=()=>{if(!busy){fill({period:document.g
 window.addEventListener('message',event=>{
  if(event.source!==parent)return;const message=event.data;
  if(message?.type==='workmate.task.init'){channel=message.channel;save.textContent=message.submitLabel||'保存任务参数';fill(message.parameters||{});}
+ if(message?.type==='workmate.task.confirm'&&message.channel===channel&&channel){if(!form.reportValidity())parent.postMessage({type:'workmate.task.confirm-error',channel,error:'请检查表单中的必填项和填写格式。'},'*');else save.click();}
  if(message?.type==='workmate.task.saved'&&message.channel===channel){busy=false;save.disabled=false;document.getElementById('error').textContent=message.error||'';document.getElementById('notice').textContent=message.error?'':(message.notice||'参数已保存，可在页面上方立即运行。');}
 });
 form.onsubmit=event=>event.preventDefault();

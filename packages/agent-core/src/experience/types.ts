@@ -1,8 +1,13 @@
-/** Agent-scoped experience memory (decoupled from knowledge bases). */
+/** Shared local-first experience cards; author provenance is retained for future scope policies. */
 
 export type ExperienceRecord = {
   id: string;
   agentId: string;
+  userId?: string;
+  orgId?: string;
+  syncState?: 'skipped'|'queued'|'submitted'|'synced'|'failed';
+  syncTarget?: string;
+  revision?: string;
   /** Short title for browsing / logging. */
   title: string;
   /** When this experience applies. */

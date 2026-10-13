@@ -18,3 +18,5 @@ export {
 export type { ExperienceRecallReadiness, ExperienceRecallReadyReason } from './readiness.js';
 export { createExperienceTools } from './tools.js';
 export { listExperiences, getExperience } from './store.js';
+export {withExperienceContext,currentExperienceContext,type ExperienceContext} from './context.js';
+export {listLocalExperiences} from './local-store.js';

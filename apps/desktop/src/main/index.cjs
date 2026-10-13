@@ -5,6 +5,9 @@ const { createHash, randomBytes, randomUUID } = require('node:crypto');
 const { homedir, tmpdir } = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { createDatabaseCredentialStore, startDatabaseCredentialBridge } = require('./database-credential-store.cjs');
+let databaseCredentialBridge;
+const accessDatabaseCredential = createDatabaseCredentialStore({ safeStorage, get: key => getStoredValue(key), set: (key, value) => setStoredValue(key, value) });
 const {
   getLocalEmbeddingSettings,
   maybeAutoRestartLocalEmbedding,
@@ -1146,7 +1149,7 @@ async function migrateDomainKvToApi() {
   for (const row of rows[0]?.values || []) {
     const key = String(row[0]);
     const value = String(row[1] ?? '');
-    if (skip.has(key)) continue;
+    if (skip.has(key) || key.startsWith('secret.data-db.')) continue;
     const existing = await apiKvGet(key);
     if (existing == null) {
       await apiKvSet(key, value);
@@ -1167,6 +1170,13 @@ function clearApiSecretPushTimers() {
 }
 
 function pushSecretsToApi() {
+  if (databaseCredentialBridge) {
+    void fetch(`http://127.0.0.1:${apiPort}/api/data/credential-bridge`, {
+      method: 'PUT', headers: { 'content-type': 'application/json', 'x-workmate-internal': apiInternalToken },
+      body: JSON.stringify(databaseCredentialBridge.descriptor), signal: AbortSignal.timeout(3000),
+    }).then(response => { if (!response.ok) console.warn(`[api] database credential bridge registration rejected (${response.status}); restart the complete dev service if this persists.`); })
+      .catch(() => { /* API may still be booting; scheduled pushes retry. */ });
+  }
   const payload = { model: readModelConfig(), search: readSearchConfig() };
   // `killed` stays false when the child exits on its own; `connected` is the
   // reliable gate. Prefer send(callback) so a closed channel never becomes an
@@ -1372,6 +1382,17 @@ function spawnApiProcess(entry) {
   apiProcess.on('message', (message) => {
     if (!message || typeof message !== 'object') return;
     const payload = /** @type {{type?: string}} */ (message);
+    if (payload.type === 'workmate:database-secret') {
+      const { id, key, operation, password } = message;
+      if (typeof id !== 'string' || !/^[a-f0-9-]{36}$/.test(id) || typeof key !== 'string' || !/^[a-f0-9-]{36}$/.test(key)) return;
+      try {
+        const result = accessDatabaseCredential({ key, operation, password });
+        apiProcess?.send({ type: 'workmate:database-secret:response', id, password: result });
+      } catch {
+        apiProcess?.send({ type: 'workmate:database-secret:response', id, error: 'keyring unavailable' });
+      }
+      return;
+    }
     if (payload.type !== 'workmate:secrets:request') return;
     pushSecretsToApi();
   });
@@ -1832,6 +1853,8 @@ app.whenReady().then(async () => {
     }
   });
   await initializeDatabase();
+  databaseCredentialBridge = await startDatabaseCredentialBridge(accessDatabaseCredential);
+  app.once('will-quit', () => databaseCredentialBridge?.close());
   startApi();
   ipcMain.handle('workmate:pick-file', async () => {
     const result = await dialog.showOpenDialog(mainWindow, { properties: ['openFile'] });

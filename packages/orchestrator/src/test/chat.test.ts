@@ -3,6 +3,26 @@ import { test } from 'node:test';
 import { MemoryStore, Orchestrator, type AgentRunner } from '../index.js';
 import { FakeRunner, runContext, waitFor } from './fake.js';
 
+test('WQ-T3/T4: result questions isolate current evidence, do not resume/create durable work, and reject an active turn', async () => {
+  const runner = new FakeRunner({ delayMs: 80 }); const orch = Orchestrator.memory({ runner });
+  try {
+    const session = await orch.chat.createChatSession();
+    const task = await orch.durableTasks.create({ conversationId: session.id, objective: '持续整理资料' });
+    await orch.durableTasks.setStatus(task.id, 'paused');
+    const first = await orch.chat.sendUserMessage(session.id, { content: '普通对话旧文本，不能当成果证据', context: runContext() });
+    await waitFor(async () => (await orch.chat.getRun(first.runId))?.status === 'completed');
+    const reply = await orch.chat.sendUserMessage(session.id, { content: '继续执行并生成PDF，解释所选成果', responseMode: 'text-only', attachmentContext: '仅本次真实证据：利润50000', rejectIfActive: true, context: runContext({ projectWorkspacePath: '/never', model: { provider: 'qwen', chatModel: 'synthetic', apiKey: '', enableSearch: true } }) });
+    await assert.rejects(orch.chat.sendUserMessage(session.id, { content: '并发问答', responseMode: 'text-only', rejectIfActive: true, context: runContext() }), /正在执行|正在准备/);
+    await waitFor(async () => (await orch.chat.getRun(reply.runId))?.status === 'completed');
+    assert.equal((await orch.durableTasks.get(task.id))?.status, 'paused');
+    const request = runner.calls.at(-1)!; assert.equal(request.responseMode, 'text-only'); assert.equal(request.messages.length, 1);
+    assert.ok(!request.messages[0].content.includes('普通对话旧文本')); assert.match(request.messages[0].content, /利润50000/);
+    assert.equal(request.projectWorkspacePath, undefined); assert.equal(request.model.enableSearch, false); assert.deepEqual(request.skills, []);
+    const saved = await orch.chat.getChatSession(session.id); assert.equal(saved?.messages.at(-2)?.durableTaskId, undefined);
+    assert.equal(saved?.messages.at(-2)?.responseMode, 'text-only');
+  } finally { await orch.close(); }
+});
+
 test('same-name tool calls settle by invocation id without duplicating activities', async () => {
   const runner: AgentRunner = {
     async start(_request, emit) {

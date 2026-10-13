@@ -1,5 +1,7 @@
 import { getStoredSessionToken } from './auth';
+import { createRequestCoalescer } from './request-coalescer';
 import type { DataAppDelivery } from '@workmate/contracts';
+import { dataAppProjectExecutionSchema, type DataAppProjectCreate, type DataAppProjectExecute } from '@workmate/contracts';
 import { DSH_ENV_FIX_ACTION_ID } from '../features/dsh/environment-ui';
 
 export interface HealthStatus { status: 'ok'; service: 'workmate-api'; version: string; }
@@ -1291,7 +1293,15 @@ export async function readWorkspaceInfo(root: string) {
   };
 }
 
-export async function syncWorkspaceRun(root: string, runId: string) {
+const workspaceSyncRequests = createRequestCoalescer<Array<{ relative: string; type: 'directory' | 'file' }>>(3_000);
+let workspaceSyncScope: string | null | undefined;
+export function syncWorkspaceRun(root: string, runId: string) {
+  const scope = getStoredSessionToken();
+  if (scope !== workspaceSyncScope) { workspaceSyncRequests.clear(); workspaceSyncScope = scope; }
+  return workspaceSyncRequests.run(JSON.stringify([root, runId]), () => syncWorkspaceRunOnce(root, runId));
+}
+
+async function syncWorkspaceRunOnce(root: string, runId: string) {
   const apiBase = window.location.protocol === 'file:' ? 'http://127.0.0.1:47832' : '';
   const response = await fetch(`${apiBase}/api/workspace/sync-run`, {
     method: 'POST',
@@ -1669,6 +1679,8 @@ export type DataApiConnection = {
   lastError: string;
 };
 export type DataSource = {
+  accessMode?: 'live' | 'snapshot' | 'local';
+  liveConnection?: import('@workmate/contracts').LiveDataObjectInfo;
   id: string;
   name: string;
   assetId: string;
@@ -1701,10 +1713,13 @@ export type DataApiSourceInput = {
 };
 export type DataRecord = { id: string; values: Record<string, string> };
 export type DataApp = {
-  id: string; name: string; appType: '管理后台' | '数据看板' | '查询网站'; sourceId: string; tableId: string; createdAt: number;
+  queryMode?: 'managed-readonly';
+  queryState?: { verifiedCount: number };
+  id: string; name: string; appType: '管理后台' | '数据看板' | '查询网站' | '自定义应用'; sourceId: string; tableId: string; createdAt: number;
   published?: boolean; publishUrl?: string | null; lanUrl?: string | null; lanUrls?: string[];
   customSite?: { bound: boolean; updatedAt: number | null; bytes: number };
   delivery?: DataAppDelivery;
+  projectId?: string;
 };
 export type DataAppDetail = DataApp & { table: { id: string; name: string; rowCount: number; columns: DataColumn[] }; records: DataRecord[] };
 
@@ -1946,6 +1961,24 @@ export async function customizeDataApp(input: {
     throw new Error(body.message || `Customize data app failed: ${response.status}`);
   }
   return { app: body.app, publishUrl: body.publishUrl, prompt: body.prompt };
+}
+
+export async function createDataAppProject(input: DataAppProjectCreate) {
+  const response = await fetch(`${dataApiBase()}/api/data/apps/project-create`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input),
+  });
+  const body = await response.json().catch(() => ({})) as { app?: DataAppDetail; message?: string; code?: string };
+  if (!response.ok || !body.app) throw Object.assign(new Error(body.message || '应用项目准备失败，请重试。'), { code: body.code });
+  return { ...dataAppProjectExecutionSchema.parse(body), app: body.app };
+}
+
+export async function executeDataAppProject(appId: string, input: DataAppProjectExecute) {
+  const response = await fetch(`${dataApiBase()}/api/data/apps/${encodeURIComponent(appId)}/project-execute`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input),
+  });
+  const body = await response.json().catch(() => ({})) as { message?: string };
+  if (!response.ok) throw new Error(body.message || '项目启动失败，请查看原项目。');
+  return dataAppProjectExecutionSchema.parse(body);
 }
 
 export async function optimizeDataApp(appId: string, idea: string) {

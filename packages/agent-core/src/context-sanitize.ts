@@ -1,13 +1,11 @@
 import type { AgentMessage } from '@mariozechner/pi-agent-core';
 
 /**
- * Per-turn context hygiene (see docs/design/context-hygiene.md).
+ * Per-turn context hygiene (see docs/architecture/context-hygiene.md).
  * Runs inside Agent.transformContext before the next LLM call.
  */
 
 const WRITE_TOOLS = new Set(['write_workspace_file']);
-const STAGED_APPEND_TOOLS = new Set(['append_workspace_write']);
-const ARTIFACT_APPEND_TOOLS = new Set(['append_artifact_source_write']);
 const READ_TOOLS = new Set(['read_workspace_file', 'read_skill_file', 'fetch_skill_url']);
 const SCRIPT_TOOLS = new Set([
   'run_workspace_script',
@@ -91,6 +89,10 @@ export function stubWriteArgs(args: Record<string, unknown>): Record<string, unk
 }
 
 function stubWritePayloads(messages: AgentMessage[]): AgentMessage[] {
+  const successful = new Set(messages.filter(message => {
+    if (!message || typeof message !== 'object' || message.role !== 'toolResult' || message.isError || !WRITE_TOOLS.has(message.toolName)) return false;
+    return tryParseJsonObject(messageText(message))?.ok === true;
+  }).map(message => (message as { toolCallId: string }).toolCallId));
   return messages.map((message) => {
     if (!message || typeof message !== 'object' || (message as { role?: string }).role !== 'assistant') {
       return message;
@@ -100,47 +102,17 @@ function stubWritePayloads(messages: AgentMessage[]): AgentMessage[] {
     let changed = false;
     const nextContent = content.map((block) => {
       if (!block || typeof block !== 'object') return block;
-      const item = block as { type?: string; name?: string; arguments?: Record<string, unknown> };
+      const item = block as { type?: string; id?: string; name?: string; arguments?: Record<string, unknown> };
       if (item.type !== 'toolCall' || !item.name || !item.arguments || typeof item.arguments !== 'object') return block;
       const args = item.arguments;
 
-      if (WRITE_TOOLS.has(item.name)) {
+      if (WRITE_TOOLS.has(item.name) && item.id && successful.has(item.id)) {
         const hasBody = (typeof args.content === 'string' && args.content.length > 0)
           || (Array.isArray(args.chunks) && args.chunks.some((c) => typeof c === 'string' && c.length > 0));
         if (!hasBody && (args.contextPolicy === 'path-only' || args.status === 'written')) return block;
         if (!hasBody) return block;
         changed = true;
         return { ...item, arguments: stubWriteArgs(args) };
-      }
-
-      if (STAGED_APPEND_TOOLS.has(item.name) && typeof args.text === 'string' && args.text.length > 0) {
-        changed = true;
-        return {
-          ...item,
-          arguments: {
-            writeId: args.writeId,
-            seq: args.seq,
-            total: args.total,
-            reset: args.reset,
-            chars: args.text.length,
-            contextPolicy: 'path-only',
-            hint: 'Staged append text omitted from context; piece already accepted in-memory. Keep seq order; do not re-send body.',
-          },
-        };
-      }
-
-      if (ARTIFACT_APPEND_TOOLS.has(item.name) && typeof args.content === 'string' && args.content.length > 0) {
-        changed = true;
-        return {
-          ...item,
-          arguments: {
-            writeId: args.writeId,
-            seq: args.seq,
-            chars: args.content.length,
-            contextPolicy: 'path-only',
-            hint: 'Large artifact fragment omitted from context; the host accepted it. Keep seq order and do not re-send this fragment.',
-          },
-        };
       }
 
       return block;
@@ -267,6 +239,8 @@ function wrapAndTruncateToolResults(messages: AgentMessage[]): AgentMessage[] {
             contextPolicy: 'path-only',
           });
         }
+      } else if (['data_get_schema', 'data_list_objects', 'data_query', 'data_app_register_query', 'data_app_register_sql', 'data_app_test_query', 'data_app_propose_schema','data_save_query_asset','data_list_query_assets','data_run_query_asset'].includes(toolName)) {
+        text = truncateToolResultText(text, 16_000);
       } else if (READ_TOOLS.has(toolName)) {
         text = truncateToolResultText(text, MAX_READ_RESULT_CHARS);
       } else {
@@ -298,27 +272,15 @@ export function extractContextAnchors(messages: AgentMessage[]): ContextAnchors 
       }
     }
 
-    if (role === 'assistant') {
-      const content = (message as { content?: unknown }).content;
-      if (!Array.isArray(content)) continue;
-      for (const block of content) {
-        if (!block || typeof block !== 'object') continue;
-        const item = block as { type?: string; name?: string; arguments?: Record<string, unknown> };
-        if (item.type !== 'toolCall' || !item.name || !WRITE_TOOLS.has(item.name)) continue;
-        const path = item.arguments && typeof item.arguments.path === 'string' ? item.arguments.path : '';
-        if (path) writtenPaths.add(path);
-      }
-    }
-
     if (role === 'toolResult') {
       const toolName = String((message as { toolName?: string }).toolName || '');
       const isError = Boolean((message as { isError?: boolean }).isError);
       const text = messageText(message);
       const parsed = tryParseJsonObject(text);
-      if (WRITE_TOOLS.has(toolName) && parsed && typeof parsed.path === 'string') {
+      if (!isError && parsed?.ok === true && (WRITE_TOOLS.has(toolName) || toolName === 'finish_workspace_write' || toolName === 'finish_artifact_source_write') && typeof parsed.path === 'string') {
         writtenPaths.add(parsed.path);
       }
-      if (parsed && Array.isArray(parsed.artifacts)) {
+      if (!isError && parsed?.ok === true && Array.isArray(parsed.artifacts)) {
         for (const artifact of parsed.artifacts) {
           if (typeof artifact === 'string' && artifact) writtenPaths.add(artifact);
         }

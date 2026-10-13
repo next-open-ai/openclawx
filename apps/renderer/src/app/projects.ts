@@ -109,6 +109,8 @@ export interface ProjectRun {
 }
 
 export interface Project {
+  kind?: 'conversation';
+  defaultEmployeeId?: string;
   id: string;
   orgId?: string;
   ownerUserId?: string;
@@ -122,6 +124,7 @@ export interface Project {
   coordinatorModel: string;
   mode: ProjectMode;
   workspacePath: string;
+  executionWorkspaceMode?: 'isolated';
   tasks: ProjectTask[];
   messages: ProjectMessage[];
   createdAt: number;

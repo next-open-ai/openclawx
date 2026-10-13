@@ -9,6 +9,7 @@ import { authenticateRequest, requireAuth, requireAdmin, sendAuthError } from '.
 import { executeStorageCleanup, scanStorageCleanup } from './storage-cleanup.js';
 import { publicRealtimeVoiceSettings, saveRealtimeVoiceSettings } from '../voice/settings.js';
 import { publicVoiceInputSettings, saveVoiceInputSettings } from '../voice/asr-settings.js';
+import {KnowledgeBaseRuntimeSchema} from '@workmate/contracts';
 import { legacyRealtimeMigrationSource, publicRealtimeConversationSettings, saveRealtimeConversationSettings } from '../voice/realtime-settings.js';
 import { readVoicePreferences, saveVoicePreferences } from '../voice/voice-preferences.js';
 
@@ -421,6 +422,21 @@ function mergeKnowledgeBases(value: unknown) {
     accessKeySecret: String(asRecord(baseSecrets[String(item.id || '')]).accessKeySecret || ''),
     embeddingApiKey: String(asRecord(baseSecrets[String(item.id || '')]).embeddingApiKey || ''),
   }));
+}
+
+/** Server-only resolution; experience settings persist only the target ID and a hash. */
+export function readExperienceKnowledgeTarget(id:string){
+  const base=arrayOfRecords(mergeKnowledgeBases(readJson('knowledge-bases'))).find(row=>row.id===id);
+  if(!base||base.enabled===false)return undefined;
+  const provider=arrayOfRecords(mergeKnowledgeProviders(readJson('knowledge-providers')).providers).find(row=>row.id===base.provider);
+  if(provider?.enabled===false)return undefined;
+  const settings=asRecord(mergeModelSettings(readJson('model-settings'))),models=arrayOfRecords(settings.models),instances=arrayOfRecords(settings.providerInstances);
+  const modelId=base.embeddingMode==='model'?base.embeddingModelConfigId:settings.activeEmbeddingModelId;
+  const model=models.find(m=>m.id===modelId&&m.capability==='embedding'),connection=model?instances.find(p=>p.id===model.providerInstanceId):undefined;
+  if(base.provider==='lancedb'&&base.embeddingMode&&(!model||!connection||connection.enabled===false))return undefined;
+  const parsed=KnowledgeBaseRuntimeSchema.safeParse({...base,baseUrl:base.baseUrl||provider?.defaultBaseUrl||undefined,apiKey:base.apiKey||provider?.defaultApiKey||undefined,workspaceId:base.workspaceId||provider?.defaultWorkspaceId||undefined,accessKeyId:base.accessKeyId||provider?.defaultAccessKeyId||undefined,accessKeySecret:base.accessKeySecret||provider?.defaultAccessKeySecret||undefined,
+    ...(model&&connection?{embeddingModel:String(model.modelId||''),embeddingBaseUrl:String(connection.baseUrl||''),embeddingApiKey:String(connection.apiKey||'')}:{}),});
+  return parsed.success?parsed.data:undefined;
 }
 
 function splitMcpConnections(value: unknown): SettingsEnvelope {

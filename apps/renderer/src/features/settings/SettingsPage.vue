@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n, localeOptions, type Locale } from '../../app/i18n';
+import ExperienceSettingsCard from './ExperienceSettingsCard.vue';
 import { themeOptions, type ThemePreference, useTheme } from '../../app/theme';
 import { applyRecommendedProviderSetup, resolveDecisionRuntime, useModelConfig, type ModelSettings, type ProviderInstance } from '../../app/model-config';
 import type { Employee, EmployeeId } from '../../app/workspace';
@@ -697,6 +698,7 @@ function handleDefaultEmployeeChange(event: Event) {
     </section>
 
     <section v-else-if="tab === 'knowledge'" class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
+      <ExperienceSettingsCard />
       <div>
         <h2 class="text-[17px] font-bold">{{ t('settings.tabKnowledge') }}</h2>
         <p class="mt-1 max-w-2xl text-[13px] leading-relaxed text-[var(--muted)]">{{ t('settings.knowledgeHelp') }}</p>

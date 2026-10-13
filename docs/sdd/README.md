@@ -6,6 +6,15 @@
 
 | 功能 | 入口 | 状态 |
 | --- | --- | --- |
+| 轻量项目与持续对话 | [轻量项目](features/lightweight-project-v1/README.md) · [项目对话](features/project-conversation-v1/README.md) | 创建不自动规划，多轮固定成果目录；旧 DAG 保留 |
+| 工作流调用与结果问答 | [对话调用](features/workflow-chat-v1/README.md) · [成果问答](features/workflow-result-qa-v1/README.md) | 独立执行、来源返回、记录恢复及只读结果提问 |
+| 项目预览与发布 | [规格](features/project-application-v1/README.md) | 本地静态快照，数据项目另接认证网关 |
+| 任务模板项目编辑 | [规格](features/task-template-project-v1/README.md) | 可选入参和报告 UI；定时周期与任务记录见任务模板架构 |
+| 实时数据对象 | [规格](features/live-data-objects-v1/README.md) | 独立连接、默认只读、对象写入；真实库验收边界见状态 |
+| 结构化查询与关联聚合 | [v1](features/structured-data-query-v1/README.md) · [v2](features/structured-data-query-v2/README.md) | 聚合/日期/HAVING/Top N、登记关系 JOIN、条件聚合 |
+| 数据应用 SQL/写入/建表/大厅 | [SQL 增量](features/managed-data-app-v1/sql-operations.md) · [状态](features/managed-data-app-v1/status.md) | 当前行为以上述增量为准，非任意 SQL 执行 |
+| 员工问数与可信查询资产 | [问数](features/agent-data-query-v1/README.md) · [资产](features/agent-data-query-v1/query-assets.md) | Pi/AgentScope；只在用户明确要求时收藏成功查询 |
+| 本地优先经验 | [规格](features/experience-local-first/README.md) · [状态](features/experience-local-first/status.md) | SQLite、异步 JSON、配置验证可用后后台知识库同步/预取 |
 | 统一 Agent Tool Interface | [features/unified-tool-interface/README.md](features/unified-tool-interface/README.md) | 已同步实现，待 Workmate 真实引擎验收 |
 | 通用应用模型机制 | [features/application-model-capabilities/README.md](features/application-model-capabilities/README.md) | 已同步实现，待真实 Provider 验收 |
 | 统一 Provider 连接 | [requirements](features/unified-provider-connections-v1/requirements.md) | 厂商模板、服务端点、兼容迁移已实现；待真实阿里/火山/智谱账号验收 |

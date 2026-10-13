@@ -142,7 +142,7 @@ function startApiProcess() {
     console.log(`[workmate-dev] starting API on :${apiPort}`);
     api = spawn(process.execPath, [apiEntry], {
       cwd: repoRoot,
-      env: sharedEnv(),
+      env: sharedEnv({ WORKMATE_REQUIRE_DESKTOP_CREDENTIALS: '1' }),
       stdio: 'inherit',
     });
     api.on('exit', (code, signal) => {
