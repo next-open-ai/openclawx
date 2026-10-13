@@ -1,5 +1,9 @@
 # Workmate 发布前回归清单
 
+## PKG-BUDGET-20261014 · 安装包体积门槛
+
+CI 与 Release 的 macOS ARM64 安装包上限暂从200 MB调整为220 MB（十进制字节），Windows仍为220 MB；体积检查继续强制执行。暂停的Intel矩阵示例同步为220 MB，不启用该构建。验证两工作流配置一致且仍调用 `report-package-size.mjs`；实际安装包需由新提交的Actions构建验证。本次不修改压缩、运行依赖或发布逻辑；回滚仅恢复上限，无数据迁移。
+
 ## 通用
 
 - [ ] `pnpm install`

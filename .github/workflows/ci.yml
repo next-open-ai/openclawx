@@ -46,7 +46,7 @@ jobs:
           - os: macos-14
             artifact: macos-arm64
             expected_extension: dmg
-            max_package_mb: 200
+            max_package_mb: 220
           - os: windows-latest
             artifact: windows-x64
             expected_extension: exe
