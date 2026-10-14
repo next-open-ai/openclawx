@@ -20,7 +20,7 @@ import {
 } from './bailian-openapi.js';
 import { buildEmbeddingSignature, embedOpenAiCompatible } from './embedding-http.js';
 import { graphDocumentHints, planOntologyQuery, readOntologyGraph, type OntologyQueryPlan } from './ontology-runtime.js';
-import { parseLocalDocument } from './document-parser.js';
+import {readDocument} from './document-service.js';
 import { createChatCompletionsPayloadPatch, toPiModel } from './pi-model.js';
 
 export type KnowledgeHit = {
@@ -419,11 +419,14 @@ export async function ingestKnowledge(input: {
     if (!content && input.fileBase64?.trim()) {
       const fileName = String(input.fileName || '').trim();
       if (!fileName) throw new Error('Local document ingest requires a file name.');
-      const parsed = await parseLocalDocument({
+      const parsed = await readDocument({
         fileName,
         bytes: Buffer.from(input.fileBase64.trim(), 'base64'),
+        allowEnhanced:true,
       });
-      content = parsed.markdown;
+      if(!parsed.ok)throw new Error(parsed.message);
+      if(parsed.info.truncated)throw new Error('文档超出单次读取范围，正文存在截断；请拆分后重新导入，避免知识库只保存部分内容。');
+      content = parsed.text;
     }
     if (!content) throw new Error('Local knowledge ingest requires text content or a supported PDF/DOCX file.');
     return ingestLocalKnowledge({

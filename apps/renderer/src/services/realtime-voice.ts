@@ -1,5 +1,5 @@
 import { getStoredSessionToken } from './auth';
-import { AsrEventSchema, RealtimeVoiceUsageSchema, type AsrPublicSettings, type AsrEvent, type RealtimeVoiceUsage } from '@workmate/contracts';
+import { AsrEventSchema, RealtimeVoiceUsageSchema, type AsrPublicSettings, type AsrEvent, type RealtimeVoiceUsage, type VoiceInterruptDiagnostic } from '@workmate/contracts';
 export { RealtimeVoiceUsageSchema };
 export type { RealtimeVoiceUsage };
 
@@ -55,6 +55,7 @@ async function checkedJson(response: Response) {
 async function command(operation: string, payload: Record<string, unknown>) {
   const response = await fetch(`${apiBase()}/api/voice/realtime/${operation}`, {
     method: 'POST', headers: authHeaders(true), body: JSON.stringify(payload),
+    ...(['interrupt', 'playback', 'diagnostics'].includes(operation) ? { signal: AbortSignal.timeout(3_000) } : {}),
   });
   return checkedJson(response);
 }
@@ -124,7 +125,7 @@ export async function queryRealtimeVoiceClone(voiceId: string) {
 }
 
 export async function createRealtimeVoiceSession(input: { conversationId?: string }) {
-  const body = await command('session', input);
+  const body = await command('session', { ...input, clientPlayback: true });
   return { sessionId: String(body.session_id || ''), provider: String(body.provider || ''), providerName: String(body.providerName || ''), model: String(body.model || '') };
 }
 
@@ -136,6 +137,16 @@ export async function sendRealtimeVoiceAudio(sessionId: string, bytes: Uint8Arra
 
 export async function commitRealtimeVoiceAudio(sessionId: string) {
   await command('audio_commit', { session_id: sessionId });
+}
+
+export async function interruptRealtimeVoice(sessionId: string, responseEpoch: number, diagnostic?: VoiceInterruptDiagnostic) {
+  return command('interrupt', { session_id: sessionId, responseEpoch, diagnostic });
+}
+export async function reportVoiceDiagnostic(sessionId: string, diagnostic: VoiceInterruptDiagnostic) {
+  return command('diagnostics', { session_id: sessionId, diagnostic });
+}
+export async function reportRealtimePlayback(sessionId: string, responseEpoch: number, busy: boolean) {
+  return command('playback', { session_id: sessionId, responseEpoch, busy });
 }
 
 export async function setRealtimeVoiceAudioMuted(sessionId: string, muted: boolean) {

@@ -481,10 +481,16 @@ export async function resolveEmployeeMcpConnections(
   return mcpConnectionsFor(store, prefs, ownerUserId);
 }
 
-/**
- * Build a best-effort run context for a project task using domain KV + the
- * keyring secrets. Returns null when no chat model can be resolved.
- */
+/** Text-model-only resolution; never fall back to another user's employee preferences. */
+export async function resolveEmployeeChatModel(store:KeyValueStore,employeeId:string,ownerUserId?:string|null):Promise<ChatRunContext['model']|null>{
+  const scoped=ownerUserId?await kvJson(store,`user:${ownerUserId}:${PREFS_KEY}`):null;
+  const shared=await kvJson(store,PREFS_KEY);
+  const prefsAll=(scoped&&typeof scoped==='object'&&!Array.isArray(scoped)?scoped:shared&&typeof shared==='object'&&!Array.isArray(shared)?shared:{}) as Record<string,PrefsRow>;
+  const secrets=await ensureModelSecrets();
+  return modelFor(employeeId,(prefsAll[employeeId]??{}) as PrefsRow,secrets.model);
+}
+
+/** Build a full run context from domain KV + keyring; null means no chat model. */
 export async function resolveTaskContext(
   store: KeyValueStore,
   task: ProjectTask,

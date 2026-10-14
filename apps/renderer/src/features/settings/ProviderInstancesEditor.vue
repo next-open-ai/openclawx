@@ -13,6 +13,8 @@ import {
   providerNeedsApiKey,
   providerRequiresServiceSelection,
   providerServiceOptions,
+  providerServiceChoices,
+  visibleProviderService,
   providerSupportsRecommendedSetup,
   suggestedProviderConnectionName,
   summarizeProviderModelHealth,
@@ -24,6 +26,7 @@ import type { ProviderService } from '@workmate/contracts';
 
 import { useNotify } from '../../app/notify';
 import { testProviderConnection } from '../../services/api.js';
+import ProviderApiKeyInput from './ProviderApiKeyInput.vue';
 
 const props = defineProps<{
   instances: ProviderInstance[];
@@ -307,8 +310,8 @@ async function testInstance(instance: ProviderInstance) {
           </label>
           <label v-if="providerRequiresServiceSelection(instance.type)" class="grid gap-1.5 text-xs font-semibold text-[var(--muted)]">
             <span>{{ t('settings.providerService') }}</span>
-            <select class="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm font-normal" :value="instance.service || 'language'" @change="handleInstanceServiceChange(instance, $event)">
-              <option v-for="service in providerServiceOptions(instance.type)" :key="service" :value="service">{{ t(`settings.providerService.${service}`) }}</option>
+            <select class="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm font-normal" :value="visibleProviderService(instance.service)" @change="handleInstanceServiceChange(instance, $event)">
+              <option v-for="service in providerServiceChoices(instance.type)" :key="service" :value="service">{{ t(`settings.providerService.${service}`) }}</option>
             </select>
             <span class="text-[11px] font-normal">{{ t('settings.providerServiceHelp') }}</span>
           </label>
@@ -349,14 +352,7 @@ async function testInstance(instance: ProviderInstance) {
           </details>
           <label v-if="instance.type !== 'ollama'" class="grid gap-1.5 text-xs font-semibold text-[var(--muted)]">
             <span>{{ t('settings.apiKey') }}</span>
-            <input
-              class="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm font-normal outline-none focus:border-[var(--accent)]"
-              type="password"
-              autocomplete="off"
-              placeholder="sk-…"
-              :value="instance.apiKey"
-              @input="patch(instance.id, { apiKey: eventValue($event) })"
-            />
+            <ProviderApiKeyInput :key="`${instance.id}:${instance.type}`" :context-id="`${instance.id}:${instance.type}`" :model-value="instance.apiKey" @update:model-value="patch(instance.id, { apiKey: $event })" />
           </label>
           <label v-if="(instance.type === 'volcengine' && instance.service === 'speech') || instance.type === 'iflytek'" class="grid gap-1.5 text-xs font-semibold text-[var(--muted)]">
             <span>{{ instance.type === 'volcengine' ? t('settings.volcengineLegacyAppId') : t('settings.appId') }}</span>
@@ -405,8 +401,8 @@ async function testInstance(instance: ProviderInstance) {
             </label>
             <label v-if="providerRequiresServiceSelection(addDraft.type)" class="grid gap-1.5 text-xs font-semibold text-[var(--muted)]">
               <span>{{ t('settings.providerService') }}</span>
-              <select :value="addDraft.service || 'language'" class="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm font-normal" @change="handleInstanceServiceChange(addDraft, $event)">
-                <option v-for="service in providerServiceOptions(addDraft.type)" :key="service" :value="service">{{ t(`settings.providerService.${service}`) }}</option>
+              <select :value="visibleProviderService(addDraft.service)" class="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm font-normal" @change="handleInstanceServiceChange(addDraft, $event)">
+                <option v-for="service in providerServiceChoices(addDraft.type)" :key="service" :value="service">{{ t(`settings.providerService.${service}`) }}</option>
               </select>
               <span class="text-[11px] font-normal">{{ t('settings.providerServiceSimpleHelp') }}</span>
             </label>
@@ -417,12 +413,12 @@ async function testInstance(instance: ProviderInstance) {
             </label>
             <label v-if="addDraft.type !== 'ollama'" class="grid gap-1.5 text-xs font-semibold text-[var(--muted)]">
               <span>{{ t('settings.apiKey') }}<small v-if="!providerNeedsApiKey(addDraft.type)" class="ml-1 font-normal">({{ t('settings.optional') }})</small></span>
-              <input v-model="addDraft.apiKey" class="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm font-normal" type="password" autocomplete="off" placeholder="sk-…" :required="providerNeedsApiKey(addDraft.type)" />
+              <ProviderApiKeyInput :key="`${addDraft.id}:${addDraft.type}`" v-model="addDraft.apiKey" :context-id="`${addDraft.id}:${addDraft.type}`" :required="providerNeedsApiKey(addDraft.type)" />
               <span class="text-[11px] font-normal leading-relaxed">{{ t('settings.apiKeyLocalHelp') }}</span>
             </label>
             <label v-if="(addDraft.type === 'volcengine' && addDraft.service === 'speech') || addDraft.type === 'iflytek'" class="grid gap-1.5 text-xs font-semibold text-[var(--muted)]">
               <span>{{ addDraft.type === 'volcengine' ? t('settings.volcengineLegacyAppId') : t('settings.appId') }}</span>
-              <input v-model.trim="addDraft.appId" class="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm font-normal" required />
+              <input v-model.trim="addDraft.appId" class="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm font-normal" :required="addDraft.type === 'iflytek'" />
               <span v-if="addDraft.type === 'volcengine'" class="text-[11px] font-normal leading-relaxed">{{ t('settings.volcengineLegacyAppIdHelp') }}</span>
             </label>
             <label v-if="addDraft.type === 'iflytek'" class="grid gap-1.5 text-xs font-semibold text-[var(--muted)]">

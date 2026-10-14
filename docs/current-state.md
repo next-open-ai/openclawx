@@ -8,6 +8,8 @@
 | 能力域 | 当前状态 | 事实源 |
 | --- | --- | --- |
 | 对话与数字员工 | 服务端会话、滚动记忆、工具审批、资产交付和员工权限已接入 | [全局架构](architecture/architecture.md) |
+| 工作成果查找 | 语音与Pi/AgentScope共用当前对话/私人历史检索；文字模型对最多60项有权候选做语义筛选，异常显式降级关键词；文本/PDF有界读取，语音卡片可打开/下载，支持非语音Run与缺省当前工作 | [成果检索](sdd/features/work-result-retrieval-v1/README.md) |
+| 统一文档能力 | 资产、附件、本地知识库共用readDocument；PDF/Word/PPT/文本/HTML/表格统一结果与错误；Pi/AgentScope提供工作区read_document。失败不自动派单，由模型显式委托员工并携带资产副本 | [统一文档服务](sdd/features/unified-document-service-v1/README.md) |
 | 持续任务 | 复杂任务可保存源文件、检查点和工作区，跨 run 恢复；完成后自动收敛，清空消息不等于删除 Session | [持续任务 SDD](sdd/features/conversation-durable-task/README.md) |
 | 应用模型 | 图片生成/理解、Embedding、ASR、TTS、量子代码、决策和本体语义匹配统一按能力注册；Provider 使用“厂商模板→连接→服务端点→模型”，阿里/火山/智谱支持服务化自动端点；员工端使用一个总开关 | [应用模型 SDD](sdd/features/application-model-capabilities/README.md) · [统一 Provider](sdd/features/unified-provider-connections-v1/requirements.md) |
 | 决策守卫 | 决策模型纳入应用模型管理，可用于工具执行前守卫和主模型按需调用；默认关闭、超时降级并支持扩展其他决策模型 | [决策运行时](sdd/features/decision-runtime/jev-decision-runtime.md) |

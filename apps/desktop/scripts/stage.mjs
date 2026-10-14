@@ -80,9 +80,12 @@ function stageDependency(name, resolver) {
   seen.add(name);
   const manifest = JSON.parse(readFileSync(path.join(source, 'package.json'), 'utf8'));
   const dependencyResolver = createRequire(path.join(source, 'package.json'));
-  for (const dependency of Object.keys(manifest.dependencies ?? {})) stageDependency(dependency, dependencyResolver);
+  if(name!=='pdfjs-dist')for (const dependency of Object.keys(manifest.dependencies ?? {})) stageDependency(dependency, dependencyResolver);
   const destination = path.join(stagedDeps, name);
-  if (name === 'sql.js') {
+  if(name==='pdfjs-dist'){
+    mkdirSync(destination,{recursive:true});
+    for(const entry of ['package.json','LICENSE','cmaps','standard_fonts'])cpSync(path.join(source,entry),path.join(destination,entry),{recursive:true});
+  } else if (name === 'sql.js') {
     mkdirSync(path.join(destination, 'dist'), { recursive: true });
     cpSync(path.join(source, 'package.json'), path.join(destination, 'package.json'));
     for (const file of ['sql-wasm.js', 'sql-wasm.wasm']) cpSync(path.join(source, 'dist', file), path.join(destination, 'dist', file));

@@ -4,7 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { strFromU8, unzipSync } from 'fflate';
-import { extractText } from 'unpdf';
+import {openLocalPdf} from './pdf-document.js';
+import {DocumentProcessingError} from './document-errors.js';
 import { detectBundledPython, pythonArgv } from './python-runtime.js';
 
 const execFileAsync = promisify(execFile);
@@ -17,6 +18,7 @@ export type ParsedDocument = {
   markdown: string;
   parser: 'builtin' | 'markitdown' | 'docling';
   warnings: string[];
+  pageCount?:number;pagesRead?:number;truncated?:boolean;
 };
 
 export function supportsLocalDocumentParsing(fileName: string): boolean {
@@ -80,19 +82,27 @@ function decodeXmlText(value: string): string {
     .replace(/&#x([0-9a-f]+);/gi, (_match, code) => String.fromCodePoint(Number.parseInt(code, 16)));
 }
 
-async function parseBuiltInDocument(fileName: string, bytes: Buffer): Promise<ParsedDocument> {
+async function parseBuiltInDocument(fileName: string, bytes: Buffer,options:{maxPages?:number;maxChars?:number;signal?:AbortSignal}={}): Promise<ParsedDocument> {
   if (PDF_DOCUMENT.test(fileName)) {
-    const result = await extractText(new Uint8Array(bytes), { mergePages: false });
-    const pages = Array.isArray(result.text) ? result.text : [result.text];
-    const markdown = pages
-      .map((text, index) => String(text || '').trim() ? `## Page ${index + 1}\n\n${String(text).trim()}` : '')
-      .filter(Boolean)
-      .join('\n\n');
-    if (!markdown) throw new Error('PDF contains no extractable text. Scanned PDFs require an OCR-capable enhanced parser.');
-    return { markdown, parser: 'builtin', warnings: [] };
+    const pdf=await openLocalPdf(new Uint8Array(bytes));
+    const pages:string[]=[];let pagesRead=0,chars=0;
+    try{for(let page=1;page<=Math.min(pdf.numPages,Math.max(1,options.maxPages??300));page++){
+      if(options.signal?.aborted)throw new DocumentProcessingError('DOCUMENT_CANCELLED','文档读取已取消。');
+      const content=await (await pdf.getPage(page)).getTextContent();pagesRead++;
+      const text=content.items.map(item=>'str' in item?item.str:'').join(' ').trim();
+      if(text){const block=`## Page ${page}\n\n${text}`;pages.push(block);chars+=block.length+2;}
+      if(chars>(options.maxChars??500000))break;
+    }}finally{await (pdf as unknown as {destroy?:()=>Promise<void>}).destroy?.();}
+    const markdown=pages.join('\n\n');
+    if(!markdown)throw new DocumentProcessingError('DOCUMENT_EMPTY','未提取到PDF正文，可能是字体映射或扫描内容；需要其他解析器或OCR进一步确认。');
+    return{markdown,parser:'builtin',warnings:[],pageCount:pdf.numPages,pagesRead,truncated:pagesRead<pdf.numPages};
   }
   if (DOCX_DOCUMENT.test(fileName)) {
-    const archive = unzipSync(new Uint8Array(bytes));
+    const archive = unzipSync(new Uint8Array(bytes),{filter:entry=>{
+      if(entry.name!=='word/document.xml')return false;
+      if(entry.originalSize>20*1024*1024)throw new DocumentProcessingError('DOCUMENT_TOO_LARGE','Word解压后正文超过20MB，请精简文件。');
+      return true;
+    }});
     const document = archive['word/document.xml'];
     if (!document) throw new Error('DOCX is missing word/document.xml.');
     const xml = strFromU8(document);
@@ -103,7 +113,7 @@ async function parseBuiltInDocument(fileName: string, bytes: Buffer): Promise<Pa
         .trim())
       .filter(Boolean);
     const markdown = paragraphs.join('\n\n');
-    if (!markdown) throw new Error('DOCX contains no extractable paragraph text.');
+    if (!markdown) throw new DocumentProcessingError('DOCUMENT_EMPTY','Word中没有可提取的正文段落。');
     return { markdown, parser: 'builtin', warnings: [] };
   }
   throw new Error('Built-in parsing supports PDF and DOCX only.');
@@ -114,6 +124,7 @@ export async function parseLocalDocument(input: {
   fileName: string;
   bytes: Buffer;
   timeoutMs?: number;
+  maxPages?:number;maxChars?:number;allowEnhanced?:boolean;signal?:AbortSignal;
 }): Promise<ParsedDocument> {
   if (!supportsLocalDocumentParsing(input.fileName)) {
     throw new Error('Local document parsing currently supports PDF, DOCX, PPTX and PPSX files.');
@@ -125,12 +136,14 @@ export async function parseLocalDocument(input: {
   let builtinError = '';
   if (PDF_DOCUMENT.test(input.fileName) || DOCX_DOCUMENT.test(input.fileName)) {
     try {
-      builtin = await parseBuiltInDocument(input.fileName, input.bytes);
-      if (documentTextLooksUsable(builtin.markdown) || !(await hasDoclingEnhancedParser())) return builtin;
+      builtin = await parseBuiltInDocument(input.fileName, input.bytes,input);
+      if (input.allowEnhanced===false||builtin.truncated||documentTextLooksUsable(builtin.markdown) || !(await hasDoclingEnhancedParser())) return builtin;
     } catch (cause) {
       builtinError = cause instanceof Error ? cause.message : String(cause);
-      if (!(await hasDoclingEnhancedParser())) {
-        throw new Error(`Unable to parse ${path.extname(input.fileName).toUpperCase()} locally: ${builtinError}`);
+      if (input.signal?.aborted)throw new DocumentProcessingError('DOCUMENT_CANCELLED','文档读取已取消。');
+      if (input.allowEnhanced===false||!(await hasDoclingEnhancedParser())) {
+        if(cause instanceof DocumentProcessingError)throw cause;
+        throw new DocumentProcessingError('DOCUMENT_PARSE_FAILED','文档内置解析未成功，可使用已授权Skill进一步处理。');
       }
     }
   }
@@ -153,6 +166,7 @@ export async function parseLocalDocument(input: {
       cwd: tempRoot,
       timeout: input.timeoutMs ?? 120_000,
       maxBuffer: 16 * 1024 * 1024,
+      signal:input.signal,
       env: { ...process.env, PYTHONPATH: pythonPath, PYTHONIOENCODING: 'utf-8' },
     });
     const parsed = JSON.parse(stdout) as Partial<ParsedDocument>;
@@ -165,6 +179,7 @@ export async function parseLocalDocument(input: {
       warnings: Array.isArray(parsed.warnings) ? parsed.warnings.map(String) : [],
     };
   } catch (cause) {
+    if(input.signal?.aborted)throw new DocumentProcessingError('DOCUMENT_CANCELLED','文档读取已取消。');
     const detail = cause instanceof Error ? cause.message : String(cause);
     if (builtin) return { ...builtin, warnings: [...builtin.warnings, `Enhanced parser unavailable: ${detail}`] };
     throw new Error(`Unable to parse ${path.extname(input.fileName).toUpperCase()} locally: ${detail}`);

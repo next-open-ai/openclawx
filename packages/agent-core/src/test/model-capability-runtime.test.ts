@@ -515,9 +515,10 @@ test('DashScope multimodal image protocol uses the native synchronous endpoint a
   assert.ok(address && typeof address === 'object');
   const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-dashscope-sync-'));
   try {
+    for (const modelId of ['wan2.7-image', 'qwen-image-2.0']) {
     const tools = createModelCapabilityTools({
       workspaceRoot,
-      configs: [{ id: 'wan', capability: 'image', provider: 'qwen', baseUrl: `http://127.0.0.1:${address.port}/compatible-mode/v1`, apiKey: 'key', modelId: 'wan2.7-image', imageProtocol: 'dashscope-multimodal', mode: 'auto' }],
+      configs: [{ id: 'image', capability: 'image', provider: 'qwen', baseUrl: `http://127.0.0.1:${address.port}/compatible-mode/v1`, apiKey: 'key', modelId, imageProtocol: 'dashscope-multimodal', mode: 'auto' }],
     });
     globalThis.fetch = ((input: string | URL | Request, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
@@ -527,6 +528,7 @@ test('DashScope multimodal image protocol uses the native synchronous endpoint a
     const progress: Array<{ summary?: string; progress?: number }> = [];
     const output = (await tools[0].execute('test', { prompt: '竹林', size: '1280x1280' }, undefined, (update) => progress.push(update.details as any))).details as any;
     assert.equal(captured.url, '/api/v1/services/aigc/multimodal-generation/generation');
+    assert.equal(captured.body.model, modelId);
     assert.equal(captured.body.input.messages[0].content[0].text, '竹林');
     assert.equal(captured.body.parameters.size, '1280*1280');
     assert.equal(output.protocol, 'dashscope-multimodal');
@@ -535,6 +537,7 @@ test('DashScope multimodal image protocol uses the native synchronous endpoint a
     assert.equal((await readFile(path.join(workspaceRoot, output.path))).subarray(0, 4).toString('hex'), '89504e47');
     assert.ok(progress.some((item) => item.summary?.includes('兼容下载通道')));
     assert.ok(progress.some((item) => item.progress === 92));
+    }
   } finally {
     globalThis.fetch = nativeFetch;
     const closed = new Promise<void>((resolve) => server.close(() => resolve()));

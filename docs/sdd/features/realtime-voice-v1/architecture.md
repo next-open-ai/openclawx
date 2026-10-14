@@ -1,5 +1,11 @@
 # 实时语音 V1 架构
 
+桌面插话采用本地立即清空 AudioBufferSource 队列 + 播放 generation 取消 resume 竞态；API 的 VoiceResponseGate 按 response ID/epoch 隔离旧消息与未执行工具，供应商发送 response.cancel，不关闭连接、不清除用户输入。已接受工作继续执行，迟到工具结果保留本地结果事件、不触发旧语音续播。完成通知等待输入、生成、工具及实际播放全部空闲。[接口与回滚](./barge-in.md)。
+
+1.2（替代1.1）：供应商负责正常插话；API根据供应商讲话开始事件隔离旧回答并发出local.provider_interrupted，UI只清空旧播放，不发重复response.cancel。删除VoiceBargeIn与半双工模式开关。明确停止播报由stop_voice_playback桥接工具处理，复核当前完成转写，不调用cancel_work。旧诊断接口兼容保留，UI不再上报本地插话决策。
+
+启动与通知：[SN-R1–R3](./startup-notices.md)。Renderer先准备麦克风，API创建等待供应商确认初始配置（Volc session.created / Qwen session.updated），之后才启动采集上传。socket.open不再表示模型ready，25秒初始化截止/关闭/错误统一释放等待者。通知控制规则放session instructions，可朗读payload仅传正文，沿用现有播放进度与礼让。
+
 ```text
 Workmate Renderer
   ├─ getUserMedia (AEC / NS / AGC)

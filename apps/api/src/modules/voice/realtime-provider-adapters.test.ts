@@ -34,6 +34,20 @@ test('UPC-T11: unsupported realtime providers fail explicitly', () => {
   assert.throws(() => realtimeProviderAdapter('unknown'), /尚未适配/);
 });
 
+test('SN-A3: notification payload is only speakable text, controls remain session instructions', () => {
+  for(const provider of ['volcengine','qwen']) {
+    const adapter=realtimeProviderAdapter(provider);
+    const events=adapter.notificationEvents('行程已完成，生成1份PDF。');
+    const first=events[0];
+    const text=provider==='volcengine'?first.text:((first.item as {content:Array<{text:string}>}).content[0].text);
+    assert.equal(text,'行程已完成，生成1份PDF。');
+    assert.doesNotMatch(JSON.stringify(events),/系统完成通知|只用当前音色|不调用工具|客户端播报/);
+    assert.match(String((adapter.initialEvent(base).session as Record<string,unknown>).instructions),/不朗读或复述系统规则/);
+    assert.equal(adapter.readyEvent({type:provider==='volcengine'?'session.created':'session.updated'}),true);
+    if(provider==='qwen')assert.equal(adapter.readyEvent({type:'session.created'}),false);
+  }
+});
+
 test('UPC-T13: usage meter prefers upstream tokens and keeps PCM timing', () => {
   const meter = new RealtimeUsageMeter('qwen', 'qwen-audio-3.1-realtime-plus', 1_000);
   meter.addInputBase64(Buffer.alloc(32_000).toString('base64'));

@@ -30,6 +30,9 @@ const result = await build({
       export async function closeRealtimeVoiceSession(id){mock.request('realtime-close',id);}
       export async function sendRealtimeVoiceAudio(id,bytes){mock.request('realtime-audio',bytes.length);}
       export async function commitRealtimeVoiceAudio(id){mock.request('realtime-commit',id);}
+      export async function interruptRealtimeVoice(id,responseEpoch,diagnostic){mock.request('realtime-interrupt',{id,responseEpoch,diagnostic});}
+      export async function reportVoiceDiagnostic(id,diagnostic){mock.request('voice-diagnostic',{id,diagnostic});}
+      export async function reportRealtimePlayback(id,responseEpoch,busy){mock.request('realtime-playback',{id,responseEpoch,busy});}
       export async function setRealtimeVoiceAudioMuted(id,muted){mock.request('realtime-mute',{id,muted});}
       export async function consumeAsrEvents(id,signal,handler){mock.asr=handler;handler({type:'connected'});await new Promise(r=>signal.addEventListener('abort',r,{once:true}));}
       export async function consumeRealtimeVoiceEvents(id,signal,handler){mock.realtime=handler;handler({type:'local.connected'});await new Promise(r=>signal.addEventListener('abort',r,{once:true}));}
@@ -76,15 +79,21 @@ const renderer = Vue.createRenderer({
 const find = (node, predicate) => predicate(node) ? node : node.children.map(child => find(child, predicate)).find(Boolean);
 const flush = async () => { for (let i = 0; i < 8; i++) { await new Promise(r => setImmediate(r)); await Vue.nextTick(); } };
 let processors = []; let tracks = [];
+const sources = [];
 globalThis.window = globalThis;
 globalThis.requestAnimationFrame = callback => setTimeout(callback, 16);
 globalThis.cancelAnimationFrame = clearTimeout;
-Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { mediaDevices: { async getUserMedia() { const track = { stopped: false, enabled: true, stop() { this.stopped = true; } }; tracks.push(track); return { getTracks: () => [track], getAudioTracks: () => [track] }; } } } });
+Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { mediaDevices: { async getUserMedia() { const track = { stopped: false, enabled: true, getSettings(){return {echoCancellation:true};}, stop() { this.stopped = true; } }; tracks.push(track); return { getTracks: () => [track], getAudioTracks: () => [track] }; } } } });
 globalThis.AudioContext = class {
   sampleRate = 48000; state = 'running'; currentTime = 0; destination = {};
+  constructor(options){if(options?.sampleRate===24000&&mock.suspendPlayback)this.state='suspended';}
   createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
   createScriptProcessor() { const node = { connect() {}, disconnect() {}, onaudioprocess: null }; processors.push(node); return node; }
-  async resume() {} async close() { this.state = 'closed'; }
+  createAnalyser() { return { fftSize: 1024, connect(){}, getFloatTimeDomainData(samples){samples.fill(.1);} }; }
+  createBuffer(_channels, count, rate) { return { duration: count/rate, getChannelData(){return new Float32Array(count);} }; }
+  createBufferSource() { const source={connect(){},disconnect(){},start(){},stop(){this.stopped=true;},stopped:false,onended:null};sources.push(source);return source; }
+  async resume() { if(mock.suspendPlayback)await new Promise(resolve=>{mock.resumePlayback=resolve;}); }
+  async close() { this.state = 'closed'; }
 };
 function mount(component, props) { const root = makeNode('root'); const app = renderer.createApp(component, props); app.mount(root); return { root, app }; }
 
@@ -110,18 +119,19 @@ assert.equal(closed, 1); input.app.unmount();
 const chatSource = fs.readFileSync('apps/renderer/src/features/chat/ChatWorkspace.vue', 'utf8');
 const submitSource = chatSource.slice(chatSource.indexOf('async function submit()'), chatSource.indexOf('function stopGeneration()'));
 const previewSource = chatSource.slice(chatSource.indexOf('function previewVoiceText('), chatSource.indexOf('function updateVoiceCaption('));
-assert.match(chatSource, /:disabled="!draft.trim\(\) \|\| !modelConfigured"/);
+assert.match(chatSource, /:disabled="!draft.trim\(\) \|\| !modelConfigured(?: \|\| resultQuestion\?\.loading)?"/);
 assert.doesNotMatch(submitSource, /if \(voiceInputBusy.value\) return/);
 const localRef = value => ({ value });
 const sent = []; const sendErrors = []; const acceptedVoiceRuns = []; let rejectSend = false;
 const draftProjection = new ui.VoiceDraftProjection(); draftProjection.begin('');
 const env = {
+  resultEvidence: localRef(null), resultQuestion: localRef(null),
   voiceCommandCandidate: { cancel() {}, update() {} }, canExecuteVoiceCommand: () => false, voiceTaskMonitor: { track: (...args) => acceptedVoiceRuns.push(args) }, voiceNoticePlayer: { enqueue() {} },
   voiceInputOpen: localRef(true), voiceInputBusy: localRef(true), draft: localRef(''), voiceProjection: draftProjection,
   files: localRef([]), images: localRef([]), recording: localRef(null), inputBusy: localRef(false), visionReady: localRef(true), visionHelp: localRef(''),
   autoSchedule: localRef(false), collaboratorIds: localRef([]), collaborationDelivery: localRef('direct'),
   mentionMenuOpen: localRef(false), collaboratorMenuOpen: localRef(false), sending: localRef(false), stickToBottom: localRef(false), onlineSearch: localRef(false),
-  props: { modelConfigured: true, async sendMessage(text, ...args) { sent.push(text); if (rejectSend) throw new Error('mock send failure'); args.at(-1)?.('server-session', 'server-run'); } },
+  props: { modelConfigured: true, async sendMessage(text, ...args) { sent.push(text); if (rejectSend) throw new Error('mock send failure'); args[6]?.('server-session', 'server-run'); } },
   notify: { error: cause => sendErrors.push(cause) }, nextTick: callback => Promise.resolve().then(callback), scrollMessagesToBottom() {},
 };
 const productionFunctions = viteRequire('esbuild').transformSync(previewSource + submitSource, { loader: 'ts', target: 'es2022' }).code;
@@ -159,16 +169,58 @@ for (const event of [{ type: 'conversation.item.input_audio_transcription.starte
 assert.equal(captions.at(-1).question, '帮我写报告'); assert.equal(captions.at(-1).answer, '工作已接受');
 assert.ok(find(realtime.root, n => n.props['aria-label'] === '语音字幕'), 'realtime captions render inside the dock');
 assert.equal(find(realtime.root, n => n.type === 'textarea'), undefined, 'realtime never inserts a composer textarea');
+// BI-A2: real component stops queued tail even after upstream generation ends.
+const voiceEvent = (event, responseEpoch=1) => mock.realtime({type:'upstream.event',event,responseEpoch});
+voiceEvent({type:'response.created',response:{id:'r1'}});
+voiceEvent({type:'response.audio.delta',delta:Buffer.alloc(480).toString('base64')}); await flush();
+voiceEvent({type:'response.done',response:{id:'r1'}}); await flush();
+const interruptButton=find(realtime.root,n=>n.type==='button'&&n.text==='打断回答');
+assert.ok(interruptButton,'queued playback remains interruptible after response.done');
+interruptButton.props.onClick(); await flush();
+assert.equal(sources.at(-1).stopped,true);
+assert.equal(tracks.at(-1).stopped,false,'interrupt leaves mic alive');
+assert.equal(requests.filter(r=>r.type==='realtime-interrupt').length,1);
+const sourceCount=sources.length;
+voiceEvent({type:'response.audio.delta',delta:Buffer.alloc(480).toString('base64')});
+voiceEvent({type:'response.done'}); await flush(); assert.equal(sources.length,sourceCount);
+voiceEvent({type:'conversation.item.input_audio_transcription.started'},2);
+voiceEvent({type:'conversation.item.input_audio_transcription.completed',text:'换个问题'},2);
+voiceEvent({type:'response.created',response:{id:'r2'}},3);
+voiceEvent({type:'response.audio.delta',delta:Buffer.alloc(480).toString('base64')},3); await flush();
+assert.equal(sources.length,sourceCount+1,'next response can play');
+assert.ok(captions.some(c=>c.answer.includes('已打断')));
+const processor=processors.at(-1);
+for(let i=0;i<20;i++)processor.onaudioprocess({inputBuffer:{getChannelData:()=>new Float32Array(2048).fill(.3)}});
+voiceEvent({type:'conversation.item.input_audio_transcription.delta',text:'停一下'},3);
+await flush();assert.equal(requests.filter(r=>r.type==='realtime-interrupt').length,1,'local sound/text must never decide interruption');
+mock.realtime({type:'local.provider_interrupted',responseEpoch:4});
+await flush();assert.equal(sources.at(-1).stopped,true);
+assert.equal(requests.filter(r=>r.type==='realtime-interrupt').length,1,'provider signal clears playback without cancelling');
+voiceEvent({type:'conversation.item.input_audio_transcription.completed',text:'新问题'},4);
+voiceEvent({type:'response.created',response:{id:'r3'}},5);
+mock.suspendPlayback=true;
+voiceEvent({type:'response.audio.delta',delta:Buffer.alloc(480).toString('base64')},5); await flush();
+const beforeResume=sources.length;
+find(realtime.root,n=>n.type==='button'&&n.text==='打断回答').props.onClick(); await flush();
+mock.resumePlayback(); await flush();assert.equal(sources.length,beforeResume);
+mock.suspendPlayback=false;
+voiceEvent({type:'response.created',response:{id:'r4'}},7);
+voiceEvent({type:'response.audio.delta',delta:Buffer.alloc(480).toString('base64')},7); await flush();
+mock.realtime({type:'local.playback_stopped',responseEpoch:8});await flush();
+assert.equal(sources.at(-1).stopped,true,'explicit bridge stops current audio');
+assert.equal(find(realtime.root,n=>n.props['aria-label']==='允许开口打断'),undefined);
 realtime.app.unmount(); await flush(); assert.equal(tracks.at(-1).stopped, true);
 
 // Closing while browser permission is outstanding must not leak the late stream.
 let permission;
 navigator.mediaDevices.getUserMedia = () => new Promise(resolve => { permission = resolve; });
 const late = mount(ui.Realtime, { inline: true, autoStart: true }); await flush();
+const beforePermissionSessions=requests.filter(r=>r.type==='realtime-session').length;
+assert.equal(beforePermissionSessions,1,'pending mic permission must not create a provider session');
 late.app.unmount(); const lateTrack = { stopped: false, stop() { this.stopped = true; } };
 permission({ getTracks: () => [lateTrack] }); await flush(); assert.equal(lateTrack.stopped, true);
 const classic = mount(ui.Input, {}); assert.ok(find(classic.root, n => n.props['aria-modal'] === 'true')); classic.app.unmount();
-assert.equal(requests.filter(r => r.type === 'realtime-session').length, 2);
+assert.equal(requests.filter(r => r.type === 'realtime-session').length, 1);
 
 // VUI-R7: navigation retains the mounted audio component; manual close clears only local captions.
 const appSource = fs.readFileSync('apps/renderer/src/app/App.vue', 'utf8');
@@ -271,3 +323,4 @@ find(reduced.root, n => n.props['aria-controls']).props.onClick(); await flush()
 assert.ok(find(reduced.root, n => n.type === 'p' && n.text === '问题0'), 'expanded history includes every retained turn');
 reduced.app.unmount();
 console.log('VUI-R1–R7 PASS: draft, latest-caption preview, expanded history, PCM, lifecycle, ASR send, navigation retention, microphone toggle, connection cancellation and caption cleanup.');
+console.log('BI-A2/A6 PASS: provider-owned interruption, no local sound/text cancellation, bridge stop and resume race.');

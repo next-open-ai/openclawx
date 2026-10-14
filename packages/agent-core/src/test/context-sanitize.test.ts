@@ -28,6 +28,15 @@ function assistantWith(content: unknown[]) {
   } as any;
 }
 
+test('WR-T4: work result IDs and bounded text remain valid JSON through context hygiene',()=>{
+  const data={ok:true,items:[{id:crypto.randomUUID()}],text:'三亚行程'.repeat(2000)};
+  const clean=sanitizeToolPayloadsInMessages([result('work','read_work_result',data)]) as any[];
+  assert.deepEqual(JSON.parse(clean[0].content[0].text),data);
+  const huge={...data,text:'\u0001'.repeat(16000)};
+  const clipped=sanitizeToolPayloadsInMessages([result('large','read_work_result',huge)]) as any[];
+  const value=JSON.parse(clipped[0].content[0].text);assert.equal(value.truncated,true);assert.equal(value.items[0].id,data.items[0].id);assert.ok(clipped[0].content[0].text.length<=32000);
+});
+
 function result(id: string, toolName: string, value: unknown, isError = false) {
   return { role: 'toolResult', toolCallId: id, toolName,
     content: [{ type: 'text', text: JSON.stringify(value) }], isError, timestamp: Date.now() } as any;

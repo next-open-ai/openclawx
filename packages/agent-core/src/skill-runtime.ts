@@ -2,8 +2,9 @@ import { copyFile, mkdir, readFile, readdir, realpath, stat, writeFile,rename,un
 import {randomUUID} from 'node:crypto';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import type { AgentSkillRuntime } from '@workmate/contracts';
-import { Type, StringEnum, defineAgentTool, type AgentTool } from './pi-tools.js';
+import {DocumentToolInputSchema,DocumentToolInputJsonSchema,type AgentSkillRuntime} from '@workmate/contracts';
+import { Type, StringEnum, defineAgentTool,jsonSchemaParameters, type AgentTool } from './pi-tools.js';
+import {readDocument} from './document-service.js';
 import { PDF_SKILL_ID } from './builtin-skill-packages.js';
 import { pythonArgv, resolveWorkmatePython } from './python-runtime.js';
 import { resolveAgentWorkspaceRoot } from './workspace-mode.js';
@@ -601,6 +602,21 @@ export function createSkillExecutionTools(input: {
         if (!textFilePattern.test(relative)) return { ok: false, error: 'Only approved text formats can be read from the workspace.' };
         const file = await workspacePath(relative);
         return { ok: true, path: safeRelative(relative), content: truncate(await readFile(file, 'utf8'), MAX_READ_RETURN_CHARS) };
+      },
+    }),
+    defineAgentTool({
+      name:'read_document',
+      description:'使用统一文档服务读取当前工作区的PDF、Word、PPT、表格、HTML或文本。只能传工作区相对路径（附件副本通常在.task/source/）。基础读取不调用模型、不执行Skill；nextAction=delegate时请自行选择已授权Skill继续处理，不能用历史摘要冒充正文，也不要递归委托自己。返回正文、解析器、页数、截断、警告与明确错误。',
+      parameters:jsonSchemaParameters(DocumentToolInputJsonSchema),
+      execute:async(raw,ctx)=>{
+        const failure=(code:'DOCUMENT_INVALID_INPUT'|'DOCUMENT_NOT_AVAILABLE'|'DOCUMENT_TOO_LARGE',message:string)=>({ok:false,code,message,info:{format:'unknown',truncated:false,warnings:[],nextAction:'none'}});
+        const input=DocumentToolInputSchema.safeParse(raw);if(!input.success)return failure('DOCUMENT_INVALID_INPUT','请提供文档的工作区相对路径及有效读取范围。');
+        try{
+          const file=await workspacePath(input.data.path),info=await stat(file);
+          if(!info.isFile())return failure('DOCUMENT_NOT_AVAILABLE','工作区文档不可用。');
+          if(info.size>25*1024*1024)return failure('DOCUMENT_TOO_LARGE','工作区文档超过25MB，请精简后重试。');
+          return readDocument({fileName:path.basename(file),bytes:await readFile(file),maxChars:input.data.maxChars??6000,maxPages:input.data.maxPages??20,allowEnhanced:false,signal:ctx.signal});
+        }catch{return failure('DOCUMENT_NOT_AVAILABLE','工作区文档不可用或路径不安全。');}
       },
     }),
     defineAgentTool({

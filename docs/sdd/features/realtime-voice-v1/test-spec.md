@@ -1,5 +1,7 @@
 # 实时语音 V1 测试规范
 
+- BI-A1/A2：`pnpm --filter @workmate/api test` 的 barge-in.test 与 `node scripts/voice-composer-regression.mjs` 覆盖桌面打断，详见 [barge-in.md](./barge-in.md)。
+
 > 手机 HTTPS 专项：API test 覆盖显式关闭、外部证书/Origin/端口配置校验、托管 CA 与服务器证书生成、IP SAN、CA 稳定性，以及只允许 `/api/chat-mobile/` GET/POST；人工使用 iOS/Android 安装并信任二维码提供的 CA，验证 HTTPS 页面、麦克风、SSE、文件上传，并确认 `/api/settings`、`/api/orch` 等路径在 HTTPS 端口返回 404。
 
 - 静态：`pnpm typecheck`。

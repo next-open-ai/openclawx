@@ -6,8 +6,9 @@ withDefaults(defineProps<{
   active?: boolean; paused?: boolean; canStart?: boolean; canPause?: boolean;
   canFinish?: boolean; error?: string; captions?: VoiceCaption[];
   usage?: string;
+  canInterrupt?: boolean;
 }>(), { active: false, paused: false, canStart: false, canPause: false, canFinish: false, error: '' });
-defineEmits<{ start: []; pause: []; finish: []; close: [] }>();
+defineEmits<{ start: []; pause: []; finish: []; close: []; interrupt: [] }>();
 </script>
 
 <template>
@@ -25,6 +26,7 @@ defineEmits<{ start: []; pause: []; finish: []; close: [] }>();
         <span v-if="usage" class="voice-dock-usage">{{ usage }}</span>
       </div>
       <div class="voice-dock-actions">
+        <button v-if="canInterrupt" type="button" @click="$emit('interrupt')">打断回答</button>
         <button v-if="canStart" type="button" class="voice-dock-start" @click="$emit('start')">{{ error ? '重试' : '开始' }}</button>
         <button v-if="canPause" type="button" :aria-label="paused ? '继续收音' : '暂停收音'" :aria-pressed="paused" @click="$emit('pause')">
           <svg v-if="paused" viewBox="0 0 24 24" fill="currentColor"><path d="m8 5 11 7-11 7z"/></svg>

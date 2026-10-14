@@ -4,16 +4,16 @@ import { createServer } from '../apps/renderer/node_modules/vite/dist/node/index
 
 const vite = await createServer({ root: 'apps/renderer', server: { middlewareMode: true }, appType: 'custom', logLevel: 'silent' });
 try {
-  const { applyRecommendedProviderSetup, classifyCapabilityFailure, createProviderInstance, effectiveProviderBaseUrl, migrateLegacyRealtimeProvider, providerDerivedEndpoints, providerInstanceReady, providerRequiresServiceSelection, providerServiceOptions, providerSupportsRecommendedSetup, providerSuggestedByCapability, sanitizeModelSettings, summarizeProviderModelHealth } = await vite.ssrLoadModule('/src/app/model-config.ts');
+  const { applyRecommendedProviderSetup, classifyCapabilityFailure, createProviderInstance, effectiveProviderBaseUrl, migrateLegacyRealtimeProvider, providerDerivedEndpoints, providerInstanceReady, providerRequiresServiceSelection, providerServiceOptions, providerServiceChoices, visibleProviderService, providerSupportsRecommendedSetup, providerSuggestedByCapability, sanitizeModelSettings, summarizeProviderModelHealth } = await vite.ssrLoadModule('/src/app/model-config.ts');
   const empty = () => ({ version: 3, providerInstances: [], models: [], activeChatModelId: null, activeEmbeddingModelId: null, employeeDefaultModelIds: {}, capabilityBindings: [], agentCapabilityAssignments: [] });
   const qwen = { id: 'qwen-1', type: 'qwen', name: '通义千问', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKey: 'test', workspaceId: '', disableThinking: false };
   const first = applyRecommendedProviderSetup(empty(), qwen, ['general']);
   assert.equal(first.manualRequired, false);
   assert.equal(first.addedModels, 7);
   assert.equal(first.settings.models.find((item) => item.capability === 'chat')?.modelId, 'qwen3.8-flash');
-  assert.equal(first.settings.models.find((item) => item.capability === 'vision')?.modelId, 'qwen3.8-flash');
-  assert.equal(first.settings.models.find((item) => item.capability === 'image')?.modelId, 'qwen-image-3.0');
-  assert.equal(first.settings.models.find((item) => item.capability === 'image')?.imageProtocol, 'openai-images');
+  assert.equal(first.settings.models.find((item) => item.capability === 'vision')?.modelId, 'qwen-vl-plus');
+  assert.equal(first.settings.models.find((item) => item.capability === 'image')?.modelId, 'qwen-image-2.0');
+  assert.equal(first.settings.models.find((item) => item.capability === 'image')?.imageProtocol, 'dashscope-multimodal');
   assert.equal(first.settings.models.find((item) => item.capability === 'asr')?.modelId, 'qwen-audio-3.1-asr-flash-filetrans');
   assert.equal(first.settings.models.find((item) => item.capability === 'tts')?.voice, 'longanhuan_v3.1');
   assert.ok(first.settings.capabilityBindings.some((item) => item.capability === 'vision' && item.enabled));
@@ -32,11 +32,12 @@ try {
   assert.equal(repeated.settings.agentCapabilityAssignments.length, first.settings.agentCapabilityAssignments.length);
 
   const withWorkspace = applyRecommendedProviderSetup(empty(), { ...qwen, workspaceId: 'llm-test' }, ['general']);
-  assert.equal(withWorkspace.settings.models.find((item) => item.capability === 'image')?.modelId, 'qwen-image-3.0');
-  assert.equal(withWorkspace.settings.models.find((item) => item.capability === 'image')?.imageProtocol, 'openai-images');
+  assert.equal(withWorkspace.settings.models.find((item) => item.capability === 'image')?.modelId, 'qwen-image-2.0');
+  assert.equal(withWorkspace.settings.models.find((item) => item.capability === 'image')?.imageProtocol, 'dashscope-multimodal');
+  assert.equal(effectiveProviderBaseUrl({ ...qwen, service: 'unified' }, 'image'), 'https://dashscope.aliyuncs.com/compatible-mode/v1'); // Native image adapter strips the compatibility path.
   assert.ok(providerSuggestedByCapability.qwen.image.includes('qwen-image-3.0'));
   assert.deepEqual(providerSuggestedByCapability.qwen.chat.slice(0, 2), ['qwen3.8-flash', 'qwen3.8-max']);
-  assert.deepEqual(providerSuggestedByCapability.qwen.vision.slice(0, 2), ['qwen3.8-flash', 'qwen3.8-max']);
+  assert.deepEqual(providerSuggestedByCapability.qwen.vision.slice(0, 2), ['qwen-vl-plus', 'qwen3.8-flash']);
   assert.equal(effectiveProviderBaseUrl({ ...qwen, service: 'unified' }, 'chat'), 'https://dashscope.aliyuncs.com/compatible-mode/v1');
   assert.equal(effectiveProviderBaseUrl({ ...qwen, service: 'unified' }, 'asr'), 'https://dashscope.aliyuncs.com/api/v1');
   assert.ok(providerDerivedEndpoints({ ...qwen, service: 'unified' }).some((item) => item.url === 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime'));
@@ -47,7 +48,10 @@ try {
   assert.deepEqual(volcLanguageSetup.settings.models.map((item) => item.capability), ['chat']);
   assert.equal(effectiveProviderBaseUrl(volcLanguage, 'chat'), 'https://ark.cn-beijing.volces.com/api/v3');
   const volcSpeechSetup = applyRecommendedProviderSetup(empty(), { ...volcLanguage, id: 'volc-speech', service: 'speech', baseUrl: 'https://openspeech.bytedance.com', appId: 'app' }, ['general']);
-  assert.deepEqual(volcSpeechSetup.settings.models.map((item) => item.capability), ['asr', 'tts']);
+  assert.deepEqual(volcSpeechSetup.settings.models.map((item) => item.capability), ['asr', 'tts', 'realtime']);
+  const speechKeyOnly = { ...volcLanguage, id: 'voice-key', service: 'speech', baseUrl: 'https://openspeech.bytedance.com' };
+  assert.deepEqual(applyRecommendedProviderSetup(empty(), speechKeyOnly).settings.models.map(item => item.capability), ['asr', 'realtime']);
+  assert.ok(providerDerivedEndpoints(speechKeyOnly).some(item => item.url === 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue'));
   const volcRealtime = { ...volcLanguage, id: 'volc-realtime', service: 'realtime', baseUrl: 'https://openspeech.bytedance.com' };
   const volcRealtimeSetup = applyRecommendedProviderSetup(empty(), volcRealtime, ['general']);
   assert.deepEqual(volcRealtimeSetup.settings.models.map((item) => item.capability), ['realtime']);
@@ -55,7 +59,10 @@ try {
   assert.equal(volcRealtimeSetup.settings.capabilityBindings[0]?.modelId, volcRealtimeSetup.settings.models[0].id);
   assert.equal(effectiveProviderBaseUrl(volcRealtime, 'realtime'), 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue');
   assert.equal(providerInstanceReady({ ...volcLanguage, id: 'volc-realtime', service: 'realtime', baseUrl: 'https://openspeech.bytedance.com' }), true);
-  assert.equal(providerInstanceReady({ ...volcLanguage, id: 'volc-speech', service: 'speech', baseUrl: 'https://openspeech.bytedance.com' }), false);
+  assert.equal(providerInstanceReady(speechKeyOnly), true);
+  assert.deepEqual(providerServiceChoices('volcengine'), ['language', 'speech']);
+  assert.equal(visibleProviderService('realtime'), 'speech');
+  assert.equal(sanitizeModelSettings({ ...volcRealtimeSetup.settings, providerInstances: [volcRealtime] }).providerInstances[0].service, 'realtime');
   assert.deepEqual(providerServiceOptions('volcengine'), ['language', 'speech', 'realtime']);
   assert.deepEqual(providerServiceOptions('openai'), ['unified', 'language', 'speech']);
   assert.deepEqual(providerServiceOptions('qwen'), ['unified', 'language', 'speech']);
@@ -65,6 +72,10 @@ try {
   const providerEditorSource = fs.readFileSync('apps/renderer/src/features/settings/ProviderInstancesEditor.vue', 'utf8');
   assert.match(providerEditorSource, /providerRequiresServiceSelection\(addDraft\.type\)/);
   assert.match(providerEditorSource, /providerRequiresServiceSelection\(instance\.type\)/);
+  assert.match(providerEditorSource, /providerServiceChoices\(addDraft\.type\)/);
+  assert.match(providerEditorSource, /providerServiceChoices\(instance\.type\)/);
+  assert.doesNotMatch(providerEditorSource, /v-for="service in providerServiceOptions/);
+  assert.equal((providerEditorSource.match(/<ProviderApiKeyInput /g) || []).length, 2);
   assert.doesNotMatch(providerEditorSource, /providerServiceAdvanced/);
   assert.match(providerEditorSource, /<details[^>]*>[\s\S]*instance\.type === 'qwen'[\s\S]*settings\.workspaceIdHelp/);
   const i18nSource = fs.readFileSync('apps/renderer/src/app/i18n.ts', 'utf8');
@@ -116,6 +127,15 @@ try {
   assert.equal(preserved.settings.activeChatModelId, 'manual-chat');
   assert.equal(preserved.settings.capabilityBindings.find((item) => item.capability === 'vision')?.modelId, 'manual-vision');
   assert.ok(preserved.preserved.includes('chat') && preserved.preserved.includes('vision'));
+
+  const oldQwen = empty();
+  oldQwen.providerInstances.push(qwen);
+  oldQwen.models.push({ id: 'old-qwen-image', providerInstanceId: qwen.id, capability: 'image', modelId: 'qwen-image-3.0', imageProtocol: 'openai-images' });
+  oldQwen.capabilityBindings.push({ capability: 'image', modelId: 'old-qwen-image', enabled: true });
+  const refreshedQwen = applyRecommendedProviderSetup(oldQwen, qwen);
+  assert.equal(refreshedQwen.settings.capabilityBindings.find(item => item.capability === 'image').modelId, 'old-qwen-image');
+  assert.ok(refreshedQwen.settings.models.some(item => item.modelId === 'qwen-image-2.0'));
+  assert.equal(applyRecommendedProviderSetup(refreshedQwen.settings, qwen).addedModels, 0);
 
   const manual = applyRecommendedProviderSetup(empty(), { id: 'custom', type: 'openai-compatible', name: '私有服务', baseUrl: 'https://example.test/v1', apiKey: '', disableThinking: false }, ['general']);
   assert.equal(manual.manualRequired, true);

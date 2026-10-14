@@ -239,6 +239,18 @@ function wrapAndTruncateToolResults(messages: AgentMessage[]): AgentMessage[] {
             contextPolicy: 'path-only',
           });
         }
+      } else if (toolName==='search_work_results'||toolName==='read_work_result'||toolName==='read_document') {
+        // Preserve IDs and valid JSON. Cutting raw JSON would make a found file unusable.
+        if(text.length>32_000){
+          try{
+            const value=JSON.parse(text);if(toolName==='read_document'&&value.info)value.info.truncated=true;else value.truncated=true;
+            if(Array.isArray(value.items))value.items=value.items.slice(0,10);
+            if(typeof value.text==='string')value.text=value.text.slice(0,8000);
+            text=JSON.stringify(value);
+            while(text.length>32_000&&value.text?.length){value.text=value.text.slice(0,Math.floor(value.text.length/2));text=JSON.stringify(value);}
+            if(text.length>32_000)text=JSON.stringify({ok:false,code:'WORK_RESULT_TOO_LARGE',spokenSummary:'成果结果过大，请缩小查询范围。'});
+          }catch{text=JSON.stringify({ok:false,code:'WORK_INVALID_RESULT',spokenSummary:'成果结果无法解析，请重试。'});}
+        }
       } else if (['data_get_schema', 'data_list_objects', 'data_query', 'data_app_register_query', 'data_app_register_sql', 'data_app_test_query', 'data_app_propose_schema','data_save_query_asset','data_list_query_assets','data_run_query_asset'].includes(toolName)) {
         text = truncateToolResultText(text, 16_000);
       } else if (READ_TOOLS.has(toolName)) {

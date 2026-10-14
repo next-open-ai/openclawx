@@ -1,5 +1,37 @@
 # 实时语音 V1 状态
 
+## 启动就绪与通知正文隔离（2026-10-14，SN-T1–T3）
+
+- 已实现：桌面先完成麦克风准备再创建远端会话；等待Volc session.created/Qwen session.updated后才启动音频泵。socket.open不再标记ready，HTTP创建保留会话容量占位直到初始化确认，失败移除会话/释放麦克风；25秒初始化上限、提前关闭、配置错误/非法事件统一结束等待，不自动重发音频或工具。
+- 已实现：界面显示检查配置/准备麦克风/等待模型/启动收音阶段，错误携带阶段；服务端记录ws_open/config_ready/first_audio/startup_failed/closed及耗时，不记录音频或完整上游错误/提示词。移除每个音频包创建15秒定时器的旧send等待写法，改为复用有界readyPromise。
+- 已实现：火山speech_text_buffer.commit与千问通知message的text只包含用户通知正文；控制规则移至初始/更新session instructions，不再在可朗读字段拼“系统完成通知/只用当前音色/不调用工具”等。原通知排队、音色、播放进度和供应商打断职责不改。
+- 验证：SN-A1两供应商本地WS确认前不上传、Qwen初始创建事件不误就绪、超时/配置错误/提前关闭拒绝并释放；SN-A2真实Vue模拟麦克风授权未完成不建远端会话/取消释放/既有生命周期；SN-A3通知正文严格等值、无指令前缀且instructions保留约束。完整命令结果见本轮最终验收；真供应商播报和首次权限实测未执行。
+- 本轮命令结果：API typecheck/build通过；API test131项、129通过、2跳过；renderer build含vue-tsc通过（既有包体积告警）；voice-composer-regression、voice-command-regression、work-results-ui-regression通过。docs:build及git diff --check通过；未改agent-core/并发调度，不重复并发专项。
+- 边界：用户原日志没有首次语音错误，本轮修复确认的初始化时序风险，不宣称已实测原错误根因。未修改用户配置、重启服务或发布；无持久化迁移，需加载新API/UI并新建通话。规格/回滚：[startup-notices.md](./startup-notices.md)。
+
+## 供应商拥有普通打断（2026-10-14，BI-T5，替代BI-T4）
+
+- 已实现：删除本地VoiceBargeIn模块、音量/时长/文字回声插话决策、稳健/仅按钮开关及无AEC半双工降级。正常插话跟随供应商讲话开始事件，API只做旧回答栅栏，UI只清空缓存，不再重复发送response.cancel。原AEC、静音上传控制与手动按钮保留。
+- 已实现：stop_voice_playback工具独立于工作关联开关，VoicePlaybackStopSchema仅允许空参数；模型判断明确停止朗读/播报后调用，以当前完成用户转写复核，拒绝否定/疑问/引用/普通换话题。按call_id幂等且意图只消费一次；清空本地播放后取消当前语音响应，不调用cancel_work。新的讲话开始清除旧停止意图。
+- 已验证：API test127项，125通过、2跳过；含两供应商本地WS普通打断无重复cancel、重复开始幂等、明确播报停止且后台员工不取消；真实Vue模拟BI-A6验证强音量/转写不发取消、供应商事件停播、桥接事件停播及resume竞态。contracts build、API typecheck/build、renderer build含vue-tsc、voice-command-regression、work-results-ui-regression通过。docs与diff检查见本轮最终验收。
+- 未执行：真实供应商/设备联调，模型是否稳定选择停止工具需实测；手机独立UI本轮未接新清播放事件，另行验收。当前没有独立长文件朗读生产任务队列，此工具停止当前语音响应，不虚构新队列或取消其他后台工作。未重启用户服务、修改配置、发布或执行真实任务；无数据迁移，需加载新API/UI并新建通话。保留旧diagnostics接口兼容，但UI已停用本地候选诊断。详见[1.2当前规格](./barge-in.md)。
+
+## 历史：稳健插话（2026-10-14，BI-T4，已由BI-T5替代）
+
+- 已实现：三个直接打断入口删除，持续声音/识别开始只作为候选；普通插话600ms、明确停止指令250ms，均需新鲜有效转写、实际AEC开启、非近期助手文字回声。跨回合/静音清候选；连续采样间隔最多容忍200ms，适配16kHz设备128ms采集回调，长间断不累计。未加入LLM调用、声纹识别或额外依赖。
+- 已实现：默认稳健模式；内嵌条/测试弹窗提供仅按钮模式。无实际AEC时明确提示降级，回答期间协议静音上行，按按钮或播放完成后恢复。手动中断、旧回答隔离、已接受工作继续和通知礼让保持。
+- 已实现：白名单诊断Schema/归属认证接口，记录原因、持续时间、输入量/底噪、AEC、播放状态；候选客户端2秒/服务端每会话1秒限频。实际interrupt独立日志，供应商开始识别与response.done仅记录事件名/epoch/枚举状态，不保存音频、转写、设备名称或密钥。
+- 已验证：contracts build、API typecheck/build；API test共126项，124通过、2跳过，含诊断字段隐私约束/限频与原中断回归。真实Vue+模拟AudioContext的voice-composer-regression（BI-A2/A4）通过，覆盖短噪声、开始事件、持续声音无文字、回声、正常插话、旧文字隔离、明确指令、缺AEC、仅按钮上行mute/unmute、手动/旧音频/resume竞态。voice-command-regression与work-results-ui-regression通过；renderer build含vue-tsc通过（既有包体积警告）。
+- 边界：查阅当前火山标准协议未确认服务端自动打断关闭参数，未套用另一RTC产品的InterruptMode。稳健模式过滤本地取消，不撤回已上传给供应商的音频/上下文；不保证真机零误判。手机独立UI未调整；未触发真实模型、工作任务、麦克风、服务重启或发布。真机扬声器/供应商自行判停/延迟仍待验收。无域数据迁移；回退仅按钮模式可降低风险。[规格](./barge-in.md)。
+
+## 历史阶段：桌面插话打断（2026-10-14，BI-T1–T3，自动条件由BI-T4替代）
+
+- 已实现：约 200ms 连续有效输入或手动按钮立即停止本地 AudioBufferSource 队列；保留麦克风/前置输入/会话，字幕标记中断；resume 异步竞态由播放 generation 拦截。API 按 response ID/epoch 隔离旧输出/未执行工具，火山/千问使用官方 response.cancel。请求失败单独提示，不关闭通话。
+- 已实现：已接受员工工作继续，迟到结果发工作状态事件但不续播旧回答；完成通知等待输入、生成、工具与桌面实际播放空闲。手机/旧客户端不声明 clientPlayback，不等待不存在的播放报告。本轮不改手机独立语音 UI。
+- 已验证：contracts build、API typecheck/build、API test（125 项，123 通过、2 跳过）；新增 BI-A1 四项覆盖响应栅栏/Schema、无归属与非法输入、两供应商本地 WS 中断/迟到工具/任务继续/通知礼让。`node scripts/voice-composer-regression.mjs`（含 BI-A2）、`voice-command-regression.mjs`、`work-results-ui-regression.mjs` 通过。renderer build 含 vue-tsc；docs:build 与 diff 检查通过。未改执行调度或 agent-core，本轮不重复并发专项。
+- 测试过程中修正了测试桩与当前成果问答参数不匹配，以及 WS 发送确认早于测试服务端接收的竞态；未放宽生产断言或权限。测试只使用本地 WS、模拟音频与桥接桩，不调用真实模型、麦克风或员工。
+- 未执行：真实火山/千问通话、扬声器 AEC/误触发/首字/延迟与手机人工回归；没有修改用户配置、重启服务或发布。供应商上下文按已播放毫秒截断暂未实现，不将中断内容宣称为已完整播放。使用前需加载新 API/renderer 并重新开启通话；无持久化迁移。规格/兼容/回滚：[barge-in.md](./barge-in.md)。
+
 - 状态：实现完成，已完成真实火山握手联调。
 - 已完成：Workmate 鉴权代理、会话归属、SSE 转发、浏览器 AEC 采集、PCM 播放、聊天页入口。
 - 已完成：管理员语音配置页、服务端密钥持久化与掩码读取、仿 SeedDuplex 通话测试入口。

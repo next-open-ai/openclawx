@@ -6,6 +6,8 @@
 
 | 功能 | 入口 | 状态 |
 | --- | --- | --- |
+| 工作成果只读检索 | [规格](features/work-result-retrieval-v1/README.md) | 当前对话/历史归档成果、语音卡片与Pi/AgentScope工具；边界及验证见规格/状态 |
+| 统一文档服务 | [规格](features/unified-document-service-v1/README.md) | 文档跨格式读取、三个入口复用、工作区read_document与模型显式委托；取代桥接PDF自动派单 |
 | 轻量项目与持续对话 | [轻量项目](features/lightweight-project-v1/README.md) · [项目对话](features/project-conversation-v1/README.md) | 创建不自动规划，多轮固定成果目录；旧 DAG 保留 |
 | 工作流调用与结果问答 | [对话调用](features/workflow-chat-v1/README.md) · [成果问答](features/workflow-result-qa-v1/README.md) | 独立执行、来源返回、记录恢复及只读结果提问 |
 | 项目预览与发布 | [规格](features/project-application-v1/README.md) | 本地静态快照，数据项目另接认证网关 |

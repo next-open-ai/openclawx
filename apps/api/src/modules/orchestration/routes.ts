@@ -14,6 +14,7 @@ import { requireAuth, activeDataRunOwner } from '../auth/service.js';
 import { createStructuredDataGateway, createManagedAppQueries } from '../data/routes.js';
 import { createDataAgentRunner } from '../data/agent-query.js';
 import {createExperienceRunner} from '../experience/routes.js';
+import {createWorkResultRunner} from '../work-results/runner.js';
 import { canReadOwnedResource, canWriteOwnedResource, requireSystemAdmin } from '../auth/ownership.js';
 import { resolveEmployeeMcpConnections, resolveTaskContext } from './context-assembler.js';
 import { applyParentSecrets } from './secrets.js';
@@ -97,7 +98,7 @@ export function getOrchestrator(): Orchestrator {
     };
     instance = new Orchestrator({
       store,
-      runner: runner ?? createExperienceRunner(store,activeDataRunOwner,createDataAgentRunner({ store, gateway: createStructuredDataGateway(), activeOwner: activeDataRunOwner, appQueries: createManagedAppQueries })),
+      runner: runner ?? createWorkResultRunner(store,()=>getOrchestrator(),activeDataRunOwner,createExperienceRunner(store,activeDataRunOwner,createDataAgentRunner({ store, gateway: createStructuredDataGateway(), activeOwner: activeDataRunOwner, appQueries: createManagedAppQueries }))),
       maxConcurrentRunsGlobal: positiveIntFromEnv('WORKMATE_MAX_CONCURRENT_RUNS_GLOBAL', 4),
       maxConcurrentRunsPerUser: positiveIntFromEnv('WORKMATE_MAX_CONCURRENT_RUNS_PER_USER', 2),
       maxQueueWaitMs: positiveIntFromEnv('WORKMATE_MAX_QUEUE_WAIT_MS', 120_000),

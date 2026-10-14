@@ -15,6 +15,8 @@
 
 ## 默认策略
 
+2026-10-14 UPC-R18 增量取代下方同日早期图片推荐：自动图片生成改为`qwen-image-2.0` + `dashscope-multimodal`，图片识别改为`qwen-vl-plus`。公共DashScope端点无需Workspace；用户显式填写的Workspace仍尊重，不清除存量配置。来源：[千问图像API](https://help.aliyun.com/zh/model-studio/qwen-image-api)（说明原共享域名仍可用）、[Qwen-VL官方公共端点示例](https://help.aliyun.com/zh/model-studio/get-temporary-file-url/)。仅更新推荐及候选顺序，不更改已有默认绑定，用户重新自动配置后需主动选用新模型。
+
 每种能力取内置推荐列表第一项；对话模型同时声明其已知视觉能力。非chat能力生成全局binding；仅为当前默认员工补齐缺失的`auto`授权，不批量改动其他员工。已经存在的全局能力binding优先于新Provider推荐。
 
 Provider没有可信建议时返回“需要手动配置”，不伪造成功。模型目录是建议而非白名单，手工录入和完整目录继续保留。

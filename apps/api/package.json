@@ -22,6 +22,7 @@
     "mysql2": "^3.24.5",
     "node-forge": "^1.4.0",
     "node-sql-parser": "5.3.13",
+    "pdfjs-dist": "5.4.296",
     "pg": "^8.23.1",
     "sql.js": "^1.14.2",
     "unpdf": "1.8.1",

@@ -835,3 +835,5 @@ export * from './data-app-query.js';
 export * from './data-schema-change.js';
 export * from './query-assets.js';
 export * from './experience.js';
+export * from './work-results.js';
+export * from './documents.js';

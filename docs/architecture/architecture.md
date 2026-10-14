@@ -6,7 +6,11 @@
 
 ## 1. 产品定位与总览
 
+2026-10-14 工作成果只读检索：API共用成果目录服务按可信用户/组织查询归档资产元数据及私有会话关联Run；语音与Pi/AgentScope复用search_work_results/read_work_result，语音卡片继续走现有认证打开/下载。非空搜索由agent-core使用当前文字模型对最多60项候选名称及有界对话摘要做一次语义筛选（12秒截止、无重试）；关键词负责优先召回与显式降级兜底，模型只能选真实候选ID。身份从持久化Run或语音认证绑定，不作为模型参数；文件只读归档目录内有界文本/PDF，无磁盘扫描、自动重新生成或新向量库。普通工作状态可按当前会话查找，无需伪造UUID。详见[WR-v1](../sdd/features/work-result-retrieval-v1/README.md)。
+
 当前普通项目以持续对话和固定成果目录工作，不默认规划 DAG；旧项目及显式工作流保留计划调度。任务中心提供可选模板、周期执行和结构化运行记录。数据应用使用服务端网关校验登记 SQL，前端只有无凭据 SDK；MySQL 建表草稿独立审核。详见 [数据能力平台](data-capability-platform.md)与[任务模板](task-template-pilot.md)。
+
+文档读取统一由agent-core的readDocument服务处理，资产、聊天附件、本地知识库导入共用格式适配器及结果契约；支持现有PDF、DOCX、PPTX/PPSX、文本/HTML和表格。基础读取不调用LLM或派单，返回解析器、页数、截断、警告和明确错误/建议动作。Pi/AgentScope通过只读read_document工具读取受限工作区文档。语音桥接只转发：模型判断需要进一步处理时，显式调用通用start_work（可携带真实assetIds），由独立委托服务交付原文件副本并启动当前员工，沿用Skill授权/审批及任务状态，不重写原文件。PDF中文CMap/标准字体本地携带，桌面只带资源及许可证，不携带第二套渲染器。详见[统一文档服务UD-v1](../sdd/features/unified-document-service-v1/README.md)；取代WR-R8的PDF自动派单。
 
 经验与查询资产独立：agent-core 经验 SQLite 记录可信来源，JSON 副本异步有界写；固定知识库只按配置阶段可用状态后台同步/预取。Pi 每轮预召回，AgentScope 按需加载，DSH 暂不接。API 查询资产仅用户明确收藏成功查询时保存，按用户/组织隔离，复用网关复核权限，不自动保存业务结果。见 [经验规格](../sdd/features/experience-local-first/README.md)与[查询资产](../sdd/features/agent-data-query-v1/query-assets.md)。
 

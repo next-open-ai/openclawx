@@ -93,3 +93,7 @@ export { testVisionCapabilityDataUrl } from './vision-capability.js';
 export { evaluateDecision, createDecisionAgentTool, guardAgentTools } from './decision-runtime.js';
 export { VolcengineAsrStream } from './volcengine-asr.js';
 export { withDataQueryAccess, type DataQueryExecutor } from './data-query-runtime.js';
+export {withWorkResultAccess,createWorkResultTools,type WorkResultExecutor} from './work-results-runtime.js';
+export {createWorkResultRanker} from './work-results-ranking.js';
+export {openLocalPdf} from './pdf-document.js';
+export {readDocument,supportsDocumentReading,type DocumentReadInput} from './document-service.js';

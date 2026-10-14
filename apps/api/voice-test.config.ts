@@ -9,6 +9,8 @@ Object.assign(closureEntry, { 'app-sql.test': 'src/modules/data/app-sql.test.ts'
 Object.assign(closureEntry, { 'schema-change.test': 'src/modules/data/schema-change.test.ts' });
 Object.assign(closureEntry, { 'query-assets.test': 'src/modules/data/query-assets.test.ts' });
 Object.assign(closureEntry, { 'experience-settings.test': 'src/modules/experience/routes.test.ts' });
+Object.assign(closureEntry, { 'work-results.test': 'src/modules/work-results/service.test.ts' });
+Object.assign(closureEntry, { 'barge-in.test': 'src/modules/voice/barge-in.test.ts' });
 Object.assign(closureEntry, { 'database-secrets.test': 'src/modules/data/database-secrets.test.ts' });
 Object.assign(closureEntry, { 'project-draft-files.test': 'src/modules/orchestration/project-draft-files.test.ts' });
 export default defineConfig({

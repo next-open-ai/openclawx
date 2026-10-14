@@ -17,3 +17,9 @@
 
 真实账号、地域、额度和模型开通状态仍属于发布前人工验收，不以本地回归替代。
 - [x] 将通义千问 Workspace ID 收入高级设置，默认留空并补充例外场景说明。
+- [x] UPC-T15（2026-10-14）：新增/编辑火山只显示综合模型、语音；语音可准备ASR/Realtime、App ID可选补TTS；兼容旧realtime值，更新阿里图片推荐及协议、保留已有绑定。
+- [x] UPC-T16（2026-10-14）：共用API Key显隐输入组件，默认遮蔽、上下文变化重置、非提交按钮；真实组件脚本回归显隐状态和输入事件，无密钥日志/持久化显隐状态。
+
+本次验证：`node scripts/provider-auto-config-regression.mjs`、`node scripts/provider-key-input-regression.mjs`、renderer build（含类型检查/手册生成）、`node scripts/user-manual-regression.mjs`、`pnpm docs:build`、`git diff --check`通过。agent-core build +全量test 205项通过，DashScope同步图片HTTP桩同时覆盖wan2.7-image和qwen-image-2.0的模型/路径/参数/下载。初次扩展测试循环有局部变量作用域编译错误，修正后全量重跑通过。
+
+未使用真实凭证、付费模型调用、真实浏览器/桌面交互或安装包验收；Key组件以实际脚本VM及SFC构建验证，不冒充浏览器点击验收。前端保留既有chunk警告。无存储迁移、未重启服务或修改已保存连接。已有阿里默认绑定不自动替换，重新自动配置补齐推荐后由用户选用。

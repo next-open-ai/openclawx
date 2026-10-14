@@ -21,6 +21,7 @@ import {
 import { createWebSearchTools } from './search-runtime.js';
 import { createKnowledgeTools } from './knowledge-runtime.js';
 import { createExperienceTools, recallExperienceBlock } from './experience/index.js';
+import {createWorkResultTools,WORK_RESULT_INSTRUCTIONS} from './work-results-runtime.js';
 import { loadMcpToolset } from './mcp-runtime.js';
 import {
   createChatCompletionsPayloadPatch,
@@ -298,6 +299,7 @@ function toolInputSummary(toolName: string, input: unknown) {
   if (toolName === 'load_skill') return `正在加载 Skill：${String(value.skillId || '')}`;
   if (toolName === 'read_skill_file') return `正在读取 Skill 文件：${String(value.path || '')}`;
   if (toolName === 'read_workspace_file') return `正在读取运行工作区文件：${String(value.path || '')}`;
+  if (toolName === 'read_document') return `正在通过统一文档服务读取：${String(value.path || '')}`;
   if (toolName === 'write_workspace_file') {
     const mode = value.mode === 'append' ? '追加' : '写入';
     return `正在${mode}运行工作区文件：${String(value.path || '')}`;
@@ -478,6 +480,7 @@ function toolResultSummary(toolName: string, output: unknown) {
   if (toolName === 'load_skill') return `Skill 已加载：${String((value.skill as Record<string, unknown> | undefined)?.name || '')}`;
   if (toolName === 'read_skill_file') return `已读取 Skill 文件：${String(value.path || '')}`;
   if (toolName === 'read_workspace_file') return `已读取运行工作区文件：${String(value.path || '')}`;
+  if (toolName === 'read_document') return value.ok===false?'文档读取未成功，请查看原因及处理建议。':'统一文档服务已返回读取结果。';
   return '工具调用完成。';
 }
 
@@ -741,11 +744,13 @@ export async function* streamAgentReply(input: {
     const kbLabels = (input.knowledgeBases ?? []).filter((item) => item.enabled).map((item) => item.name);
     const searchTools = createWebSearchTools(input.searchProviders ?? []);
     const dataTools = createDataQueryTools();
+    const workResultTools=createWorkResultTools();
     const builtinSearchOn = Boolean(input.model.enableSearch) && supportsBuiltinEnableSearch(input.model.provider);
 
     const runtimeInstructions = [
       input.profile.instructions,
       dataTools.length ? dataQueryInstructions(dataTools) : '',
+      workResultTools.length?WORK_RESULT_INSTRUCTIONS:'',
       (input.modelCapabilities ?? []).length
         ? `Authorized specialist model capabilities for this run: ${(input.modelCapabilities ?? []).map((item) => `${item.capability} (${item.mode})`).join(', ')}. Use their typed tools only for matching subtasks. "preferred" means prefer the specialist after a task match; it does not replace planning or justify unrelated calls.`
         : '',
@@ -817,6 +822,7 @@ export async function* streamAgentReply(input: {
       }),
       modelCapabilityTools.nativeTools,
       dataTools,
+      workResultTools,
       skillTools,
       searchTools,
       knowledgeTools,

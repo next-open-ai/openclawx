@@ -1,10 +1,27 @@
 import { z } from 'zod';
 
-export const VoiceSessionCreateSchema = z.object({ conversationId: z.string().uuid().optional() }).strict();
+export const VoiceSessionCreateSchema = z.object({ conversationId: z.string().uuid().optional(), clientPlayback: z.boolean().optional() }).strict();
+export const VoicePlaybackStopSchema = z.object({}).strict();
+export const VoiceInterruptDiagnosticSchema = z.object({
+  reason: z.enum(['manual', 'speech', 'stop_command', 'manual_only', 'aec_unavailable', 'no_text', 'echo', 'insufficient_speech', 'device']),
+  durationMs: z.number().min(0).max(10000), level: z.number().min(0).max(1), noise: z.number().min(0).max(1),
+  echoCancellation: z.boolean(), playing: z.boolean(),
+}).strict();
+export type VoiceInterruptDiagnostic = z.infer<typeof VoiceInterruptDiagnosticSchema>;
+export const RealtimeVoiceInterruptSchema = z.object({
+  session_id: z.string().regex(/^[a-f0-9]{32}$/),
+  responseEpoch: z.number().int().nonnegative().optional(),
+  diagnostic: VoiceInterruptDiagnosticSchema.optional(),
+}).strict();
+export const RealtimeVoicePlaybackSchema = RealtimeVoiceInterruptSchema.extend({
+  responseEpoch: z.number().int().nonnegative(), busy: z.boolean(),
+}).strict();
+export const RealtimeVoiceDiagnosticSchema = RealtimeVoiceInterruptSchema.omit({ responseEpoch: true }).extend({ diagnostic: VoiceInterruptDiagnosticSchema }).strict();
 
 export const VoiceWorkStartSchema = z.object({
   objective: z.string().trim().min(1).max(4_000),
   employeeId: z.string().trim().min(1).max(160).optional(),
+  assetIds:z.array(z.string().uuid()).max(5).optional(),
 }).strict();
 export const VoiceWorkTaskSchema = z.object({ taskId: z.string().uuid() }).strict();
 export const VoiceWorkBindingSchema = z.object({

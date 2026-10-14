@@ -185,6 +185,44 @@ async function listAssets(auth?: { orgId: string; userId: string }) {
   return assetRows(db.exec(`${ASSET_SELECT} WHERE COALESCE(owner_user_id, user_id) = ? AND (org_id IS NULL OR org_id = ?) ORDER BY created_at DESC`, [auth.userId, auth.orgId]));
 }
 
+/** Model-facing directory: owner-only, bounded metadata, never filesystem paths. */
+export async function listWorkAssets(owner:{userId:string;orgId:string},query:string,conversationId:string|undefined,limit:number,runIds:string[]=[]){
+  const db=await database();
+  const args:unknown[]=[owner.userId,owner.orgId];
+  let where='COALESCE(owner_user_id,user_id)=? AND (org_id IS NULL OR org_id=?)';
+  if(conversationId){
+    const ids=runIds.slice(0,100);
+    where+=ids.length?` AND (conversation_id=? OR ((conversation_id IS NULL OR conversation_id='') AND run_id IN (${ids.map(()=>'?').join(',')})))`:' AND conversation_id=?';
+    args.push(conversationId,...ids);
+  }
+  if(query){where+=" AND name LIKE ? ESCAPE '\\'";args.push('%'+query.replace(/[\\%_]/g,'\\$&')+'%');}
+  args.push(Math.min(501,Math.max(1,limit)));
+  return assetRows(db.exec(`${ASSET_SELECT} WHERE ${where} ORDER BY created_at DESC,id LIMIT ?`,args));
+}
+
+export async function readWorkAsset(assetId:string,owner:{userId:string;orgId:string}){
+  const db=await database(),row=assetRows(db.exec(`${ASSET_SELECT} WHERE id=?`,[assetId]))[0];
+  if(!row||row.ownerUserId!==owner.userId||(row.orgId&&row.orgId!==owner.orgId))throw Error('WORK_NOT_AVAILABLE');
+  const target=path.resolve(dataDir(),row.relativePath),root=await fs.promises.realpath(path.join(dataDir(),'assets'));
+  let real:string;
+  try{real=await fs.promises.realpath(target);}catch{throw Error('WORK_FILE_MISSING');}
+  if(!real.startsWith(root+path.sep)||(await fs.promises.lstat(target)).isSymbolicLink())throw Error('WORK_FILE_UNSAFE');
+  const file=await fs.promises.open(target,fs.constants.O_RDONLY|(fs.constants.O_NOFOLLOW||0));
+  try{
+    const stat=await file.stat();if(!stat.isFile())throw Error('WORK_FILE_UNSAFE');
+    const max=10*1024*1024;if(stat.size>max)throw Error('WORK_FILE_TOO_LARGE');
+    const buffer=Buffer.alloc(max+1);let length=0;
+    while(length<buffer.length){const read=await file.read(buffer,length,buffer.length-length,null);if(!read.bytesRead)break;length+=read.bytesRead;}
+    if(length>max)throw Error('WORK_FILE_TOO_LARGE');
+    return{row,content:buffer.subarray(0,length)};
+  }finally{await file.close();}
+}
+
+export async function assertWorkAssetOwner(assetId:string,owner:{userId:string;orgId:string}){
+  const db=await database(),row=assetRows(db.exec(`${ASSET_SELECT} WHERE id=?`,[assetId]))[0];
+  if(!row||row.ownerUserId!==owner.userId||(row.orgId&&row.orgId!==owner.orgId))throw Error('WORK_NOT_AVAILABLE');
+}
+
 /** Storage-maintenance view used by Settings. It intentionally returns metadata only. */
 export async function listLargeAssetsForOwner(auth: Pick<AuthPrincipal, 'orgId' | 'userId'>, minimumBytes = 20 * 1024 * 1024) {
   const rows = await listAssets(auth);

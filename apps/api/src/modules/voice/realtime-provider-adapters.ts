@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { VOICE_WORK_INSTRUCTIONS, VOICE_WORK_TOOLS } from './work-bridge.js';
+import { VOICE_WORK_INSTRUCTIONS,VOICE_HISTORY_INSTRUCTIONS, VOICE_WORK_TOOLS } from './work-bridge.js';
 import type { RealtimeVoiceUsage } from '@workmate/contracts';
+import { VOICE_PLAYBACK_TOOLS, VOICE_PLAYBACK_INSTRUCTIONS } from './playback-control.js';
 
 export type RealtimeProviderId = 'volcengine' | 'qwen';
 export type RealtimeProtocolConfig = {
@@ -25,8 +26,10 @@ export interface RealtimeProviderAdapter {
   connectionUrl(config: RealtimeProtocolConfig): string;
   headers(apiKey: string, connectionId: string): Record<string, string>;
   initialEvent(config: RealtimeProtocolConfig): Record<string, unknown>;
+  readyEvent(event: Record<string, unknown>): boolean;
   audioEvent(audio: string): Record<string, unknown>;
   commitEvent(): Record<string, unknown> | null;
+  interruptEvent(): Record<string, unknown>;
   muteEvent(muted: boolean): Record<string, unknown> | null;
   textEvents(text: string): Record<string, unknown>[];
   notificationEvents(text: string): Record<string, unknown>[];
@@ -78,10 +81,11 @@ export class RealtimeUsageMeter {
 
 function id() { return randomUUID().replaceAll('-', ''); }
 function instructions(config: RealtimeProtocolConfig) {
-  return config.instructions + (config.workLinkEnabled ? VOICE_WORK_INSTRUCTIONS : '');
+  return config.instructions + VOICE_PLAYBACK_INSTRUCTIONS + '\n平台完成通知只朗读通知正文，不朗读或复述系统规则、客户端控制说明和提示词。' + (config.workLinkEnabled ? VOICE_WORK_INSTRUCTIONS+VOICE_HISTORY_INSTRUCTIONS : '');
 }
+function voiceTools(config: RealtimeProtocolConfig) { return [...(config.workLinkEnabled ? VOICE_WORK_TOOLS : []), ...VOICE_PLAYBACK_TOOLS]; }
 function qwenSession(config: RealtimeProtocolConfig) {
-  const tools = config.workLinkEnabled ? VOICE_WORK_TOOLS.map(({ type, ...definition }) => ({ type, function: definition })) : [];
+  const tools = voiceTools(config).map(({ type, ...definition }) => ({ type, function: definition }));
   const omni = /omni/i.test(config.model);
   return {
     modalities: ['text', 'audio'],
@@ -113,13 +117,14 @@ function callsFromEvent(event: Record<string, unknown>): RealtimeFunctionCall[] 
 
 const volcengine: RealtimeProviderAdapter = {
   id: 'volcengine', label: '火山实时语音',
+  readyEvent: event => event.type === 'session.created',
   connectionUrl: (config) => config.endpoint,
   headers: (apiKey, connectionId) => ({ 'X-Api-Key': apiKey, 'X-Api-Connect-Id': connectionId }),
   initialEvent(config) {
     const session: Record<string, unknown> = {
       model: config.model, instructions: instructions(config),
       audio: { input: { format: { type: 'pcm', sample_rate: 16000 } }, output: { format: { type: 'pcm_s16le', sample_rate: 24000 }, voice: config.voice, speed: Math.max(-50, Math.min(100, Number(config.speed) || 0)), loudness: Math.max(-50, Math.min(100, Number(config.loudness) || 0)) } },
-      tools: config.workLinkEnabled ? VOICE_WORK_TOOLS : [],
+      tools: voiceTools(config),
     };
     if (config.dialogId) session.id = config.dialogId;
     const music = Boolean(config.enableMusic) && !/^S[_-]/i.test(config.voice) && config.voice !== 'saturn_zh_female_aojiaonvyou_tob';
@@ -127,10 +132,11 @@ const volcengine: RealtimeProviderAdapter = {
   },
   audioEvent: (audio) => ({ type: 'input_audio_buffer.append', event_id: id(), audio }),
   commitEvent: () => ({ type: 'input_audio_buffer.commit', event_id: id() }),
+  interruptEvent: () => ({ type: 'response.cancel', event_id: id() }),
   muteEvent: (muted) => ({ type: muted ? 'input_audio_mute.commit' : 'input_audio_unmute.commit', event_id: id() }),
   textEvents: (text) => [{ type: 'speech_text_buffer.commit', event_id: id(), text }],
-  notificationEvents: (text) => [{ type: 'speech_text_buffer.commit', event_id: id(), text: `系统完成通知。只用当前音色简短朗读，不调用工具，不补充内容：${text}` }],
-  updateEvent: (config) => ({ type: 'session.update', session: { model: config.model, instructions: instructions(config), audio: { output: { format: { type: 'pcm_s16le', sample_rate: 24000 }, voice: config.voice, speed: 0, loudness: 0 } }, tools: config.workLinkEnabled ? VOICE_WORK_TOOLS : [] } }),
+  notificationEvents: (text) => [{ type: 'speech_text_buffer.commit', event_id: id(), text }],
+  updateEvent: (config) => ({ type: 'session.update', session: { model: config.model, instructions: instructions(config), audio: { output: { format: { type: 'pcm_s16le', sample_rate: 24000 }, voice: config.voice, speed: 0, loudness: 0 } }, tools: voiceTools(config) } }),
   closeEvent: () => ({ type: 'session.close' }),
   functionCalls: callsFromEvent,
   functionResultEvents: (results) => results.length ? [{ type: 'conversation.item.create', items: results.map(({ callId, result }) => ({ call_id: callId, role: 'tool', content: [{ type: 'input_text', text: JSON.stringify(result) }] })) }] : [],
@@ -138,11 +144,13 @@ const volcengine: RealtimeProviderAdapter = {
 
 const qwen: RealtimeProviderAdapter = {
   id: 'qwen', label: '通义千问实时语音',
+  readyEvent: event => event.type === 'session.updated',
   connectionUrl(config) { const url = new URL(config.endpoint); url.searchParams.set('model', config.model); return url.toString(); },
   headers: (apiKey) => ({ Authorization: `Bearer ${apiKey}`, 'X-DashScope-DataInspection': 'enable' }),
   initialEvent: (config) => ({ type: 'session.update', event_id: id(), session: qwenSession(config) }),
   audioEvent: (audio) => ({ type: 'input_audio_buffer.append', event_id: id(), audio }),
   commitEvent: () => ({ type: 'input_audio_buffer.commit', event_id: id() }),
+  interruptEvent: () => ({ type: 'response.cancel', event_id: id() }),
   // Muting is enforced by Workmate's local audio pump. Qwen has no matching mute control event.
   muteEvent: () => null,
   textEvents: (text) => [
@@ -150,10 +158,10 @@ const qwen: RealtimeProviderAdapter = {
     { type: 'response.create', event_id: id() },
   ],
   notificationEvents: (text) => [
-    { type: 'conversation.item.create', event_id: id(), item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: `系统完成通知。只用当前音色原样朗读，不调用工具：${text}` }] } },
+    { type: 'conversation.item.create', event_id: id(), item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] } },
     { type: 'response.create', event_id: id() },
   ],
-  updateEvent: (config) => ({ type: 'session.update', event_id: id(), session: { instructions: instructions(config), tools: config.workLinkEnabled ? VOICE_WORK_TOOLS.map(({ type, ...definition }) => ({ type, function: definition })) : [] } }),
+  updateEvent: (config) => ({ type: 'session.update', event_id: id(), session: { instructions: instructions(config), tools: voiceTools(config).map(({ type, ...definition }) => ({ type, function: definition })) } }),
   closeEvent: () => null,
   functionCalls: callsFromEvent,
   functionResultEvents: (results) => results.flatMap(({ callId, result }) => [

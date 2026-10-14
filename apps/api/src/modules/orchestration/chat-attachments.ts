@@ -2,10 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { deleteAudioInput, hasPptxEnhancedParser, parseLocalDocument, storeAudioInput } from '@workmate/agent-core';
+import { deleteAudioInput, readDocument, supportsDocumentReading, storeAudioInput } from '@workmate/agent-core';
 import { ChatFileAttachmentSchema, ChatFilesSchema, type ChatFileAttachment } from '@workmate/contracts';
-import { unzipSync } from 'fflate';
-import * as XLSX from 'xlsx';
 
 const GLOBAL_LIMIT = 2 * 1024 * 1024 * 1024;
 const SESSION_LIMIT = 200 * 1024 * 1024;
@@ -48,144 +46,15 @@ async function dirSize(dir: string): Promise<{ bytes: number; count: number }> {
   return { bytes, count };
 }
 
-function sheetContext(bytes: Buffer, name: string) {
-  const book = XLSX.read(bytes, { type: 'buffer', dense: true });
-  if (book.SheetNames.length > 30) throw new Error('工作簿最多支持 30 个工作表。');
-  const parts = [`文件：${name}`, `工作表：${book.SheetNames.join('、')}`];
-  for (const sheetName of book.SheetNames) {
-    const sheet = book.Sheets[sheetName];
-    const range = sheet['!ref'] ? XLSX.utils.decode_range(sheet['!ref']) : null;
-    if (range && (range.e.r - range.s.r + 1) * (range.e.c - range.s.c + 1) > 1_000_000) throw new Error(`工作表“${sheetName}”超过 100 万个单元格，请先精简。`);
-    const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, blankrows: false, defval: '' }).slice(0, 100);
-    parts.push(`\n### 工作表：${sheetName}\n${rows.map((row) => row.map((cell) => String(cell).replace(/\|/g, '\\|')).join(' | ')).join('\n')}`);
-    if (parts.join('\n').length > CONTEXT_LIMIT) break;
-  }
-  return { context: parts.join('\n').slice(0, CONTEXT_LIMIT), summary: `${book.SheetNames.length} 个工作表 · 已提取前 100 行预览` };
-}
-
-function decodeXml(value: string) {
-  return value
-    .replace(/&#(\d+);/g, (_match, code) => String.fromCodePoint(Number(code)))
-    .replace(/&#x([\da-f]+);/gi, (_match, code) => String.fromCodePoint(Number.parseInt(code, 16)))
-    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
-}
-
-function xmlParagraphs(xml: string) {
-  const paragraphs: string[] = [];
-  for (const paragraph of xml.match(/<a:p(?:\s[^>]*)?>[\s\S]*?<\/a:p>/g) ?? []) {
-    const text = [...paragraph.matchAll(/<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>/g)]
-      .map((match) => decodeXml(match[1] || '').replace(/\s+/g, ' ').trim()).filter(Boolean).join('');
-    if (text && paragraphs.at(-1) !== text) paragraphs.push(text);
-  }
-  return paragraphs;
-}
-
-function htmlContext(bytes: Buffer, name: string) {
-  const source = bytes.toString('utf8').replace(/\u0000/g, '');
-  const title = decodeXml(source.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-  const text = decodeXml(source
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/<(script|style|noscript|template|svg)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
-    .replace(/<head\b[^>]*>[\s\S]*?<\/head\s*>/gi, '')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<li\b[^>]*>/gi, '\n- ')
-    .replace(/<\/(p|div|section|article|header|footer|main|aside|nav|h[1-6]|ul|ol|li|blockquote|pre|table|thead|tbody|tfoot|tr)\s*>/gi, '\n')
-    .replace(/<\/(td|th)\s*>/gi, ' | ')
-    .replace(/<[^>]+>/g, ' '))
-    .replace(/\r\n?/g, '\n')
-    .replace(/[\t\f ]+/g, ' ')
-    .replace(/ *\n */g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-  const context = [`文件：${name}`, ...(title ? [`标题：${title}`] : []), '', text].join('\n').trim().slice(0, CONTEXT_LIMIT);
-  if (!text) throw new Error('HTML 文件没有可读取的正文内容。');
-  return { context, summary: `HTML 正文 · 已提取 ${Math.min(text.length, CONTEXT_LIMIT).toLocaleString()} 个字符` };
-}
-
-function presentationContext(bytes: Buffer, name: string) {
-  let archive: Record<string, Uint8Array>;
-  let extractedBytes = 0;
-  try {
-    archive = unzipSync(new Uint8Array(bytes), { filter: (entry) => {
-      const needed = /^ppt\/(slides\/slide\d+\.xml|slides\/_rels\/slide\d+\.xml\.rels|notesSlides\/notesSlide\d+\.xml)$/i.test(entry.name);
-      if (!needed) return false;
-      if (entry.originalSize > 5 * 1024 * 1024 || extractedBytes + entry.originalSize > 20 * 1024 * 1024) throw new Error('演示文稿解压后的文本结构过大，请先精简。');
-      extractedBytes += entry.originalSize;
-      return true;
-    } });
-  }
-  catch (cause) {
-    if (cause instanceof Error && cause.message.includes('解压后的文本结构过大')) throw cause;
-    throw new Error('演示文稿结构损坏，无法读取。');
-  }
-  const decoder = new TextDecoder('utf-8');
-  const slideEntries = Object.keys(archive)
-    .filter((entry) => /^ppt\/slides\/slide\d+\.xml$/i.test(entry))
-    .sort((left, right) => Number(left.match(/slide(\d+)/i)?.[1]) - Number(right.match(/slide(\d+)/i)?.[1]));
-  if (!slideEntries.length) throw new Error('演示文稿没有可读取的幻灯片。');
-  if (slideEntries.length > 300) throw new Error('演示文稿最多支持 300 页。');
-
-  const pages: string[] = [];
-  let readableSlides = 0;
-  for (const entry of slideEntries) {
-    const index = Number(entry.match(/slide(\d+)/i)?.[1]);
-    const paragraphs = xmlParagraphs(decoder.decode(archive[entry]));
-    const relationEntry = `ppt/slides/_rels/slide${index}.xml.rels`;
-    const relationXml = archive[relationEntry] ? decoder.decode(archive[relationEntry]) : '';
-    const notesRelation = (relationXml.match(/<Relationship\b[^>]*\/?\s*>/gi) ?? []).find((tag) => /Type="[^"]*\/notesSlide"/i.test(tag));
-    const notesTarget = notesRelation?.match(/Target="([^"]+)"/i)?.[1];
-    const notesPath = notesTarget ? path.posix.normalize(path.posix.join('ppt/slides', notesTarget)) : '';
-    const notes = notesPath && archive[notesPath]
-      ? xmlParagraphs(decoder.decode(archive[notesPath])).filter((item) => !/^\d+$/.test(item))
-      : [];
-    if (paragraphs.length || notes.length) readableSlides += 1;
-    const title = paragraphs[0] || `第 ${index} 页`;
-    const body = paragraphs.slice(1);
-    pages.push([
-      `## 第 ${index} 页：${title}`,
-      ...(body.length ? body : ['（本页没有可提取的正文文字）']),
-      ...(notes.length ? ['', '### 演讲者备注', ...notes] : []),
-    ].join('\n'));
-  }
-  const context = [`文件：${name}`, `幻灯片：${slideEntries.length} 页`, '', ...pages].join('\n\n');
-  return {
-    context: context.slice(0, 500_000),
-    summary: `${slideEntries.length} 页幻灯片 · ${readableSlides} 页含可读取文字 · 已提取正文与备注`,
-  };
-}
 
 async function parse(bytes: Buffer, name: string, kind: ChatFileAttachment['kind']) {
-  const ext = path.extname(name).toLowerCase();
   if (kind === 'audio') {
     const uploaded = await storeAudioInput({ name, base64: bytes.toString('base64') });
     return { context: `录音附件：${name}\n请调用 model_transcribe_audio，path=${uploaded.reference}，outputFormat=text。`, summary: '已就绪 · 将使用语音识别模型处理' };
   }
-  if (kind === 'spreadsheet') return sheetContext(bytes, name);
-  if (ext === '.pptx' || ext === '.ppsx') {
-    if (await hasPptxEnhancedParser()) {
-      try {
-        const result = await parseLocalDocument({ fileName: name, bytes });
-        if (result.markdown.trim()) {
-          return {
-            context: result.markdown.slice(0, 500_000),
-            summary: `PPTX 增强解析 · 已提取 ${Math.min(result.markdown.length, 500_000).toLocaleString()} 个字符`,
-          };
-        }
-      } catch {
-        // The optional component must never block chat; preserve the lightweight fallback.
-      }
-    }
-    return presentationContext(bytes, name);
-  }
-  if (ext === '.html' || ext === '.htm') return htmlContext(bytes, name);
-  if (ext === '.md' || ext === '.txt') {
-    const context = bytes.toString('utf8').replace(/\u0000/g, '').trim().slice(0, CONTEXT_LIMIT);
-    if (!context) throw new Error('文件没有可读取的文本内容。');
-    return { context, summary: `已读取 ${context.length.toLocaleString()} 个字符` };
-  }
-  const result = await parseLocalDocument({ fileName: name, bytes });
-  if (ext === '.pdf' && (result.markdown.match(/\n#{1,3}\s+Page\s+\d+/gi) || []).length > 300) throw new Error('PDF 最多支持 300 页。');
-  return { context: result.markdown.slice(0, CONTEXT_LIMIT), summary: `${result.parser} · 已提取 ${Math.min(result.markdown.length, CONTEXT_LIMIT).toLocaleString()} 个字符` };
+  const result=await readDocument({fileName:name,bytes,allowEnhanced:true,maxChars:/\.(pptx|ppsx)$/i.test(name)?500000:CONTEXT_LIMIT});
+  if(!result.ok)throw new Error(result.message);
+  return{context:result.text,summary:`${result.info.parser} · 已提取 ${result.text.length.toLocaleString()} 个字符${result.info.truncated?' · 内容有截断':''}`};
 }
 
 function assertFileSignature(bytes: Buffer, ext: string) {
@@ -205,7 +74,7 @@ function assertFileSignature(bytes: Buffer, ext: string) {
   if (ext === '.webm' && !bytes.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]))) throw new Error('文件内容不是有效的 WebM 音频。');
 }
 
-export async function saveChatFile(sessionId: string, input: { name: string; bytes: Buffer }): Promise<{ attachment: ChatFileAttachment; warning?: string }> {
+export async function saveChatFile(sessionId: string, input: { name: string; bytes: Buffer; deferPdfParsing?:boolean;deferDocumentParsing?:boolean }): Promise<{ attachment: ChatFileAttachment; warning?: string }> {
   await cleanupChatAttachments().catch(() => undefined);
   const name = safeName(input.name);
   const rule = MIME_BY_EXT[path.extname(name).toLowerCase()];
@@ -216,7 +85,9 @@ export async function saveChatFile(sessionId: string, input: { name: string; byt
   const [sessionUsage, globalUsage] = await Promise.all([dirSize(path.join(root(), safeSegment(sessionId))), dirSize(root())]);
   if (sessionUsage.count >= SESSION_COUNT_LIMIT || sessionUsage.bytes + bytes.length > SESSION_LIMIT) throw new Error('当前对话的临时附件已达上限，请删除旧附件或新建对话。');
   if (globalUsage.bytes + bytes.length > GLOBAL_LIMIT) throw new Error('临时附件空间已满，请在设置中清理后重试。');
-  const parsed = await parse(bytes, name, rule.kind);
+  const parsed = ((input.deferDocumentParsing&&supportsDocumentReading(name))||(input.deferPdfParsing&&path.extname(name).toLowerCase()==='.pdf'))
+    ? {context:'原始文档待员工使用统一读取工具或已授权Skill处理；没有可用正文，不得从历史摘要推断文件内容。',summary:'原始文档已就绪 · 等待员工处理'}
+    : await parse(bytes, name, rule.kind);
   const id = randomUUID(); const dir = folder(sessionId, id); const createdAt = Date.now();
   const attachment = ChatFileAttachmentSchema.parse({ id, name, mimeType: rule.mime, size: bytes.length, kind: rule.kind, status: 'ready', summary: parsed.summary, createdAt });
   await mkdir(dir, { recursive: true });
