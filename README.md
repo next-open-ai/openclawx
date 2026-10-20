@@ -14,6 +14,14 @@ OpenClawX 是一套桌面级 Agent 工作台：其中的“数字员工”可以
 
 协作约定（人与 AI）：根目录 [AGENTS.md](./AGENTS.md) · [文档中心](./docs/README.md) · [工程规则](./docs/engineering/README.md)
 
+## 社区与交流
+
+若本项目对你有帮助，欢迎在 GitHub 上为 OpenClawX 点一个 **Star**，也欢迎加入 QQ 交流群讨论使用经验、问题反馈与项目进展。
+
+QQ群：`362347735`
+
+<img src="docs/assets/qq-group.png" alt="OpenClawX QQ 交流群：362347735" width="320">
+
 仓库刻意保持 Electron 壳“薄”：
 
 ```text
