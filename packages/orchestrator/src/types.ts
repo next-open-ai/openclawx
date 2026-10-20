@@ -223,7 +223,7 @@ export interface RunRecord {
   /** Token consumption for this execution (input/output/cache/…). */
   usage?: RunUsage;
   /** Resolved execution backend (pi / agentscope / dsh). */
-  engine?: 'pi' | 'agentscope' | 'dsh';
+  engine?: import('@workmate/contracts').AgentEngineId;
 }
 
 /* ------------------------------------------------------------------ *

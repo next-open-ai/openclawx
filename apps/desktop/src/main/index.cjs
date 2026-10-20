@@ -742,10 +742,11 @@ function readChannelSecrets() {
     return {
       telegram: { botToken: channelDecrypt(secrets.telegram?.botToken) },
       feishu: { appSecret: channelDecrypt(secrets.feishu?.appSecret) },
+      dingtalk: { clientSecret: channelDecrypt(secrets.dingtalk?.clientSecret) },
       relay: { token: channelDecrypt(secrets.relay?.token) },
     };
   } catch (_) {
-    return { telegram: { botToken: '' }, feishu: { appSecret: '' }, relay: { token: '' } };
+    return { telegram: { botToken: '' }, feishu: { appSecret: '' }, dingtalk: { clientSecret: '' }, relay: { token: '' } };
   }
 }
 
@@ -753,6 +754,7 @@ function writeChannelSecrets(tokens) {
   const secrets = {
     telegram: { botToken: channelEncrypt(tokens?.telegram?.botToken) },
     feishu: { appSecret: channelEncrypt(tokens?.feishu?.appSecret) },
+    dingtalk: { clientSecret: channelEncrypt(tokens?.dingtalk?.clientSecret) },
     relay: { token: channelEncrypt(tokens?.relay?.token) },
   };
   setStoredValue('settings.channels.v1', JSON.stringify({ version: 1, secrets, updatedAt: Date.now() }));
@@ -763,6 +765,7 @@ function cleanChannelMeta(value) {
   const channels = source.channels && typeof source.channels === 'object' ? source.channels : {};
   const telegram = channels.telegram && typeof channels.telegram === 'object' ? channels.telegram : {};
   const feishu = channels.feishu && typeof channels.feishu === 'object' ? channels.feishu : {};
+  const dingtalk = channels.dingtalk && typeof channels.dingtalk === 'object' ? channels.dingtalk : {};
   const relay = channels.relay && typeof channels.relay === 'object' ? channels.relay : {};
   const allowlist = Array.isArray(source.allowlist) ? source.allowlist.map((entry) => String(entry).trim()).filter(Boolean) : [];
   return {
@@ -773,6 +776,10 @@ function cleanChannelMeta(value) {
       feishu: {
         enabled: Boolean(feishu.enabled),
         ...(String(feishu.appId || '').trim() ? { appId: String(feishu.appId).trim() } : {}),
+      },
+      dingtalk: {
+        enabled: Boolean(dingtalk.enabled),
+        ...(String(dingtalk.clientId || '').trim() ? { clientId: String(dingtalk.clientId).trim() } : {}),
       },
       relay: {
         enabled: Boolean(relay.enabled),
@@ -800,6 +807,7 @@ async function saveChannelSettings(payload) {
   writeChannelSecrets({
     telegram: { botToken: secretsIn.telegram?.botToken },
     feishu: { appSecret: secretsIn.feishu?.appSecret },
+    dingtalk: { clientSecret: secretsIn.dingtalk?.clientSecret },
     relay: { token: secretsIn.relay?.token },
   });
   await apiKvSet('channels.v1', JSON.stringify(meta));

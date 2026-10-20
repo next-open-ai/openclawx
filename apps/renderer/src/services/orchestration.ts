@@ -88,7 +88,7 @@ export interface ServerRunRecord {
   attemptNo: number;
   status: 'running' | 'completed' | 'failed' | 'cancelled' | 'waiting-approval';
   error?: string;
-  engine?: 'pi' | 'agentscope' | 'dsh';
+  engine?: 'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code';
   failure?: import('@workmate/contracts').RunFailure;
   startedAt: number;
   finishedAt?: number;
@@ -307,7 +307,7 @@ export interface OrcEvent extends RunTextDeltaPosition {
   reasoningText?: string;
   provider?: string;
   attemptNo?: number;
-  engine?: 'pi' | 'agentscope' | 'dsh';
+  engine?: 'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code';
   activity?: ServerRunActivity;
   approval?: ServerRunApproval;
   artifact?: { path: string };

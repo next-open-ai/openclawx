@@ -7,11 +7,13 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm build && node --test dist/test/*.js",
     "start": "node dist/main.js"
   },
   "dependencies": {
     "@larksuiteoapi/node-sdk": "^1.11.1",
     "@workmate/channel": "workspace:*",
+    "dingtalk-stream": "^2.1.5",
     "ws": "^8.18.0"
   },
   "devDependencies": {

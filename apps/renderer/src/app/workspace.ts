@@ -62,7 +62,7 @@ export interface Message {
   /** Auto-schedule (planner → DAG → multi-agent) turn state. */
   schedule?: ChatScheduleState;
   /** Resolved execution engine for this assistant turn. */
-  engine?: 'pi' | 'agentscope' | 'dsh';
+  engine?: 'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code';
   /** Server run id when this assistant turn was executed via orch. */
   runId?: string;
   /** Durable task associated with this turn, used to anchor its inline task card. */

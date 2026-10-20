@@ -23,7 +23,7 @@ export function workflowFromPlan(
 /** Materialize a fresh project graph, never retain reactive definition references or grant skills. */
 export function materializeWorkflow(definition: WorkflowDefinition, employeeIds: string[], input: string) {
   const validated = workflowDefinitionSchema.parse(definition);
-  if (validated.nodes.some(node => !employeeIds.includes(node.employeeId))) throw new Error('工作流包含已移除的员工，请先编辑');
+  if (validated.nodes.some(node => !node.integration && !employeeIds.includes(node.employeeId))) throw new Error('工作流包含已移除的员工，请先编辑');
   const ids = new Map(validated.nodes.map(node => [node.id, crypto.randomUUID()]));
   return {
     name: validated.name,

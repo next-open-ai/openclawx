@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { MemoryStore, type ProjectTask } from '@workmate/orchestrator';
-import { resolveSkillRuntimeFor } from './context-assembler.js';
+import { resolveSkillRuntimeFor, resolveTaskContext } from './context-assembler.js';
+import { workflowDefinitionSchema } from '@workmate/contracts';
 
 const task = {
   id: 'voice-pdf', title: 'PDF', objective: '生成 PDF', employeeId: 'general', skillIds: [],
@@ -44,4 +45,21 @@ test('VWB-R10: legacy unscoped Skill configuration remains readable', async () =
   assert.deepEqual(skills.map((skill) => skill.id), ['legacy-skill']);
   assert.equal(skills[0].execution.allowWorkspaceWrite, false);
   assert.equal(skills[0].execution.allowScriptExecution, false);
+});
+
+test('OCX-T3: Coze is admitted only as an explicit workflow integration node', async () => {
+  const definition = workflowDefinitionSchema.parse({
+    id: '00000000-0000-4000-8000-000000000001', name: 'Coze flow',
+    nodes: [{
+      id: '00000000-0000-4000-8000-000000000002', title: 'Call Coze', employeeId: 'general', objective: 'Answer',
+      integration: { type: 'coze', connectionId: 'default' },
+    }],
+  });
+  assert.equal(definition.nodes[0].integration?.type, 'coze');
+  const context = await resolveTaskContext(new MemoryStore(), {
+    ...task, employeeId: 'integration:coze:default', id: 'coze-node', title: 'Coze', objective: 'Answer',
+  });
+  assert.equal(context?.engine, 'coze-workflow');
+  assert.equal(context?.skills.length, 0);
+  assert.equal(context?.workspaceAccess, 'read');
 });

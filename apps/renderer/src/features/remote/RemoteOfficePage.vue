@@ -20,6 +20,9 @@ const tgToken = ref('');
 const feishuEnabled = ref(false);
 const feishuAppId = ref('');
 const feishuSecret = ref('');
+const dingtalkEnabled = ref(false);
+const dingtalkClientId = ref('');
+const dingtalkSecret = ref('');
 const relayEnabled = ref(false);
 const relayBaseUrl = ref('');
 const relayDeviceId = ref('');
@@ -31,11 +34,11 @@ const gatewayPid = ref<number | null>(null);
 const message = ref('');
 const error = ref('');
 
-type ChannelMeta = { enabled?: boolean; appId?: string; baseUrl?: string; deviceId?: string };
+type ChannelMeta = { enabled?: boolean; appId?: string; clientId?: string; baseUrl?: string; deviceId?: string };
 interface ChannelMetaShape {
   defaultEmployeeId?: string;
   allowlist?: string[];
-  channels?: { telegram?: ChannelMeta; feishu?: ChannelMeta; relay?: ChannelMeta };
+  channels?: { telegram?: ChannelMeta; feishu?: ChannelMeta; dingtalk?: ChannelMeta; relay?: ChannelMeta };
 }
 
 let statusTimer: ReturnType<typeof setInterval> | null = null;
@@ -62,6 +65,9 @@ async function load() {
   feishuEnabled.value = Boolean(meta.channels?.feishu?.enabled);
   feishuAppId.value = meta.channels?.feishu?.appId ?? '';
   feishuSecret.value = secrets.feishu?.appSecret ?? '';
+  dingtalkEnabled.value = Boolean(meta.channels?.dingtalk?.enabled);
+  dingtalkClientId.value = meta.channels?.dingtalk?.clientId ?? '';
+  dingtalkSecret.value = secrets.dingtalk?.clientSecret ?? '';
   relayEnabled.value = Boolean(meta.channels?.relay?.enabled);
   relayBaseUrl.value = meta.channels?.relay?.baseUrl ?? '';
   relayDeviceId.value = meta.channels?.relay?.deviceId ?? '';
@@ -82,6 +88,7 @@ async function save() {
         channels: {
           telegram: { enabled: tgEnabled.value },
           feishu: { enabled: feishuEnabled.value, appId: feishuAppId.value.trim() || undefined },
+          dingtalk: { enabled: dingtalkEnabled.value, clientId: dingtalkClientId.value.trim() || undefined },
           relay: {
             enabled: relayEnabled.value,
             baseUrl: relayBaseUrl.value.trim() || undefined,
@@ -92,6 +99,7 @@ async function save() {
       secrets: {
         telegram: { botToken: tgToken.value },
         feishu: { appSecret: feishuSecret.value },
+        dingtalk: { clientSecret: dingtalkSecret.value },
         relay: { token: relayToken.value },
       },
     };
@@ -148,6 +156,23 @@ onBeforeUnmount(() => {
     <div v-if="message" class="mb-3 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-600">{{ message }}</div>
 
     <div class="grid gap-4">
+      <div :class="cardClass">
+        <div class="mb-3 flex items-center justify-between">
+          <div>
+            <h2 class="font-semibold">钉钉 DingTalk</h2>
+            <p class="text-xs text-[var(--muted)]">Stream 模式接收入站消息，通过会话 Webhook 回复；Client Secret 作为密钥单独保存。</p>
+          </div>
+          <label class="flex items-center gap-2 text-sm">
+            <input v-model="dingtalkEnabled" type="checkbox" class="h-4 w-4 accent-[var(--accent)]" />
+            启用
+          </label>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <input v-model="dingtalkClientId" :class="inputClass" type="text" placeholder="DingTalk Client ID" />
+          <input v-model="dingtalkSecret" :class="inputClass" type="password" placeholder="DingTalk Client Secret（留空则清除）" />
+        </div>
+      </div>
+
       <div :class="cardClass">
         <div class="mb-3 flex items-center justify-between">
           <div>

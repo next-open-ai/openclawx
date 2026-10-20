@@ -88,13 +88,15 @@ const autoScheduleDirty = ref(false);
 const runtimeSettings = ref({
   sidecarPoolSize: 1,
   sidecarSharedMaxRuns: 8,
-  enabledEngines: ['pi', 'agentscope', 'dsh'] as Array<'pi' | 'agentscope' | 'dsh'>,
-  defaultEngine: 'pi' as 'pi' | 'agentscope' | 'dsh',
+  enabledEngines: ['pi', 'agentscope', 'dsh'] as Array<'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code'>,
+  defaultEngine: 'pi' as 'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code',
 });
 const ENGINE_OPTIONS = [
   { id: 'pi' as const, label: 'pi（进程内默认）' },
   { id: 'agentscope' as const, label: 'agentscope（Python Sidecar）' },
   { id: 'dsh' as const, label: 'dsh（编码 Harness）' },
+  { id: 'opencode' as const, label: 'OpenCode Server（外部编码引擎）' },
+  { id: 'claude-code' as const, label: 'Claude Code CLI（本机编码引擎）' },
 ];
 const runtimeStatus = ref<RuntimeStatusResponse | null>(null);
 const attachmentStats = ref<{ bytes: number; count: number; limitBytes: number; warning: boolean } | null>(null);
@@ -371,7 +373,7 @@ async function loadRuntimeSettings() {
     const enabled = Array.isArray(value.enabledEngines)
       ? value.enabledEngines
         .map((id) => String(id).trim().toLowerCase())
-        .filter((id): id is 'pi' | 'agentscope' | 'dsh' => id === 'pi' || id === 'agentscope' || id === 'dsh')
+        .filter((id): id is 'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code' => ['pi', 'agentscope', 'dsh', 'opencode', 'claude-code'].includes(id))
       : [];
     runtimeSettings.value.enabledEngines = enabled.length ? [...new Set(enabled)] : ['pi', 'agentscope', 'dsh'];
     const def = String(value.defaultEngine || 'pi').trim().toLowerCase();
@@ -387,7 +389,7 @@ async function loadRuntimeSettings() {
   }
 }
 
-function toggleEnabledEngine(id: 'pi' | 'agentscope' | 'dsh') {
+function toggleEnabledEngine(id: 'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code') {
   const set = new Set(runtimeSettings.value.enabledEngines);
   if (set.has(id)) {
     if (set.size <= 1) return;
@@ -422,10 +424,10 @@ function markAutoScheduleDirty() {
 
 async function saveRuntimeSettings() {
   try {
-    const enabled: Array<'pi' | 'agentscope' | 'dsh'> = runtimeSettings.value.enabledEngines.length
+    const enabled: Array<'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code'> = runtimeSettings.value.enabledEngines.length
       ? runtimeSettings.value.enabledEngines
       : ['pi' as const];
-    const defaultEngine: 'pi' | 'agentscope' | 'dsh' = enabled.includes(runtimeSettings.value.defaultEngine)
+    const defaultEngine: 'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code' = enabled.includes(runtimeSettings.value.defaultEngine)
       ? runtimeSettings.value.defaultEngine
       : (enabled[0] ?? 'pi');
     const payload = {
@@ -442,10 +444,10 @@ async function saveRuntimeSettings() {
     };
     runtimeSettings.value.sidecarPoolSize = Math.max(1, Number(saved.sidecarPoolSize) || payload.sidecarPoolSize);
     runtimeSettings.value.sidecarSharedMaxRuns = Math.max(1, Number(saved.sidecarSharedMaxRuns) || payload.sidecarSharedMaxRuns);
-    const savedEnabled: Array<'pi' | 'agentscope' | 'dsh'> = Array.isArray(saved.enabledEngines)
+    const savedEnabled: Array<'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code'> = Array.isArray(saved.enabledEngines)
       ? saved.enabledEngines
         .map((id) => String(id).trim().toLowerCase())
-        .filter((id): id is 'pi' | 'agentscope' | 'dsh' => id === 'pi' || id === 'agentscope' || id === 'dsh')
+        .filter((id): id is 'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code' => ['pi', 'agentscope', 'dsh', 'opencode', 'claude-code'].includes(id))
       : payload.enabledEngines;
     runtimeSettings.value.enabledEngines = savedEnabled.length ? savedEnabled : payload.enabledEngines;
     const savedDefault = String(saved.defaultEngine || payload.defaultEngine).trim().toLowerCase();

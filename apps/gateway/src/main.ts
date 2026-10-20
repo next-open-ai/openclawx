@@ -37,6 +37,13 @@ async function main(): Promise<void> {
           ? { appSecret: secrets.channels.feishu.appSecret }
           : {}),
       },
+      dingtalk: {
+        ...kvConfig.channels?.dingtalk,
+        ...fileConfig.channels?.dingtalk,
+        ...(secrets.channels?.dingtalk?.clientSecret
+          ? { clientSecret: secrets.channels.dingtalk.clientSecret }
+          : {}),
+      },
       relay: {
         ...kvConfig.channels?.relay,
         ...fileConfig.channels?.relay,
@@ -65,4 +72,3 @@ async function main(): Promise<void> {
 }
 
 void main();
-

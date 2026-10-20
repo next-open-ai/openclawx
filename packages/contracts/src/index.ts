@@ -21,7 +21,7 @@ export const AgentProfileSchema = z.object({
 export type AgentProfile = z.infer<typeof AgentProfileSchema>;
 
 /** Pluggable agent execution backends (pi / agentscope / dsh). */
-export const AgentEngineIdSchema = z.enum(['pi', 'agentscope', 'dsh']);
+export const AgentEngineIdSchema = z.enum(['pi', 'agentscope', 'dsh', 'opencode', 'claude-code', 'coze-workflow']);
 export type AgentEngineId = z.infer<typeof AgentEngineIdSchema>;
 export const AGENT_ENGINE_IDS = AgentEngineIdSchema.options;
 

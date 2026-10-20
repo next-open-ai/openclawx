@@ -28,7 +28,7 @@ export interface EmployeeRuntimePrefs {
    * Execution backend for this employee.
    * `null` = inherit deployment defaultEngine from runtime-settings.
    */
-  engine: 'pi' | 'agentscope' | 'dsh' | null;
+  engine: 'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code' | null;
   /** Expose all configured non-chat application models to this employee. */
   useApplicationModels: boolean;
 }
@@ -90,7 +90,7 @@ function normalizeKnowledgeProvider(value: unknown): EmployeeKnowledgeProvider {
 
 function normalizeEngine(value: unknown): EmployeeRuntimePrefs['engine'] {
   const id = String(value || '').trim().toLowerCase();
-  if (id === 'pi' || id === 'agentscope' || id === 'dsh') return id;
+  if (id === 'pi' || id === 'agentscope' || id === 'dsh' || id === 'opencode' || id === 'claude-code') return id;
   return null;
 }
 

@@ -1,6 +1,7 @@
 import { streamAgentReply as streamAgentReplyViaPi } from './pi-runtime.js';
 import { streamAgentReplyViaAgentscope } from './agentscope/stream.js';
 import { streamAgentReplyViaDsh } from './dsh/stream.js';
+import { streamClaudeCode, streamCozeWorkflow, streamOpenCode } from './code-execution-backends.js';
 import {
   registerExecutionBackend,
   type ExecutionBackend,
@@ -48,11 +49,32 @@ const dshBackend: ExecutionBackend = {
   stream: streamAgentReplyViaDsh,
 };
 
+const openCodeBackend: ExecutionBackend = {
+  id: 'opencode', label: 'OpenCode Server',
+  capabilities: { coding: true, sandbox: false, processIsolated: true, pooled: false },
+  stream: streamOpenCode,
+};
+
+const claudeCodeBackend: ExecutionBackend = {
+  id: 'claude-code', label: 'Claude Code CLI',
+  capabilities: { coding: true, sandbox: false, processIsolated: true, pooled: false },
+  stream: streamClaudeCode,
+};
+
+const cozeWorkflowBackend: ExecutionBackend = {
+  id: 'coze-workflow', label: 'Coze Workflow Integration',
+  capabilities: { coding: false, sandbox: false, processIsolated: true, pooled: false },
+  stream: streamCozeWorkflow,
+};
+
 /** Idempotent registration of shipped backends. */
 export function registerBuiltinExecutionBackends(): void {
   registerExecutionBackend(piBackend);
   registerExecutionBackend(agentscopeBackend);
   registerExecutionBackend(dshBackend);
+  registerExecutionBackend(openCodeBackend);
+  registerExecutionBackend(claudeCodeBackend);
+  registerExecutionBackend(cozeWorkflowBackend);
 }
 
 registerBuiltinExecutionBackends();

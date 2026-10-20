@@ -8,12 +8,14 @@ import { getOrchestrator } from '../orchestration/routes.js';
 type ChannelSecrets = {
   telegram?: { botToken?: string };
   feishu?: { appSecret?: string };
+  dingtalk?: { clientSecret?: string };
   relay?: { token?: string };
 };
 
 type ChannelMeta = {
   enabled?: boolean;
   appId?: string;
+  clientId?: string;
   baseUrl?: string;
   deviceId?: string;
 };
@@ -25,6 +27,7 @@ type ChannelMetaShape = {
   channels?: {
     telegram?: ChannelMeta;
     feishu?: ChannelMeta;
+    dingtalk?: ChannelMeta;
     relay?: ChannelMeta;
   };
 };
@@ -62,6 +65,7 @@ function cleanChannelMeta(value: unknown): ChannelMetaShape {
   const channels = source.channels && typeof source.channels === 'object' ? source.channels as Record<string, unknown> : {};
   const telegram = channels.telegram && typeof channels.telegram === 'object' ? channels.telegram as Record<string, unknown> : {};
   const feishu = channels.feishu && typeof channels.feishu === 'object' ? channels.feishu as Record<string, unknown> : {};
+  const dingtalk = channels.dingtalk && typeof channels.dingtalk === 'object' ? channels.dingtalk as Record<string, unknown> : {};
   const relay = channels.relay && typeof channels.relay === 'object' ? channels.relay as Record<string, unknown> : {};
   const allowlist = Array.isArray(source.allowlist)
     ? source.allowlist.map((entry) => String(entry).trim()).filter(Boolean)
@@ -74,6 +78,10 @@ function cleanChannelMeta(value: unknown): ChannelMetaShape {
       feishu: {
         enabled: Boolean(feishu.enabled),
         ...(String(feishu.appId || '').trim() ? { appId: String(feishu.appId).trim() } : {}),
+      },
+      dingtalk: {
+        enabled: Boolean(dingtalk.enabled),
+        ...(String(dingtalk.clientId || '').trim() ? { clientId: String(dingtalk.clientId).trim() } : {}),
       },
       relay: {
         enabled: Boolean(relay.enabled),
@@ -120,7 +128,7 @@ async function writeChannelMeta(meta: ChannelMetaShape) {
 
 function enabledChannels(meta: ChannelMetaShape): string[] {
   const entries = meta.channels && typeof meta.channels === 'object' ? meta.channels : {};
-  return ['telegram', 'feishu', 'relay'].filter((id) => Boolean((entries as Record<string, ChannelMeta | undefined>)[id]?.enabled));
+  return ['telegram', 'feishu', 'dingtalk', 'relay'].filter((id) => Boolean((entries as Record<string, ChannelMeta | undefined>)[id]?.enabled));
 }
 
 function gatewayStatus() {
@@ -157,6 +165,11 @@ async function startGatewayIfEnabled(): Promise<{ running: boolean; pid: number 
         enabled: Boolean(meta.channels?.feishu?.enabled),
         ...(meta.channels?.feishu?.appId ? { appId: String(meta.channels.feishu.appId) } : {}),
         ...(secrets.feishu?.appSecret ? { appSecret: String(secrets.feishu.appSecret) } : {}),
+      },
+      dingtalk: {
+        enabled: Boolean(meta.channels?.dingtalk?.enabled),
+        ...(meta.channels?.dingtalk?.clientId ? { clientId: String(meta.channels.dingtalk.clientId) } : {}),
+        ...(secrets.dingtalk?.clientSecret ? { clientSecret: String(secrets.dingtalk.clientSecret) } : {}),
       },
       relay: {
         enabled: Boolean(meta.channels?.relay?.enabled),
@@ -203,11 +216,13 @@ export const remoteRoutes: FastifyPluginAsync = async (app) => {
     const secretsIn = body.secrets && typeof body.secrets === 'object' ? body.secrets as Record<string, unknown> : {};
     const telegram = secretsIn.telegram && typeof secretsIn.telegram === 'object' ? secretsIn.telegram as Record<string, unknown> : {};
     const feishu = secretsIn.feishu && typeof secretsIn.feishu === 'object' ? secretsIn.feishu as Record<string, unknown> : {};
+    const dingtalk = secretsIn.dingtalk && typeof secretsIn.dingtalk === 'object' ? secretsIn.dingtalk as Record<string, unknown> : {};
     const relay = secretsIn.relay && typeof secretsIn.relay === 'object' ? secretsIn.relay as Record<string, unknown> : {};
     await writeChannelMeta(meta);
     writeChannelSecrets({
       telegram: { botToken: String(telegram.botToken || '').trim() },
       feishu: { appSecret: String(feishu.appSecret || '').trim() },
+      dingtalk: { clientSecret: String(dingtalk.clientSecret || '').trim() },
       relay: { token: String(relay.token || '').trim() },
     });
     return { ok: true, meta };

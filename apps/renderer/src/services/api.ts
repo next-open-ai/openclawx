@@ -2086,6 +2086,7 @@ export async function getDataAppPublish(appId: string) {
 export type RemoteChannelSecrets = {
   telegram?: { botToken?: string };
   feishu?: { appSecret?: string };
+  dingtalk?: { clientSecret?: string };
   relay?: { token?: string };
 };
 
@@ -2096,6 +2097,7 @@ export type RemoteChannelMeta = {
   channels?: {
     telegram?: { enabled?: boolean };
     feishu?: { enabled?: boolean; appId?: string };
+    dingtalk?: { enabled?: boolean; clientId?: string };
     relay?: { enabled?: boolean; baseUrl?: string; deviceId?: string };
   };
 };

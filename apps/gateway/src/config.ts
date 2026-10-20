@@ -18,6 +18,11 @@ export interface GatewayConfig {
       appId?: string;
       appSecret?: string;
     };
+    dingtalk?: {
+      enabled?: boolean;
+      clientId?: string;
+      clientSecret?: string;
+    };
     /** M2 P3: remote relay device config. */
     relay?: {
       enabled?: boolean;

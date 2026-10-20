@@ -92,7 +92,9 @@ export class WorkflowRuns {
         name: link.snapshot.name, goal: `${link.snapshot.description || link.snapshot.name}\n本次要求：${link.input || '按工作流定义执行'}`,
         orgId: owner.orgId, ownerUserId: owner.userId, accessScope: 'private', mode: 'dag', workspacePath: link.workspacePath,
         tasks: link.snapshot.nodes.map(node => ({
-          id: ids.get(node.id)!, title: node.title, employeeId: node.employeeId, skillIds: [],
+          id: ids.get(node.id)!, title: node.title,
+          employeeId: node.integration?.type === 'coze' ? `integration:coze:${node.integration.connectionId}` : node.employeeId,
+          skillIds: [],
           objective: `${materials.prompt ? materials.prompt + '\n\n' : ''}${node.objective}\n\n本次运行的补充业务要求：\n${link.input || '无'}`,
           dependsOn: node.dependsOn.map(id => ids.get(id)!),
           ...(node.acceptance ? { contract: { acceptance: node.acceptance } } : {}),

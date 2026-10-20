@@ -488,11 +488,11 @@ function splitRuntimeSettings(value: unknown): SettingsEnvelope {
   const enabledEngines = [...new Set(
     enabledRaw
       .map((item) => String(item || '').trim().toLowerCase())
-      .filter((id) => id === 'pi' || id === 'agentscope' || id === 'dsh'),
+      .filter((id) => ['pi', 'agentscope', 'dsh', 'opencode', 'claude-code'].includes(id)),
   )];
   const defaultCandidate = String(raw.defaultEngine || '').trim().toLowerCase();
   const defaultEngine =
-    (defaultCandidate === 'pi' || defaultCandidate === 'agentscope' || defaultCandidate === 'dsh')
+    (['pi', 'agentscope', 'dsh', 'opencode', 'claude-code'].includes(defaultCandidate))
       ? defaultCandidate
       : 'pi';
   const enabled = enabledEngines.length ? enabledEngines : ['pi', 'agentscope', 'dsh'];
@@ -514,7 +514,7 @@ function mergeRuntimeSettings(value: unknown) {
   const enabledEngines = [...new Set(
     enabledRaw
       .map((item) => String(item || '').trim().toLowerCase())
-      .filter((id) => id === 'pi' || id === 'agentscope' || id === 'dsh'),
+      .filter((id) => ['pi', 'agentscope', 'dsh', 'opencode', 'claude-code'].includes(id)),
   )];
   const enabled = enabledEngines.length ? enabledEngines : ['pi', 'agentscope', 'dsh'];
   const defaultCandidate = String(meta.defaultEngine || 'pi').trim().toLowerCase();

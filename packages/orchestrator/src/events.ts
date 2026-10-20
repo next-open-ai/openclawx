@@ -9,8 +9,8 @@ import type { RunActivity, RunApproval, RunRecord, RunStatus } from './types.js'
 
 export type OrcEvent =
   /* runs */
-  | { type: 'run.started'; runId: string; sessionId: string; kind: 'chat' | 'project-task'; taskId?: string; attemptNo: number; engine?: 'pi' | 'agentscope' | 'dsh' }
-  | { type: 'run.engine'; runId: string; sessionId: string; engine: 'pi' | 'agentscope' | 'dsh' }
+  | { type: 'run.started'; runId: string; sessionId: string; kind: 'chat' | 'project-task'; taskId?: string; attemptNo: number; engine?: import('@workmate/contracts').AgentEngineId }
+  | { type: 'run.engine'; runId: string; sessionId: string; engine: import('@workmate/contracts').AgentEngineId }
   | ({ type: 'run.reasoning.delta'; runId: string; sessionId: string; text: string } & RunTextDeltaPosition)
   | ({ type: 'run.delta'; runId: string; sessionId: string; text: string } & RunTextDeltaPosition)
   | { type: 'run.activity'; runId: string; activity: RunActivity }

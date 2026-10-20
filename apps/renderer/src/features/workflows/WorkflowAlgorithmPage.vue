@@ -39,7 +39,8 @@ const participantIds = ref<string[]>([]);
 const coordinatorId = ref('');
 const coordinator = computed(() => props.models?.find(model => model.id === coordinatorId.value) ?? props.models?.[0]);
 const planNotice = ref('');
-const dagTasks = computed(() => workflow.value.nodes.map(node => ({ ...node, subtitle: employeeName(node.employeeId) })));
+const nodeExecutorName = (node: WorkflowDefinition['nodes'][number]) => node.integration?.type === 'coze' ? 'Coze Bot' : employeeName(node.employeeId);
+const dagTasks = computed(() => workflow.value.nodes.map(node => ({ ...node, subtitle: nodeExecutorName(node) })));
 // Remember a prepared instance so a navigation failure does not create another project.
 const preparedProjectId = ref<string | null>(null);
 const historyId = ref('');
@@ -83,6 +84,9 @@ function addNode() {
 function removeNode(id: string) {
   workflow.value.nodes = workflow.value.nodes.filter(node => node.id !== id);
   for (const node of workflow.value.nodes) node.dependsOn = node.dependsOn.filter(dependency => dependency !== id);
+}
+function toggleCozeNode(node: WorkflowDefinition['nodes'][number], enabled: boolean) {
+  node.integration = enabled ? { type: 'coze', connectionId: 'default' } : undefined;
 }
 function edit(item?: WorkflowDefinition | AlgorithmDefinition) {
   error.value = ''; notice.value = '';
@@ -147,7 +151,7 @@ async function save() {
     if (isWorkflow.value) {
       const parsed = workflowDefinitionSchema.safeParse(workflow.value);
       if (!parsed.success) throw new Error(parsed.error.issues[0]?.message || '请完善工作流');
-      if (parsed.data.nodes.some(node => !usableEmployees.value.some(employee => employee.id === node.employeeId))) throw new Error('请为每个步骤选择有效员工');
+      if (parsed.data.nodes.some(node => !node.integration && !usableEmployees.value.some(employee => employee.id === node.employeeId))) throw new Error('请为每个员工步骤选择有效员工');
       await orch.saveDefinition('workflows', parsed.data);
     } else {
       const parsed = algorithmDefinitionSchema.safeParse(algorithm.value);
@@ -184,7 +188,7 @@ async function run() {
   if (!definition || busy.value || uploadingDocuments.value || !documentsValid.value) return;
   busy.value = true; error.value = '';
   try {
-    if (!configured.value) throw new Error('请先在设置中配置可用的对话模型');
+    if (!configured.value && definition.nodes.some(node => !node.integration)) throw new Error('包含员工步骤时，请先在设置中配置可用的对话模型');
     if (!preparedProjectId.value) {
       const draft = materializeWorkflow(definition, usableEmployees.value.map(employee => employee.id), runInput.value);
       if (!preparedWorkspace.value) preparedWorkspace.value = await createManagedWorkspace(draft.name) || '';
@@ -224,7 +228,7 @@ onMounted(load);
             <div class="min-w-0 flex-1"><h2 class="break-words font-semibold">{{ item.name }}</h2><p class="mt-2 whitespace-pre-wrap break-words text-sm text-[var(--muted)]">{{ item.description || '未填写说明' }}</p></div>
             <div class="flex shrink-0 flex-wrap gap-2"><button v-if="'nodes' in item" class="primary" :disabled="busy" @click="prepareRun(item)">运行</button><button v-if="'nodes' in item" class="secondary" @click="historyId = historyId === item.id ? '' : item.id">{{ historyId === item.id ? '收起记录' : '运行记录' }}</button><button class="secondary" :disabled="busy" @click="edit(item)">{{ isWorkflow ? '编辑' : '配置员工' }}</button><button class="secondary" :disabled="busy" @click="remove(item)">删除</button></div>
           </div>
-          <div v-if="'nodes' in item" class="mt-4 flex flex-wrap gap-2 text-xs text-[var(--muted)]"><span v-for="node in item.nodes" :key="node.id" class="max-w-full break-words rounded-lg bg-[var(--surface-muted)] px-3 py-2">{{ node.title }} · {{ employeeName(node.employeeId) }} · {{ node.dependsOn.length ? `${node.dependsOn.length} 个前置步骤` : '起始步骤' }}</span></div>
+          <div v-if="'nodes' in item" class="mt-4 flex flex-wrap gap-2 text-xs text-[var(--muted)]"><span v-for="node in item.nodes" :key="node.id" class="max-w-full break-words rounded-lg bg-[var(--surface-muted)] px-3 py-2">{{ node.title }} · {{ nodeExecutorName(node) }} · {{ node.dependsOn.length ? `${node.dependsOn.length} 个前置步骤` : '起始步骤' }}</span></div>
           <div v-else class="mt-4 flex flex-wrap gap-3 text-xs text-[var(--muted)]"><span>{{ skills.find(skill => skill.id === item.skillId)?.name || '底层 Skill 已移除' }}</span><span>版本 {{ item.version }}</span><span>运行时验证</span><span>关联 {{ usableEmployees.filter(employee => { const policy = policyFor(employee.id, item.skillId); return policy && policy.mode !== 'disabled'; }).length }} 位员工</span></div>
           <WorkflowRunHistory v-if="'nodes' in item && historyId === item.id" :key="item.id" :workflow-id="item.id" @open-project="emit('openProject', $event)" />
         </article>
@@ -253,7 +257,9 @@ onMounted(load);
             <details class="rounded-xl border border-[var(--border)] p-3" open><summary class="cursor-pointer text-sm font-medium">协作流程预览 · {{ workflow.nodes.length }} 个步骤</summary><ProjectDagPreview class="mt-3" :tasks="dagTasks" compact bare /></details>
             <article v-for="(node, index) in workflow.nodes" :key="node.id" class="space-y-3 rounded-xl border border-[var(--border)] p-4">
               <div class="flex items-center justify-between"><h3 class="text-sm font-semibold">步骤 {{ index + 1 }}</h3><button type="button" class="text-xs text-[var(--muted)]" :disabled="workflow.nodes.length === 1" @click="removeNode(node.id)">移除步骤</button></div>
-              <div class="grid gap-3 md:grid-cols-2"><label class="text-sm">步骤名称<input v-model="node.title" required class="field mt-2" maxlength="120" /></label><label class="text-sm">执行员工<select v-model="node.employeeId" required class="field mt-2"><option value="" disabled>选择员工</option><option v-for="employee in usableEmployees" :key="employee.id" :value="employee.id">{{ employeeName(employee.id) }}</option></select></label></div>
+              <div class="grid gap-3 md:grid-cols-2"><label class="text-sm">步骤名称<input v-model="node.title" required class="field mt-2" maxlength="120" /></label><label class="text-sm">执行员工<select v-model="node.employeeId" :disabled="!!node.integration" required class="field mt-2"><option value="" disabled>选择员工</option><option v-for="employee in usableEmployees" :key="employee.id" :value="employee.id">{{ employeeName(employee.id) }}</option></select></label></div>
+              <label class="flex items-center gap-2 text-sm"><input type="checkbox" :checked="node.integration?.type === 'coze'" @change="toggleCozeNode(node, ($event.target as HTMLInputElement).checked)" />作为 Coze 工作流节点执行</label>
+              <label v-if="node.integration?.type === 'coze'" class="text-sm">Coze 连接标识<input v-model="node.integration.connectionId" required class="field mt-2" maxlength="120" placeholder="default" /></label>
               <label class="block text-sm">任务目标<textarea v-model="node.objective" required class="field mt-2" rows="3" maxlength="12000" /></label>
               <details class="text-sm"><summary class="cursor-pointer text-[var(--muted)]">依赖与验收要求</summary><div class="mt-3 space-y-3"><p class="text-xs text-[var(--muted)]">不选依赖即为独立起始步骤。不得形成循环。</p><label v-for="other in workflow.nodes.filter(item => item.id !== node.id)" :key="other.id" class="mr-3 inline-flex items-center gap-2"><input v-model="node.dependsOn" type="checkbox" :value="other.id" />{{ other.title || '未命名步骤' }}</label><label class="block">验收要求<textarea v-model="node.acceptance" class="field mt-2" rows="2" maxlength="4000" placeholder="例如：交付有效 PDF，并说明数据来源" /></label></div></details>
             </article>
@@ -277,7 +283,7 @@ onMounted(load);
         </form>
         <form v-else class="min-h-0 overflow-y-auto" @submit.prevent="run">
           <p class="mb-4 text-sm leading-6 text-[var(--muted)]">将创建独立运行项目，复用当前员工授权、模型及审批规则。后续修改工作流不会改变本次运行。</p>
-          <div class="mb-4 flex flex-wrap gap-2 text-xs text-[var(--muted)]"><span v-for="node in runWorkflow?.nodes" :key="node.id" class="rounded-md bg-[var(--surface-muted)] px-2 py-1">{{ node.title }} · {{ employeeName(node.employeeId) }}</span></div>
+          <div class="mb-4 flex flex-wrap gap-2 text-xs text-[var(--muted)]"><span v-for="node in runWorkflow?.nodes" :key="node.id" class="rounded-md bg-[var(--surface-muted)] px-2 py-1">{{ node.title }} · {{ nodeExecutorName(node) }}</span></div>
           <label class="block text-sm">本次要求（可选）<textarea v-model="runInput" class="field mt-2" rows="4" maxlength="12000" placeholder="例如：分析九月份销售情况，输出中文报告" :disabled="busy || !!preparedWorkspace" /></label>
           <WorkflowRunDocuments v-if="runWorkflow" :key="runRequestId" :workflow-id="runWorkflow.id" :request-id="runRequestId" :disabled="busy || !!preparedWorkspace" @change="runFileIds = $event" @uploading="uploadingDocuments = $event" @valid="documentsValid = $event" />
           <p v-if="preparedProjectId" class="mt-3 text-xs text-[var(--muted)]">项目已准备并关联运行记录。启动失败也会保留，可重试启动或进入详情处理。</p>

@@ -496,6 +496,15 @@ export async function resolveTaskContext(
   task: ProjectTask,
   ownerUserId?: string | null,
 ): Promise<ChatRunContext | null> {
+  if (task.employeeId.startsWith('integration:coze:')) {
+    return {
+      profile: { id: task.employeeId, name: 'Coze 工作流节点', instructions: '由工作流显式调用 Coze Bot。', toolIds: [] },
+      model: { provider: 'openai-compatible', chatModel: 'coze-workflow', apiKey: '' },
+      skills: [], searchProviders: [], mcpConnections: [], knowledgeBases: [],
+      maxSteps: 50, runTimeoutMs: 300_000, mcpToolTimeoutMs: 60_000, workspaceAccess: 'read',
+      engine: 'coze-workflow',
+    };
+  }
   const employees = rows(await kvJson(store, EMPLOYEES_KEY)) as EmployeeRow[];
   const overridesRaw = await kvJson(store, OVERRIDES_KEY);
   const overrides = overridesRaw && typeof overridesRaw === 'object' ? (overridesRaw as Record<string, { description?: string; instructions?: string }>) : {};
@@ -517,7 +526,7 @@ export async function resolveTaskContext(
   const mcpToolTimeoutMs = prefs.mcpToolTimeoutMs ?? 60_000;
   const engineRaw = String(prefs.engine || '').trim().toLowerCase();
   const engine =
-    engineRaw === 'pi' || engineRaw === 'agentscope' || engineRaw === 'dsh'
+    engineRaw === 'pi' || engineRaw === 'agentscope' || engineRaw === 'dsh' || engineRaw === 'opencode' || engineRaw === 'claude-code'
       ? engineRaw
       : undefined;
 

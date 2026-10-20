@@ -18,8 +18,8 @@
     "typescript": "^5.8.3"
   },
   "build": {
-    "appId": "com.workmate.desktop",
-    "productName": "Workmate",
+    "appId": "com.openclawx.desktop",
+    "productName": "OpenClawX",
     "directories": {
       "output": "release",
       "buildResources": "build"

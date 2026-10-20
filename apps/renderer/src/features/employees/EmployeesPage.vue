@@ -35,7 +35,7 @@ import {
   isPresetEmployee,
 } from '../../app/employees';
 
-type EmployeeEngineChoice = '' | 'pi' | 'agentscope' | 'dsh';
+type EmployeeEngineChoice = '' | 'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code';
 
 const props = defineProps<{
   employees: Employee[];
@@ -73,7 +73,7 @@ const draftKnowledgeProvider = ref<EmployeeKnowledgeProvider>('off');
 const draftKnowledgeBaseIds = ref<string[]>([]);
 const draftEngine = ref<EmployeeEngineChoice>('');
 const draftUseApplicationModels = ref(true);
-const enabledEngines = ref<Array<'pi' | 'agentscope' | 'dsh'>>(['pi', 'agentscope', 'dsh']);
+const enabledEngines = ref<Array<'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code'>>(['pi', 'agentscope', 'dsh']);
 const mcpPickerOpen = ref(false);
 const mcpPickerDraft = ref<string[]>([]);
 const skillPickerOpen = ref(false);
@@ -133,7 +133,7 @@ onMounted(async () => {
     const list = Array.isArray(runtime.enabledEngines)
       ? runtime.enabledEngines
         .map((id) => String(id).trim().toLowerCase())
-        .filter((id): id is 'pi' | 'agentscope' | 'dsh' => id === 'pi' || id === 'agentscope' || id === 'dsh')
+        .filter((id): id is 'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code' => ['pi', 'agentscope', 'dsh', 'opencode', 'claude-code'].includes(id))
       : [];
     if (list.length) enabledEngines.value = [...new Set(list)];
   } catch {

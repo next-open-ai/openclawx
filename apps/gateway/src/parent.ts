@@ -10,6 +10,7 @@ export interface ChannelSecrets {
   channels?: {
     telegram?: { botToken?: string };
     feishu?: { appSecret?: string };
+    dingtalk?: { clientSecret?: string };
     relay?: { token?: string };
   };
 }

@@ -10,6 +10,7 @@ import {
 import { createTelegramChannel } from './adapters/telegram.js';
 import { createStubChannel } from './adapters/stub.js';
 import { createFeishuChannel } from './adapters/feishu.js';
+import { createDingTalkChannel } from './adapters/dingtalk.js';
 import { RelayDeviceClient } from './relay/device.js';
 import type { RelayRequest } from './relay/protocol.js';
 import type { GatewayConfig } from './config.js';
@@ -61,6 +62,10 @@ export function createGateway(config: GatewayConfig, options: { stub?: boolean; 
         feishuReplies = handle.replies;
       }
     }
+  }
+  const dingtalk = config.channels?.dingtalk;
+  if (dingtalk?.enabled && dingtalk.clientId && dingtalk.clientSecret) {
+    channels.push(createDingTalkChannel({ clientId: dingtalk.clientId, clientSecret: dingtalk.clientSecret }));
   }
   if (options.stub) {
     const stub = createStubChannel();

@@ -5,6 +5,7 @@ export const workflowNodeSchema = z.object({
   id: z.string().uuid(),
   title: text.max(120),
   employeeId: text.max(120),
+  integration: z.object({ type: z.literal('coze'), connectionId: text.max(120).default('default') }).optional(),
   objective: text.max(12000),
   dependsOn: z.array(z.string().uuid()).max(30).default([]),
   acceptance: z.string().trim().max(4000).default(''),
