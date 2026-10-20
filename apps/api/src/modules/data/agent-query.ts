@@ -1,7 +1,7 @@
-import { dataAgentInputSchemas, dataGetSchemaInputSchema, employeeDataAssociationKey, employeeDataAssociationSchema, type DataAppSqlOperation, type DataAgentToolName, type DataObjectModelSchema, type StructuredDataQuery } from '@workmate/contracts';
+import { dataAgentInputSchemas, dataGetSchemaInputSchema, employeeDataAssociationKey, employeeDataAssociationSchema, type DataAppSqlOperation, type DataAgentToolName, type DataObjectModelSchema, type StructuredDataQuery } from '@openclawx/contracts';
 import { LiveDataError } from './live-database.js';
-import { withDataQueryAccess, type DataQueryExecutor } from '@workmate/agent-core';
-import { agentCoreRunner, type AgentRunner, type KeyValueStore, type RunRecord } from '@workmate/orchestrator';
+import { withDataQueryAccess, type DataQueryExecutor } from '@openclawx/agent-core';
+import { agentCoreRunner, type AgentRunner, type KeyValueStore, type RunRecord } from '@openclawx/orchestrator';
 import { StructuredQueryError } from './structured-query.js';
 import type { ManagedAppQueries } from './app-query.js';
 import {createQueryAssets,explicitQuerySave} from './query-assets.js';

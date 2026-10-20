@@ -1,4 +1,4 @@
-# Workmate 发布前回归清单
+# OpenClawX 发布前回归清单
 
 ## PKG-BUDGET-20261014 · 安装包体积门槛
 
@@ -16,7 +16,7 @@ CI 与 Release 的 macOS ARM64 安装包上限暂从200 MB调整为220 MB（十�
 - [ ] `pnpm voice:ui:regression && pnpm voice:command:regression`
 - [ ] `pnpm quality:console:test`
 - [ ] 可选使用 `pnpm quality:console` 查看本机执行记录和日志
-- [ ] 数据目录 `~/.workmate` 可正常读写
+- [ ] 数据目录 `~/.openclawx` 可正常读写
 
 ## Electron 桌面模式
 
@@ -50,8 +50,8 @@ CI 与 Release 的 macOS ARM64 安装包上限暂从200 MB调整为220 MB（十�
 
 ## AgentScope 模式
 
-- [ ] `WORKMATE_AGENT_ENGINE=agentscope pnpm dev`
-- [ ] `WORKMATE_AGENT_ENGINE=agentscope pnpm web:start`
+- [ ] `OPENCLAWX_AGENT_ENGINE=agentscope pnpm dev`
+- [ ] `OPENCLAWX_AGENT_ENGINE=agentscope pnpm web:start`
 - [ ] 无模型密钥时能优雅回落 stub echo
 - [ ] `pnpm concurrency:regression` 能稳定通过，并观测到 `user-capacity / global-capacity`
 - [ ] MCP 工具可出现在运行时工具集中

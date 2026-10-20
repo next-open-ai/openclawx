@@ -163,11 +163,11 @@ prepared
 6. 增加正常、异步、取消、超时、Provider 失败和产物失败测试；
 7. 更新 SDD、追踪矩阵、部署配置和必要的 Benchmark。
 
-## 12. Workmate 当前落地状态
+## 12. OpenClawX 当前落地状态
 
 图片理解（VIS-M2）扩展 `vision` 能力，通过统一 `model_understand_images` Tool Backend 调用。主模型视觉直读与应用模型定向识图分开：前者直接图文输入，后者由平台绑定原始问题、最近必要上下文、Run授权的图片白名单，再向视觉模型发起请求。文字结果只是识图证据，不是原图。配置复用Provider/能力绑定/员工开关，无新增vision厂商类型；本轮Pi单员工闭环，其他引擎图片传输仍待后续适配。详见 [VIS-M2规格](../sdd/features/image-understanding/M2-application-vision.md)。
 
-Workmate 已同步公共契约、统一 Tool Registry/Dispatcher、员工级能力开关、五类应用模型入口、三类图片协议、异步进度、URL 产物自动落盘，以及 Pi、AgentScope、DSH 对同一 Capability Backend 的复用。`invocationId` 已贯穿执行引擎、Orchestrator、SSE 和 Renderer。非实时语音第二阶段已增加阿里百炼、火山引擎和科大讯飞 Adapter，Provider 专有签名、轮询与音频编码仍收敛在 Capability Backend；TTS 模型可绑定默认系统音色或已授权的克隆音色 ID，主控 Agent 不具备创建声纹的权限。
+OpenClawX 已同步公共契约、统一 Tool Registry/Dispatcher、员工级能力开关、五类应用模型入口、三类图片协议、异步进度、URL 产物自动落盘，以及 Pi、AgentScope、DSH 对同一 Capability Backend 的复用。`invocationId` 已贯穿执行引擎、Orchestrator、SSE 和 Renderer。非实时语音第二阶段已增加阿里百炼、火山引擎和科大讯飞 Adapter，Provider 专有签名、轮询与音频编码仍收敛在 Capability Backend；TTS 模型可绑定默认系统音色或已授权的克隆音色 ID，主控 Agent 不具备创建声纹的权限。
 
 决策模型以 `decision` 应用模型能力登记：Provider 保存地址和密钥，模型目录保存模型 ID 与决策协议，决策守卫只保存启用、观察/强制、失败策略等使用策略并引用应用模型 ID。旧版独立 JEV 连接在加载时迁移为 Provider + 决策模型；运行开始时解析为不可变的 `DecisionRuntimeConfig`。JEV 是首个 `system-one-v1` Adapter，而不是配置域中的特殊模型类型。
 

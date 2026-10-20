@@ -146,9 +146,9 @@ async function restartLocalEmbedding(storageRoot) {
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
-      WORKMATE_LOCAL_EMBEDDING_BACKEND_URL: settings.backendUrl || process.env.WORKMATE_LOCAL_EMBEDDING_BACKEND_URL || '',
-      WORKMATE_LOCAL_EMBEDDING_BACKEND_MODEL: settings.backendModel || process.env.WORKMATE_LOCAL_EMBEDDING_BACKEND_MODEL || '',
-      WORKMATE_LOCAL_EMBEDDING_BACKEND_API_KEY: settings.backendApiKey || process.env.WORKMATE_LOCAL_EMBEDDING_BACKEND_API_KEY || '',
+      OPENCLAWX_LOCAL_EMBEDDING_BACKEND_URL: settings.backendUrl || process.env.OPENCLAWX_LOCAL_EMBEDDING_BACKEND_URL || '',
+      OPENCLAWX_LOCAL_EMBEDDING_BACKEND_MODEL: settings.backendModel || process.env.OPENCLAWX_LOCAL_EMBEDDING_BACKEND_MODEL || '',
+      OPENCLAWX_LOCAL_EMBEDDING_BACKEND_API_KEY: settings.backendApiKey || process.env.OPENCLAWX_LOCAL_EMBEDDING_BACKEND_API_KEY || '',
     },
     silent: true,
   });

@@ -1,4 +1,4 @@
-import { structuredDataQuerySchema, type StructuredDataQuery, type StructuredDataQueryResult, type DataColumn, type DataQueryFilter, type DataQueryPredicate } from '@workmate/contracts';
+import { structuredDataQuerySchema, type StructuredDataQuery, type StructuredDataQueryResult, type DataColumn, type DataQueryFilter, type DataQueryPredicate } from '@openclawx/contracts';
 import { randomUUID } from 'node:crypto';
 
 export class StructuredQueryError extends Error {

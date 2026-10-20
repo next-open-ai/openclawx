@@ -6,11 +6,11 @@
 
 - TA-T10：运行记录改用共享监控窗，结果报告及完整JSON在窗内切换，下载内容按当前服务端快照生成。两端新增回归覆盖历史ID固定、列表刷新不串记录、报告失败重试、关闭后的迟到响应隔离、JSON下载文件名和完整内容；task-applications:regression通过。隔离浏览器验证报告iframe及JSON内容显示；内置浏览器未返回Blob下载事件，因此只记录下载逻辑回归通过，不声称浏览器下载落盘验收成功。真实用户任务及数据库未修改，API仅增加报告读取的可选中止信号。
 
-- TA-T9：监控组件及管理/应用两处立即执行入口已接通；已有只读接口增加可选AbortSignal，不变更API权限或任务执行规则。两端 task-applications:regression 新增精确run匹配、无记录/排队/审批/终态、读取异常不误报失败、无并发读取、关闭只终止读取、自动打开监控的测试；真实Vue编译检查及构建通过。Workmate隔离浏览器预览检查1280×720桌面、390×844窄屏、关闭与完成态，并据此修正低高度布局；仅fixture，不是真实模型端到端。EasyMate保持单Pi，共用监控组件；新增至27模块同步门禁。可用 `node scripts/task-monitor-preview.mjs` 启动隔离视觉样例。本轮未运行真实任务或修改数据库。
+- TA-T9：监控组件及管理/应用两处立即执行入口已接通；已有只读接口增加可选AbortSignal，不变更API权限或任务执行规则。两端 task-applications:regression 新增精确run匹配、无记录/排队/审批/终态、读取异常不误报失败、无并发读取、关闭只终止读取、自动打开监控的测试；真实Vue编译检查及构建通过。OpenClawX隔离浏览器预览检查1280×720桌面、390×844窄屏、关闭与完成态，并据此修正低高度布局；仅fixture，不是真实模型端到端。EasyMate保持单Pi，共用监控组件；新增至27模块同步门禁。可用 `node scripts/task-monitor-preview.mjs` 启动隔离视觉样例。本轮未运行真实任务或修改数据库。
 
 - TA-T8：已增加行内编辑/运行操作，详情及报告改为Teleport弹窗；保存回列表、不自动展开，运行反馈包含任务名称。两端实际Vue脚本回归覆盖无详情直接运行、弹窗开关、行内编辑保存及既有重试/历史行为；renderer构建（含vue-tsc）通过。API和数据库未改，不新增模型调用或权限；真实浏览器视觉/焦点验收未执行。
 
-- TA-T7：删除旧模板管理组件、选择器、前端旧创建方法及对应卡片样式；公开旧模板创建链路由 creation-routes 返回410，旧任务编辑继续用原ID。HTTP回归验证停用入口与直接任务生命周期；应用API回归新增完成后编辑、再次执行、一次计划完成后复用、删除保留历史；UI回归验证重复运行/失败重试ID/修改参数/删除。旧回归命令转到新的任务生命周期回归。两端API test/build通过（Workmate 133通过2跳过；EasyMate 125通过2跳过），前端构建/任务交互回归通过；26模块同步门禁通过，EasyMate仍为单Pi。仅移除源码和创建入口，不删除用户数据；旧客户端POST创建返回410是有意的不兼容变化。真实浏览器/模型验收未执行，Workmate原有语音测试类型错误仍另行保留。
+- TA-T7：删除旧模板管理组件、选择器、前端旧创建方法及对应卡片样式；公开旧模板创建链路由 creation-routes 返回410，旧任务编辑继续用原ID。HTTP回归验证停用入口与直接任务生命周期；应用API回归新增完成后编辑、再次执行、一次计划完成后复用、删除保留历史；UI回归验证重复运行/失败重试ID/修改参数/删除。旧回归命令转到新的任务生命周期回归。两端API test/build通过（OpenClawX 133通过2跳过；EasyMate 125通过2跳过），前端构建/任务交互回归通过；26模块同步门禁通过，EasyMate仍为单Pi。仅移除源码和创建入口，不删除用户数据；旧客户端POST创建返回410是有意的不兼容变化。真实浏览器/模型验收未执行，OpenClawX原有语音测试类型错误仍另行保留。
 
 - TA-T6：全屏分步交互已实现；两端 task-applications:regression 与 renderer build 通过。新增确认后前进、失败停留、返回保留输入和帧实例、提交失败保留设置/请求ID、成功进入记录的回归。未改变API或数据库权限；未做真实浏览器视觉/键盘验收。
 
@@ -20,7 +20,7 @@
 - TA-T3：`packages/orchestrator/src/test/task-application-runtime.test.ts` 验证排队、真实脚本桩审批续跑、持久化关联观察、长期任务不阻断后续调度。
 - TA-T4：`scripts/task-applications-ui-regression.mjs` 编译实际Vue脚本，验证宿主确认、帧隔离、立即/定时、网络重试编号及编辑入口；`pnpm task-template:regression` 验证旧路径兼容。
 - 实际命令：contracts build、orchestrator test、API test/build、renderer build、task-template:regression 与新增UI脚本均通过。orchestrator 101/101；API 132 通过、2 跳过（共134）。renderer 构建保留原有包体大小/动态导入警告。
-- 隔离 `pnpm concurrency:regression` 启动临时服务并运行其 loadtest：并发限流断言通过，不修改现有数据目录。Workmate 使用 AgentScope stub，并校验 DSH 桥接。
+- 隔离 `pnpm concurrency:regression` 启动临时服务并运行其 loadtest：并发限流断言通过，不修改现有数据目录。OpenClawX 使用 AgentScope stub，并校验 DSH 桥接。
 - 文档及手册已同步；EasyMate `pnpm product:regression` 与23个登记业务模块的 `pnpm work-results:parity` 通过。未引入新引擎或多Agent能力。
 - API typecheck 仍被本轮之前已存在的 voice/barge-in.test.ts:65 参数 raw 隐式 any 阻断；API 构建和测试通过，未改无关测试。
 - 未使用真实用户任务、数据库写入或模型凭据验收；未做浏览器视觉/键盘人工验收，不能将脚本桩与Vue VM回归当作真实供应商端到端成功。

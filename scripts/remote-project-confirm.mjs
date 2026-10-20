@@ -2,17 +2,17 @@
  * Remote "confirm without context" acceptance (M0).
  *
  * Proves the server-side context assembler: with domain KV seeded (employee
- * catalog + runtime prefs) and the keyring loaded via WORKMATE_SECRETS_FILE,
+ * catalog + runtime prefs) and the keyring loaded via OPENCLAWX_SECRETS_FILE,
  * a remote terminal can confirm a desktop project with `{}` — no client-side
  * runContext — and the orchestrator resolves model/skills/harness itself.
  *
- * Launch:  WORKMATE_SECRETS_FILE=<file> WORKMATE_ORCH_RUNNER=memory-echo \
- *          WORKMATE_DATA_DIR=<tmp> WORKMATE_API_PORT=4404 node apps/api/dist/main.cjs
- * Run:     WORKMATE_API_PORT=4404 node scripts/remote-project-confirm.mjs
+ * Launch:  OPENCLAWX_SECRETS_FILE=<file> OPENCLAWX_ORCH_RUNNER=memory-echo \
+ *          OPENCLAWX_DATA_DIR=<tmp> OPENCLAWX_API_PORT=4404 node apps/api/dist/main.cjs
+ * Run:     OPENCLAWX_API_PORT=4404 node scripts/remote-project-confirm.mjs
  */
 import assert from 'node:assert/strict';
 
-const port = process.env.WORKMATE_API_PORT || '47832';
+const port = process.env.OPENCLAWX_API_PORT || '47832';
 const base = `http://127.0.0.1:${port}/api/orch`;
 
 async function json(pathname, init) {

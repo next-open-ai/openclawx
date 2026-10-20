@@ -1,4 +1,4 @@
-# Workmate 系统架构总览
+# OpenClawX 系统架构总览
 
 > 详细权威文档：[全局架构](architecture.md)
 

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { AgentEngineId } from '@workmate/contracts';
-import { AGENT_ENGINE_IDS } from '@workmate/contracts';
+import type { AgentEngineId } from '@openclawx/contracts';
+import { AGENT_ENGINE_IDS } from '@openclawx/contracts';
 
 export type ExecutionRoutingConfig = {
   /** Empty / omitted → all registered backends may be selected. */
@@ -11,8 +11,8 @@ export type ExecutionRoutingConfig = {
 };
 
 function runtimeSettingsFile(): string {
-  const dataDir = process.env.WORKMATE_DATA_DIR
-    || path.join(process.env.HOME || process.env.USERPROFILE || '/tmp', '.workmate');
+  const dataDir = process.env.OPENCLAWX_DATA_DIR
+    || path.join(process.env.HOME || process.env.USERPROFILE || '/tmp', '.openclawx');
   return path.join(dataDir, 'runtime-settings.json');
 }
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {Script,createContext} from 'node:vm';
-import {TaskReportUiSchema,TaskTemplateConfigurationSchema,type TaskReportUi} from '@workmate/contracts';
+import {TaskReportUiSchema,TaskTemplateConfigurationSchema,type TaskReportUi} from '@openclawx/contracts';
 import {reportUiHtml,validateReportUi} from '../task-report-ui.js';
 import {TemplateTaskService} from '../template-tasks.js';
 import {MemoryStore} from '../storage/memory.js';

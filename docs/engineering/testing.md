@@ -14,7 +14,7 @@
 
 | 层级 | 范围 | 入口 |
 |------|------|------|
-| 静态 | 类型 / 构建 | `pnpm --filter @workmate/renderer typecheck`、各包 build |
+| 静态 | 类型 / 构建 | `pnpm --filter @openclawx/renderer typecheck`、各包 build |
 | 单元 | 权限、路径、调度、纯函数 | 各包 `vitest` / `pnpm test` |
 | 集成 | Fastify SSE、工具事件、存储 | 临时工作区 + mock Provider |
 | 专项回归 | 并发运行时、dsh MCP/Skills | `pnpm concurrency:regression`、`pnpm dsh:regression` |
@@ -46,7 +46,7 @@ pnpm concurrency:regression
 pnpm dsh:regression
 ```
 
-需要图形化运行、查看实时日志或保留本地执行记录时，使用 `pnpm quality:console` 打开统一测试控制台（默认 `http://127.0.0.1:47840`）。控制台只运行代码内白名单命令；并发测试默认预览，显式选择实测后才访问本地 Workmate API。
+需要图形化运行、查看实时日志或保留本地执行记录时，使用 `pnpm quality:console` 打开统一测试控制台（默认 `http://127.0.0.1:47840`）。控制台只运行代码内白名单命令；并发测试默认预览，显式选择实测后才访问本地 OpenClawX API。
 
 发布前清单见 `docs/releases/checklist.md`。
 

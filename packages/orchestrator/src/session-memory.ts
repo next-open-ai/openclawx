@@ -4,7 +4,7 @@
  * Transcript (`ChatSession.messages`) is the source of truth. `session.memory`
  * is a derived rolling summary with a watermark (`coveredUntilId`).
  *
- * @module @workmate/orchestrator/session-memory
+ * @module @openclawx/orchestrator/session-memory
  */
 
 import {
@@ -12,11 +12,11 @@ import {
   SESSION_MEMORY_KEEP_RECENT,
   sessionSummaryMessagePair,
   summarizeSessionMemory,
-} from '@workmate/agent-core';
-import type { ModelConfig } from '@workmate/contracts';
+} from '@openclawx/agent-core';
+import type { ModelConfig } from '@openclawx/contracts';
 import type { ChatMessage, ChatSession, SessionMemory } from './types.js';
 
-export type ModelTurn = import('@workmate/contracts').ChatModelMessage;
+export type ModelTurn = import('@openclawx/contracts').ChatModelMessage;
 
 /** Canonical non-empty messages in conversation order. */
 export function canonicalTurns(messages: ChatMessage[]): ChatMessage[] {

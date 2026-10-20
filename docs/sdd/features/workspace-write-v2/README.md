@@ -24,11 +24,11 @@ Contracts: additive workspace_write_status({writeId,totalParts?:number|null}); s
 
 ## Verification evidence (2026-10-11)
 
-- `pnpm --filter @workmate/contracts build`: passed.
-- `pnpm --filter @workmate/agent-core test`: 190 passed, including five new FW tests. Real SDK argument validator admits ~14KB CSS and ~20KB JS in one call each; wrong total, duplicate/conflicting sequences, denied paths, concurrent append, cancellation and failed persistence covered. This is deterministic capability verification, not a live-model latency benchmark.
-- `pnpm --filter @workmate/orchestrator test`: 94 passed.
-- `pnpm --filter @workmate/api test`: 48 passed, 2 skipped (existing suite skips).
-- `pnpm --filter @workmate/api build`: passed.
+- `pnpm --filter @openclawx/contracts build`: passed.
+- `pnpm --filter @openclawx/agent-core test`: 190 passed, including five new FW tests. Real SDK argument validator admits ~14KB CSS and ~20KB JS in one call each; wrong total, duplicate/conflicting sequences, denied paths, concurrent append, cancellation and failed persistence covered. This is deterministic capability verification, not a live-model latency benchmark.
+- `pnpm --filter @openclawx/orchestrator test`: 94 passed.
+- `pnpm --filter @openclawx/api test`: 48 passed, 2 skipped (existing suite skips).
+- `pnpm --filter @openclawx/api build`: passed.
 - `pnpm concurrency:regression`: passed, isolated temporary data directory, DSH bridge regression and AgentScope stub concurrency/load tests. No real model billing.
 - `git diff --check`: passed.
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DEFAULT_EMBEDDING_META, KnowledgeBaseRuntimeSchema } from '@workmate/contracts';
+import { DEFAULT_EMBEDDING_META, KnowledgeBaseRuntimeSchema } from '@openclawx/contracts';
 
 test('embedding model metadata has stable product defaults', () => {
   assert.deepEqual(DEFAULT_EMBEDDING_META, {

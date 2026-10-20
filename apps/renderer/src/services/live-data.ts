@@ -1,4 +1,4 @@
-import type { SavedDatabaseConnection, LiveDataObjectInfo } from '@workmate/contracts';
+import type { SavedDatabaseConnection, LiveDataObjectInfo } from '@openclawx/contracts';
 export type { SavedDatabaseConnection, LiveDataObjectInfo };
 export async function liveDataRequest<T>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> {
   const base = location.protocol === 'file:' ? 'http://127.0.0.1:47832' : '';

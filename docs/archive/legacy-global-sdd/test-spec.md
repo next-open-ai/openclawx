@@ -1,4 +1,4 @@
-# Workmate 测试规格（历史总规格）
+# OpenClawX 测试规格（历史总规格）
 
 > 状态：历史参考。当前测试策略见 [测试与质量中心](../../quality/README.md)，新功能测试规格进入 [功能 SDD](../../sdd/README.md)。
 
@@ -6,7 +6,7 @@
 
 | 层级 | 覆盖目标 | 方式 |
 | --- | --- | --- |
-| 静态检查 | Vue/TS 类型、跨包契约、构建入口。 | `pnpm --filter @workmate/renderer typecheck`，各包 build。 |
+| 静态检查 | Vue/TS 类型、跨包契约、构建入口。 | `pnpm --filter @openclawx/renderer typecheck`，各包 build。 |
 | 单元测试 | 调度日期、权限判定、路径归一化、项目状态变迁。 | Vitest（后续补充）。 |
 | 集成测试 | Fastify SSE、Agent 工具事件、Electron IPC、SQLite 与资产归档。 | 临时工作区 + mock Provider。 |
 | 端到端/人工验收 | 桌面窗口、流式 UI、审批与实际模型任务。 | Electron 开发环境与发布包。 |
@@ -41,10 +41,10 @@
 ## 4. 发布前最小命令
 
 ```bash
-pnpm --filter @workmate/contracts build
-pnpm --filter @workmate/agent-core build
-pnpm --filter @workmate/api build
-pnpm --filter @workmate/renderer typecheck
-pnpm --filter @workmate/renderer build
-pnpm --filter @workmate/desktop stage
+pnpm --filter @openclawx/contracts build
+pnpm --filter @openclawx/agent-core build
+pnpm --filter @openclawx/api build
+pnpm --filter @openclawx/renderer typecheck
+pnpm --filter @openclawx/renderer build
+pnpm --filter @openclawx/desktop stage
 ```

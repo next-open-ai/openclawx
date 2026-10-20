@@ -4,7 +4,7 @@
 
 已实现并验证：独立全局队列，单并发、最多64个待写路径，同卡片待写内容合并为最新版本；通过fs.promises进行私有临时文件+rename原子写。数据库保存后立即返回sqlite/queued（队列满为skipped），mirrorSaved=false不冒充文件已完成。JSON写失败只输出不含内容的告警，不回滚数据库、不无限重试；待写副本在进程退出时可能丢失。SQLite持久化仍同步等待，未改成不可靠的内存成功；数据库自身慢磁盘问题不在本轮承诺范围内。
 
-实际验证：`pnpm --filter @workmate/agent-core build` + `node --test --test-reporter=dot packages/agent-core/dist/test/*.js` 共204项全部通过；新增3项EX-T2回归（同路径合并/容量、真实文件副本失败、实际异步rename悬挂时save/load仍返回）。`pnpm --filter @workmate/api typecheck`、`pnpm concurrency:regression`（含DSH/AgentScope隔离桩）、`git diff --check`通过。最初完整回归中新用例固定10ms等待启动不稳定，改为显式启动信号后重跑通过。未调用真实模型/知识库、未重启用户服务、未进行真实满盘或大目录压力测试。无需数据迁移，回滚不删除SQLite及已有卡片。
+实际验证：`pnpm --filter @openclawx/agent-core build` + `node --test --test-reporter=dot packages/agent-core/dist/test/*.js` 共204项全部通过；新增3项EX-T2回归（同路径合并/容量、真实文件副本失败、实际异步rename悬挂时save/load仍返回）。`pnpm --filter @openclawx/api typecheck`、`pnpm concurrency:regression`（含DSH/AgentScope隔离桩）、`git diff --check`通过。最初完整回归中新用例固定10ms等待启动不稳定，改为显式启动信号后重跑通过。未调用真实模型/知识库、未重启用户服务、未进行真实满盘或大目录压力测试。无需数据迁移，回滚不删除SQLite及已有卡片。
 
 2026-10-13。EX-R1–R6 / EX-T1 已实现并完成隔离验证。
 
@@ -28,4 +28,4 @@ Pi与AgentScope使用同一宿主工具和来源上下文，DSH未新增经验�
 
 未执行完整浏览器/桌面E2E、真实知识库同步或真实模型行为验收；UI使用SFC类型/构建和处理函数回归，不冒充视觉验收。配置测试阶段仍有正常网络请求的传输超时，区别于运行时可用性检测；后台任务非持久化投递队列，不承诺恰好一次远端写入。
 
-无需迁移或覆盖用户业务数据。默认路径`.workmate/experience/experience.sqlite`及`cards/*.json`（可由原环境变量改根）；回滚保留SQLite、JSON和旧文件，旧二进制只读旧文件，不保证读取新SQLite。知识库已接收的文档不自动删除。
+无需迁移或覆盖用户业务数据。默认路径`.openclawx/experience/experience.sqlite`及`cards/*.json`（可由原环境变量改根）；回滚保留SQLite、JSON和旧文件，旧二进制只读旧文件，不保证读取新SQLite。知识库已接收的文档不自动删除。

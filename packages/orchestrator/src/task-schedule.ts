@@ -1,4 +1,4 @@
-import type {TaskSchedule} from '@workmate/contracts';
+import type {TaskSchedule} from '@openclawx/contracts';
 
 /** Next occurrence strictly after from; calendar time belongs to the configured zone. */
 export function nextTaskSchedule(schedule:TaskSchedule,from:number):number|null {

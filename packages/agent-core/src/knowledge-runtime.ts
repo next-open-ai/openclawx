@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { completeSimple } from '@mariozechner/pi-ai';
 import { z } from 'zod';
-import type { KnowledgeBaseRuntime, ModelCapabilityRuntime, ModelConfig, OntologyNode } from '@workmate/contracts';
+import type { KnowledgeBaseRuntime, ModelCapabilityRuntime, ModelConfig, OntologyNode } from '@openclawx/contracts';
 import { Type } from '@sinclair/typebox';
 import { defineAgentTool, type AgentTool } from './pi-tools.js';
 import {
@@ -82,7 +82,7 @@ function text(value: unknown) {
 }
 
 function knowledgeRoot() {
-  return process.env.WORKMATE_KNOWLEDGE_DIR?.trim() || path.resolve(process.cwd(), '.workmate-knowledge');
+  return process.env.OPENCLAWX_KNOWLEDGE_DIR?.trim() || path.resolve(process.cwd(), '.openclawx-knowledge');
 }
 
 export function resolveKnowledgeDataDir(kb: KnowledgeBaseRuntime) {
@@ -441,7 +441,7 @@ export async function ingestKnowledge(input: {
     const auth = requireBailianAuth(input.kb);
     const categoryId = String(input.kb.categoryId || '').trim();
     if (!categoryId) {
-      throw new Error('Bailian upload requires categoryId. Recreate the knowledge base from Workmate or set categoryId on the base.');
+      throw new Error('Bailian upload requires categoryId. Recreate the knowledge base from OpenClawX or set categoryId on the base.');
     }
     let bytes: Buffer;
     let fileName = String(input.fileName || '').trim();

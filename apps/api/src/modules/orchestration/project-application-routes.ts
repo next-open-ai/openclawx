@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyPluginAsync } from 'fastify';
-import type { Orchestrator } from '@workmate/orchestrator';
-import { PublishProjectApplicationSchema } from '@workmate/contracts';
+import type { Orchestrator } from '@openclawx/orchestrator';
+import { PublishProjectApplicationSchema } from '@openclawx/contracts';
 import { requireAuth } from '../auth/service.js';
 import { ApplicationError, projectApplications } from './project-application.js';
 import { managedAppDocument } from '../data/app-query-page.js';

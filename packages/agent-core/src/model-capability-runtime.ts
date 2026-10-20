@@ -4,8 +4,8 @@ import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import type { AgentTool } from '@mariozechner/pi-agent-core';
-import type { ImageGenerationProtocol, ModelCapabilityRuntime } from '@workmate/contracts';
-import { suggestedSpeechVoices } from '@workmate/contracts';
+import type { ImageGenerationProtocol, ModelCapabilityRuntime } from '@openclawx/contracts';
+import { suggestedSpeechVoices } from '@openclawx/contracts';
 import { embedOpenAiCompatible } from './embedding-http.js';
 import { materializeAudioInput } from './audio-input.js';
 import { createVisionCapabilityTool, type VisionToolContext } from './vision-capability.js';
@@ -188,7 +188,7 @@ async function providerFetch(url: string, init: RequestInit, signal: AbortSignal
 }
 
 async function downloadWithCurl(url: URL) {
-  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-image-'));
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-image-'));
   const target = path.join(tempRoot, 'download');
   try {
     await execFileAsync('curl', [

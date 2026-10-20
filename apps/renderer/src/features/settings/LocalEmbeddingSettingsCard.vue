@@ -192,7 +192,7 @@ async function handleRegister() {
       {{ status.state.lastError }}
     </div>
     <p class="mt-3 text-xs leading-relaxed text-[var(--muted)]">
-      也可通过环境变量配置真实后端：`WORKMATE_LOCAL_EMBEDDING_BACKEND_URL`、`WORKMATE_LOCAL_EMBEDDING_BACKEND_MODEL`、`WORKMATE_LOCAL_EMBEDDING_BACKEND_API_KEY`。若设置页已保存值，则优先使用设置页配置。
+      也可通过环境变量配置真实后端：`OPENCLAWX_LOCAL_EMBEDDING_BACKEND_URL`、`OPENCLAWX_LOCAL_EMBEDDING_BACKEND_MODEL`、`OPENCLAWX_LOCAL_EMBEDDING_BACKEND_API_KEY`。若设置页已保存值，则优先使用设置页配置。
     </p>
     <label class="mt-4 flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm">
       <input

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue';
-import type { ProjectApplicationStatus, ProjectApplicationView, DataAppOperationSummary, DataAppAccess, DataSchemaPlan } from '@workmate/contracts';
+import type { ProjectApplicationStatus, ProjectApplicationView, DataAppOperationSummary, DataAppAccess, DataSchemaPlan } from '@openclawx/contracts';
 import * as orch from '../../services/orchestration.js';
 import { liveDataRequest } from '../../services/live-data';
 
@@ -18,21 +18,21 @@ async function approve(operation: DataAppOperationSummary) {
   if (!dataApp.value?.appId || !dataApp.value.canApprove || !operation.revision) return;
   if (!window.confirm(`启用数据库写操作？\n${operation.description}\n${operation.sql}\n批准后新增和保存可直接执行；删除也可直接提交。此处不修改数据。`)) return;
   const epoch = generation;
-  try { await liveDataRequest(`/apps/${encodeURIComponent(dataApp.value.appId)}/operations/${encodeURIComponent(operation.operationId)}/approve`, 'POST', { revision: operation.revision }); if (epoch === generation) { await refreshDataApp(); frame.value?.contentWindow?.postMessage({ type: 'workmate.app.access-changed' }, '*'); } }
+  try { await liveDataRequest(`/apps/${encodeURIComponent(dataApp.value.appId)}/operations/${encodeURIComponent(operation.operationId)}/approve`, 'POST', { revision: operation.revision }); if (epoch === generation) { await refreshDataApp(); frame.value?.contentWindow?.postMessage({ type: 'openclawx.app.access-changed' }, '*'); } }
   catch (cause) { if (epoch === generation) error.value = cause instanceof Error ? cause.message : '批准失败'; }
 }
 async function receive(event: MessageEvent) {
-  if (!dialog.value?.open || !dataApp.value?.appId || event.source !== frame.value?.contentWindow || !['workmate.app.query','workmate.app.mutate','workmate.app.access'].includes(event.data?.type)) return;
+  if (!dialog.value?.open || !dataApp.value?.appId || event.source !== frame.value?.contentWindow || !['openclawx.app.query','openclawx.app.mutate','openclawx.app.access'].includes(event.data?.type)) return;
   const d = event.data, epoch = generation, appId = dataApp.value.appId;
-  const send = (v: Record<string, unknown>) => { if (epoch === generation && dialog.value?.open && event.source === frame.value?.contentWindow) frame.value.contentWindow?.postMessage({ type: 'workmate.app.result', id: d.id, ...v }, '*'); };
+  const send = (v: Record<string, unknown>) => { if (epoch === generation && dialog.value?.open && event.source === frame.value?.contentWindow) frame.value.contentWindow?.postMessage({ type: 'openclawx.app.result', id: d.id, ...v }, '*'); };
   if (!Number.isSafeInteger(d.id) || typeof d.operationId !== 'string') { send({ ok: false, code: 'APP_BRIDGE_INVALID_REQUEST', error: '数据请求格式错误，请检查操作 ID 和请求编号' }); return; }
   if (JSON.stringify(d).length > 20000) { send({ ok: false, code: 'APP_BRIDGE_PAYLOAD_TOO_LARGE', error: '数据请求超过大小限制，请减少参数内容' }); return; }
   if (inflight >= 4) { send({ ok: false, code: 'APP_BRIDGE_BUSY', error: '数据通道正在处理其他请求，请稍后再试' }); return; }
   inflight++;
   try {
-    if (d.type === 'workmate.app.access') { const access = await liveDataRequest<DataAppAccess>(`/apps/${encodeURIComponent(appId)}/operations`); send({ ok: true, data: access }); return; }
+    if (d.type === 'openclawx.app.access') { const access = await liveDataRequest<DataAppAccess>(`/apps/${encodeURIComponent(appId)}/operations`); send({ ok: true, data: access }); return; }
     let body: Record<string, unknown> = { operationId: d.operationId, parameters: d.parameters || {} }, path = 'query';
-    if (d.type === 'workmate.app.mutate') {
+    if (d.type === 'openclawx.app.mutate') {
       await refreshDataApp();
       if (epoch !== generation) return;
       const op = dataApp.value?.operations.find(o => o.operationId === d.operationId);

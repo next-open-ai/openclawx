@@ -5,7 +5,7 @@ import type {
   UnifiedToolDescriptor,
   UnifiedToolInvocation,
   UnifiedToolResult,
-} from '@workmate/contracts';
+} from '@openclawx/contracts';
 import { extractToolDetails } from './pi-tools.js';
 
 export type UnifiedToolRegistration = {

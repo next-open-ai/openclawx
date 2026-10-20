@@ -4,12 +4,12 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
-/** Pinned npm dist-tag/version for on-demand desktop installs. Override with WORKMATE_DSH_NPM_VERSION. */
-export const DSH_RUNTIME_NPM_VERSION = process.env.WORKMATE_DSH_NPM_VERSION?.trim() || '0.1.1-rc.2';
+/** Pinned npm dist-tag/version for on-demand desktop installs. Override with OPENCLAWX_DSH_NPM_VERSION. */
+export const DSH_RUNTIME_NPM_VERSION = process.env.OPENCLAWX_DSH_NPM_VERSION?.trim() || '0.1.1-rc.2';
 
-const READY_MARKER = '.workmate-dsh-ready.json';
+const READY_MARKER = '.openclawx-dsh-ready.json';
 
-/** Packages required by Workmate-generated cordis + JSON-RPC bin. */
+/** Packages required by OpenClawX-generated cordis + JSON-RPC bin. */
 export const DSH_RUNTIME_PACKAGES = [
   '@deepseek-ai/dsh-sdk-jsonrpc-demo',
   '@deepseek-ai/dsh-sdk-jsonrpc-server',
@@ -40,12 +40,12 @@ export type DshRuntimeStatus = {
   detail: string;
 };
 
-function workmateDataDir(): string {
-  return process.env.WORKMATE_DATA_DIR?.trim()
-    || path.join(os.homedir(), '.workmate');
+function openclawxDataDir(): string {
+  return process.env.OPENCLAWX_DATA_DIR?.trim()
+    || path.join(os.homedir(), '.openclawx');
 }
 
-export function dshRuntimeRoot(dataDir = workmateDataDir()): string {
+export function dshRuntimeRoot(dataDir = openclawxDataDir()): string {
   return path.join(dataDir, 'dsh-runtime');
 }
 
@@ -115,12 +115,12 @@ function findSiblingHarness(start: string): string | null {
 }
 
 /**
- * Probe whether a usable dsh JSON-RPC runtime is available for Workmate.
- * Prefers on-demand user install under ~/.workmate/dsh-runtime.
+ * Probe whether a usable dsh JSON-RPC runtime is available for OpenClawX.
+ * Prefers on-demand user install under ~/.openclawx/dsh-runtime.
  */
 export function probeDshRuntime(options?: { moduleDir?: string }): DshRuntimeStatus {
   const root = dshRuntimeRoot();
-  const binEnv = process.env.WORKMATE_DSH_BIN?.trim();
+  const binEnv = process.env.OPENCLAWX_DSH_BIN?.trim();
   if (binEnv) {
     return {
       ok: true,
@@ -128,7 +128,7 @@ export function probeDshRuntime(options?: { moduleDir?: string }): DshRuntimeSta
       bin: binEnv,
       version: DSH_RUNTIME_NPM_VERSION,
       source: 'env-bin',
-      detail: `WORKMATE_DSH_BIN=${binEnv}`,
+      detail: `OPENCLAWX_DSH_BIN=${binEnv}`,
     };
   }
 
@@ -159,10 +159,10 @@ export function probeDshRuntime(options?: { moduleDir?: string }): DshRuntimeSta
       };
     }
   } catch {
-    /* not in workmate deps */
+    /* not in openclawx deps */
   }
 
-  const fromEnvRoot = process.env.WORKMATE_DSH_ROOT?.trim();
+  const fromEnvRoot = process.env.OPENCLAWX_DSH_ROOT?.trim();
   if (fromEnvRoot && isHarnessRoot(fromEnvRoot)) {
     const built = path.join(fromEnvRoot, 'packages/examples/jsonrpc-demo/lib/bin.js');
     const src = path.join(fromEnvRoot, 'packages/examples/jsonrpc-demo/src/bin.ts');
@@ -173,7 +173,7 @@ export function probeDshRuntime(options?: { moduleDir?: string }): DshRuntimeSta
         bin: exists(built) ? built : src,
         version: null,
         source: 'sibling',
-        detail: `WORKMATE_DSH_ROOT=${fromEnvRoot}`,
+        detail: `OPENCLAWX_DSH_ROOT=${fromEnvRoot}`,
       };
     }
   }
@@ -331,7 +331,7 @@ function listAbsoluteNpmCandidates(env: NodeJS.ProcessEnv): string[] {
 
 function resolveNpmCommand(): { command: string; argsPrefix: string[]; label: string; env: NodeJS.ProcessEnv } {
   const env = enrichedProcessEnv();
-  const fromEnv = process.env.WORKMATE_NPM?.trim();
+  const fromEnv = process.env.OPENCLAWX_NPM?.trim();
   if (fromEnv) {
     return { command: fromEnv, argsPrefix: [], label: fromEnv, env };
   }
@@ -401,7 +401,7 @@ function resolveNpmCommand(): { command: string; argsPrefix: string[]; label: st
   }
 
   throw new Error(
-    '未找到 npm，无法按需安装 dsh。请先安装 Node.js（含 npm），或设置 WORKMATE_NPM 指向 npm 可执行文件后重试。桌面版已尝试 nvm / Homebrew / 登录 Shell PATH。',
+    '未找到 npm，无法按需安装 dsh。请先安装 Node.js（含 npm），或设置 OPENCLAWX_NPM 指向 npm 可执行文件后重试。桌面版已尝试 nvm / Homebrew / 登录 Shell PATH。',
   );
 }
 
@@ -485,7 +485,7 @@ function runNpmInstall(options: {
 }
 
 /**
- * Install Workmate's dsh JSON-RPC runtime with progress events.
+ * Install OpenClawX's dsh JSON-RPC runtime with progress events.
  * Atomic: installs into a temp directory then renames into place.
  */
 export async function ensureDshRuntimeInstalledWithProgress(options?: {
@@ -534,10 +534,10 @@ export async function ensureDshRuntimeInstalledWithProgress(options?: {
   emit({ type: 'log', message: `已创建临时目录：${staging}` });
 
   const packageJson = {
-    name: 'workmate-dsh-runtime',
+    name: 'openclawx-dsh-runtime',
     private: true,
     version: '0.0.0',
-    description: 'On-demand DeepSeek Harness JSON-RPC runtime for Workmate',
+    description: 'On-demand DeepSeek Harness JSON-RPC runtime for OpenClawX',
   };
   fs.writeFileSync(path.join(staging, 'package.json'), `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8');
   emit({ type: 'log', message: '已写入 package.json' });
@@ -674,10 +674,10 @@ export function ensureDshRuntimeInstalled(options?: {
   fs.writeFileSync(
     path.join(staging, 'package.json'),
     `${JSON.stringify({
-      name: 'workmate-dsh-runtime',
+      name: 'openclawx-dsh-runtime',
       private: true,
       version: '0.0.0',
-      description: 'On-demand DeepSeek Harness JSON-RPC runtime for Workmate',
+      description: 'On-demand DeepSeek Harness JSON-RPC runtime for OpenClawX',
     }, null, 2)}\n`,
     'utf8',
   );

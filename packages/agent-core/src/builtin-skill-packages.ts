@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { AgentSkillRuntime } from '@workmate/contracts';
+import type { AgentSkillRuntime } from '@openclawx/contracts';
 
 /** Stable identifier used by the PDF Skill and its private runtime adapter. */
 export const PDF_SKILL_ID = 'skill-baseline-pdf-report';
@@ -41,12 +41,12 @@ for raw in str(data.get('content') or '').splitlines():
     safe = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
     story.append(Paragraph(safe[1:].strip() if line.startswith('#') else safe, head if line.startswith('#') else body))
 SimpleDocTemplate(out, pagesize=A4, leftMargin=18*mm, rightMargin=18*mm, topMargin=16*mm, bottomMargin=16*mm).build(story)
-print('WORKMATE_DELIVERABLE:' + out)
+print('OPENCLAWX_DELIVERABLE:' + out)
 `;
 
 /** Materialize bundled business Skills into the managed Skill library. */
 export async function attachBuiltinSkillPackages(skills: AgentSkillRuntime[]): Promise<AgentSkillRuntime[]> {
-  const root = process.env.WORKMATE_SKILLS_DIR?.trim();
+  const root = process.env.OPENCLAWX_SKILLS_DIR?.trim();
   if (!root) return skills;
   return Promise.all(skills.map(async (skill) => {
     if (skill.id !== PDF_SKILL_ID) return skill;

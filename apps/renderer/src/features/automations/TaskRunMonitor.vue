@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {computed,ref,watch,nextTick,onMounted,onBeforeUnmount} from 'vue';
-import type {TemplateTaskRun} from '@workmate/contracts';
+import type {TemplateTaskRun} from '@openclawx/contracts';
 import {templateTasksApi as api} from '../../services/template-tasks';
 import {getRunRecord,type ServerRunRecord} from '../../services/orchestration';
 const props=defineProps<{taskId:string;runId:string;taskName:string;requestError?:string}>();
@@ -106,7 +106,7 @@ onBeforeUnmount(()=>{disposed=true;epoch++;reportEpoch++;controller?.abort();rep
 <template>
   <Teleport to="body"><div class="mission-backdrop" @keydown.esc="emit('close')">
     <section ref="panel" class="mission" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="mission-title" @keydown.tab="trapFocus" :class="{'is-failed':run?.status==='failed','is-complete':run?.status==='completed'}">
-      <header class="mission-header"><div><div class="eyebrow"><span class="beacon"></span> WORKMATE / MISSION CONTROL</div><h2 id="mission-title">{{taskName}}</h2></div><button class="close-button" @click="emit('close')">关闭监控 ✕</button></header>
+      <header class="mission-header"><div><div class="eyebrow"><span class="beacon"></span> OPENCLAWX / MISSION CONTROL</div><h2 id="mission-title">{{taskName}}</h2></div><button class="close-button" @click="emit('close')">关闭监控 ✕</button></header>
       <div class="mission-body">
         <aside class="telemetry">
           <div class="reactor" :class="{'is-active':!terminal}"><div class="reactor-ring"></div><div class="reactor-core"><span>{{run?.status==='completed'?'✓':run?.status==='failed'?'!':'◈'}}</span><small>EXECUTION NODE</small></div></div>

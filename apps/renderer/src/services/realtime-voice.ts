@@ -1,5 +1,5 @@
 import { getStoredSessionToken } from './auth';
-import { AsrEventSchema, RealtimeVoiceUsageSchema, type AsrPublicSettings, type AsrEvent, type RealtimeVoiceUsage, type VoiceInterruptDiagnostic } from '@workmate/contracts';
+import { AsrEventSchema, RealtimeVoiceUsageSchema, type AsrPublicSettings, type AsrEvent, type RealtimeVoiceUsage, type VoiceInterruptDiagnostic } from '@openclawx/contracts';
 export { RealtimeVoiceUsageSchema };
 export type { RealtimeVoiceUsage };
 
@@ -42,7 +42,7 @@ function authHeaders(json = false) {
   const token = getStoredSessionToken();
   return {
     ...(json ? { 'content-type': 'application/json' } : {}),
-    ...(token ? { 'x-workmate-session': token } : {}),
+    ...(token ? { 'x-openclawx-session': token } : {}),
   };
 }
 

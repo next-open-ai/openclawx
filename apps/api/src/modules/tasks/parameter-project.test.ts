@@ -4,10 +4,10 @@ import { Script, createContext } from 'node:vm';
 import { mkdtemp, readFile, writeFile, symlink, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { Orchestrator, TemplateTaskService } from '@workmate/orchestrator';
+import { Orchestrator, TemplateTaskService } from '@openclawx/orchestrator';
 import { ParameterProjects } from './parameter-project.js';
 import {parameterSkillOptions} from './parameter-skill-options.js';
-import {MemoryStore} from '@workmate/orchestrator';
+import {MemoryStore} from '@openclawx/orchestrator';
 
 test('TP-T6/T10: Skill options expose only own ready public metadata; empty scoped catalog is authoritative',async()=>{
  const store=new MemoryStore();
@@ -22,7 +22,7 @@ test('TP-T6/T10: Skill options expose only own ready public metadata; empty scop
 const owner={orgId:'org',userId:'alice'};
 const base={name:'文档任务',description:'test',input:{skillId:'business-summary',version:'1.0.0',entry:'prepare'},execution:{skillId:'business-summary',version:'1.0.0',entry:'execute'},output:{skillId:'business-summary',version:'1.0.0',entry:'format'},view:{skillId:'business-summary',version:'1.0.0',entry:'report'},resultType:'business-summary',resultVersion:'1.0.0',agent:{employeeId:'general',prompt:'整理用户文档'}};
 test('TP-T18: report editor separate association, idle preview/import, ownership and history protection',async()=>{
- const root=await mkdtemp(path.join(os.tmpdir(),'workmate-report-project-'));let calls=0;
+ const root=await mkdtemp(path.join(os.tmpdir(),'openclawx-report-project-'));let calls=0;
  const orch=Orchestrator.open(path.join(root,'domain.json'),{runner:{async start(){calls++}}});
  const tasks=new TemplateTaskService(orch.store),reports=new ParameterProjects(orch,tasks,root,'report'),parameters=new ParameterProjects(orch,tasks,root);
  try{
@@ -46,7 +46,7 @@ test('TP-T18: report editor separate association, idle preview/import, ownership
  }finally{await orch.store.close();await rm(root,{recursive:true,force:true});}
 });
 test('TP-T2: create/reopen without AI execution, import preserves versions, rejects unauthorized/stale/running/symlink',async()=>{
- const root=await mkdtemp(path.join(os.tmpdir(),'workmate-parameter-project-'));let calls=0;
+ const root=await mkdtemp(path.join(os.tmpdir(),'openclawx-parameter-project-'));let calls=0;
  const orch=Orchestrator.open(path.join(root,'domain.json'),{runner:{async start(){calls++}}});
  const tasks=new TemplateTaskService(orch.store);const service=new ParameterProjects(orch,tasks,root);
  try {

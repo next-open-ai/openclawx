@@ -1,7 +1,7 @@
 import type { View } from './workspace.js';
 
 export function isDesktopShell(): boolean {
-  return Boolean(window.workmateDesktop);
+  return Boolean(window.openclawxDesktop);
 }
 
 export function isWebRuntime(): boolean {

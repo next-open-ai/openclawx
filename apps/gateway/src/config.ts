@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { UnifiedMessage } from '@workmate/channel';
+import type { UnifiedMessage } from '@openclawx/channel';
 
 /** M1 gateway configuration (single source for allowlists / defaults). */
 export interface GatewayConfig {

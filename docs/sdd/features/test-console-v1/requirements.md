@@ -1,9 +1,9 @@
-# Workmate 测试控制台 V1 · Requirements
+# OpenClawX 测试控制台 V1 · Requirements
 
-- TC-01：提供独立于产品界面的本机测试网站，使用 Workmate 品牌和独立端口 `47840`。
+- TC-01：提供独立于产品界面的本机测试网站，使用 OpenClawX 品牌和独立端口 `47840`。
 - TC-02：测试总览展示累计执行、通过率、执行中、未通过和最近记录。
 - TC-03：用户可从白名单中选择回归套件，不得从网页提交任意命令或路径。
-- TC-04：并发专项默认只预览，只有显式勾选实测后才访问 Workmate API。
+- TC-04：并发专项默认只预览，只有显式勾选实测后才访问 OpenClawX API。
 - TC-05：每次执行持久化状态、耗时、日志与结构化报告；异常退出恢复为“异常中断”。
 - TC-06：服务仅监听回环地址，写操作校验 Host、Origin 和随机会话令牌。
 - TC-07：提供 start/open/status/logs/restart/stop/run 生命周期命令。

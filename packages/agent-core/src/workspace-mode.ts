@@ -16,7 +16,7 @@ const INTERNAL_SNAPSHOT_SKIP = new Set([
   '.dsh-sessions',
   '.git',
   '.python-packages',
-  '.workmate-workspaces',
+  '.openclawx-workspaces',
   'node_modules',
   '__pycache__',
 ]);
@@ -29,9 +29,9 @@ export function workspacesRootDir() {
   // Conversation runs write directly into the asset subsystem's private
   // staging area.  The controller promotes a completed run into an immutable
   // asset; incomplete/cancelled runs never enter the asset library.
-  return process.env.WORKMATE_ASSET_STAGING_DIR?.trim()
-    || process.env.WORKMATE_WORKSPACES_DIR?.trim()
-    || path.join(process.env.WORKMATE_DATA_DIR?.trim() || path.join(os.homedir(), '.workmate'), 'assets', '.staging');
+  return process.env.OPENCLAWX_ASSET_STAGING_DIR?.trim()
+    || process.env.OPENCLAWX_WORKSPACES_DIR?.trim()
+    || path.join(process.env.OPENCLAWX_DATA_DIR?.trim() || path.join(os.homedir(), '.openclawx'), 'assets', '.staging');
 }
 
 /** Same root resolution for pi and dsh so mode behaviour stays aligned. */
@@ -143,7 +143,7 @@ export async function snapshotWorkspaceFiles(root: string): Promise<Map<string, 
     if (depth > 12 || files.size >= 2_000) return;
     const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
     for (const entry of entries) {
-      if (INTERNAL_SNAPSHOT_SKIP.has(entry.name) || entry.name === '.workmate-dsh.cordis.yml') continue;
+      if (INTERNAL_SNAPSHOT_SKIP.has(entry.name) || entry.name === '.openclawx-dsh.cordis.yml') continue;
       if (entry.name.startsWith('.') && entry.name !== '.gitkeep') continue;
       const childRelative = relative ? `${relative}/${entry.name}` : entry.name;
       const target = path.join(directory, entry.name);

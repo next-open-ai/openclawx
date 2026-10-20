@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { dataObjectAnnotationsSchema, type DataObjectAnnotations } from '@workmate/contracts';
+import { dataObjectAnnotationsSchema, type DataObjectAnnotations } from '@openclawx/contracts';
 const props = defineProps<{ annotations: DataObjectAnnotations; api: boolean; busy: boolean; saveError: string }>();
 const emit = defineEmits<{ save: [value: DataObjectAnnotations]; close: [] }>();
 const draft = ref<DataObjectAnnotations>(JSON.parse(JSON.stringify(props.annotations)));

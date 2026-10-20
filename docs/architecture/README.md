@@ -1,4 +1,4 @@
-# Workmate 架构中心
+# OpenClawX 架构中心
 
 > 与实现同源维护。**当前权威架构**见 [architecture.md](architecture.md)；
 > 通道网关各里程碑记录实现、验收与真机步骤。
@@ -24,14 +24,14 @@
 | [本地优先经验](../sdd/features/experience-local-first/README.md) | SQLite 事实源、异步文件副本、配置可用性门控及后台语义预取 | 当前实现，边界见状态 |
 | [可信查询资产](../sdd/features/agent-data-query-v1/query-assets.md) | 用户主动收藏成功查询、权限/Schema 复核，与经验独立 | 当前实现，无管理 UI |
 | [project-orchestration.md](project-orchestration.md) | 项目 Plan/Run/ChangeSet 数据模型与调度约定（P0–P1） | ✅ |
-| [embedding-provider-v1.md](embedding-provider-v1.md) | 本地 Docker embedding server 作为标准 provider 接入 `workmate` 的主案；覆盖 provider 抽象、OpenAI-compatible 协议、默认 embedding、知识库 override、索引重建与治理 | 📝 方案稿 |
+| [embedding-provider-v1.md](embedding-provider-v1.md) | 本地 Docker embedding server 作为标准 provider 接入 `openclawx` 的主案；覆盖 provider 抽象、OpenAI-compatible 协议、默认 embedding、知识库 override、索引重建与治理 | 📝 方案稿 |
 | [embedding-provider-v1-implementation-plan.md](embedding-provider-v1-implementation-plan.md) | `embedding-provider-v1` 的实施拆解；覆盖模块边界、配置补强、健康检查、索引签名、重建任务、测试清单与里程碑 | 📝 实施计划 |
 | [embedding-provider-v1-api-contract.md](embedding-provider-v1-api-contract.md) | `embedding-provider-v1` 的关键接口契约；覆盖健康检查、`/v1/embeddings` 适配、错误码、embedding 元数据、知识库索引状态与重建任务结构 | 📝 接口契约 |
 | [embedding-local-sidecar-architecture.md](embedding-local-sidecar-architecture.md) | 本地 embedding sidecar 的轻量架构方案；覆盖主进程最小职责、按需下载、模型缓存、loopback HTTP 与现有 provider 体系兼容方式 | 📝 Lite 本地方案 |
 | [embedding-local-sidecar-implementation-plan.md](embedding-local-sidecar-implementation-plan.md) | 本地 embedding sidecar 的实施计划；覆盖 manifest、下载器、sidecar manager、自动注册 provider、状态机、UI 入口与验收清单 | 📝 Lite 实施计划 |
 | [gateway-m0.md](gateway-m0.md) | M0：编排层下沉、域存储单写者、可续跑 run、`/api/orch` REST/SSE 接口表 | ✅ |
 | [gateway-m0-acceptance.md](gateway-m0-acceptance.md) | M0 验收清单（A–E）与各入口 | ✅ |
-| [gateway-m1.md](gateway-m1.md) | M1：`@workmate/channel` 协议、网关子进程、Telegram 适配器与白名单；真机步骤 | ✅ |
+| [gateway-m1.md](gateway-m1.md) | M1：`@openclawx/channel` 协议、网关子进程、Telegram 适配器与白名单；真机步骤 | ✅ |
 | [gateway-m2.md](gateway-m2.md) | M2：远程办公门户与凭证链路(P1)、飞书(P2)、远程中继(P3)；人工步骤 | ✅ |
 
 ## 修订约定

@@ -8,7 +8,7 @@
 
 ## 2. TypeScript / 包
 
-- 共享类型与 Zod schema 放 `@workmate/contracts`，不要在 app 内私自叉一份。
+- 共享类型与 Zod schema 放 `@openclawx/contracts`，不要在 app 内私自叉一份。
 - 跨包 API 保持稳定；破坏性变更要有迁移说明与测试。
 - `any` 仅在边界短暂使用并尽快收窄；公共导出必须有明确类型。
 
@@ -40,7 +40,7 @@
 ## 7. 禁止
 
 - renderer 直接调模型 SDK 或写 domain KV。
-- 多写者争用 `~/.workmate` 域数据。
+- 多写者争用 `~/.openclawx` 域数据。
 - 提交密钥、大数据 runtime、本机绝对路径配置。
 - 用文档代替测试。
 - 捕获异常后静默成功，或用默认值掩盖数据和契约错误。

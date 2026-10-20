@@ -7,7 +7,7 @@ import { TemplateTaskService } from '../template-tasks.js';
 import { MemoryStore } from '../storage/memory.js';
 import { JsonFileStore } from '../storage/json-file.js';
 import { businessSummarySkill, businessSummaryTemplate } from '../task-skills/business-summary/index.js';
-import {TaskRunJsonResultSchema} from '@workmate/contracts';
+import {TaskRunJsonResultSchema} from '@openclawx/contracts';
 
 test('TP-T9: direct task runs with employee/prompt/output snapshot, no template, stable JSON and idempotency',async()=>{
   const store=new MemoryStore();let calls=0;
@@ -43,7 +43,7 @@ const input = () => ({ name: '月度试验', templateId: 'business-summary', tem
 } });
 
 test('create, execute, query, edit and reopen durable results with immutable input snapshots', async () => {
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'workmate-template-test-'));
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'openclawx-template-test-'));
   let store = new JsonFileStore(path.join(dir, 'domain.json'));
   try {
     let service = new TemplateTaskService(store);

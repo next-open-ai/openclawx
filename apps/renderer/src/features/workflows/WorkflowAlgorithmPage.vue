@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { algorithmDefinitionSchema, workflowDefinitionSchema, type AlgorithmDefinition, type WorkflowDefinition } from '@workmate/contracts';
+import { algorithmDefinitionSchema, workflowDefinitionSchema, type AlgorithmDefinition, type WorkflowDefinition } from '@openclawx/contracts';
 import type { Employee } from '../../app/employees';
 import { employeeDisplayName } from '../../app/employees';
 import { useI18n } from '../../app/i18n';

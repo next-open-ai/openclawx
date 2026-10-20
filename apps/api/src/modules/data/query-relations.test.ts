@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import Fastify from 'fastify';
-import { structuredDataQuerySchema, dataObjectAnnotationsSchema, remoteDatabaseConnectionSchema, type StructuredDataQuery, type DataRelation } from '@workmate/contracts';
+import { structuredDataQuerySchema, dataObjectAnnotationsSchema, remoteDatabaseConnectionSchema, type StructuredDataQuery, type DataRelation } from '@openclawx/contracts';
 import { resolveQueryRelations, validateRelations } from './query-relations.js';
 import { compileStructuredQuery, executeLocalStructuredQuery, type QueryTable } from './structured-query.js';
 import { queryLiveStructured, type LiveTable } from './live-database.js';
@@ -101,8 +101,8 @@ for (const engine of ['mysql', 'postgresql'] as const) test(`SDQ2-R1/R3/R4: ${en
 });
 
 test('SDQ2-R2/R3/R5: authenticated relation registration, persistence and joined HTTP query', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-join-')), previous = process.env.WORKMATE_DATA_DIR;
-  process.env.WORKMATE_DATA_DIR = dir;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-join-')), previous = process.env.OPENCLAWX_DATA_DIR;
+  process.env.OPENCLAWX_DATA_DIR = dir;
   const app = Fastify();
   app.addHook('preHandler', async r => { r.auth = { userId: String(r.headers['x-user'] || 'u'), orgId: String(r.headers['x-org'] || 'o'), username: 'test', displayName: 'test', role: 'admin', sessionId: 'test' }; });
   const remoteCalls: string[] = [];
@@ -142,5 +142,5 @@ test('SDQ2-R2/R3/R5: authenticated relation registration, persistence and joined
     const joined = await app.inject({ method: 'POST', url: '/data/gateway/query', payload: { sourceId: ls.id, tableId: la.id, joins: [{ relationId: 'customer' }], metrics: [{ fieldId: 'c_2', operation: 'sum', alias: 'total' }] } });
     assert.equal(joined.statusCode, 200, joined.body); assert.deepEqual(joined.json().rows, [{ total: '30.00' }]);
     assert.ok(remoteCalls.some(sql => sql.includes('LEFT JOIN `business`.`customers`')));
-  } finally { await app.close(); if (previous === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = previous; fs.rmSync(dir, { recursive: true, force: true }); }
+  } finally { await app.close(); if (previous === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = previous; fs.rmSync(dir, { recursive: true, force: true }); }
 });

@@ -11,7 +11,7 @@ import {prepareAgentscopeHostTools} from '../agentscope/host-tools.js';
 import {experienceFileMirror,ExperienceFileMirror} from '../experience/file-mirror.js';
 const card={agentId:'general',title:'发票核对',situation:'处理每个月的发票核对任务',action:'先按照发票号码去重再核对金额',pitfall:'不要重复统计同一张发票',whenNot:'原始单据不完整时不适用',tags:['财务']};
 const context=(userId='alice'):ExperienceContext=>({userId,orgId:'org',settings:{enabled:true,knowledgeBaseId:null,available:false}});
-async function temporary(run:(root:string)=>Promise<void>){const old=process.env.WORKMATE_EXPERIENCE_DIR,root=fs.mkdtempSync(path.join(os.tmpdir(),'workmate-exp-'));process.env.WORKMATE_EXPERIENCE_DIR=root;try{await run(root);}finally{await experienceFileMirror.flush();if(old===undefined)delete process.env.WORKMATE_EXPERIENCE_DIR;else process.env.WORKMATE_EXPERIENCE_DIR=old;fs.rmSync(root,{recursive:true,force:true});}}
+async function temporary(run:(root:string)=>Promise<void>){const old=process.env.OPENCLAWX_EXPERIENCE_DIR,root=fs.mkdtempSync(path.join(os.tmpdir(),'openclawx-exp-'));process.env.OPENCLAWX_EXPERIENCE_DIR=root;try{await run(root);}finally{await experienceFileMirror.flush();if(old===undefined)delete process.env.OPENCLAWX_EXPERIENCE_DIR;else process.env.OPENCLAWX_EXPERIENCE_DIR=old;fs.rmSync(root,{recursive:true,force:true});}}
 const tick=()=>new Promise<void>(resolve=>setTimeout(resolve,10));
 test('EX-T1: tools without embedding, local DB+mirror durability, user/agent provenance and shared recall',async()=>temporary(async root=>{
   const tools=withExperienceContext(context(),()=>createExperienceTools({agentId:'general'}));assert.equal(tools.length,2);
@@ -21,7 +21,7 @@ test('EX-T1: tools without embedding, local DB+mirror durability, user/agent pro
   await experienceFileMirror.flush();
   assert.equal(JSON.parse(fs.readFileSync(path.join(root,'cards',saved.id+'.json'),'utf8')).userId,'alice');
   const module=fileURLToPath(new URL('../experience/local-store.js',import.meta.url));
-  const result=execFileSync(process.execPath,['--input-type=module','-e',`import {listLocalExperiences} from ${JSON.stringify(module)};console.log(JSON.stringify(await listLocalExperiences()));`],{env:{...process.env,WORKMATE_EXPERIENCE_DIR:root},encoding:'utf8'});
+  const result=execFileSync(process.execPath,['--input-type=module','-e',`import {listLocalExperiences} from ${JSON.stringify(module)};console.log(JSON.stringify(await listLocalExperiences()));`],{env:{...process.env,OPENCLAWX_EXPERIENCE_DIR:root},encoding:'utf8'});
   assert.equal(JSON.parse(result)[0].id,saved.id);
   const loaded=await withExperienceContext(context('bob'),()=>loadExperience({agentId:'research',query:'发票核对'}));assert.equal(loaded.count,1);assert.equal(loaded.backend,'local-text');
   assert.equal((await withExperienceContext({...context('bob'),orgId:'other-org'},()=>loadExperience({agentId:'research',query:'发票核对'}))).count,0);

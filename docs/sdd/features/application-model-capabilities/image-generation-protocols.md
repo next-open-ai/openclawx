@@ -65,11 +65,11 @@ Qwen 的普通配置只暴露 API Key 与可选 Workspace ID。默认共享 Host
 | AMC-IMG-T-009 | REQ-15/16 | 协议缺省不持久化、UI 高级覆盖、Qwen-Image 缺少 Workspace 本地失败用例通过 |
 | AMC-IMG-E2E-001 | REQ-02～04 | 智谱、火山、阿里真实服务未执行 |
 
-2026-09-24 验证证据：图片协议专项测试 `5/5` 通过，其中同步、异步 URL 均验证自动下载与本地路径返回；contracts、agent-core、orchestrator、renderer 类型检查通过；同名工具 invocation 回归 `1/1` 通过；renderer 和 VitePress 生产构建通过；`git diff --check` 通过。Workmate `agent-core` 全量回归 `92/92` 通过。
+2026-09-24 验证证据：图片协议专项测试 `5/5` 通过，其中同步、异步 URL 均验证自动下载与本地路径返回；contracts、agent-core、orchestrator、renderer 类型检查通过；同名工具 invocation 回归 `1/1` 通过；renderer 和 VitePress 生产构建通过；`git diff --check` 通过。OpenClawX `agent-core` 全量回归 `92/92` 通过。
 
 2026-09-24 现场缺陷复盘：真实 CogView 调用已返回临时 CDN URL，但 Node 22 `fetch` 对该 CDN 在 TLS 建连前报 `ECONNRESET`；同机 Python/curl 能访问，因此此前由模型编写 Python 下载时成功，改为 Node 自动下载后失败。修复后下载仍由 `agent-core` 负责，Node 原生路径失败会自动切换受控 `curl`，并通过 `capability.progress` 在原活动行展示阶段和进度，不回退为主控模型自行下载。
 
-2026-09-24 Workmate 同步证据：图片专项 `5/5`、统一工具专项 `4/4`、同名 invocation 回归 `1/1`、相关包类型检查、API 与 Renderer 生产构建均通过；真实 Provider E2E 保持待验收。
+2026-09-24 OpenClawX 同步证据：图片专项 `5/5`、统一工具专项 `4/4`、同名 invocation 回归 `1/1`、相关包类型检查、API 与 Renderer 生产构建均通过；真实 Provider E2E 保持待验收。
 
 2026-09-24 百炼配置闭环：采用“API Key + 可选 Workspace ID + 高级 API Host”，不增加独立地域字段；地域由 Host 隐含。修复桌面端 v2 降级保存，补充 Workspace 专属域名解析和网络异常诊断。`agent-core` 全量回归 `94/94`、五包类型检查、API/Renderer/VitePress 生产构建及差异检查通过；真实阿里 Qwen-Image E2E 仍需用户凭据验收。
 

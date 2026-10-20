@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import type { DataColumn, RemoteDatabaseConnection, StructuredDataQuery } from '@workmate/contracts';
+import type { DataColumn, RemoteDatabaseConnection, StructuredDataQuery } from '@openclawx/contracts';
 import { compileStructuredQuery, structuredQueryResult, StructuredQueryError, type QueryTable } from './structured-query.js';
 import { cell, columnType, remoteIdentifier, session, tables, remoteFactory, RemoteInputError, type RemoteFactory } from './remote-database.js';
 

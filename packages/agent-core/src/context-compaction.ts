@@ -15,7 +15,7 @@ import {
   serializeConversation,
   shouldCompact,
 } from '@mariozechner/pi-coding-agent';
-import type { ModelConfig } from '@workmate/contracts';
+import type { ModelConfig } from '@openclawx/contracts';
 import { createChatCompletionsPayloadPatch, toPiModel } from './pi-model.js';
 import { extractContextAnchors, formatAnchorsBlock } from './context-sanitize.js';
 
@@ -34,10 +34,10 @@ export const COMPACTION_CHAR_THRESHOLD = 96_000;
 export const COMPACTION_WINDOW_RATIO = 0.78;
 
 /** Shared prefix for durable session memory injection into chat history. */
-export const SESSION_SUMMARY_PREFIX = '[Workmate context summary]';
+export const SESSION_SUMMARY_PREFIX = '[OpenClawX context summary]';
 
-const WORKMATE_SUMMARY_FOCUS = [
-  'Workmate digital-employee session continuity brief.',
+const OPENCLAWX_SUMMARY_FOCUS = [
+  'OpenClawX digital-employee session continuity brief.',
   'MUST preserve: user goal, hard constraints, acceptance criteria, written file paths, blockers/errors, unfinished next step.',
   'MUST omit: thinking/reasoning, raw CSS/HTML/JS bodies, full stdout/stderr dumps, duplicated tool JSON.',
   'Write in the same language as the user. Prefer bullet lists over prose.',
@@ -120,7 +120,7 @@ async function summarizeFallback(input: {
   }
   promptText +=
     'Produce a structured continuity brief with sections: Goal, Constraints, Progress (Done/In Progress/Blocked), Key Decisions, Next Steps, Critical Context. '
-    + WORKMATE_SUMMARY_FOCUS;
+    + OPENCLAWX_SUMMARY_FOCUS;
   try {
     const response = await completeSimple(
       piModel,
@@ -158,7 +158,7 @@ export async function summarizeSessionMemory(input: {
   if (!input.turns.length) return null;
 
   // Phase 3: when AgentScope engine is selected, prefer Sidecar summarizer.
-  if ((process.env.WORKMATE_AGENT_ENGINE || 'pi').trim().toLowerCase() === 'agentscope') {
+  if ((process.env.OPENCLAWX_AGENT_ENGINE || 'pi').trim().toLowerCase() === 'agentscope') {
     try {
       const { ensureSharedAgentscopeRuntime } = await import('./agentscope/process.js');
       const handle = await ensureSharedAgentscopeRuntime();
@@ -191,7 +191,7 @@ export async function summarizeSessionMemory(input: {
       DEFAULT_COMPACTION_SETTINGS.reserveTokens,
       apiKey,
       input.signal,
-      WORKMATE_SUMMARY_FOCUS,
+      OPENCLAWX_SUMMARY_FOCUS,
       input.previousSummary,
     );
     const trimmed = summary?.trim().slice(0, SESSION_MEMORY_SUMMARY_MAX_CHARS);
@@ -336,7 +336,7 @@ export async function compactAgentContext(input: {
       settings.reserveTokens,
       apiKey,
       input.signal,
-      WORKMATE_SUMMARY_FOCUS,
+      OPENCLAWX_SUMMARY_FOCUS,
       previousSummary,
     );
     if (!summary?.trim()) {

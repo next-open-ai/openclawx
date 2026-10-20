@@ -80,12 +80,12 @@ export function detectSystemPython(): PythonCandidate | null {
 
 function bundledPythonCandidates(agentscopeRoot?: string): string[] {
   const roots: string[] = [];
-  const fromEnv = process.env.WORKMATE_AGENTSCOPE_ROOT?.trim();
+  const fromEnv = process.env.OPENCLAWX_AGENTSCOPE_ROOT?.trim();
   if (fromEnv) roots.push(fromEnv);
   if (agentscopeRoot?.trim()) roots.push(agentscopeRoot.trim());
   roots.push(path.resolve(process.cwd(), 'runtimes', 'agentscope-runtime'));
 
-  const override = process.env.WORKMATE_AGENTSCOPE_PYTHON?.trim();
+  const override = process.env.OPENCLAWX_AGENTSCOPE_PYTHON?.trim();
   const out: string[] = [];
   if (override) out.push(override);
 
@@ -119,7 +119,7 @@ function probePip(command: string): boolean {
 
 /**
  * Decide which Python runs Agent-authored scripts.
- * Priority: WORKMATE_PYTHON → system 3.9+ → bundled agentscope runtime → none.
+ * Priority: OPENCLAWX_PYTHON → system 3.9+ → bundled agentscope runtime → none.
  * Never install script deps into agentscope-runtime (callers must use --target + PYTHONPATH).
  */
 export function resolveScriptPython(options?: { agentscopeRoot?: string }): ScriptPythonDecision {
@@ -127,7 +127,7 @@ export function resolveScriptPython(options?: { agentscopeRoot?: string }): Scri
   const bundled = detectBundledPython(options?.agentscopeRoot);
   const isolationNote = SCRIPT_PYTHON_ISOLATION_NOTE;
 
-  const override = process.env.WORKMATE_PYTHON?.trim();
+  const override = process.env.OPENCLAWX_PYTHON?.trim();
   if (override) {
     const version = readVersionForCommand(override);
     if (version) {
@@ -135,7 +135,7 @@ export function resolveScriptPython(options?: { agentscopeRoot?: string }): Scri
         source: 'override',
         command: override,
         version,
-        reason: `使用环境变量 WORKMATE_PYTHON=${override}（显式覆盖）。`,
+        reason: `使用环境变量 OPENCLAWX_PYTHON=${override}（显式覆盖）。`,
         isolationNote,
         system,
         bundled,
@@ -184,7 +184,7 @@ export function resolveScriptPython(options?: { agentscopeRoot?: string }): Scri
 }
 
 /** Executable string for script/pip invocation; throws if none available. */
-export function resolveWorkmatePython(options?: { agentscopeRoot?: string }): string {
+export function resolveOpenClawXPython(options?: { agentscopeRoot?: string }): string {
   const decision = resolveScriptPython(options);
   if (!decision.command) {
     throw new Error(decision.reason || 'No usable Python for Agent scripts.');

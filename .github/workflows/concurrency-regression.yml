@@ -46,8 +46,8 @@ jobs:
       - name: Run concurrency regression
         run: pnpm concurrency:regression
         env:
-          WORKMATE_AGENTSCOPE_PYTHON: python3
-          WORKMATE_MAX_CONCURRENT_RUNS_GLOBAL: ${{ inputs.global }}
-          WORKMATE_MAX_CONCURRENT_RUNS_PER_USER: ${{ inputs.perUser }}
-          WORKMATE_AGENTSCOPE_POOL_SIZE: ${{ inputs.poolSize }}
-          WORKMATE_AGENTSCOPE_SHARED_MAX_RUNS: ${{ inputs.sidecarMaxRuns }}
+          OPENCLAWX_AGENTSCOPE_PYTHON: python3
+          OPENCLAWX_MAX_CONCURRENT_RUNS_GLOBAL: ${{ inputs.global }}
+          OPENCLAWX_MAX_CONCURRENT_RUNS_PER_USER: ${{ inputs.perUser }}
+          OPENCLAWX_AGENTSCOPE_POOL_SIZE: ${{ inputs.poolSize }}
+          OPENCLAWX_AGENTSCOPE_SHARED_MAX_RUNS: ${{ inputs.sidecarMaxRuns }}

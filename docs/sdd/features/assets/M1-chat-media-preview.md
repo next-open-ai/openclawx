@@ -32,7 +32,7 @@
 
 2026-09-26 现场修复验证：补全图片、音频和视频 MIME；资产内容接口支持 `206 Partial Content` 与非法区间 `416`；长会话镜像 KV 的请求体上限调整为有界 8 MiB。专项回归、Renderer 类型检查/生产构建、API 构建、文档构建及 `git diff --check` 均通过。
 
-2026-09-26 缩略图复测：修复原生 `<img>` 请求无法携带 `x-workmate-session` 导致的 401；媒体改走鉴权 fetch + Blob URL，专项回归、Renderer 类型检查与生产构建通过。
+2026-09-26 缩略图复测：修复原生 `<img>` 请求无法携带 `x-openclawx-session` 导致的 401；媒体改走鉴权 fetch + Blob URL，专项回归、Renderer 类型检查与生产构建通过。
 
 ## 回滚与兼容
 

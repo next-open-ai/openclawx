@@ -44,12 +44,12 @@ declare module 'fastify' {
   }
 }
 
-const SESSION_HEADER = 'x-workmate-session';
+const SESSION_HEADER = 'x-openclawx-session';
 const DEFAULT_ORG_ID = 'local-org';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 function dataDir() {
-  return process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate');
+  return process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx');
 }
 
 function authFile() {
@@ -185,8 +185,8 @@ export function authGuard(): preHandlerHookHandler {
 }
 
 export function authenticateRequest(request: FastifyRequest): AuthPrincipal {
-  const internalExpected = String(process.env.WORKMATE_INTERNAL_TOKEN || '').trim();
-  const internalProvided = String(request.headers['x-workmate-internal'] || '').trim();
+  const internalExpected = String(process.env.OPENCLAWX_INTERNAL_TOKEN || '').trim();
+  const internalProvided = String(request.headers['x-openclawx-internal'] || '').trim();
   if (internalExpected && internalProvided) {
     const expectedBuf = Buffer.from(internalExpected);
     const providedBuf = Buffer.from(internalProvided);

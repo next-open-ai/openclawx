@@ -292,7 +292,7 @@ export function useKnowledgeConfig() {
   const loadProviders = async () => {
     if (providersLoaded.value) return;
     try {
-      const stored = window.workmateDesktop
+      const stored = window.openclawxDesktop
         ? JSON.parse((await readStored(providersKey)) || '{}')
         : await getServerKnowledgeProviderConfig();
       providerSettings.value = normalizeProviderSettings(stored);
@@ -307,7 +307,7 @@ export function useKnowledgeConfig() {
     const local = next.providers.find((item) => item.id === 'lancedb');
     if (local) local.enabled = true;
     providerSettings.value = next;
-    if (window.workmateDesktop) await writeStored(providersKey, JSON.stringify(next));
+    if (window.openclawxDesktop) await writeStored(providersKey, JSON.stringify(next));
     else await saveServerKnowledgeProviderConfig(next);
     return next;
   };
@@ -316,7 +316,7 @@ export function useKnowledgeConfig() {
     await loadProviders();
     if (basesLoaded.value) return;
     try {
-      const stored = window.workmateDesktop
+      const stored = window.openclawxDesktop
         ? JSON.parse((await readStored(basesKey)) || '[]')
         : await getServerKnowledgeBases();
       bases.value = normalizeAll(stored);
@@ -347,7 +347,7 @@ export function useKnowledgeConfig() {
       }
       if (changed) {
         providerSettings.value = { ...providerSettings.value, providers: [...providerSettings.value.providers] };
-        if (window.workmateDesktop) await writeStored(providersKey, JSON.stringify(providerSettings.value));
+        if (window.openclawxDesktop) await writeStored(providersKey, JSON.stringify(providerSettings.value));
         else await saveServerKnowledgeProviderConfig(providerSettings.value);
       }
     }
@@ -355,7 +355,7 @@ export function useKnowledgeConfig() {
   };
 
   const persist = async () => {
-    if (window.workmateDesktop) await writeStored(basesKey, JSON.stringify(bases.value));
+    if (window.openclawxDesktop) await writeStored(basesKey, JSON.stringify(bases.value));
     else await saveServerKnowledgeBases(bases.value);
   };
 

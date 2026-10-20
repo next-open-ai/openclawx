@@ -40,9 +40,9 @@
 ## 6. 提交前检查
 
 - 需求、任务、测试编号可互相追踪；
-- 公共 Schema 位于 `@workmate/contracts`；
+- 公共 Schema 位于 `@openclawx/contracts`；
 - 模型 SDK/HTTP 只在 `packages/agent-core`；
-- 编排状态归 `@workmate/orchestrator`；
+- 编排状态归 `@openclawx/orchestrator`；
 - renderer 不依赖 Node/Electron 或秘密配置；
 - 已执行对应测试并在 status/deliverable 记录事实；
 - 未覆盖用户无关改动。

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { prepareConversationWorkspace, publishConversationWorkspace } from './project-workspace.js';
 import os from 'node:os';
 import path from 'node:path';
-import { cleanWorkspaceScrap, promoteWorkspaceDeliverablesToProject } from '@workmate/agent-core';
+import { cleanWorkspaceScrap, promoteWorkspaceDeliverablesToProject } from '@openclawx/agent-core';
 import type { EventHub, HubListener } from './hub.js';
 import { deleteKey, listJsonIds, readJson, writeJson } from './repo.js';
 import type { OrcEvent } from './events.js';
@@ -57,7 +57,7 @@ function appendTaskReply(project: Project, task: ProjectTask, run: RunRecord, pr
 
 function runWorkspaceRoot(runId: string) {
   return path.join(
-    process.env.WORKMATE_WORKSPACES_DIR || path.join(os.homedir(), '.workmate', 'workspaces'),
+    process.env.OPENCLAWX_WORKSPACES_DIR || path.join(os.homedir(), '.openclawx', 'workspaces'),
     runId,
   );
 }
@@ -1301,7 +1301,7 @@ export class ProjectService {
         timeoutMs: promptTask.contract?.timeoutMs ?? this.projectTaskTimeoutMs,
         extraTopics: [`project:${projectId}`],
         ...(project?.executionWorkspaceMode === 'isolated' && project.workspacePath ? {
-          finalizeCompleted: async (completed: Readonly<RunRecord>, emit: (event: import('@workmate/contracts').AgentEvent) => void) => {
+          finalizeCompleted: async (completed: Readonly<RunRecord>, emit: (event: import('@openclawx/contracts').AgentEvent) => void) => {
             try {
               const published = project.kind === 'conversation'
                 ? await publishConversationWorkspace(runWorkspaceRoot(completed.id), project.workspacePath, signal, workspaceRevision)

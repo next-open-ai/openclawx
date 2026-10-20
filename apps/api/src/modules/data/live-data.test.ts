@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import Fastify from 'fastify';
-import { remoteDatabaseConnectionSchema, liveDataAccessSchema, liveDataObjectCreateSchema } from '@workmate/contracts';
+import { remoteDatabaseConnectionSchema, liveDataAccessSchema, liveDataObjectCreateSchema } from '@openclawx/contracts';
 import { dataRoutes } from './routes.js';
 import { discoverLiveTables, queryLiveTable, mutateLiveTable } from './live-database.js';
 import { databaseSecret } from './database-secrets.js';
@@ -88,8 +88,8 @@ for (const engine of ['mysql', 'postgresql'] as const) test(`LDO-R2/R4/R5/R7: ${
   await assert.rejects(mutateLiveTable(c, { ...t, columns: t.columns.map(c => ({ ...c, primary: false })) }, 'scope', 'insert', { c_1: '2' }, '', f.factory), /主键/);
 });
 test('LDO-R1–R7: owner API, explicit writes, annotation binding, snapshots and no credential persistence', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-live-data-'));
-  const previous = process.env.WORKMATE_DATA_DIR; process.env.WORKMATE_DATA_DIR = dir;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-live-data-'));
+  const previous = process.env.OPENCLAWX_DATA_DIR; process.env.OPENCLAWX_DATA_DIR = dir;
   const f = fixture('mysql'), app = Fastify();
   app.addHook('preHandler', async r => { r.auth = { userId: String(r.headers['x-test-user'] || 'user'), orgId: String(r.headers['x-test-org'] || 'org'), username: 'test', displayName: 'test', role: r.headers['x-member'] ? 'member' : 'admin', sessionId: 'test' }; });
   await app.register(dataRoutes, { remoteFactory: f.factory });
@@ -147,5 +147,5 @@ test('LDO-R1–R7: owner API, explicit writes, annotation binding, snapshots and
     assert.equal(f.calls.length, before);
     assert.ok(!fs.readFileSync(path.join(dir, 'data-workbench/data.sqlite')).includes(Buffer.from('secret-password')));
     assert.ok(!fs.readFileSync(path.join(dir, 'data-workbench/data.sqlite')).includes(Buffer.from('new-synthetic-password')));
-  } finally { await app.close(); if (previous === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = previous; }
+  } finally { await app.close(); if (previous === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = previous; }
 });

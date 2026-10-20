@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { resolveProviderBaseUrl } from '@workmate/contracts';
-import { createModelCapabilityTools, evaluateDecision, testVisionCapabilityDataUrl } from '@workmate/agent-core';
-import { DecisionRuntimeConfigSchema } from '@workmate/contracts';
+import { resolveProviderBaseUrl } from '@openclawx/contracts';
+import { createModelCapabilityTools, evaluateDecision, testVisionCapabilityDataUrl } from '@openclawx/agent-core';
+import { DecisionRuntimeConfigSchema } from '@openclawx/contracts';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -253,14 +253,14 @@ export const providerRoutes: FastifyPluginAsync = async (app) => {
   app.post('/providers/test-decision', async (request, reply) => {
     const parsed = DecisionRuntimeConfigSchema.safeParse(asRecord(request.body));
     if (!parsed.success) return reply.code(400).send({ ok: false, message: parsed.error.issues[0]?.message || '决策模型配置无效。' });
-    const result = await evaluateDecision({ ...parsed.data, enabled: true, mode: 'observe' }, { request: 'Workmate decision connection test' }, { healthy: { type: 'noul', instructions: 'Is this a valid decision-model test request?' } });
+    const result = await evaluateDecision({ ...parsed.data, enabled: true, mode: 'observe' }, { request: 'OpenClawX decision connection test' }, { healthy: { type: 'noul', instructions: 'Is this a valid decision-model test request?' } });
     return reply.code(result.ok && !result.error ? 200 : 400).send(result);
   });
   app.post('/providers/test-model-capability', { bodyLimit: 4 * 1024 * 1024 }, async (request, reply) => {
     const value = asRecord(request.body);
     const capability = String(value.capability || '');
     if (!['chat', 'vision', 'image', 'video', 'tts', 'asr', 'embedding', 'quantum-code', 'decision', 'ontology'].includes(capability)) return reply.code(400).send({ message: '不支持该模型能力测试。' });
-    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-model-test-'));
+    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-model-test-'));
     const startedAt = Date.now();
     try {
       const baseUrl = resolveProviderBaseUrl({ provider: String(value.type || ''), baseUrl: String(value.baseUrl || ''), workspaceId: String(value.workspaceId || '') });
@@ -314,9 +314,9 @@ export const providerRoutes: FastifyPluginAsync = async (app) => {
       }
       const input = capability === 'image' ? { prompt: String(value.prompt || '一只放在木桌上的青花瓷杯，柔和自然光，产品摄影'), size: String(value.size || '1024x1024') }
         : capability === 'video' ? { prompt: String(value.prompt || '一只橘猫在阳光下的草地上缓慢奔跑，镜头平稳跟随'), size: String(value.size || '1920x1080') }
-        : capability === 'tts' ? { text: String(value.prompt || '你好，这是 Workmate 语音模型测试。'), ...(value.voice ? { voice: String(value.voice) } : {}), format: 'mp3' }
+        : capability === 'tts' ? { text: String(value.prompt || '你好，这是 OpenClawX 语音模型测试。'), ...(value.voice ? { voice: String(value.voice) } : {}), format: 'mp3' }
           : capability === 'asr' ? { path: `input/sample.${String(value.audioExtension || 'wav').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) || 'wav'}`, outputFormat: 'text' }
-          : capability === 'embedding' ? { texts: [String(value.prompt || 'Workmate 模型测试')] }
+          : capability === 'embedding' ? { texts: [String(value.prompt || 'OpenClawX 模型测试')] }
             : { task: String(value.prompt || '请给出一个创建 Bell 态的最小 Qiskit 示例。') };
       const result = (await tool.execute('model-test', input, undefined)).details as any;
       if (result?.ok === false) throw new Error(String(result.error || '模型返回失败。'));

@@ -6,7 +6,7 @@
 
 已将静态应用交付约束提取为API `app-delivery-prompt.ts`，项目背景保留目标/身份/简短流程，引用交付适配说明，不再复制SQL语法、参数示例和限制清单。agent-core公共数据提示按实际工具集合生成：无数据工具为空，普通员工仅问数，应用才有SQL登记/结构草稿指导。工具描述及contracts仍维护具体协议；Pi/AgentScope继续共用同一注入入口，员工基础指令与网关校验未变。
 
-验证：`pnpm --filter @workmate/agent-core test`（195通过）、`pnpm --filter @workmate/api test`（99项：97通过、2项真实库环境测试跳过）、API typecheck/build、`pnpm concurrency:regression`通过，浏览器fixture脚本`node --check`通过。新增测试覆盖空/未知工具、普通问数无静态限制、应用工具子集、AgentScope并发运行无提示泄漏，以及项目背景与独立交付模块组合、不重复SQL协议；Pi继续使用相同生成函数，未另建分支。浏览器fixture的VM加载器已适配新模块导入，未执行完整浏览器E2E，本轮不涉及界面变更。
+验证：`pnpm --filter @openclawx/agent-core test`（195通过）、`pnpm --filter @openclawx/api test`（99项：97通过、2项真实库环境测试跳过）、API typecheck/build、`pnpm concurrency:regression`通过，浏览器fixture脚本`node --check`通过。新增测试覆盖空/未知工具、普通问数无静态限制、应用工具子集、AgentScope并发运行无提示泄漏，以及项目背景与独立交付模块组合、不重复SQL协议；Pi继续使用相同生成函数，未另建分支。浏览器fixture的VM加载器已适配新模块导入，未执行完整浏览器E2E，本轮不涉及界面变更。
 
 无配置或数据迁移，不改写旧项目背景；旧项目下一轮取得新版工具指导，已有持久化背景仍保留。回滚代码即可，不删除任何项目/数据。未调用真实模型、操作业务数据库或重启用户服务；实际模型的泛化与生成质量尚需人工验收，自动测试只证明注入范围和协议内容。
 
@@ -20,7 +20,7 @@
 
 ## MDA-R11 / T21 · 全屏应用大厅（2026-10-13）
 
-已移除数据对象应用卡片的“继续优化”，保留“编辑应用”。左上角Workmate品牌改为应用大厅按钮，原生dialog占满窗口，返回关闭覆盖页而不切换/重建底层项目；账号改变关闭并卸载大厅。已发布可交付数据应用以响应式卡片展示，包含更新时间、搜索、排序、打开、链接复制和局域网二维码。待绑定、未发布、无合法HTTP链接的应用不当作可用应用展示。二维码拒绝loopback地址，无LAN地址时明确只可本机访问；无自动公开发布或授权扩张。
+已移除数据对象应用卡片的“继续优化”，保留“编辑应用”。左上角OpenClawX品牌改为应用大厅按钮，原生dialog占满窗口，返回关闭覆盖页而不切换/重建底层项目；账号改变关闭并卸载大厅。已发布可交付数据应用以响应式卡片展示，包含更新时间、搜索、排序、打开、链接复制和局域网二维码。待绑定、未发布、无合法HTTP链接的应用不当作可用应用展示。二维码拒绝loopback地址，无LAN地址时明确只可本机访问；无自动公开发布或授权扩张。
 
 验证：`scripts/data-app-sort-regression.mjs`覆盖可用过滤/搜索/排序/URL校验、品牌入口、账号重置和重复按钮移除；创建/返回对象回归通过。`scripts/application-gallery-browser.mjs`打包真实Vue组件与QRCode库、使用模拟API，在独立Chrome中验证卡片过滤、搜索、打开、真实二维码生成、返回及草稿保留；桌面1440px和移动430px通过（移动使用CDP设备尺寸并断言无横向溢出）。截图已检查。浏览器自动化CLI不可用，使用系统Chrome替代；首次测试fixture误用不含runtime compiler的Vue动态template，改为render函数后通过，不是产品组件错误。renderer类型检查/构建通过，保留既有chunk警告。
 
@@ -54,7 +54,7 @@ MySQL/PostgreSQL重复键、外键、非空/默认值、数据长度/位宽、�
 
 ## MDA-SQL-R7 / T17 · 一次授权、动态权限与现有页面修正（2026-10-13）
 
-新增/更新取消平台逐次弹窗；审核按 SQL revision 一次批准，删除保留确认。Mutation 契约兼容旧 confirmed:true，新请求省略该字段；它不是权限依据。网关仍逐次校验角色、对象写入、批准版本、参数、行数及事务边界。`workmateData.getAccess()` 复用已认证 operations 接口返回 writeEnabled/canWrite/审核状态，跨窗口来源和并发容量限制不变；审核完成事件让当前页面刷新。新生成提示词禁止静态写死权限状态。
+新增/更新取消平台逐次弹窗；审核按 SQL revision 一次批准，删除保留确认。Mutation 契约兼容旧 confirmed:true，新请求省略该字段；它不是权限依据。网关仍逐次校验角色、对象写入、批准版本、参数、行数及事务边界。`openclawxData.getAccess()` 复用已认证 operations 接口返回 writeEnabled/canWrite/审核状态，跨窗口来源和并发容量限制不变；审核完成事件让当前页面刷新。新生成提示词禁止静态写死权限状态。
 
 仅修正当前学生项目（5cf82a51）的 index.html 草稿：打开新增表单及审核通知后读取动态权限，按对象/角色/审核状态显示提示并控制提交，失败后重新检查；删除旧的固定只读/待确认/逐次弹窗描述。不自动绑定或覆盖已发布快照，不开启写入、不新增实际学生。
 
@@ -92,7 +92,7 @@ AI 新增 `data_app_register_sql`，使用对象逻辑表/列及参数化 SQL。
 
 文件树原先只列正式成果；持续项目失败/取消不晋升文件是既有安全规则，不应取消。新增最新未成功轮次 output 中的已落盘文本草稿列表与只读代码查看；尚未 finish 的分片不伪称已生成，列表为空给出说明。API 由已验证项目/Run/task 关联推导隔离目录，校验权限，拒绝路径/符号链接/隐藏资源并限制数量及大小。没有草稿写入、发布或自动覆盖正式成果；项目切换清空旧编辑状态并拦截延迟读取。
 
-验证：`pnpm --filter @workmate/api test` 87 项中 85 通过、2 个真实数据库用例按环境跳过；新增 MDA-T10 覆盖嵌套草稿文件、空目录、跨用户/组织/项目/Run、路径与链接拒绝、大小/数量边界及不修改正式成果。`node scripts/data-app-project-return-regression.mjs`、`node scripts/data-app-create-regression.mjs` 通过。contracts 构建、API/renderer 类型检查通过。真实用户项目文件、浏览器视觉交互与供应商模型本轮未访问；不修改用户已失败轮次，不代表学生应用已交付。新增只读 API 需重启 API 加载，无持久化迁移；回滚入口不删除成果/草稿。
+验证：`pnpm --filter @openclawx/api test` 87 项中 85 通过、2 个真实数据库用例按环境跳过；新增 MDA-T10 覆盖嵌套草稿文件、空目录、跨用户/组织/项目/Run、路径与链接拒绝、大小/数量边界及不修改正式成果。`node scripts/data-app-project-return-regression.mjs`、`node scripts/data-app-create-regression.mjs` 通过。contracts 构建、API/renderer 类型检查通过。真实用户项目文件、浏览器视觉交互与供应商模型本轮未访问；不修改用户已失败轮次，不代表学生应用已交付。新增只读 API 需重启 API 加载，无持久化迁移；回滚入口不删除成果/草稿。
 
 构建补充：API 构建、renderer 构建、`pnpm docs:build`、`git diff --check` 通过；前端保留既有大 chunk 警告。最后补充了编辑器延迟请求/卸载防护，并再次通过 renderer 类型检查与导航回归。
 
@@ -107,9 +107,9 @@ AI 新增 `data_app_register_sql`，使用对象逻辑表/列及参数化 SQL。
 
 ## 已执行验证
 
-- `pnpm --filter @workmate/contracts build`：通过。
-- `pnpm --filter @workmate/agent-core test`：193 项通过，包含新增工具隔离与 AgentScope 注册。
-- `pnpm --filter @workmate/api test`：80 项，78 通过、2 个真实数据库用例按环境跳过。新增 MDA 用例覆盖 SQLite 实际 SQL、参数/范围/敏感字段、身份撤销、失败不覆盖、持久化重建、持续项目、token CRUD 拒绝，以及 MySQL/PostgreSQL 模拟驱动实时对象链路。
+- `pnpm --filter @openclawx/contracts build`：通过。
+- `pnpm --filter @openclawx/agent-core test`：193 项通过，包含新增工具隔离与 AgentScope 注册。
+- `pnpm --filter @openclawx/api test`：80 项，78 通过、2 个真实数据库用例按环境跳过。新增 MDA 用例覆盖 SQLite 实际 SQL、参数/范围/敏感字段、身份撤销、失败不覆盖、持久化重建、持续项目、token CRUD 拒绝，以及 MySQL/PostgreSQL 模拟驱动实时对象链路。
 - API / renderer 类型检查、API 构建：通过。
 - `node scripts/data-app-create-regression.mjs`：通过。
 - `scripts/managed-data-app-browser.mjs`：通过。使用系统 Chrome 与工作区已有 Playwright；验证无权限登录、所有者查询、iframe 无法读取父窗口/存储、禁止页面 fetch、错误/重试、手机布局、退出。

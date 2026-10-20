@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { VoiceWorkNoticeSchema, VoiceWorkResultSchema, type WorkResultItem,type VoiceWorkResult } from '@workmate/contracts';
+import { VoiceWorkNoticeSchema, VoiceWorkResultSchema, type WorkResultItem,type VoiceWorkResult } from '@openclawx/contracts';
 import {parseWorkLookupEvent} from './work-result-presentation';
-import type { VoiceInterruptDiagnostic } from '@workmate/contracts';
+import type { VoiceInterruptDiagnostic } from '@openclawx/contracts';
 import {openAssetBestEffort,downloadAssetBestEffort} from '../../app/platform-actions';
 import {
   closeRealtimeVoiceSession,
@@ -447,7 +447,7 @@ onMounted(() => { if (props.autoStart) void start(); });
         </div>
         <div v-if="question || answer" class="mt-6 space-y-3 text-left">
           <div v-if="question" class="rounded-2xl bg-[var(--surface-muted)] px-4 py-3 text-sm"><small class="text-[var(--muted)]">你</small><p class="mt-1">{{ question }}</p></div>
-          <div v-if="answer" class="rounded-2xl bg-[var(--accent-soft)] px-4 py-3 text-sm"><small class="text-[var(--accent)]">Workmate</small><p class="mt-1 whitespace-pre-wrap">{{ answer }}</p></div>
+          <div v-if="answer" class="rounded-2xl bg-[var(--accent-soft)] px-4 py-3 text-sm"><small class="text-[var(--accent)]">OpenClawX</small><p class="mt-1 whitespace-pre-wrap">{{ answer }}</p></div>
         </div>
       </div>
       <footer class="flex justify-center gap-3 border-t border-[var(--border)] px-6 py-5">

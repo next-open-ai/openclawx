@@ -6,7 +6,7 @@ import path from 'node:path';
 import {zipSync,strToU8} from 'fflate';
 import * as XLSX from 'xlsx';
 import {readDocument} from '../document-service.js';
-import {DocumentReadResultSchema} from '@workmate/contracts';
+import {DocumentReadResultSchema} from '@openclawx/contracts';
 import {createSkillExecutionTools} from '../skill-runtime.js';
 import {extractToolDetails} from '../pi-tools.js';
 import {prepareAgentscopeHostTools} from '../agentscope/host-tools.js';
@@ -38,7 +38,7 @@ test('UD-T1: limits, cancellation, empty/bad/unsupported files are structured an
 });
 
 test('UD-T4: ordinary/AgentScope tools read only the bounded workspace, including source documents',async()=>{
-  const root=await fs.mkdtemp(path.join(os.tmpdir(),'workmate-document-tool-'));
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'openclawx-document-tool-'));
   try{
     await fs.mkdir(path.join(root,'.task','source'),{recursive:true});await fs.writeFile(path.join(root,'.task','source','notes.txt'),'原始文档内容');
     const tool=createSkillExecutionTools({runId:'document-tool-test',projectRoot:root,workspaceAccess:'read',skills:[]}).find(tool=>tool.name==='read_document')!;

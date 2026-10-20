@@ -1,5 +1,5 @@
-import type { AgentEvent, AgentEngineId, ChatRequest } from '@workmate/contracts';
-import { AGENT_ENGINE_IDS } from '@workmate/contracts';
+import type { AgentEvent, AgentEngineId, ChatRequest } from '@openclawx/contracts';
+import { AGENT_ENGINE_IDS } from '@openclawx/contracts';
 
 /**
  * Pluggable execution backends (pi / AgentScope / dsh, …).
@@ -43,8 +43,8 @@ export interface ExecutionBackend {
 /**
  * Routing input for one turn.
  *
- * Ops force: pass `override`, or set `WORKMATE_AGENT_ENGINE` **and**
- * `WORKMATE_AGENT_ENGINE_FORCE=1`. Plain `WORKMATE_AGENT_ENGINE` is only a
+ * Ops force: pass `override`, or set `OPENCLAWX_AGENT_ENGINE` **and**
+ * `OPENCLAWX_AGENT_ENGINE_FORCE=1`. Plain `OPENCLAWX_AGENT_ENGINE` is only a
  * soft fallback after employee / runtime default (so UI config is not
  * permanently masked by desktop/dev launchers that inject `pi`).
  */
@@ -106,11 +106,11 @@ function pickRegistered(id: AgentEngineId | null | undefined, enabled: AgentEngi
  *
  * Priority:
  * 1. `override` (call-site force)
- * 2. `WORKMATE_AGENT_ENGINE` when `WORKMATE_AGENT_ENGINE_FORCE=1` (ops force; bypasses allowlist)
+ * 2. `OPENCLAWX_AGENT_ENGINE` when `OPENCLAWX_AGENT_ENGINE_FORCE=1` (ops force; bypasses allowlist)
  * 3. `employeeEngine` when in allowlist + registered
  * 4. `defaultEngine` when in allowlist + registered
  * 5. `preferCoding` → `dsh` / `preferProcessIsolation` → `agentscope` (allowlist)
- * 6. soft `WORKMATE_AGENT_ENGINE` (allowlist) — scripts / legacy launchers
+ * 6. soft `OPENCLAWX_AGENT_ENGINE` (allowlist) — scripts / legacy launchers
  * 7. first enabled registered backend, else `pi`
  */
 export function resolveExecutionBackend(input: BackendResolveInput = {}): ExecutionBackend {
@@ -118,9 +118,9 @@ export function resolveExecutionBackend(input: BackendResolveInput = {}): Execut
     ? [...new Set(input.enabledEngines.map((id) => normalizeEngineId(id)).filter((id): id is AgentEngineId => Boolean(id)))]
     : undefined;
 
-  const forceEnv = String(process.env.WORKMATE_AGENT_ENGINE_FORCE || '').trim() === '1';
+  const forceEnv = String(process.env.OPENCLAWX_AGENT_ENGINE_FORCE || '').trim() === '1';
   const forced = normalizeEngineId(
-    input.override ?? (forceEnv ? process.env.WORKMATE_AGENT_ENGINE : null),
+    input.override ?? (forceEnv ? process.env.OPENCLAWX_AGENT_ENGINE : null),
   );
   if (forced) {
     const backend = backends.get(forced);
@@ -148,7 +148,7 @@ export function resolveExecutionBackend(input: BackendResolveInput = {}): Execut
     if (isolated) return isolated;
   }
 
-  const fromEnv = pickRegistered(normalizeEngineId(process.env.WORKMATE_AGENT_ENGINE), enabled);
+  const fromEnv = pickRegistered(normalizeEngineId(process.env.OPENCLAWX_AGENT_ENGINE), enabled);
   if (fromEnv) return fromEnv;
 
   if (enabled?.length) {

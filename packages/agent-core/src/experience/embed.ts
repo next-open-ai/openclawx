@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import type { ModelConfig } from '@workmate/contracts';
+import type { ModelConfig } from '@openclawx/contracts';
 import { embedOpenAiCompatible } from '../embedding-http.js';
 
 type EmbedConfig = {

@@ -1,7 +1,7 @@
 import type { McpConnection, McpLocalRunner, McpUpsertInput } from './mcp-config.js';
 
 /**
- * Built-in MCP catalog shipped with Workmate.
+ * Built-in MCP catalog shipped with OpenClawX.
  * Stable ids are merged once (capabilities.mcp.seeded.v1); user edits are preserved.
  */
 export type BaselineMcpSeed = McpUpsertInput & {
@@ -80,8 +80,8 @@ export const BASELINE_MCPS: BaselineMcpSeed[] = [
   localSeed({
     id: 'mcp-baseline-filesystem',
     name: 'Filesystem 文件',
-    description: '读写本地沙箱目录 ~/.workmate/mcp-files（安全受限路径）。',
-    args: ['-y', '@modelcontextprotocol/server-filesystem', '~/.workmate/mcp-files'],
+    description: '读写本地沙箱目录 ~/.openclawx/mcp-files（安全受限路径）。',
+    args: ['-y', '@modelcontextprotocol/server-filesystem', '~/.openclawx/mcp-files'],
   }),
   localSeed({
     id: 'mcp-baseline-playwright',

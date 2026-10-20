@@ -13,7 +13,7 @@
 
 真实账户余额未查询，历史失败不能据此补判为欠费。代码需重启开发 API 或重新打包应用后生效；不自动重启用户当前服务。无数据迁移，旧错误记录不重写。
 
-范围：Workmate。保留已有数据应用专属项目 / 统一 RunEngine 改动，不同步其他子项目，不迁移或重写历史运行，不增加超时，不自动重放工具。
+范围：OpenClawX。保留已有数据应用专属项目 / 统一 RunEngine 改动，不同步其他子项目，不迁移或重写历史运行，不增加超时，不自动重放工具。
 
 | 需求 / 任务 | 实施 | 验证证据 |
 | --- | --- | --- |
@@ -25,9 +25,9 @@
 已执行通过：
 
 - `pnpm routes:demo`：四条服务流程通过；无真实模型、无用户数据读写。
-- `pnpm --filter @workmate/agent-core test`：165 通过。
-- `pnpm --filter @workmate/orchestrator test`：63 通过。
-- `pnpm --filter @workmate/api test`：31 通过，2 跳过（外部 MySQL/PostgreSQL 实测，未配置实测环境）。
+- `pnpm --filter @openclawx/agent-core test`：165 通过。
+- `pnpm --filter @openclawx/orchestrator test`：63 通过。
+- `pnpm --filter @openclawx/api test`：31 通过，2 跳过（外部 MySQL/PostgreSQL 实测，未配置实测环境）。
 - `node scripts/run-diagnostics-regression.mjs`、`node scripts/data-app-create-regression.mjs`：通过。
 - contracts/agent-core/orchestrator/API 构建、renderer 类型检查与构建：通过；renderer 现有大 chunk 警告保留，未做无关拆包。
 - `pnpm concurrency:regression`：隔离 API + stub sidecar + dsh MCP/Skills 通过。

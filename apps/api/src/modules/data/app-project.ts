@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { withKeyLock, type ProjectService } from '@workmate/orchestrator';
-import type { DataAppProjectCreate, DataAppProjectExecution } from '@workmate/contracts';
+import { withKeyLock, type ProjectService } from '@openclawx/orchestrator';
+import type { DataAppProjectCreate, DataAppProjectExecution } from '@openclawx/contracts';
 
 type Owner = { orgId: string; userId: string };
 type Database = { exec(sql: string, params?: unknown[]): Array<{ values?: unknown[][] }>; run(sql: string, params?: unknown[]): void };

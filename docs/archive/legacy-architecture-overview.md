@@ -1,4 +1,4 @@
-# Workmate architecture baseline
+# OpenClawX architecture baseline
 
 > **历史参考**：本文为早期基线。当前权威架构（含 orchestrator / channel / gateway /
 > 远程中继与 M0–M2 演化）见 `docs/architecture/architecture.md`；设计文档索引见

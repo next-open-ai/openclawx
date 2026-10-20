@@ -1,5 +1,5 @@
-import type { AgentEvent, AgentProfile, ModelConfig } from '@workmate/contracts';
-import type { OpcaiTool, ToolPolicy } from '@workmate/tools';
+import type { AgentEvent, AgentProfile, ModelConfig } from '@openclawx/contracts';
+import type { OpcaiTool, ToolPolicy } from '@openclawx/tools';
 import { summarizeSessionMemory as summarizeSessionMemoryImpl } from './context-compaction.js';
 
 export * from './skills.js';
@@ -56,10 +56,10 @@ export * from './agentscope/index.js';
 export * from './dsh/index.js';
 
 /**
- * Workmate agent boundary.
+ * OpenClawX agent boundary.
  * Execution backends (registry): default **pi**; optional **AgentScope** sidecar;
  * **dsh** DeepSeek Harness coding sidecar (JSON-RPC; requires runtime install).
- * Switch: `WORKMATE_AGENT_ENGINE=pi|agentscope|dsh` or `resolveExecutionBackend` hints.
+ * Switch: `OPENCLAWX_AGENT_ENGINE=pi|agentscope|dsh` or `resolveExecutionBackend` hints.
  */
 export interface AgentRuntime {
   start(input: { profile: AgentProfile; prompt: string; tools: OpcaiTool[] }): AsyncIterable<AgentEvent>;

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import WebSocket from 'ws';
-import type { AsrEvent } from '@workmate/contracts';
+import type { AsrEvent } from '@openclawx/contracts';
 
 // SAUC uses binary v1 frames, not the Seeduplex JSON wire protocol.
 export function encodeAsrFrame(type: number, payload: Buffer, sequence: number, last = false) {
@@ -58,7 +58,7 @@ export class VolcengineAsrStream {
     this.lifetime = setTimeout(() => this.fail('录音已超过两分钟限制，请结束并确认已识别文字。'), input.maxMs ?? 120_000);
     this.lifetime.unref();
     this.socket.once('open', () => {
-      const config = { user: { uid: 'workmate' }, audio: { format: 'pcm', codec: 'raw', rate: 16000, bits: 16, channel: 1 }, request: { model_name: 'bigmodel', result_type: 'full', show_utterances: true, enable_nonstream: true, enable_punc: input.enablePunc, enable_itn: input.enableItn } };
+      const config = { user: { uid: 'openclawx' }, audio: { format: 'pcm', codec: 'raw', rate: 16000, bits: 16, channel: 1 }, request: { model_name: 'bigmodel', result_type: 'full', show_utterances: true, enable_nonstream: true, enable_punc: input.enablePunc, enable_itn: input.enableItn } };
       this.socket.send(encodeAsrFrame(1, Buffer.from(JSON.stringify(config)), this.sequence++));
       this.ready = true; this.emit({ type: 'connected' });
     });

@@ -37,10 +37,10 @@
 ## 当前自动验证
 
 ```bash
-pnpm --filter @workmate/contracts build
-pnpm --filter @workmate/agent-core typecheck
-pnpm --filter @workmate/api typecheck
-pnpm --filter @workmate/agent-core test
+pnpm --filter @openclawx/contracts build
+pnpm --filter @openclawx/agent-core typecheck
+pnpm --filter @openclawx/api typecheck
+pnpm --filter @openclawx/agent-core test
 ```
 
 阶段验收还必须覆盖一次真实 Embedding 服务和 LanceDB 的端到端混合检索，不以纯单元测试代替。

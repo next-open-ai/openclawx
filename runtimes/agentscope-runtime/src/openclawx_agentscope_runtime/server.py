@@ -101,7 +101,7 @@ async def _stub_echo_run(ws: WebSocketServerProtocol, session: Session, run: Run
             if isinstance(content, str):
                 last_user = content
     text = last_user.strip() or "(empty)"
-    preview = f"[workmate-agentscope stub] {text}"
+    preview = f"[openclawx-agentscope stub] {text}"
     for i in range(0, len(preview), 24):
         if run.abort:
             await _emit_event(
@@ -345,12 +345,12 @@ async def serve(*, host: str, port: int, token: str, path: str) -> None:
     async with websockets.serve(_process, host, port) as server:
         socks = getattr(server, "sockets", None) or []
         bound_port = socks[0].getsockname()[1] if socks else port
-        print(f"WORKMATE_AGENTSCOPE_PORT={bound_port}", flush=True)
+        print(f"OPENCLAWX_AGENTSCOPE_PORT={bound_port}", flush=True)
         # Mirror to stderr so supervisors that only tee stderr still observe the port
         # (and as a fallback when stdout buffering differs across platforms).
-        print(f"WORKMATE_AGENTSCOPE_PORT={bound_port}", file=sys.stderr, flush=True)
+        print(f"OPENCLAWX_AGENTSCOPE_PORT={bound_port}", file=sys.stderr, flush=True)
         print(
-            f"workmate-agentscope-runtime listening ws://{host}:{bound_port}{path}",
+            f"openclawx-agentscope-runtime listening ws://{host}:{bound_port}{path}",
             file=sys.stderr,
             flush=True,
         )

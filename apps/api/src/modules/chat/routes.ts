@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { ChatRequestSchema } from '@workmate/contracts';
-import { streamAgentReply,withExperienceContext } from '@workmate/agent-core';
+import { ChatRequestSchema } from '@openclawx/contracts';
+import { streamAgentReply,withExperienceContext } from '@openclawx/agent-core';
 import {requireAuth,activeDataRunOwner} from '../auth/service.js';
 import {experienceContextForOwner} from '../experience/routes.js';
 import {getOrchestrator} from '../orchestration/routes.js';

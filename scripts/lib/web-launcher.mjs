@@ -32,24 +32,24 @@ export async function choosePort(basePort) {
 export async function startWebLauncher(projectRoot, options = {}) {
   const entry = apiEntry(projectRoot);
   const staticRoot = staticDir(projectRoot);
-  const requestedPort = Number(options.port || process.env.WORKMATE_API_PORT || '47832');
-  const host = options.host || process.env.WORKMATE_API_HOST || '127.0.0.1';
+  const requestedPort = Number(options.port || process.env.OPENCLAWX_API_PORT || '47832');
+  const host = options.host || process.env.OPENCLAWX_API_HOST || '127.0.0.1';
   if (!existsSync(entry)) throw new Error(`Missing API build: ${entry}. Run \`pnpm build\` first.`);
-  if (!existsSync(path.join(staticRoot, 'index.html'))) throw new Error(`Missing renderer build: ${staticRoot}/index.html. Run \`pnpm --filter @workmate/renderer build\` first.`);
+  if (!existsSync(path.join(staticRoot, 'index.html'))) throw new Error(`Missing renderer build: ${staticRoot}/index.html. Run \`pnpm --filter @openclawx/renderer build\` first.`);
 
-  const engine = options.engine || process.env.WORKMATE_AGENT_ENGINE || 'agentscope';
+  const engine = options.engine || process.env.OPENCLAWX_AGENT_ENGINE || 'agentscope';
   const extraEnv = {};
   if (engine === 'agentscope') {
     const runtime = ensureAgentscopeRuntime(projectRoot, { dataDir: options.dataDir, reinstall: Boolean(options.reinstallRuntime) });
     Object.assign(extraEnv, {
-      WORKMATE_AGENT_ENGINE: 'agentscope',
-      WORKMATE_AGENTSCOPE_ENABLED: '1',
-      WORKMATE_AGENTSCOPE_ROOT: runtime.runtimeRoot,
-      WORKMATE_AGENTSCOPE_PYTHON: runtime.python,
-      WORKMATE_DATA_DIR: runtime.dataDir,
+      OPENCLAWX_AGENT_ENGINE: 'agentscope',
+      OPENCLAWX_AGENTSCOPE_ENABLED: '1',
+      OPENCLAWX_AGENTSCOPE_ROOT: runtime.runtimeRoot,
+      OPENCLAWX_AGENTSCOPE_PYTHON: runtime.python,
+      OPENCLAWX_DATA_DIR: runtime.dataDir,
     });
-  } else if (options.dataDir || process.env.WORKMATE_DATA_DIR) {
-    Object.assign(extraEnv, { WORKMATE_DATA_DIR: options.dataDir || process.env.WORKMATE_DATA_DIR });
+  } else if (options.dataDir || process.env.OPENCLAWX_DATA_DIR) {
+    Object.assign(extraEnv, { OPENCLAWX_DATA_DIR: options.dataDir || process.env.OPENCLAWX_DATA_DIR });
   }
 
   const port = await choosePort(requestedPort);
@@ -59,13 +59,13 @@ export async function startWebLauncher(projectRoot, options = {}) {
     env: {
       ...process.env,
       ...extraEnv,
-      WORKMATE_API_PORT: String(port),
-      WORKMATE_API_HOST: host,
-      WORKMATE_WEB_STATIC_DIR: staticRoot,
+      OPENCLAWX_API_PORT: String(port),
+      OPENCLAWX_API_HOST: host,
+      OPENCLAWX_WEB_STATIC_DIR: staticRoot,
     },
   });
   child.once('spawn', () => {
-    process.stdout.write(`Workmate Web is starting at http://${host}:${port}\n`);
+    process.stdout.write(`OpenClawX Web is starting at http://${host}:${port}\n`);
   });
   child.once('exit', (code) => process.exit(code ?? 0));
   return { port, child };

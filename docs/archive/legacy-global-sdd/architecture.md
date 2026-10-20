@@ -1,4 +1,4 @@
-# Workmate 架构与概要设计（历史总规格）
+# OpenClawX 架构与概要设计（历史总规格）
 
 > 状态：历史参考。当前全局架构见 [架构文档](../../architecture/architecture.md)，新功能架构进入 [功能 SDD](../../sdd/README.md)。
 
@@ -15,7 +15,7 @@ Fastify API ── Agent Core ── Vercel AI SDK Provider
                          ├─ Skill runtime：渐进加载、工具与权限判定
                          └─ Workspace：每个运行独立目录
         │ IPC
-Electron Main ── SQLite（元数据） + ~/.workmate（Skill、工作区、资产文件）
+Electron Main ── SQLite（元数据） + ~/.openclawx（Skill、工作区、资产文件）
 ```
 
 ## 2. 核心模块职责
@@ -85,5 +85,5 @@ ProjectRun
 ## 5. 数据存储
 
 - SQLite：应用全局键值、资产索引等可查询元数据。
-- `~/.workmate`：Skills、工作区和资产实体文件。
+- `~/.openclawx`：Skills、工作区和资产实体文件。
 - 当前项目/自动化配置采用桌面存储键持久化；后续可迁移至 SQLite 表而不改变领域模型。

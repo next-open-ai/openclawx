@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import type { AgentEvent } from '@workmate/contracts';
+import type { AgentEvent } from '@openclawx/contracts';
 import type { ExecutionBackendStreamInput } from './execution-backend.js';
 
 function setting(name: string): string {

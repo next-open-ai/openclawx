@@ -46,9 +46,9 @@ export interface ChatScheduleState {
   selectedTaskId?: string;
 }
 export interface Message {
-  workflowResult?: import('@workmate/contracts').WorkflowResultReference;
-  attachments?: import('@workmate/contracts').ChatImageAttachment[];
-  fileAttachments?: import('@workmate/contracts').ChatFileAttachment[];
+  workflowResult?: import('@openclawx/contracts').WorkflowResultReference;
+  attachments?: import('@openclawx/contracts').ChatImageAttachment[];
+  fileAttachments?: import('@openclawx/contracts').ChatFileAttachment[];
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -83,7 +83,7 @@ export interface Conversation {
 export interface ProjectTaskDraft { title: string; objective: string; employeeId: EmployeeId; skillIds: string[]; dependsOn?: number[]; contract?: { outputs?: string[]; acceptance?: string; maxSteps?: number; timeoutMs?: number; maxAttempts?: number } };
 export interface ProjectTaskTranscript {
   error?: string;
-  failure?: import('@workmate/contracts').RunFailure;
+  failure?: import('@openclawx/contracts').RunFailure;
   assistantContent: string;
   reasoningContent?: string;
   activities: ToolActivity[];
@@ -242,7 +242,7 @@ function profileInstructions(employee: Employee, extra = '') {
   const researchMode = employee.id === 'research'
     ? ' Research output mode: deliver a concise Markdown or structured research brief with findings, evidence/source pointers, uncertainty, and next actions. Do not narrate planning or self-correction. Use only the minimum relevant tools; after a failed file operation, state the concrete blocker instead of repeatedly retrying the same write/read path.'
     : '';
-  return `You are Workmate's digital employee "${role}" (${employee.id}). Introduce yourself using this employee name; describe capabilities accurately without exaggeration.${roleBrief} ${focus} ${languageDirective} Reply in the user's language when it differs only because the user explicitly requests another language.${researchMode} ${extra}`.trim();
+  return `You are OpenClawX's digital employee "${role}" (${employee.id}). Introduce yourself using this employee name; describe capabilities accurately without exaggeration.${roleBrief} ${focus} ${languageDirective} Reply in the user's language when it differs only because the user explicitly requests another language.${researchMode} ${extra}`.trim();
 }
 
 function collaboratorFocus(employee: Employee) {
@@ -336,11 +336,11 @@ export function useWorkspace() {
    * Desktop conversations may live on the orchestration server
    * (`/api/orch/sessions`); the server owns run/approval state machines and
    * the page mirrors it via SSE + polling. Enabled when the renderer runs
-   * inside Electron (window.workmateDesktop present) and the caller does not
+   * inside Electron (window.openclawxDesktop present) and the caller does not
    * request legacy collaborator briefs.
    * ------------------------------------------------------------------ */
 
-  const serverChatActive = () => Boolean(window.workmateDesktop);
+  const serverChatActive = () => Boolean(window.openclawxDesktop);
   const serverActiveRuns = new Map<string, { sessionId: string; unsubscribe: () => void }>();
   const serverBump = () => {
     conversations.value = [...conversations.value];
@@ -580,7 +580,7 @@ export function useWorkspace() {
           if (status === 'error') {
             sseLive = false;
             sseError = detail || 'SSE stream failed';
-            console.warn(`[workmate] session SSE unavailable (${sseError}); falling back to run.transcript polling`);
+            console.warn(`[openclawx] session SSE unavailable (${sseError}); falling back to run.transcript polling`);
           } else if (status === 'closed') {
             sseLive = false;
           }
@@ -597,9 +597,9 @@ export function useWorkspace() {
       const onlineSearch = getEmployeePrefs(employee.id).searchMode !== 'off';
       const opts = runOptionsFor(employee.id, onlineSearch);
       if (opts.engine) {
-        console.info(`[workmate] chat context engine override: ${opts.engine}`);
+        console.info(`[openclawx] chat context engine override: ${opts.engine}`);
       } else {
-        console.info('[workmate] chat context engine: inherit global default');
+        console.info('[openclawx] chat context engine: inherit global default');
       }
       const skills = await skillRuntimeFor(employee.id, skillIds);
       const runModel = modelForEmployee(employee.id, model) ?? model;
@@ -623,9 +623,9 @@ export function useWorkspace() {
         ...(opts.engine ? { engine: opts.engine } : {}),
       };
       if (!context.mcpConnections.length) {
-        console.warn('[workmate] chat context has 0 MCP connectors; server may backfill from KV');
+        console.warn('[openclawx] chat context has 0 MCP connectors; server may backfill from KV');
       } else {
-        console.info(`[workmate] chat context MCP connectors: ${context.mcpConnections.map((item) => item.name).join(', ')}`);
+        console.info(`[openclawx] chat context MCP connectors: ${context.mcpConnections.map((item) => item.name).join(', ')}`);
       }
       const result = await orch.sendChatMessage(sessionId, {
         content: text,
@@ -797,7 +797,7 @@ export function useWorkspace() {
             serverBump();
             if (!warnedSseGap) {
               warnedSseGap = true;
-              console.warn('[workmate] adopted run.transcript via poll (SSE gap or offline)');
+              console.warn('[openclawx] adopted run.transcript via poll (SSE gap or offline)');
             }
           }
         }
@@ -1037,7 +1037,7 @@ export function useWorkspace() {
       void writeStored('workspace.default-employee', currentEmployeeId.value);
     }
   };
-  const addMessage = async (content: string, model: ProviderConfig, options: { workflowResult?: import('@workmate/contracts').WorkflowResultReference; attachments?: import('@workmate/contracts').ChatImageAttachment[]; fileAttachments?: import('@workmate/contracts').ChatFileAttachment[]; employeeId?: EmployeeId; skillIds?: string[]; collaboratorIds?: EmployeeId[]; collaborationDelivery?: CollaborationDelivery; newConversation?: boolean; onlineSearch?: boolean; autoSchedule?: boolean; onRunAccepted?: (sessionId: string, runId: string) => void } = {}) => {
+  const addMessage = async (content: string, model: ProviderConfig, options: { workflowResult?: import('@openclawx/contracts').WorkflowResultReference; attachments?: import('@openclawx/contracts').ChatImageAttachment[]; fileAttachments?: import('@openclawx/contracts').ChatFileAttachment[]; employeeId?: EmployeeId; skillIds?: string[]; collaboratorIds?: EmployeeId[]; collaborationDelivery?: CollaborationDelivery; newConversation?: boolean; onlineSearch?: boolean; autoSchedule?: boolean; onRunAccepted?: (sessionId: string, runId: string) => void } = {}) => {
     const text = content.trim(); if (!text) return undefined;
     if (options.workflowResult && (options.autoSchedule || options.collaboratorIds?.length || options.attachments?.length || options.fileAttachments?.length)) throw new Error('成果问答不支持自动调度、协作者或混入附件。');
     const hasImages = !options.workflowResult && Boolean(options.attachments?.length || activeConversation.value?.messages.some((message) => message.attachments?.length));
@@ -1761,7 +1761,7 @@ HARD PLANNING CONSTRAINTS (must obey):
 
     // Phase 1 — structure only (roles + edges).
     let structureOut = '';
-    const structurePrompt = `You are Workmate's project coordinator (phase 1: structure). Preferred collaboration mode: ${preferredMode}. ${modeGuide[preferredMode]} If the goal cannot honestly fit that mode, still propose the best graph and set suggestedMode accordingly.
+    const structurePrompt = `You are OpenClawX's project coordinator (phase 1: structure). Preferred collaboration mode: ${preferredMode}. ${modeGuide[preferredMode]} If the goal cannot honestly fit that mode, still propose the best graph and set suggestedMode accordingly.
 ${minimalRules}
 
 Available employees (choose only from these):
@@ -1860,7 +1860,7 @@ dependsOn are 0-based indices of prior tasks. Goal: ${goal}`;
 
     // Phase 2 — fill objectives + contracts for the fixed structure.
     let detailOut = '';
-    const detailPrompt = `You are Workmate's project coordinator (phase 2: objectives). Fill objectives for this fixed task structure. Return ONLY a JSON array aligned 1:1 with the structure (same length/order). Each item: {"objective":string,"skillIds":string[],"contract"?:{"outputs"?:string[],"acceptance"?:string,"maxSteps"?:number,"maxAttempts"?:number}}. The platform baseline is 50 tool steps for every project task. Omit contract.maxSteps when 50 is sufficient; set it only when a task clearly needs MORE than 50. Never set it below 50. Prefer concrete deliverable contracts when the goal clearly needs files, but do not force fixed filenames. Keep objectives focused — do not invent work that would require extra agents. Structure: ${JSON.stringify(structureTasks)}. Goal: ${goal}`;
+    const detailPrompt = `You are OpenClawX's project coordinator (phase 2: objectives). Fill objectives for this fixed task structure. Return ONLY a JSON array aligned 1:1 with the structure (same length/order). Each item: {"objective":string,"skillIds":string[],"contract"?:{"outputs"?:string[],"acceptance"?:string,"maxSteps"?:number,"maxAttempts"?:number}}. The platform baseline is 50 tool steps for every project task. Omit contract.maxSteps when 50 is sufficient; set it only when a task clearly needs MORE than 50. Never set it below 50. Prefer concrete deliverable contracts when the goal clearly needs files, but do not force fixed filenames. Keep objectives focused — do not invent work that would require extra agents. Structure: ${JSON.stringify(structureTasks)}. Goal: ${goal}`;
     await streamChat({
       profile: { id: 'project-coordinator-detail', name: 'Project coordinator', instructions: 'Output valid JSON array only.', toolIds: [] },
       messages: [{ role: 'user', content: detailPrompt }],

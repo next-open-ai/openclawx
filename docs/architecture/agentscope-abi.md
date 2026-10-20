@@ -1,4 +1,4 @@
-# Workmate × AgentScope Engine ABI v1
+# OpenClawX × AgentScope Engine ABI v1
 
 > Status: authoritative for the Sidecar boundary. Product orchestration stays in TypeScript; AgentScope runs in a local Python process.
 
@@ -47,7 +47,7 @@ Message rules:
 
 ## 3. AgentEvent mapping (AS → product)
 
-Workmate UI / orchestrator consume **existing** `@workmate/contracts` `AgentEvent` types. The runtime must emit these shapes inside `agent.event`.
+OpenClawX UI / orchestrator consume **existing** `@openclawx/contracts` `AgentEvent` types. The runtime must emit these shapes inside `agent.event`.
 
 | AgentScope / runtime signal | AgentEvent `type` | Notes |
 | --- | --- | --- |
@@ -85,11 +85,11 @@ Hook guidance (AgentScope):
 
 | Env | Effect |
 | --- | --- |
-| `WORKMATE_AGENT_ENGINE=pi` | Default. In-process pi loop (unchanged EasyAI path). |
-| `WORKMATE_AGENT_ENGINE=agentscope` | `streamAgentReply` goes through Sidecar. |
-| `WORKMATE_AGENTSCOPE_ENABLED=1` | Spawn/connect runtime even when engine is still `pi` (warm-up / health). |
-| `WORKMATE_AGENTSCOPE_PYTHON` | Python executable (default `python3`). |
-| `WORKMATE_AGENTSCOPE_TOKEN` | One-shot WS token (parent-generated). |
+| `OPENCLAWX_AGENT_ENGINE=pi` | Default. In-process pi loop (unchanged EasyAI path). |
+| `OPENCLAWX_AGENT_ENGINE=agentscope` | `streamAgentReply` goes through Sidecar. |
+| `OPENCLAWX_AGENTSCOPE_ENABLED=1` | Spawn/connect runtime even when engine is still `pi` (warm-up / health). |
+| `OPENCLAWX_AGENTSCOPE_PYTHON` | Python executable (default `python3`). |
+| `OPENCLAWX_AGENTSCOPE_TOKEN` | One-shot WS token (parent-generated). |
 
 ## 6. Compatibility
 

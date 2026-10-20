@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const baseUrl = process.env.WORKMATE_LOADTEST_BASE_URL || 'http://127.0.0.1:4329/api';
+const baseUrl = process.env.OPENCLAWX_LOADTEST_BASE_URL || 'http://127.0.0.1:4329/api';
 const adminPassword = 'admin123';
 const memberPassword = 'member123';
 
@@ -10,7 +10,7 @@ function sleep(ms) {
 
 async function request(path, options = {}, token) {
   const headers = new Headers(options.headers || {});
-  if (token) headers.set('x-workmate-session', token);
+  if (token) headers.set('x-openclawx-session', token);
   if (options.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
   const response = await fetch(`${baseUrl}${path}`, { ...options, headers });
   const text = await response.text();

@@ -8,7 +8,7 @@ const runtimeRoot = path.join(projectRoot, 'runtimes', 'agentscope-runtime');
 const pythonRoot = path.join(runtimeRoot, 'python');
 const installRoot = path.join(runtimeRoot, '.python-install');
 const isWin = process.platform === 'win32';
-const uv = process.env.WORKMATE_UV?.trim() || 'uv';
+const uv = process.env.OPENCLAWX_UV?.trim() || 'uv';
 
 function run(command, args) {
   const result = spawnSync(command, args, { cwd: runtimeRoot, stdio: 'inherit', env: process.env });

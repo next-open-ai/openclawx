@@ -12,7 +12,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   if (!isApiRequest) return nativeFetch(input, init);
   const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
   const token = authSessionToken();
-  if (token && !headers.has('x-workmate-session')) headers.set('x-workmate-session', token);
+  if (token && !headers.has('x-openclawx-session')) headers.set('x-openclawx-session', token);
   return nativeFetch(input, { ...init, headers });
 };
 

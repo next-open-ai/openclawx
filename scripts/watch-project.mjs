@@ -2,11 +2,11 @@
  * Watch a project's orchestration events (SSE) — QA + future channel-gateway
  * reference. Requires the local API running (see scripts/*.mjs docs).
  *
- * Usage: WORKMATE_API_PORT=47832 node scripts/watch-project.mjs <projectId>
+ * Usage: OPENCLAWX_API_PORT=47832 node scripts/watch-project.mjs <projectId>
  */
 import process from 'node:process';
 
-const port = process.env.WORKMATE_API_PORT || '47832';
+const port = process.env.OPENCLAWX_API_PORT || '47832';
 const projectId = process.argv[2];
 if (!projectId) {
   console.error('Usage: node scripts/watch-project.mjs <projectId>');

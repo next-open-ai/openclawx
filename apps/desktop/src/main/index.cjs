@@ -60,7 +60,7 @@ try {
   ];
   const names = new Set([
     `${app.getName()}.savedState`,
-    'com.workmate.desktop.savedState',
+    'com.openclawx.desktop.savedState',
     // unpackaged `electron .` uses Electron's default bundle id
     'com.github.Electron.savedState',
   ]);
@@ -72,8 +72,8 @@ try {
   }
 } catch (_) { /* ignore */ }
 
-/** Dev runs under `npm run dev` set WORKMATE_RENDERER_URL; packaged builds do not. */
-const isDevShell = Boolean(process.env.WORKMATE_RENDERER_URL);
+/** Dev runs under `npm run dev` set OPENCLAWX_RENDERER_URL; packaged builds do not. */
+const isDevShell = Boolean(process.env.OPENCLAWX_RENDERER_URL);
 /** Set once quit begins so traffic-light close and menu Quit share one path. */
 let isQuitting = false;
 
@@ -96,7 +96,7 @@ function installApplicationMenu() {
   const template = [
     ...(isMac
       ? [{
-          label: app.name || 'Workmate',
+          label: app.name || 'OpenClawX',
           submenu: [
             { role: 'about' },
             { type: 'separator' },
@@ -106,7 +106,7 @@ function installApplicationMenu() {
             { role: 'hideOthers' },
             { role: 'unhide' },
             { type: 'separator' },
-            { role: 'quit', label: '退出 Workmate' },
+            { role: 'quit', label: '退出 OpenClawX' },
           ],
         }]
       : []),
@@ -143,7 +143,7 @@ function installApplicationMenu() {
 
 protocol.registerSchemesAsPrivileged([
   {
-    scheme: 'workmate-preview',
+    scheme: 'openclawx-preview',
     privileges: {
       standard: true,
       secure: true,
@@ -155,15 +155,15 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
-const apiPort = Number(process.env.WORKMATE_API_PORT || 47832);
+const apiPort = Number(process.env.OPENCLAWX_API_PORT || 47832);
 /** Shared with the forked API so main-process KV can authenticate as system admin. */
-const apiInternalToken = String(process.env.WORKMATE_INTERNAL_TOKEN || randomBytes(24).toString('hex'));
+const apiInternalToken = String(process.env.OPENCLAWX_INTERNAL_TOKEN || randomBytes(24).toString('hex'));
 let mainWindow;
 let apiProcess;
 let gatewayProcess = null;
 let database;
-const storageRoot = () => path.join(app.getPath('home'), '.workmate');
-const databaseFile = () => path.join(storageRoot(), 'workmate.sqlite');
+const storageRoot = () => path.join(app.getPath('home'), '.openclawx');
+const databaseFile = () => path.join(storageRoot(), 'openclawx.sqlite');
 /** @type {Map<string, string>} */
 const previewRoots = new Map();
 
@@ -480,11 +480,11 @@ function materializeProjectAssets(root, assetIds) {
 function registerPreviewRoot(root) {
   const resolved = projectRoot(root);
   for (const [token, existing] of previewRoots.entries()) {
-    if (existing === resolved) return { token, origin: `workmate-preview://${token}` };
+    if (existing === resolved) return { token, origin: `openclawx-preview://${token}` };
   }
   const token = randomUUID().replace(/-/g, '').slice(0, 16);
   previewRoots.set(token, resolved);
-  return { token, origin: `workmate-preview://${token}` };
+  return { token, origin: `openclawx-preview://${token}` };
 }
 
 function revealProjectFile(root, relative) {
@@ -1004,7 +1004,7 @@ function runSkillsCli(reference) {
 async function importGitSkillRepository(value) {
   const source = normalizeSkillSource(value);
   if (!source.startsWith('https://')) throw new Error('Use an HTTPS Git repository URL.');
-  const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'workmate-skill-'));
+  const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'openclawx-skill-'));
   const checkout = path.join(temporaryRoot, 'repository');
   try {
     await new Promise((resolve, reject) => execFile('git', ['clone', '--depth', '1', source, checkout], { timeout: 120000, windowsHide: true }, (error, _stdout, stderr) => error ? reject(new Error(`Unable to clone repository: ${String(stderr || error.message).slice(-1200)}`)) : resolve()));
@@ -1120,7 +1120,7 @@ const orchestratorApiBase = () => `http://127.0.0.1:${apiPort}/api/orch`;
 async function apiKvGet(key) {
   try {
     const response = await fetch(`${orchestratorApiBase()}/kv?key=${encodeURIComponent(String(key))}`, {
-      headers: { 'x-workmate-internal': apiInternalToken },
+      headers: { 'x-openclawx-internal': apiInternalToken },
       signal: AbortSignal.timeout(5000),
     });
     if (!response.ok) return null;
@@ -1137,7 +1137,7 @@ async function apiKvSet(key, value) {
       method: 'PUT',
       headers: {
         'content-type': 'application/json',
-        'x-workmate-internal': apiInternalToken,
+        'x-openclawx-internal': apiInternalToken,
       },
       body: JSON.stringify({ key: String(key), value: String(value) }),
       signal: AbortSignal.timeout(5000),
@@ -1180,7 +1180,7 @@ function clearApiSecretPushTimers() {
 function pushSecretsToApi() {
   if (databaseCredentialBridge) {
     void fetch(`http://127.0.0.1:${apiPort}/api/data/credential-bridge`, {
-      method: 'PUT', headers: { 'content-type': 'application/json', 'x-workmate-internal': apiInternalToken },
+      method: 'PUT', headers: { 'content-type': 'application/json', 'x-openclawx-internal': apiInternalToken },
       body: JSON.stringify(databaseCredentialBridge.descriptor), signal: AbortSignal.timeout(3000),
     }).then(response => { if (!response.ok) console.warn(`[api] database credential bridge registration rejected (${response.status}); restart the complete dev service if this persists.`); })
       .catch(() => { /* API may still be booting; scheduled pushes retry. */ });
@@ -1192,7 +1192,7 @@ function pushSecretsToApi() {
   if (apiProcess && !apiProcess.killed && apiProcess.connected === true) {
     try {
       apiProcess.send(
-        { type: 'workmate:secrets', payload },
+        { type: 'openclawx:secrets', payload },
         () => { /* ignore mid-exit races */ },
       );
     } catch (_) {
@@ -1204,7 +1204,7 @@ function pushSecretsToApi() {
     method: 'PUT',
     headers: {
       'content-type': 'application/json',
-      'x-workmate-internal': apiInternalToken,
+      'x-openclawx-internal': apiInternalToken,
     },
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(3000),
@@ -1228,10 +1228,10 @@ function bundledAgentscopeRoot() {
     : path.resolve(__dirname, '../../../../runtimes/agentscope-runtime');
 }
 
-/** Dev-time sibling checkout: tools/deepseek-harness next to workmate/. */
+/** Dev-time sibling checkout: tools/deepseek-harness next to openclawx/. */
 function siblingDshRoot() {
-  if (process.env.WORKMATE_DSH_ROOT?.trim()) return process.env.WORKMATE_DSH_ROOT.trim();
-  // Prefer on-demand user runtime (~/.workmate/dsh-runtime) for packaged apps.
+  if (process.env.OPENCLAWX_DSH_ROOT?.trim()) return process.env.OPENCLAWX_DSH_ROOT.trim();
+  // Prefer on-demand user runtime (~/.openclawx/dsh-runtime) for packaged apps.
   const userRuntime = path.join(storageRoot(), 'dsh-runtime');
   const userBin = path.join(userRuntime, 'node_modules', '@deepseek-ai', 'dsh-sdk-jsonrpc-demo', 'lib', 'bin.js');
   if (existsSync(userBin)) return userRuntime;
@@ -1241,7 +1241,7 @@ function siblingDshRoot() {
 }
 
 function bundledAgentscopePython(runtimeRoot = bundledAgentscopeRoot()) {
-  if (process.env.WORKMATE_AGENTSCOPE_PYTHON?.trim()) return process.env.WORKMATE_AGENTSCOPE_PYTHON.trim();
+  if (process.env.OPENCLAWX_AGENTSCOPE_PYTHON?.trim()) return process.env.OPENCLAWX_AGENTSCOPE_PYTHON.trim();
   const candidates = process.platform === 'win32'
     ? [
         path.join(runtimeRoot, '.venv', 'Scripts', 'python.exe'),
@@ -1304,7 +1304,7 @@ function enrichDesktopPathEnv(base = process.env) {
 function resolveApiExec() {
   if (!app.isPackaged) {
     const candidates = [
-      process.env.WORKMATE_NODE_BINARY,
+      process.env.OPENCLAWX_NODE_BINARY,
       process.env.npm_node_execpath,
       process.env.NODE_BINARY,
     ].filter(Boolean);
@@ -1330,9 +1330,9 @@ function startApi() {
   }
   // Dev supervisor may already own :47832 — do not double-bind.
   void isApiHealthy().then((healthy) => {
-    if (healthy || process.env.WORKMATE_API_EXTERNAL === '1') {
+    if (healthy || process.env.OPENCLAWX_API_EXTERNAL === '1') {
       if (healthy) console.log(`[api] already listening on ${apiPort}; skip spawn`);
-      else console.log(`[api] WORKMATE_API_EXTERNAL=1; skip spawn and wait for ${apiPort}`);
+      else console.log(`[api] OPENCLAWX_API_EXTERNAL=1; skip spawn and wait for ${apiPort}`);
       clearApiSecretPushTimers();
       apiSecretPushTimers.push(setTimeout(() => pushSecretsToApi(), 300));
       apiSecretPushTimers.push(setTimeout(() => pushSecretsToApi(), 1500));
@@ -1343,33 +1343,33 @@ function startApi() {
 }
 
 function spawnApiProcess(entry) {
-  const agentscopeRoot = process.env.WORKMATE_AGENTSCOPE_ROOT || bundledAgentscopeRoot();
+  const agentscopeRoot = process.env.OPENCLAWX_AGENTSCOPE_ROOT || bundledAgentscopeRoot();
   const dshRoot = siblingDshRoot();
   const { execPath, electronAsNode } = resolveApiExec();
   const childEnv = enrichDesktopPathEnv({
     ...process.env,
-    WORKMATE_API_PORT: String(apiPort),
-    WORKMATE_API_HOST: process.env.WORKMATE_API_HOST || '0.0.0.0',
-    WORKMATE_INTERNAL_TOKEN: apiInternalToken,
-    WORKMATE_DATA_DIR: storageRoot(),
-    WORKMATE_SKILLS_DIR: path.join(storageRoot(), 'skills'),
-    WORKMATE_WORKSPACES_DIR: path.join(storageRoot(), 'workspaces'),
-    WORKMATE_KNOWLEDGE_DIR: path.join(storageRoot(), 'knowledge'),
-    WORKMATE_EXPERIENCE_DIR: path.join(storageRoot(), 'experience'),
+    OPENCLAWX_API_PORT: String(apiPort),
+    OPENCLAWX_API_HOST: process.env.OPENCLAWX_API_HOST || '0.0.0.0',
+    OPENCLAWX_INTERNAL_TOKEN: apiInternalToken,
+    OPENCLAWX_DATA_DIR: storageRoot(),
+    OPENCLAWX_SKILLS_DIR: path.join(storageRoot(), 'skills'),
+    OPENCLAWX_WORKSPACES_DIR: path.join(storageRoot(), 'workspaces'),
+    OPENCLAWX_KNOWLEDGE_DIR: path.join(storageRoot(), 'knowledge'),
+    OPENCLAWX_EXPERIENCE_DIR: path.join(storageRoot(), 'experience'),
     // Only the capability-token phone surface is exposed by this TLS listener.
-    WORKMATE_MOBILE_HTTPS_ENABLED: process.env.WORKMATE_MOBILE_HTTPS_ENABLED || '1',
-    // Do NOT default-inject WORKMATE_AGENT_ENGINE=pi — that permanently
+    OPENCLAWX_MOBILE_HTTPS_ENABLED: process.env.OPENCLAWX_MOBILE_HTTPS_ENABLED || '1',
+    // Do NOT default-inject OPENCLAWX_AGENT_ENGINE=pi — that permanently
     // overrides employee/runtime engine settings. Only forward when the
     // parent process already set it (ops / explicit shell export).
-    ...(process.env.WORKMATE_AGENT_ENGINE
-      ? { WORKMATE_AGENT_ENGINE: process.env.WORKMATE_AGENT_ENGINE }
+    ...(process.env.OPENCLAWX_AGENT_ENGINE
+      ? { OPENCLAWX_AGENT_ENGINE: process.env.OPENCLAWX_AGENT_ENGINE }
       : {}),
-    ...(dshRoot ? { WORKMATE_DSH_ROOT: dshRoot } : {}),
-    WORKMATE_AGENTSCOPE_ENABLED: process.env.WORKMATE_AGENTSCOPE_ENABLED || '0',
-    WORKMATE_AGENTSCOPE_PYTHON: bundledAgentscopePython(agentscopeRoot),
-    WORKMATE_AGENTSCOPE_ROOT: agentscopeRoot,
+    ...(dshRoot ? { OPENCLAWX_DSH_ROOT: dshRoot } : {}),
+    OPENCLAWX_AGENTSCOPE_ENABLED: process.env.OPENCLAWX_AGENTSCOPE_ENABLED || '0',
+    OPENCLAWX_AGENTSCOPE_PYTHON: bundledAgentscopePython(agentscopeRoot),
+    OPENCLAWX_AGENTSCOPE_ROOT: agentscopeRoot,
     // Optional ops override for Agent script interpreter (system 3.9+ still preferred when unset).
-    ...(process.env.WORKMATE_PYTHON ? { WORKMATE_PYTHON: process.env.WORKMATE_PYTHON } : {}),
+    ...(process.env.OPENCLAWX_PYTHON ? { OPENCLAWX_PYTHON: process.env.OPENCLAWX_PYTHON } : {}),
     // The API is unpacked under Resources together with its minimal
     // production dependency closure, not the desktop workspace node_modules.
     ...(app.isPackaged ? { NODE_PATH: path.join(process.resourcesPath, 'api', 'node_deps') } : {}),
@@ -1390,18 +1390,18 @@ function spawnApiProcess(entry) {
   apiProcess.on('message', (message) => {
     if (!message || typeof message !== 'object') return;
     const payload = /** @type {{type?: string}} */ (message);
-    if (payload.type === 'workmate:database-secret') {
+    if (payload.type === 'openclawx:database-secret') {
       const { id, key, operation, password } = message;
       if (typeof id !== 'string' || !/^[a-f0-9-]{36}$/.test(id) || typeof key !== 'string' || !/^[a-f0-9-]{36}$/.test(key)) return;
       try {
         const result = accessDatabaseCredential({ key, operation, password });
-        apiProcess?.send({ type: 'workmate:database-secret:response', id, password: result });
+        apiProcess?.send({ type: 'openclawx:database-secret:response', id, password: result });
       } catch {
-        apiProcess?.send({ type: 'workmate:database-secret:response', id, error: 'keyring unavailable' });
+        apiProcess?.send({ type: 'openclawx:database-secret:response', id, error: 'keyring unavailable' });
       }
       return;
     }
-    if (payload.type !== 'workmate:secrets:request') return;
+    if (payload.type !== 'openclawx:secrets:request') return;
     pushSecretsToApi();
   });
   apiProcess.on('error', (error) => {
@@ -1440,7 +1440,7 @@ async function startGatewayIfEnabled() {
   gatewayProcess = fork(gatewayEntry(), [], {
     env: {
       ...process.env,
-      WORKMATE_API_URL: `http://127.0.0.1:${apiPort}/api/orch`,
+      OPENCLAWX_API_URL: `http://127.0.0.1:${apiPort}/api/orch`,
     },
     stdio: 'inherit',
   });
@@ -1449,9 +1449,9 @@ async function startGatewayIfEnabled() {
   gatewayProcess.on('message', (message) => {
     if (!message || typeof message !== 'object') return;
     const payload = /** @type {{type?: string}} */ (message);
-    if (payload.type !== 'workmate:channels:secrets:request') return;
+    if (payload.type !== 'openclawx:channels:secrets:request') return;
     gatewayProcess.send?.({
-      type: 'workmate:channels:secrets',
+      type: 'openclawx:channels:secrets',
       payload: { channels: readChannelSecrets() },
     });
   });
@@ -1471,7 +1471,7 @@ async function waitForApi(timeoutMs = 30_000) {
     } catch (_) { /* retry */ }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
-  throw new Error(`Workmate local API did not become ready within ${timeoutMs}ms.`);
+  throw new Error(`OpenClawX local API did not become ready within ${timeoutMs}ms.`);
 }
 
 /** Only nudge if the window is completely off every screen; never clamp mid-drag. */
@@ -1569,7 +1569,7 @@ async function createWindow() {
     if (details.level >= 2) console.error(`[renderer] ${details.sourceId}:${details.lineNumber} ${details.message}`);
   });
   mainWindow.webContents.on('render-process-gone', (_event, details) => console.error(`[renderer] process gone: ${details.reason}`));
-  const rendererUrl = process.env.WORKMATE_RENDERER_URL;
+  const rendererUrl = process.env.OPENCLAWX_RENDERER_URL;
   try {
     if (rendererUrl) {
       await waitForRenderer(rendererUrl).catch((error) => {
@@ -1746,7 +1746,7 @@ async function runEnvironmentChecks(onProgress) {
       ? `AgentScope Sidecar 将优先使用应用内置运行时：${bundledAgentscope.runtimeRoot}。Agent 自编脚本即使回退到该解释器，也不得向此环境 pip install。`
       : agentscopeOk
         ? '未发现应用内置 AgentScope Runtime，将回退到系统 Python 3.10+。如需离线分发，请使用打包命令重新生成安装包。'
-        : 'AgentScope 运行时需要 Python 3.10+。开发环境可设置 WORKMATE_AGENTSCOPE_PYTHON，正式安装包建议内置 runtime 后再分发。',
+        : 'AgentScope 运行时需要 Python 3.10+。开发环境可设置 OPENCLAWX_AGENTSCOPE_PYTHON，正式安装包建议内置 runtime 后再分发。',
   });
 
   // git
@@ -1777,8 +1777,8 @@ async function runEnvironmentChecks(onProgress) {
       : '未检测到 npx。npx 随 Node.js 一起提供：请先按 Node 指引安装 Node 22+，或重装 Node（勾选 npm）。安装后重启本应用。',
   });
 
-  // 数据目录可写（~/.workmate）
-  await begin('storage', '本地数据目录（~/.workmate）', '可读写');
+  // 数据目录可写（~/.openclawx）
+  await begin('storage', '本地数据目录（~/.openclawx）', '可读写');
   let storageOk = true;
   let storageError = '';
   try {
@@ -1792,7 +1792,7 @@ async function runEnvironmentChecks(onProgress) {
     storageError = cause instanceof Error ? cause.message : String(cause);
   }
   await finish({
-    id: 'storage', name: '本地数据目录（~/.workmate）', status: storageOk ? 'ok' : 'error', required: '可读写',
+    id: 'storage', name: '本地数据目录（~/.openclawx）', status: storageOk ? 'ok' : 'error', required: '可读写',
     found: storageOk ? storageRoot() : storageError,
     help: storageOk
       ? '会话、项目、资产、Skill 与域数据保存在该目录。'
@@ -1833,7 +1833,7 @@ async function runEnvironmentChecks(onProgress) {
 app.whenReady().then(async () => {
   if (!hasSingleInstanceLock) return;
   installApplicationMenu();
-  protocol.handle('workmate-preview', async (request) => {
+  protocol.handle('openclawx-preview', async (request) => {
     try {
       const url = new URL(request.url);
       const root = previewRoots.get(url.hostname);
@@ -1864,32 +1864,32 @@ app.whenReady().then(async () => {
   databaseCredentialBridge = await startDatabaseCredentialBridge(accessDatabaseCredential);
   app.once('will-quit', () => databaseCredentialBridge?.close());
   startApi();
-  ipcMain.handle('workmate:pick-file', async () => {
+  ipcMain.handle('openclawx:pick-file', async () => {
     const result = await dialog.showOpenDialog(mainWindow, { properties: ['openFile'] });
     return result.canceled ? null : result.filePaths[0];
   });
-  ipcMain.handle('workmate:pick-project-directory', async () => {
+  ipcMain.handle('openclawx:pick-project-directory', async () => {
     const result = await dialog.showOpenDialog(mainWindow, { title: '选择项目空间目录', properties: ['openDirectory', 'createDirectory'] });
     return result.canceled ? null : result.filePaths[0];
   });
-  ipcMain.handle('workmate:create-project-workspace', (_, value) => createProjectWorkspace(value));
-  ipcMain.handle('workmate:list-project-files', (_, root) => listProjectFiles(root));
-  ipcMain.handle('workmate:read-project-file', (_, root, relative) => readProjectFile(root, relative));
-  ipcMain.handle('workmate:write-project-file', (_, root, relative, content) => writeProjectFile(root, relative, content));
-  ipcMain.handle('workmate:sync-project-workspace', (_, root, runId) => syncRunWorkspaceToProject(root, runId));
-  ipcMain.handle('workmate:materialize-project-assets', (_, root, assetIds) => materializeProjectAssets(root, assetIds));
-  ipcMain.handle('workmate:register-preview-root', (_, root) => registerPreviewRoot(root));
-  ipcMain.handle('workmate:register-asset-preview-root', (_, assetId) => registerAssetPreviewRoot(assetId));
-  ipcMain.handle('workmate:read-project-preview', (_, root, relative) => readProjectPreview(root, relative));
-  ipcMain.handle('workmate:read-asset-preview', (_, assetId) => readAssetPreview(assetId));
-  ipcMain.handle('workmate:reveal-project-file', (_, root, relative) => revealProjectFile(root, relative));
-  ipcMain.handle('workmate:open-asset-in-browser', (_, assetId) => openAssetInBrowser(assetId));
-  ipcMain.handle('workmate:open-project-file-in-browser', (_, root, relative) => openProjectFileInBrowser(root, relative));
-  ipcMain.handle('workmate:pick-skill', async () => {
+  ipcMain.handle('openclawx:create-project-workspace', (_, value) => createProjectWorkspace(value));
+  ipcMain.handle('openclawx:list-project-files', (_, root) => listProjectFiles(root));
+  ipcMain.handle('openclawx:read-project-file', (_, root, relative) => readProjectFile(root, relative));
+  ipcMain.handle('openclawx:write-project-file', (_, root, relative, content) => writeProjectFile(root, relative, content));
+  ipcMain.handle('openclawx:sync-project-workspace', (_, root, runId) => syncRunWorkspaceToProject(root, runId));
+  ipcMain.handle('openclawx:materialize-project-assets', (_, root, assetIds) => materializeProjectAssets(root, assetIds));
+  ipcMain.handle('openclawx:register-preview-root', (_, root) => registerPreviewRoot(root));
+  ipcMain.handle('openclawx:register-asset-preview-root', (_, assetId) => registerAssetPreviewRoot(assetId));
+  ipcMain.handle('openclawx:read-project-preview', (_, root, relative) => readProjectPreview(root, relative));
+  ipcMain.handle('openclawx:read-asset-preview', (_, assetId) => readAssetPreview(assetId));
+  ipcMain.handle('openclawx:reveal-project-file', (_, root, relative) => revealProjectFile(root, relative));
+  ipcMain.handle('openclawx:open-asset-in-browser', (_, assetId) => openAssetInBrowser(assetId));
+  ipcMain.handle('openclawx:open-project-file-in-browser', (_, root, relative) => openProjectFileInBrowser(root, relative));
+  ipcMain.handle('openclawx:pick-skill', async () => {
     const result = await dialog.showOpenDialog(mainWindow, { title: 'Choose SKILL.md', filters: [{ name: 'Agent Skill manifest', extensions: ['md'] }], properties: ['openFile'] });
     return result.canceled ? null : readSkillManifest(result.filePaths[0]);
   });
-  ipcMain.handle('workmate:create-skill', (_, value) => {
+  ipcMain.handle('openclawx:create-skill', (_, value) => {
     const name = safeSkillName(value?.name);
     const description = String(value?.description || '').trim().slice(0, 500);
     if (!name || !description) throw new Error('A skill name and description are required.');
@@ -1900,16 +1900,16 @@ app.whenReady().then(async () => {
     writeFileSync(file, `---\nname: ${name}\ndescription: ${description.replace(/\n/g, ' ')}\n---\n\n# ${name}\n\n## Instructions\n\nDescribe when the agent should use this skill and the safe workflow to follow.\n\n## References\n\nPlace optional reference material in this folder and load it only when needed.\n`, { mode: 0o600 });
     return readSkillManifest(file);
   });
-  ipcMain.handle('workmate:write-skill-draft', (_, value) => writeSkillDraft(value));
-  ipcMain.handle('workmate:read-skill-draft', (_, file) => readSkillDraft(file));
-  ipcMain.handle('workmate:list-skill-files', (_, file) => listSkillFiles(file));
-  ipcMain.handle('workmate:read-skill-file', (_, file) => readManagedSkillFile(file));
-  ipcMain.handle('workmate:write-skill-file', (_, file, content) => writeManagedSkillFile(file, content));
-  ipcMain.handle('workmate:delete-managed-skill', (_, file) => deleteManagedSkill(file));
-  ipcMain.handle('workmate:install-skill', async (_, reference) => runSkillsCli(reference));
-  ipcMain.handle('workmate:import-git-skill', async (_, url) => importGitSkillRepository(url));
-  ipcMain.handle('workmate:find-skills', async (_, query, batchCount) => findSkills(query, batchCount));
-  ipcMain.handle('workmate:open-external', async (_, value) => {
+  ipcMain.handle('openclawx:write-skill-draft', (_, value) => writeSkillDraft(value));
+  ipcMain.handle('openclawx:read-skill-draft', (_, file) => readSkillDraft(file));
+  ipcMain.handle('openclawx:list-skill-files', (_, file) => listSkillFiles(file));
+  ipcMain.handle('openclawx:read-skill-file', (_, file) => readManagedSkillFile(file));
+  ipcMain.handle('openclawx:write-skill-file', (_, file, content) => writeManagedSkillFile(file, content));
+  ipcMain.handle('openclawx:delete-managed-skill', (_, file) => deleteManagedSkill(file));
+  ipcMain.handle('openclawx:install-skill', async (_, reference) => runSkillsCli(reference));
+  ipcMain.handle('openclawx:import-git-skill', async (_, url) => importGitSkillRepository(url));
+  ipcMain.handle('openclawx:find-skills', async (_, query, batchCount) => findSkills(query, batchCount));
+  ipcMain.handle('openclawx:open-external', async (_, value) => {
     const raw = String(value || '').trim();
     if (!raw) return;
     // Normalize via WHATWG URL so query strings (e.g. publish ?token=) are not dropped.
@@ -1917,16 +1917,16 @@ app.whenReady().then(async () => {
     try { href = new URL(raw).href; } catch { /* keep raw for non-standard schemes */ }
     await shell.openExternal(href);
   });
-  ipcMain.handle('workmate:get-model-config', () => readModelConfig());
-  ipcMain.handle('workmate:save-model-config', (_, value) => writeModelConfig(value));
-  ipcMain.handle('workmate:get-search-config', () => readSearchConfig());
-  ipcMain.handle('workmate:save-search-config', (_, value) => writeSearchConfig(value));
-  ipcMain.handle('workmate:test-provider', (_, value) => testProviderConnection(value));
-  ipcMain.handle('workmate:list-provider-models', (_, value) => listProviderModels(value));
-  ipcMain.handle('workmate:list-ollama-models', async (_, baseUrl) => {
+  ipcMain.handle('openclawx:get-model-config', () => readModelConfig());
+  ipcMain.handle('openclawx:save-model-config', (_, value) => writeModelConfig(value));
+  ipcMain.handle('openclawx:get-search-config', () => readSearchConfig());
+  ipcMain.handle('openclawx:save-search-config', (_, value) => writeSearchConfig(value));
+  ipcMain.handle('openclawx:test-provider', (_, value) => testProviderConnection(value));
+  ipcMain.handle('openclawx:list-provider-models', (_, value) => listProviderModels(value));
+  ipcMain.handle('openclawx:list-ollama-models', async (_, baseUrl) => {
     return listProviderModels({ type: 'ollama', baseUrl });
   });
-  ipcMain.handle('workmate:pull-ollama-model', async (_, baseUrl, modelName) => {
+  ipcMain.handle('openclawx:pull-ollama-model', async (_, baseUrl, modelName) => {
     const root = String(baseUrl || 'http://127.0.0.1:11434/v1').replace(/\/v1\/?$/, '');
     const name = String(modelName || '').trim();
     if (!name) throw new Error('缺少模型名称');
@@ -1940,31 +1940,31 @@ app.whenReady().then(async () => {
     const payload = await response.json();
     return String(payload.status || 'success');
   });
-  ipcMain.handle('workmate:storage-get', async (_, key) => apiKvGet(key));
-  ipcMain.handle('workmate:storage-set', async (_, key, value) => { await apiKvSet(key, value); });
-  ipcMain.handle('workmate:get-channel-settings', () => getChannelSettings());
-  ipcMain.handle('workmate:save-channel-settings', async (_, payload) => saveChannelSettings(payload));
-  ipcMain.handle('workmate:gateway-status', () => gatewayStatus());
-  ipcMain.handle('workmate:env-check', async (event) => runEnvironmentChecks((payload) => event.sender.send('workmate:env-check-progress', payload)));
-  ipcMain.handle('workmate:gateway-restart', () => gatewayRestart());
-  ipcMain.handle('workmate:get-local-embedding-status', async () => resolveLocalEmbeddingStatus(storageRoot()));
-  ipcMain.handle('workmate:get-local-embedding-settings', () => getLocalEmbeddingSettings(storageRoot()));
-  ipcMain.handle('workmate:save-local-embedding-settings', (_, value) => saveLocalEmbeddingSettings(storageRoot(), value));
-  ipcMain.handle('workmate:set-local-embedding-enabled', (_, enabled) => setLocalEmbeddingEnabled(storageRoot(), enabled));
-  ipcMain.handle('workmate:restart-local-embedding', () => restartLocalEmbedding(storageRoot()));
-  ipcMain.handle('workmate:list-assets', () => listAssets());
-  ipcMain.handle('workmate:archive-artifact', (_, value) => archiveArtifact(value));
-  ipcMain.handle('workmate:link-assets-to-project', (_, value) => linkAssetsToProject(value));
-  ipcMain.handle('workmate:unlink-assets-from-project', (_, assetIds) => unlinkAssetsFromProject(assetIds));
-  ipcMain.handle('workmate:delete-assets', (_, assetIds) => deleteAssets(assetIds));
-  ipcMain.handle('workmate:save-asset', async (_, assetId) => {
+  ipcMain.handle('openclawx:storage-get', async (_, key) => apiKvGet(key));
+  ipcMain.handle('openclawx:storage-set', async (_, key, value) => { await apiKvSet(key, value); });
+  ipcMain.handle('openclawx:get-channel-settings', () => getChannelSettings());
+  ipcMain.handle('openclawx:save-channel-settings', async (_, payload) => saveChannelSettings(payload));
+  ipcMain.handle('openclawx:gateway-status', () => gatewayStatus());
+  ipcMain.handle('openclawx:env-check', async (event) => runEnvironmentChecks((payload) => event.sender.send('openclawx:env-check-progress', payload)));
+  ipcMain.handle('openclawx:gateway-restart', () => gatewayRestart());
+  ipcMain.handle('openclawx:get-local-embedding-status', async () => resolveLocalEmbeddingStatus(storageRoot()));
+  ipcMain.handle('openclawx:get-local-embedding-settings', () => getLocalEmbeddingSettings(storageRoot()));
+  ipcMain.handle('openclawx:save-local-embedding-settings', (_, value) => saveLocalEmbeddingSettings(storageRoot(), value));
+  ipcMain.handle('openclawx:set-local-embedding-enabled', (_, enabled) => setLocalEmbeddingEnabled(storageRoot(), enabled));
+  ipcMain.handle('openclawx:restart-local-embedding', () => restartLocalEmbedding(storageRoot()));
+  ipcMain.handle('openclawx:list-assets', () => listAssets());
+  ipcMain.handle('openclawx:archive-artifact', (_, value) => archiveArtifact(value));
+  ipcMain.handle('openclawx:link-assets-to-project', (_, value) => linkAssetsToProject(value));
+  ipcMain.handle('openclawx:unlink-assets-from-project', (_, assetIds) => unlinkAssetsFromProject(assetIds));
+  ipcMain.handle('openclawx:delete-assets', (_, assetIds) => deleteAssets(assetIds));
+  ipcMain.handle('openclawx:save-asset', async (_, assetId) => {
     const { row, target } = assetFile(assetId);
     const result = await dialog.showSaveDialog(mainWindow, { title: '下载资产', defaultPath: row.name });
     if (result.canceled || !result.filePath) return false;
     copyFileSync(target, result.filePath);
     return true;
   });
-  ipcMain.handle('workmate:reveal-asset', (_, assetId) => { const { target } = assetFile(assetId); shell.showItemInFolder(target); });
+  ipcMain.handle('openclawx:reveal-asset', (_, assetId) => { const { target } = assetFile(assetId); shell.showItemInFolder(target); });
   // One-time one-way seed of legacy sql.js domain keys into the orchestrator
   // store (only keys the orchestrator does not already have). Runs after the
   // local API is reachable so renderer stores and the gateway see one state.

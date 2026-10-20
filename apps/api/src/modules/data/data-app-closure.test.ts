@@ -4,25 +4,25 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import Fastify from 'fastify';
-import { createSkillExecutionTools } from '@workmate/agent-core';
-import { dataAppDeliverySchema } from '@workmate/contracts';
+import { createSkillExecutionTools } from '@openclawx/agent-core';
+import { dataAppDeliverySchema } from '@openclawx/contracts';
 import { dataRoutes, publicDataAppRoutes } from './routes.js';
 
 test('DAC-R1–R4: real workspace tools bind, export and iterate an isolated data application', async () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-data-app-closure-'));
-  const keys = ['WORKMATE_DATA_DIR', 'WORKMATE_API_ORIGIN', 'WORKMATE_WORKSPACES_DIR', 'WORKMATE_ASSET_STAGING_DIR'] as const;
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-data-app-closure-'));
+  const keys = ['OPENCLAWX_DATA_DIR', 'OPENCLAWX_API_ORIGIN', 'OPENCLAWX_WORKSPACES_DIR', 'OPENCLAWX_ASSET_STAGING_DIR'] as const;
   const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
-  process.env.WORKMATE_DATA_DIR = root;
-  process.env.WORKMATE_WORKSPACES_DIR = path.join(root, 'runs');
-  process.env.WORKMATE_ASSET_STAGING_DIR = path.join(root, 'runs');
+  process.env.OPENCLAWX_DATA_DIR = root;
+  process.env.OPENCLAWX_WORKSPACES_DIR = path.join(root, 'runs');
+  process.env.OPENCLAWX_ASSET_STAGING_DIR = path.join(root, 'runs');
   const app = Fastify();
   app.addHook('preHandler', async request => {
     request.auth = { userId: String(request.headers['x-test-user'] || 'acceptance'), orgId: 'test-org', username: 'acceptance', displayName: 'acceptance', role: 'admin', sessionId: 'test' };
   });
   await app.register(dataRoutes, { prefix: '/api' });
   await app.register(publicDataAppRoutes, { prefix: '/api' });
-  const origin = await app.listen({ host: '127.0.0.1', port: process.env.WORKMATE_DATA_APP_PREVIEW ? 47965 : 0 });
-  process.env.WORKMATE_API_ORIGIN = origin;
+  const origin = await app.listen({ host: '127.0.0.1', port: process.env.OPENCLAWX_DATA_APP_PREVIEW ? 47965 : 0 });
+  process.env.OPENCLAWX_API_ORIGIN = origin;
   const call = async (method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object) => {
     const response = await app.inject({ method, url: `/api${url}`, payload });
     assert.ok(response.statusCode < 300, `${method} ${url}: ${response.statusCode} ${response.body}`);
@@ -58,7 +58,7 @@ test('DAC-R1–R4: real workspace tools bind, export and iterate an isolated dat
     const retry = await call('POST', `/data/apps/${id}/optimize`, { idea: '继续创建销售查询' });
     assert.ok(!retry.prompt.includes('首先调用 export_data_app_custom_site') && retry.prompt.includes(id));
     // This deterministic HTML exercises delivery and runtime data access, NOT model quality.
-    const html = (version: string) => `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>数据应用闭环验收</title><style>body{font:16px system-ui;background:#f5f7fb;color:#202536;margin:0}main{max-width:720px;margin:7vh auto;padding:32px;background:white;border-radius:20px}input,button{padding:10px;border-radius:8px;border:1px solid #dce1eb}li{padding:15px;border-bottom:1px solid #eee}#status{color:#526079}</style><main><small>WORKMATE · ISOLATED ACCEPTANCE</small><h1>销售查询 · ${version}</h1><p>合成测试数据，实际通过本机 API 取数</p><input id="search" aria-label="搜索城市" placeholder="搜索城市"><button id="refresh">查询</button><p id="status" role="status">加载中…</p><ul id="rows"></ul></main><script>async function load(){try{document.querySelector('#status').textContent='加载中…';const token=new URLSearchParams(location.search).get('token');const response=await fetch('/api/data-apps/${id}/data?token='+encodeURIComponent(token)+'&search='+encodeURIComponent(document.querySelector('#search').value));if(!response.ok)throw Error('取数失败，请检查链接权限');const data=await response.json();const list=document.querySelector('#rows');list.replaceChildren();for(const row of data.records){const li=document.createElement('li');li.textContent=Object.values(row.values).join(' · ');list.append(li)}document.querySelector('#status').textContent=data.records.length?'已加载 '+data.records.length+' 条记录':'没有匹配记录'}catch(e){document.querySelector('#status').textContent=e.message}}document.querySelector('#refresh').onclick=load;load();</script></html>`;
+    const html = (version: string) => `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>数据应用闭环验收</title><style>body{font:16px system-ui;background:#f5f7fb;color:#202536;margin:0}main{max-width:720px;margin:7vh auto;padding:32px;background:white;border-radius:20px}input,button{padding:10px;border-radius:8px;border:1px solid #dce1eb}li{padding:15px;border-bottom:1px solid #eee}#status{color:#526079}</style><main><small>OPENCLAWX · ISOLATED ACCEPTANCE</small><h1>销售查询 · ${version}</h1><p>合成测试数据，实际通过本机 API 取数</p><input id="search" aria-label="搜索城市" placeholder="搜索城市"><button id="refresh">查询</button><p id="status" role="status">加载中…</p><ul id="rows"></ul></main><script>async function load(){try{document.querySelector('#status').textContent='加载中…';const token=new URLSearchParams(location.search).get('token');const response=await fetch('/api/data-apps/${id}/data?token='+encodeURIComponent(token)+'&search='+encodeURIComponent(document.querySelector('#search').value));if(!response.ok)throw Error('取数失败，请检查链接权限');const data=await response.json();const list=document.querySelector('#rows');list.replaceChildren();for(const row of data.records){const li=document.createElement('li');li.textContent=Object.values(row.values).join(' · ');list.append(li)}document.querySelector('#status').textContent=data.records.length?'已加载 '+data.records.length+' 条记录':'没有匹配记录'}catch(e){document.querySelector('#status').textContent=e.message}}document.querySelector('#refresh').onclick=load;load();</script></html>`;
     assert.equal((await invoke('write_workspace_file', { path: 'output/index.html', content: html('V1') })).ok, true);
     assert.equal((await invoke('bind_data_app_custom_site', { appId: id, token, path: 'output/index.html' })).ok, true);
     const listed = (await call('GET', `/data/apps?sourceId=${source.id}`)).find((item: { id: string }) => item.id === id);
@@ -83,7 +83,7 @@ test('DAC-R1–R4: real workspace tools bind, export and iterate an isolated dat
     assert.equal((await invoke('bind_data_app_custom_site', { appId: id, token, path: 'output/index.html' })).ok, true);
     assert.equal((await call('GET', `/data/apps/${id}/revisions`)).length, 2);
     assert.ok((await readSite()).includes('V2 · 单位：元'));
-    if (process.env.WORKMATE_DATA_APP_PREVIEW) {
+    if (process.env.OPENCLAWX_DATA_APP_PREVIEW) {
       console.log(`Isolated acceptance page: ${origin}${site}`);
       await new Promise<void>(resolve => process.once('SIGINT', resolve));
     }

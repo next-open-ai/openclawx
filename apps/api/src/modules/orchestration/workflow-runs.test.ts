@@ -5,8 +5,8 @@ import { mkdtempSync, rmdirSync, readFileSync, rmSync, mkdirSync, symlinkSync } 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import Fastify from 'fastify';
-import { Orchestrator, JsonFileStore, type AgentRunner, type ChatRunContext } from '@workmate/orchestrator';
-import { workflowInvocationInputSchema, workflowInvocationResultSchema, workflowExecutionInputSchema, workflowExecutionSummarySchema, workflowInvocationSourceSchema } from '@workmate/contracts';
+import { Orchestrator, JsonFileStore, type AgentRunner, type ChatRunContext } from '@openclawx/orchestrator';
+import { workflowInvocationInputSchema, workflowInvocationResultSchema, workflowExecutionInputSchema, workflowExecutionSummarySchema, workflowInvocationSourceSchema } from '@openclawx/contracts';
 import { registerDefinitionRoutes } from './definition-routes.js';
 import { registerWorkflowRunRoutes, WorkflowRuns } from './workflow-runs.js';
 import { resolveWorkflowResultQuestion } from './workflow-result-question.js';
@@ -18,9 +18,9 @@ async function waitFor(check: () => Promise<boolean>) {
   throw new Error('synthetic workflow did not settle');
 }
 test('WQ-T2/T4: production messages route revalidates evidence, preserves strict references and ignores client evidence', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'workmate-wq-http-'));
-  const saved = { data: process.env.WORKMATE_DATA_DIR, runner: process.env.WORKMATE_ORCH_RUNNER };
-  process.env.WORKMATE_DATA_DIR = root; process.env.WORKMATE_ORCH_RUNNER = 'memory-echo';
+  const root = mkdtempSync(path.join(tmpdir(), 'openclawx-wq-http-'));
+  const saved = { data: process.env.OPENCLAWX_DATA_DIR, runner: process.env.OPENCLAWX_ORCH_RUNNER };
+  process.env.OPENCLAWX_DATA_DIR = root; process.env.OPENCLAWX_ORCH_RUNNER = 'memory-echo';
   const app = Fastify();
   app.addHook('preHandler', async request => { request.auth = { userId: String(request.headers['x-user'] || 'alice'), orgId: 'org', role: 'member', username: 'test', displayName: 'test', sessionId: 'mock' }; });
   try {
@@ -50,15 +50,15 @@ test('WQ-T2/T4: production messages route revalidates evidence, preserves strict
     assert.equal(stale.statusCode, 409); assert.equal(stale.json().code, 'WORKFLOW_RESULT_CHANGED');
   } finally {
     await app.close(); await closeOrchestrator();
-    if (saved.data === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = saved.data;
-    if (saved.runner === undefined) delete process.env.WORKMATE_ORCH_RUNNER; else process.env.WORKMATE_ORCH_RUNNER = saved.runner;
+    if (saved.data === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = saved.data;
+    if (saved.runner === undefined) delete process.env.OPENCLAWX_ORCH_RUNNER; else process.env.OPENCLAWX_ORCH_RUNNER = saved.runner;
     rmSync(root, { recursive: true, force: true });
   }
 });
 test('WQ-T2/T3/T4: verified evidence, partial truth, stale/foreign references and text-only questions never rerun the DAG', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'workmate-wq-')); const previous = process.env.WORKMATE_DATA_DIR;
-  process.env.WORKMATE_DATA_DIR = root;
-  const requests: import('@workmate/contracts').ChatRequest[] = []; let fail = false; let empty = false; let long = false;
+  const root = mkdtempSync(path.join(tmpdir(), 'openclawx-wq-')); const previous = process.env.OPENCLAWX_DATA_DIR;
+  process.env.OPENCLAWX_DATA_DIR = root;
+  const requests: import('@openclawx/contracts').ChatRequest[] = []; let fail = false; let empty = false; let long = false;
   const runner: AgentRunner = { async start(request, emit) {
     requests.push(request); const runId = request.runId!;
     emit({ type: 'run.started', runId });
@@ -121,11 +121,11 @@ test('WQ-T2/T3/T4: verified evidence, partial truth, stale/foreign references an
     await assert.rejects(service.evidence(owner, session.id, requestId), /WORKFLOW_RESULT_EMPTY/);
     await orch.projects.removeProject(childId);
     assert.equal((await app.inject({ method: 'GET', url: endpoint })).statusCode, 404);
-  } finally { await app.close(); await orch.close(); if (previous === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = previous; rmSync(root, { recursive: true, force: true }); }
+  } finally { await app.close(); await orch.close(); if (previous === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = previous; rmSync(root, { recursive: true, force: true }); }
 });
 test('WP-T2/T3/T5: project invocation is independent, scoped, durable and safely resumes incomplete steps', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'workmate-wp-'));
-  const previous = process.env.WORKMATE_DATA_DIR; process.env.WORKMATE_DATA_DIR = root;
+  const root = mkdtempSync(path.join(tmpdir(), 'openclawx-wp-'));
+  const previous = process.env.OPENCLAWX_DATA_DIR; process.env.OPENCLAWX_DATA_DIR = root;
   const calls: string[] = []; let fail = true;
   const runner: AgentRunner = { async start(request, emit) {
     const content = String(request.messages[0].content); calls.push(content);
@@ -156,7 +156,7 @@ test('WP-T2/T3/T5: project invocation is independent, scoped, durable and safely
     await app.inject({ method: 'PUT', url: `/definitions/workflows/${workflowId}`, payload: definition });
     assert.equal(workflowInvocationSourceSchema.safeParse({ kind: 'project', projectId: parent.id }).success, true);
     assert.equal(workflowInvocationSourceSchema.safeParse({ kind: 'project', projectId: parent.id, sessionId: parent.id }).success, false);
-    const upload = await app.inject({ method: 'POST', url: `/definitions/workflows/${workflowId}/uploads/${requestId}`, headers: { 'content-type': 'application/octet-stream', 'x-workmate-file-name': encodeURIComponent('九月.txt') }, payload: Buffer.from('收入 150000，利润 50000') });
+    const upload = await app.inject({ method: 'POST', url: `/definitions/workflows/${workflowId}/uploads/${requestId}`, headers: { 'content-type': 'application/octet-stream', 'x-openclawx-file-name': encodeURIComponent('九月.txt') }, payload: Buffer.from('收入 150000，利润 50000') });
     assert.equal(upload.statusCode, 200);
     const payload = { requestId, input: '分析九月', fileIds: [upload.json().attachment.id] };
     const url = `/projects/${parent.id}/workflows/${workflowId}/invocations`, history = `/projects/${parent.id}/workflow-invocations`, resume = `${history}/${requestId}/resume`;
@@ -203,7 +203,7 @@ test('WP-T2/T3/T5: project invocation is independent, scoped, durable and safely
     assert.equal((await app.inject({ method: 'GET', url: history })).statusCode, 404);
     assert.equal((await app.inject({ method: 'POST', url: resume })).statusCode, 404);
     assert.equal((await orch.projects.getProject(childId))?.status, 'completed', 'deleting origin must preserve independent execution');
-  } finally { await app.close(); await orch.close(); if (previous === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = previous; rmSync(root, { recursive: true, force: true }); }
+  } finally { await app.close(); await orch.close(); if (previous === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = previous; rmSync(root, { recursive: true, force: true }); }
 });
 
 test('WA-R9/R10/R11: HTTP preparation is scoped, idempotent and preserves evidence across DAG recovery', async () => {
@@ -232,7 +232,7 @@ test('WA-R9/R10/R11: HTTP preparation is scoped, idempotent and preserves eviden
     { id: second, title: '报告', employeeId: 'writer', objective: '撰写报告', dependsOn: [first] },
   ] };
   const url = `/definitions/workflows/${workflowId}/runs`;
-  const workspacePath = mkdtempSync(path.join(tmpdir(), 'workmate-wa12-'));
+  const workspacePath = mkdtempSync(path.join(tmpdir(), 'openclawx-wa12-'));
   const input = { requestId: randomUUID(), input: '九月份', workspacePath };
   const list = async () => (await app.inject({ method: 'GET', url })).json().items;
   try {
@@ -274,15 +274,15 @@ test('WA-R9/R10/R11: HTTP preparation is scoped, idempotent and preserves eviden
 });
 
 test('WA-R13/R14/R15: documents are parsed, scoped and persisted for all workflow steps without overwrites', async () => {
-  const dataRoot = mkdtempSync(path.join(tmpdir(), 'workmate-wa13-'));
-  const previousDataRoot = process.env.WORKMATE_DATA_DIR; process.env.WORKMATE_DATA_DIR = dataRoot;
+  const dataRoot = mkdtempSync(path.join(tmpdir(), 'openclawx-wa13-'));
+  const previousDataRoot = process.env.OPENCLAWX_DATA_DIR; process.env.OPENCLAWX_DATA_DIR = dataRoot;
   const orch = Orchestrator.memory(); const app = Fastify();
   app.addContentTypeParser('application/octet-stream', { parseAs: 'buffer' }, (_request, body, done) => done(null, body));
   app.addHook('preHandler', async request => { request.auth = { userId: String(request.headers['x-user'] || 'alice'), orgId: 'org', role: 'member', username: 'test', displayName: 'test', sessionId: 'mock' }; });
   registerDefinitionRoutes(app, orch.store); registerWorkflowRunRoutes(app, orch);
   const workflowId = randomUUID(); const requestId = randomUUID(); const workspacePath = path.join(dataRoot, 'projects', 'project'); mkdirSync(workspacePath, { recursive: true });
   const base = `/definitions/workflows/${workflowId}`;
-  const upload = (name: string, payload: Buffer, user = 'alice') => app.inject({ method: 'POST', url: `${base}/uploads/${requestId}`, headers: { 'content-type': 'application/octet-stream', 'x-workmate-file-name': encodeURIComponent(name), 'x-user': user }, payload });
+  const upload = (name: string, payload: Buffer, user = 'alice') => app.inject({ method: 'POST', url: `${base}/uploads/${requestId}`, headers: { 'content-type': 'application/octet-stream', 'x-openclawx-file-name': encodeURIComponent(name), 'x-user': user }, payload });
   try {
     await app.inject({ method: 'PUT', url: base, payload: { id: workflowId, name: '文档分析', nodes: [{ id: randomUUID(), title: '分析', employeeId: 'general', objective: '分析文件' }, { id: randomUUID(), title: '交付', employeeId: 'writer', objective: '输出报告' }] } });
     assert.equal((await upload('材料.txt', Buffer.from('收入 150000；利润 50000'), 'bob')).statusCode, 404);
@@ -304,9 +304,9 @@ test('WA-R13/R14/R15: documents are parsed, scoped and persisted for all workflo
     // A project input directory must not redirect writes outside the project.
     const otherWorkspace = path.join(dataRoot, 'projects', 'unsafe'); mkdirSync(otherWorkspace); symlinkSync(dataRoot, path.join(otherWorkspace, 'inputs'));
     const scopeId = randomUUID();
-    const another = await app.inject({ method: 'POST', url: `${base}/uploads/${scopeId}`, headers: { 'content-type': 'application/octet-stream', 'x-workmate-file-name': 'safe.txt' }, payload: Buffer.from('safe') });
+    const another = await app.inject({ method: 'POST', url: `${base}/uploads/${scopeId}`, headers: { 'content-type': 'application/octet-stream', 'x-openclawx-file-name': 'safe.txt' }, payload: Buffer.from('safe') });
     assert.equal((await app.inject({ method: 'POST', url: `${base}/runs`, payload: { requestId: scopeId, workspacePath: otherWorkspace, fileIds: [another.json().attachment.id] } })).statusCode, 400);
-  } finally { await app.close(); await orch.close(); if (previousDataRoot === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = previousDataRoot; rmSync(dataRoot, { recursive: true, force: true }); }
+  } finally { await app.close(); await orch.close(); if (previousDataRoot === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = previousDataRoot; rmSync(dataRoot, { recursive: true, force: true }); }
 });
 
 test('WA-R9: preparation interrupted after project persistence recovers with the same snapshot and project ID', async () => {
@@ -314,7 +314,7 @@ test('WA-R9: preparation interrupted after project persistence recovers with the
   app.addHook('preHandler', async request => { request.auth = { userId: 'alice', orgId: 'org', role: 'member', username: 'test', displayName: 'test', sessionId: 'mock' }; });
   registerDefinitionRoutes(app, orch.store); registerWorkflowRunRoutes(app, orch);
   const id = randomUUID(); const url = `/definitions/workflows/${id}/runs`;
-  const workspacePath = mkdtempSync(path.join(tmpdir(), 'workmate-wa12-'));
+  const workspacePath = mkdtempSync(path.join(tmpdir(), 'openclawx-wa12-'));
   const payload = { requestId: randomUUID(), input: '', workspacePath };
   try {
     await app.inject({ method: 'PUT', url: `/definitions/workflows/${id}`, payload: { id, name: '恢复测试', nodes: [{ id: randomUUID(), title: '任务', objective: '测试', employeeId: 'general' }] } });
@@ -329,8 +329,8 @@ test('WA-R9: preparation interrupted after project persistence recovers with the
 });
 
 test('WC-T2/T3/T4: chat invocation is scoped, immutable, durable and admits concurrent replays only once', async () => {
-  const dataRoot = mkdtempSync(path.join(tmpdir(), 'workmate-wc-'));
-  const previous = process.env.WORKMATE_DATA_DIR; process.env.WORKMATE_DATA_DIR = dataRoot;
+  const dataRoot = mkdtempSync(path.join(tmpdir(), 'openclawx-wc-'));
+  const previous = process.env.OPENCLAWX_DATA_DIR; process.env.OPENCLAWX_DATA_DIR = dataRoot;
   let calls = 0;
   const runner: AgentRunner = { async start(request, emit) {
     calls++;
@@ -356,7 +356,7 @@ test('WC-T2/T3/T4: chat invocation is scoped, immutable, durable and admits conc
     const workflowId = randomUUID(); const requestId = randomUUID();
     const definition = { id: workflowId, name: '经营报告', nodes: [{ id: randomUUID(), title: '分析', employeeId: 'general', objective: '分析提供的材料' }] };
     await app.inject({ method: 'PUT', url: `/definitions/workflows/${workflowId}`, payload: definition });
-    const upload = await app.inject({ method: 'POST', url: `/definitions/workflows/${workflowId}/uploads/${requestId}`, headers: { 'content-type': 'application/octet-stream', 'x-workmate-file-name': encodeURIComponent('九月.txt') }, payload: Buffer.from('收入 150000，利润 50000') });
+    const upload = await app.inject({ method: 'POST', url: `/definitions/workflows/${workflowId}/uploads/${requestId}`, headers: { 'content-type': 'application/octet-stream', 'x-openclawx-file-name': encodeURIComponent('九月.txt') }, payload: Buffer.from('收入 150000，利润 50000') });
     assert.equal(upload.statusCode, 200);
     const fileIds = [upload.json().attachment.id];
     const payload = { requestId, input: '分析九月', fileIds };
@@ -398,11 +398,11 @@ test('WC-T2/T3/T4: chat invocation is scoped, immutable, durable and admits conc
     assert.equal((await app.inject({ method: 'GET', url: history })).json().items[0].status, 'unavailable');
     assert.equal((await app.inject({ method: 'POST', url, payload })).statusCode, 409);
     assert.equal((await orch.projects.listProjects()).length, 0);
-  } finally { await app.close(); await orch.close(); if (previous === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = previous; rmSync(dataRoot, { recursive: true, force: true }); }
+  } finally { await app.close(); await orch.close(); if (previous === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = previous; rmSync(dataRoot, { recursive: true, force: true }); }
 });
 
 test('WC-T2/T4: interrupted admission, failure recovery and cancellation preserve the same invocation and evidence', async () => {
-  const dataRoot = mkdtempSync(path.join(tmpdir(), 'workmate-wc-recovery-')); const previous = process.env.WORKMATE_DATA_DIR; process.env.WORKMATE_DATA_DIR = dataRoot;
+  const dataRoot = mkdtempSync(path.join(tmpdir(), 'openclawx-wc-recovery-')); const previous = process.env.OPENCLAWX_DATA_DIR; process.env.OPENCLAWX_DATA_DIR = dataRoot;
   let calls = 0; let block = false;
   const runner: AgentRunner = { async start(request, emit, options) {
     calls++; const runId = request.runId!;
@@ -439,5 +439,5 @@ test('WC-T2/T4: interrupted admission, failure recovery and cancellation preserv
     const cancelled = (await history()).find((item: { projectId: string }) => item.projectId === nextId);
     assert.equal(cancelled.status, 'cancelled'); assert.equal(cancelled.artifacts.length, 1);
     assert.equal((await history()).length, 2);
-  } finally { await app.close(); await orch.close(); if (previous === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = previous; rmSync(dataRoot, { recursive: true, force: true }); }
+  } finally { await app.close(); await orch.close(); if (previous === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = previous; rmSync(dataRoot, { recursive: true, force: true }); }
 });

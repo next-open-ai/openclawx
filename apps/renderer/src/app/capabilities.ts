@@ -113,7 +113,7 @@ function ensureBaselineCatalogSkills(): boolean {
 
 export function useCapabilities() {
   const load = async () => {
-    const desktop = Boolean(window.workmateDesktop);
+    const desktop = Boolean(window.openclawxDesktop);
     const seeded = await readStored(seededKey);
     const restoredStored: SkillRecord[] | unknown = desktop
       ? parse<SkillRecord[]>(await readStored(skillKey), seeded ? [] : builtinSkills)
@@ -155,7 +155,7 @@ export function useCapabilities() {
     }
   };
   const saveSkills = async () => (
-    window.workmateDesktop
+    window.openclawxDesktop
       ? writeStored(skillKey, JSON.stringify(skills.value))
       : saveServerCapabilitySkills(skills.value)
   );

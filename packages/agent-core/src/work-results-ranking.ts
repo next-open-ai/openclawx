@@ -1,5 +1,5 @@
 import {completeSimple} from '@mariozechner/pi-ai';
-import {WorkResultMatchesSchema,type ModelConfig,type WorkResultRanker,type WorkResultRankingDiagnostic,type WorkResultRanking} from '@workmate/contracts';
+import {WorkResultMatchesSchema,type ModelConfig,type WorkResultRanker,type WorkResultRankingDiagnostic,type WorkResultRanking} from '@openclawx/contracts';
 import {createChatCompletionsPayloadPatch,toPiModel} from './pi-model.js';
 
 /** One bounded, tool-free model request. Failures are not evidence of absence. */

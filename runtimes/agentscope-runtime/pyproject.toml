@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "workmate-agentscope-runtime"
+name = "openclawx-agentscope-runtime"
 version = "0.1.0"
-description = "Workmate AgentScope Sidecar (WebSocket JSON-RPC)"
+description = "OpenClawX AgentScope Sidecar (WebSocket JSON-RPC)"
 requires-python = ">=3.10"
 dependencies = [
   "agentscope>=1.0.0",
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-workmate-agentscope-runtime = "workmate_agentscope_runtime.__main__:main"
+openclawx-agentscope-runtime = "openclawx_agentscope_runtime.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

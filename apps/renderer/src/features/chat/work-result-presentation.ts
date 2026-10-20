@@ -1,4 +1,4 @@
-import {WorkLookupResultSchema} from '@workmate/contracts';
+import {WorkLookupResultSchema} from '@openclawx/contracts';
 export function parseWorkLookupEvent(message:Record<string,unknown>){
   if(message.name!=='search_work_results'&&message.name!=='read_work_result')return null;
   const parsed=WorkLookupResultSchema.safeParse(message.result);

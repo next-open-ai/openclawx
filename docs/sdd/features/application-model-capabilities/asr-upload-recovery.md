@@ -23,7 +23,7 @@ NET-002-1：上传重试与阶段错误；NET-002-2：运行内结构化阻断�
 ## 过程与证据
 
 - NET-002-1/2完成：上传网络失败最多两次、新key及可取消退避；结构化失败包含上传凭证/上传/提交/查询或下载阶段；复用现有工具进度事件。Pi系统指令明确历史失败不能替代当前实际调用。
-- NET-002-3：`pnpm --filter @workmate/agent-core test` 110/110通过；`node --test packages/agent-core/dist/test/speech-http.test.js` 2/2通过。包含连续失败、恢复、403、取消、脱敏、同运行阻断与新工具会话重新提交。
+- NET-002-3：`pnpm --filter @openclawx/agent-core test` 110/110通过；`node --test packages/agent-core/dist/test/speech-http.test.js` 2/2通过。包含连续失败、恢复、403、取消、脱敏、同运行阻断与新工具会话重新提交。
 - 最终agent-core/API构建、VitePress文档构建及`git diff --check`通过；文档构建保留既有大分包提示。
 - 未执行真实付费转写、真实主模型多轮对话及桌面界面验收；单测验证新运行工具可调用，不能保证所有主模型均服从指令。现场ECONNRESET根因仍未确定。
 - 用户无需重新配置模型或新建聊天；重启使用新构建的应用后，可在原会话明确请求重新转写。过期附件仍需要重新上传。

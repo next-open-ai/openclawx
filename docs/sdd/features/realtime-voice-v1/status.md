@@ -33,7 +33,7 @@
 - 未执行：真实火山/千问通话、扬声器 AEC/误触发/首字/延迟与手机人工回归；没有修改用户配置、重启服务或发布。供应商上下文按已播放毫秒截断暂未实现，不将中断内容宣称为已完整播放。使用前需加载新 API/renderer 并重新开启通话；无持久化迁移。规格/兼容/回滚：[barge-in.md](./barge-in.md)。
 
 - 状态：实现完成，已完成真实火山握手联调。
-- 已完成：Workmate 鉴权代理、会话归属、SSE 转发、浏览器 AEC 采集、PCM 播放、聊天页入口。
+- 已完成：OpenClawX 鉴权代理、会话归属、SSE 转发、浏览器 AEC 采集、PCM 播放、聊天页入口。
 - 已完成：管理员语音配置页、服务端密钥持久化与掩码读取、仿 SeedDuplex 通话测试入口。
 - 已完成：系统音色目录、Dialog ID、语速/音量、唱歌开关、复刻音色训练与状态查询。
 - 已完成：关闭 demo 本地工具，凭证不下发客户端。
@@ -50,9 +50,9 @@
 ## 独立 ASR 语音输入（2026-10-05）
 
 - ASR-T1–T4：已实现。设置提供默认实时对话 / 语音输入、ASR 开关、共用/独立密钥、识别资源、标点和规范化；聊天语音按钮读取所选模式，独立录音窗口确认后追加草稿，不自动调用 Agent。旧配置默认 realtime / 共用密钥，无需迁移；切回 realtime 或关闭 ASR 可回滚。
-- `pnpm --filter @workmate/api test`：通过，4 个测试（含 ASR-R1/R3 与既有 3 个工作桥测试）；新增测试覆盖配置保存/密钥掩码/跨用户与组织隔离/容量/音频校验/SSE 订阅和全量修订。
-- `pnpm --filter @workmate/agent-core test`：通过，155 个测试（新增 3 个 ASR-R2 协议、mock WS 和最终结果超时测试）。
-- `pnpm typecheck`、`pnpm build`、最后 UI 变更后的 `pnpm --filter @workmate/renderer build` 与 `pnpm --filter @workmate/api typecheck`：通过。构建保留既有包体积与动态导入告警，无错误。
+- `pnpm --filter @openclawx/api test`：通过，4 个测试（含 ASR-R1/R3 与既有 3 个工作桥测试）；新增测试覆盖配置保存/密钥掩码/跨用户与组织隔离/容量/音频校验/SSE 订阅和全量修订。
+- `pnpm --filter @openclawx/agent-core test`：通过，155 个测试（新增 3 个 ASR-R2 协议、mock WS 和最终结果超时测试）。
+- `pnpm typecheck`、`pnpm build`、最后 UI 变更后的 `pnpm --filter @openclawx/renderer build` 与 `pnpm --filter @openclawx/api typecheck`：通过。构建保留既有包体积与动态导入告警，无错误。
 - `pnpm concurrency:regression`：通过（含 DSH MCP/Skills 与 AgentScope 并发）。`git diff --check`：通过。
 - 真实服务探测：使用既有服务端密钥，SeedASR 2.0 / `volc.seedasr.sauc.duration` / bigmodel_async；4 × 300ms 静音 PCM（16 kHz）成功建连并返回 completed，textLength=0。未传个人语音、未打印密钥；仅确认当前密钥/资源和真实协议可用，不代表人声识别验收。
 - 界面检查：agent-browser CLI 不可用，按该技能降级到应用内浏览器；隔离数据目录和 API 端口验证模式切换、独立密钥显示、保存测试窗口、聊天入口和取消；未修改既有配置与运行服务。
@@ -62,8 +62,8 @@
 
 - 已实现：聊天语音入口和设置页通话测试默认绑定当前服务端对话；没有当前对话则先创建前台对话。默认使用该对话员工和历史，语音工作消息、完整回复、产物附件、审批在同一对话显示。挂断后继续同步当前对话，切换会话停止该同步；旧独立工作会话不迁移。
 - 已实现：可选 UUID conversationId 契约与严格用户/组织校验；绑定可选 turnId，旧任务由原 run 派生；同一回合审批续跑准确追踪、旧任务取消不影响新 run；当前任务忙碌时拒绝新语音工作，不自动中止文字任务。纯语音闲聊字幕仍不写入持久化消息，未改变 ASR 草稿行为。
-- 已验证：`pnpm --filter @workmate/orchestrator test` 53 测试通过；`pnpm --filter @workmate/api test` 6 测试通过，含 VWB-R5/R6/R7：当前会话/默认员工/历史复用、跨用户拒绝、旧绑定兼容、审批续跑、多回合状态与取消隔离、忙碌和同时提交。
-- 已验证：`pnpm typecheck`、`pnpm build`、`pnpm concurrency:regression` 通过；最后界面变更后 `pnpm --filter @workmate/renderer build` 通过（既有包体积和动态导入告警）；`git diff --check` 通过。开发 API 自动重载后，HTTP 非 UUID 会话绑定探针返回 400；该探针未创建上游通话或 Agent 任务。
+- 已验证：`pnpm --filter @openclawx/orchestrator test` 53 测试通过；`pnpm --filter @openclawx/api test` 6 测试通过，含 VWB-R5/R6/R7：当前会话/默认员工/历史复用、跨用户拒绝、旧绑定兼容、审批续跑、多回合状态与取消隔离、忙碌和同时提交。
+- 已验证：`pnpm typecheck`、`pnpm build`、`pnpm concurrency:regression` 通过；最后界面变更后 `pnpm --filter @openclawx/renderer build` 通过（既有包体积和动态导入告警）；`git diff --check` 通过。开发 API 自动重载后，HTTP 非 UUID 会话绑定探针返回 400；该探针未创建上游通话或 Agent 任务。
 - 未执行：新版真实麦克风→工具→当前前台对话→附件/审批交互人工验收。上一版已从实际持久化记录确认火山语音启动工作、员工完成并提交真实产物，但不能替代新版前台验收。未发布、未改密钥、未迁移旧数据。兼容/回滚见 work-bridge.md。
 
 ## 内嵌语音条（2026-10-05，VUI-T1）
@@ -71,35 +71,35 @@
 - 已实现：输入框内嵌主题适配声波条，两种模式可在开启前选择；ASR 全量文字实时投影到现有草稿，本次识别修订不重字，录入期间只读且不发送，暂停/结束/错误/关闭保留文字。实时对话字幕显示在当前页独立字幕区（最多 20 轮），不修改输入框、不重复提交 Agent；原有任务/附件链路不变。
 - 已实现：实际采样 PCM RMS 声波与实时播放 AnalyserNode，静音/暂停/结束归零；内嵌自动开始、连接失败重试、结束通话。设置页默认仍采用原弹窗。补足连接中关闭/迟到麦克风权限的 generation 清理，临时字幕切换对话时清空。
 - 已验证：`node scripts/voice-composer-regression.mjs`（亦可 `pnpm voice:ui:regression`）通过 VUI-R1–R4，包括真实 Vue 组件编译/内存挂载与 mock 服务/PCM：草稿修订和手动编辑保护、字幕轮次/上限、PCM 波形、暂停/最终文字/关闭、关联会话透传、迟到权限资源释放、旧弹窗兼容。
-- 已验证：`pnpm --filter @workmate/renderer typecheck`、`pnpm --filter @workmate/renderer build`、`pnpm --filter @workmate/api test`（6 测试）、`git diff --check` 通过；构建仅既有动态导入与包体积告警。本次不改服务端/编排/并发调度，无数据迁移、无发布。
+- 已验证：`pnpm --filter @openclawx/renderer typecheck`、`pnpm --filter @openclawx/renderer build`、`pnpm --filter @openclawx/api test`（6 测试）、`git diff --check` 通过；构建仅既有动态导入与包体积告警。本次不改服务端/编排/并发调度，无数据迁移、无发布。
 - 界面验收：agent-browser 命令不可用，按技能降级到应用内浏览器。独立模拟页面使用真实组件和合成 PCM，验证实时草稿、结束后可编辑、实时字幕不改草稿、360px 控制条换行；未使用真实麦克风、未调用火山、未创建员工任务。验收标签和本机 47843 模拟服务已清理，原 8765 演示标签保留。
-- 未执行：登录后真实 Workmate 的麦克风/扬声器完整人工验收（浏览器新标签需登录，桌面界面读取超时）；模拟测试不等于真实语音测试。具体契约和回滚见 [composer-ui.md](./composer-ui.md)，隔离界面可用 `pnpm voice:ui:preview` 重现。
+- 未执行：登录后真实 OpenClawX 的麦克风/扬声器完整人工验收（浏览器新标签需登录，桌面界面读取超时）；模拟测试不等于真实语音测试。具体契约和回滚见 [composer-ui.md](./composer-ui.md)，隔离界面可用 `pnpm voice:ui:preview` 重现。
 
 ## 历史阶段：语音条字幕轮播（2026-10-05，VUI-T2，已由 VUI-08 取代）
 
 - 已实现：ASR 转写、实时对话双方字幕显示在语音条；默认最新一句，空闲每 5 秒轮播最近 6 条，可手动前后切换。展开显示本页最多 20 轮完整记录，展开/悬停/键盘焦点/减少动态效果暂停自动轮播；修订重新定位最新字幕。通话结束保留收起的字幕入口，切换对话仍清空。原独立大字幕区移除，服务端、草稿投影、任务执行及密钥未改动。
-- 已验证：`node scripts/voice-composer-regression.mjs` VUI-R1–R5 通过；`pnpm --filter @workmate/renderer typecheck`、`pnpm --filter @workmate/renderer build` 通过（既有包体积/动态导入告警）。回归覆盖定时轮播、展开暂停、修订、手动切换、悬停、焦点、减少动态效果、完整旧记录和卸载清理。
+- 已验证：`node scripts/voice-composer-regression.mjs` VUI-R1–R5 通过；`pnpm --filter @openclawx/renderer typecheck`、`pnpm --filter @openclawx/renderer build` 通过（既有包体积/动态导入告警）。回归覆盖定时轮播、展开暂停、修订、手动切换、悬停、焦点、减少动态效果、完整旧记录和卸载清理。
 - 界面验收：按 agent-browser 技能，在 CLI 不可用时使用应用内浏览器；模拟服务使用真实组件，确认字幕位于声波条内、展开双方内容、收起且草稿不被实时对话修改。验收标签和 47843 模拟服务已清理；未录音、未连接火山、未执行 Agent。
 - 未执行：真实麦克风/火山新一轮人工验收、后端回归（本次后端无改动）、发布。无配置或数据迁移；回滚边界与规格见 [composer-ui.md](./composer-ui.md)。
 
 ## 录入期间手动发送（2026-10-05，VUI-T3）
 
 - 已实现：ASR 忙碌不再禁用发送；已有文字且模型配置有效、任务空闲时，按钮/Enter 均可立即发送当前可见快照，同时关闭本次录音，不等待最终修订。草稿仍在录入期间只读；空草稿、未配置模型、任务忙碌限制不变；失败恢复原文字和附件，不自动恢复录音。父组件预览关闭门禁与 ASR abort/generation 校验阻止迟到结果回填。
-- 已验证：`node scripts/voice-composer-regression.mjs` VUI-R1–R6 通过；R6 执行生产 submit/preview 函数（隔离发送桩）验证录入中发送、空内容、模型/忙碌门禁、重复提交、失败恢复及迟到修订；真实 Vue ASR 组件 mock 卸载验证麦克风释放、关闭会话、迟到事件隔离。`pnpm --filter @workmate/renderer build` 通过（含 vue-tsc；既有构建告警），`git diff --check` 通过。
+- 已验证：`node scripts/voice-composer-regression.mjs` VUI-R1–R6 通过；R6 执行生产 submit/preview 函数（隔离发送桩）验证录入中发送、空内容、模型/忙碌门禁、重复提交、失败恢复及迟到修订；真实 Vue ASR 组件 mock 卸载验证麦克风释放、关闭会话、迟到事件隔离。`pnpm --filter @openclawx/renderer build` 通过（含 vue-tsc；既有构建告警），`git diff --check` 通过。
 - 未执行：真实麦克风→实际员工发送人工验收，避免测试触发真实工作；服务端/配置/数据协议均未修改，无迁移、无发布。快照可能尚未收到最终标点或修订，若要最终版本仍可先点结束录入；回滚与需求见 [composer-ui.md](./composer-ui.md)。
 
 ## 导航保活与语音开关（2026-10-05，VUI-T4）
 
 - 已实现：聊天页首次进入后通过 v-show 隐藏/恢复，不因应用页面导航卸载语音；两种语音模式保持原会话、草稿与字幕。其他页面显示「语音进行中 · 返回对话」，说明切页仍在收音。切换聊天会话/退出登录/销毁应用仍清理；首次创建当前对话不会误取消通话准备。
 - 已实现：下方话筒切换开始/停止，连接准备中同样可以取消；generation 与 SSE abort 门禁拒绝迟到结果。手动挂断、关闭或话筒停止清空实时字幕，取消早期 VUI-T2 的挂断保留入口；ASR 草稿不清空，智能体正式消息/产物/审批不删除，挂断后关联工作继续同步。
-- 已验证：`node scripts/voice-composer-regression.mjs` VUI-R1–R7 通过。R7 覆盖生产 toggle/open/close 与字幕门禁、两类连接准备取消；真实 Vue 实时对话/ASR mock 组件隐藏恢复单次建连、继续收音、手动关闭释放、晚到回复拒绝；检查 App 隐藏导航、登录卸载和可停止按钮接线。`pnpm --filter @workmate/renderer build` 与最后边界调整后的 `pnpm --filter @workmate/renderer typecheck` 通过；构建仅既有告警。
+- 已验证：`node scripts/voice-composer-regression.mjs` VUI-R1–R7 通过。R7 覆盖生产 toggle/open/close 与字幕门禁、两类连接准备取消；真实 Vue 实时对话/ASR mock 组件隐藏恢复单次建连、继续收音、手动关闭释放、晚到回复拒绝；检查 App 隐藏导航、登录卸载和可停止按钮接线。`pnpm --filter @openclawx/renderer build` 与最后边界调整后的 `pnpm --filter @openclawx/renderer typecheck` 通过；构建仅既有告警。
 - 未执行：真实设备跨页面收音/播放和火山通话人工验收、外部发布；未修改后端、密钥或持久化结构。无配置迁移；回滚与规格见 [composer-ui.md](./composer-ui.md)。
 
 ## 语音工作口令最小闭环（2026-10-05，VC-T1）
 
 - 已实现：语音输入新增按用户保存的「口令执行」（默认关闭）与「任务语音提示」（默认开启）；首版明确完整正文 + 收尾口令，非通用语义模型。稳定 1200ms、可取消 1000ms 后复用现有 submit；修订/否定/疑问/引用/停止/关闭/切聊天/隐藏聊天/忙碌撤销。自动提交后停止 ASR，一次录入只提交一次；不同录入可重复同一目标。当前员工模式支持，协作者/自动调度不自动提交。
 - 已实现：语音提交在网页和桌面均走正式 serverChatTurn，通过服务端返回 sessionId/runId 的本地可选回调绑定通知；轮询指定任务，审批续跑只跟同 turnId，不以文字或发送 Promise 完成推测完成。开始/完成各两句轮换，失败/审批/取消各一句，共 7 个本地 22.05kHz PCM WAV，运行时不调 TTS。队列串行、收音期间延迟播报、静音清队列、失败文字降级；退出登录释放，任务不因停止录音被取消。
-- 已验证：`node scripts/voice-command-regression.mjs`（亦可 pnpm voice:command:regression）VC-R1–R4 通过；`node scripts/voice-composer-regression.mjs` VUI-R1–R7 通过，包含生产 submit 的任务接受回调接线。`pnpm --filter @workmate/renderer build` 通过（既有告警）；最后 reset/否定词调整后 renderer typecheck 通过。音频 RIFF/WAVE 头与数据完整性回归通过，afinfo 确认开始片段为单声道 Int16、22050Hz、约 2.16 秒。`git diff --check` 通过。
+- 已验证：`node scripts/voice-command-regression.mjs`（亦可 pnpm voice:command:regression）VC-R1–R4 通过；`node scripts/voice-composer-regression.mjs` VUI-R1–R7 通过，包含生产 submit 的任务接受回调接线。`pnpm --filter @openclawx/renderer build` 通过（既有告警）；最后 reset/否定词调整后 renderer typecheck 通过。音频 RIFF/WAVE 头与数据完整性回归通过，afinfo 确认开始片段为单声道 Int16、22050Hz、约 2.16 秒。`git diff --check` 通过。
 - 未执行：真实麦克风口令→实际员工→扬声器完整验收、浏览器自动播放限制与音质人工验收；测试不连接火山、不执行真实模型任务。未改后端、密钥/HTTP Schema/编排状态机，未发布；固定口令不支持模糊历史引用，应用退出后无通知保证。关闭口令/提示即可分别回滚，无配置迁移。规格与回归见 [voice-command.md](./voice-command.md)；可在 macOS 用 scripts/generate-voice-notices.mjs 重新生成静态音频，其他平台直接使用已包含资产。
 # 手机网页实时通话（2026-10-05）
 
@@ -114,4 +114,4 @@
 - MV-T12：修复长时间零值 PCM 导致火山 `Abnormal silence audio`。桌面与手机在手动静音时立即、自动静音在约 5 秒持续数字静音后使用官方 mute/unmute 控制事件，并在 mute 期间停止上传；恢复顺序受串行状态保护。
 
 - MV-T1/T2/T3：已实现、模拟验证通过。移除桌面顶部重复语音按钮；手机扫码页面新增电话、全屏通话/声波/字幕、静音/挂断、当前对话工作桥。权限/断线/字幕清理与令牌隔离测试通过；真实手机 HTTPS 与火山任务闭环未执行。
-- 新增可选 WORKMATE_MOBILE_PUBLIC_ORIGIN；HTTP 文字聊天兼容，手机语音必须可信 HTTPS；不自动创建域名/证书/隧道或重启用户服务。详见 [mobile-voice.md](./mobile-voice.md)。
+- 新增可选 OPENCLAWX_MOBILE_PUBLIC_ORIGIN；HTTP 文字聊天兼容，手机语音必须可信 HTTPS；不自动创建域名/证书/隧道或重启用户服务。详见 [mobile-voice.md](./mobile-voice.md)。

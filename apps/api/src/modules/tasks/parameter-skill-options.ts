@@ -1,5 +1,5 @@
-import {TaskParameterSkillListSchema} from '@workmate/contracts';
-import type {KeyValueStore,TaskOwner} from '@workmate/orchestrator';
+import {TaskParameterSkillListSchema} from '@openclawx/contracts';
+import type {KeyValueStore,TaskOwner} from '@openclawx/orchestrator';
 
 /** Metadata selection does not grant or execute a Skill. Never read another user's catalog. */
 export async function parameterSkillOptions(store:KeyValueStore,owner:TaskOwner) {

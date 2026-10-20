@@ -26,7 +26,7 @@ onMounted(async()=>{if(props.returnDefinitionId){try{const {definition}=await te
   <section class="flex h-full min-h-0 flex-col overflow-hidden">
     <div class="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col px-6 py-10 sm:px-12">
       <header class="shrink-0">
-        <p class="text-[11px] font-extrabold tracking-[.13em] text-[var(--accent)]">WORKMATE / TASKS</p>
+        <p class="text-[11px] font-extrabold tracking-[.13em] text-[var(--accent)]">OPENCLAWX / TASKS</p>
         <h1 class="mt-2 text-3xl font-bold tracking-tight">任务中心</h1>
         <p class="mt-3 text-sm text-[var(--muted)]">创建并安排任务，在运行记录中查看进度与成果。</p>
         <nav class="mt-6 inline-flex rounded-xl bg-[var(--surface-muted)] p-1" aria-label="任务中心导航">

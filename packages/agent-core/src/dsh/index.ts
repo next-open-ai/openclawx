@@ -3,12 +3,12 @@ export { DshCapabilityAdapter } from '../dsh-capability-adapter.js';
 export { resolveDshLaunch, resolveDshWorkspace } from './launch.js';
 export { DshJsonRpcClient } from './jsonrpc-client.js';
 export {
-  mapWorkmateModelToDshRoute,
-  WORKMATE_DSH_PROVIDER_ROUTE,
-  WORKMATE_DSH_API_KEY_ENV,
+  mapOpenClawXModelToDshRoute,
+  OPENCLAWX_DSH_PROVIDER_ROUTE,
+  OPENCLAWX_DSH_API_KEY_ENV,
 } from './model-route.js';
-export { buildWorkmateDshCordisYaml, writeWorkmateDshCordis } from './cordis-compose.js';
-export { materializeWorkmateSkillsForDsh } from './skills-materialize.js';
+export { buildOpenClawXDshCordisYaml, writeOpenClawXDshCordis } from './cordis-compose.js';
+export { materializeOpenClawXSkillsForDsh } from './skills-materialize.js';
 export { createDshEventMapContext, mapDshSessionEvent, unwrapAssembledDelta } from './map-events.js';
 export {
   DSH_RUNTIME_NPM_VERSION,
@@ -35,8 +35,8 @@ export {
 } from './environment.js';
 export type { DshEventMapContext } from './map-events.js';
 export type { DshLaunchSpec } from './launch.js';
-export type { WorkmateDshModelRoute, DshPiAiApi } from './model-route.js';
-export type { WorkmateDshCordisOptions } from './cordis-compose.js';
+export type { OpenClawXDshModelRoute, DshPiAiApi } from './model-route.js';
+export type { OpenClawXDshCordisOptions } from './cordis-compose.js';
 export type { DshInstallProgressEvent, DshInstallPhase, DshInstallResult, DshRuntimeStatus } from './runtime-install.js';
 export type {
   DshEnvCheckItem,

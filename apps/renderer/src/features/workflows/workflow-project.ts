@@ -1,4 +1,4 @@
-import { workflowDefinitionSchema, type WorkflowDefinition } from '@workmate/contracts';
+import { workflowDefinitionSchema, type WorkflowDefinition } from '@openclawx/contracts';
 import type { ProjectDraftResult } from '../../app/project-planning';
 
 /** A planner draft has index-based edges. Validate them before mapping to durable IDs. */

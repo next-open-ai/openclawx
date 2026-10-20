@@ -1,4 +1,4 @@
-# @workmate/orchestrator
+# @openclawx/orchestrator
 
 服务端编排核心：聊天会话、可续跑 run、项目调度与域 KV。
 
@@ -21,7 +21,7 @@ memory?: {
 
 | 时机 | 行为 |
 | --- | --- |
-| 组装 `ChatRequest` | 有摘要时注入 `[Workmate context summary]` + `coveredUntilId` **之后**的原文；无摘要则用全量历史 |
+| 组装 `ChatRequest` | 有摘要时注入 `[OpenClawX context summary]` + `coveredUntilId` **之后**的原文；无摘要则用全量历史 |
 | Run 结束（`settleRun`） | 若「摘要 + 未覆盖原文」超过约 24k 字符 → LLM 滚动摘要并推进水位线；标记 `dirty` |
 | 切换/新建会话（桌面） | `POST /sessions/:id/memory/flush`：必要时强制折叠超出最近窗口的原文，清除 `dirty` |
 
@@ -35,7 +35,7 @@ memory?: {
 
 项目任务会把 `projectWorkspacePath` 与稳定 `runId` 注入 `ChatRequest`：
 
-- 过程产物 → `~/.workmate/workspaces/<runId>/`
+- 过程产物 → `~/.openclawx/workspaces/<runId>/`
 - 用户可见交付 → 调用 `publish_to_project` 写入 `project.workspacePath`（左侧项目文件树）
 
 详见 [`docs/design/architecture.md`](../../docs/design/architecture.md) §5.2 与 [`docs/design/project-orchestration.md`](../../docs/design/project-orchestration.md)。

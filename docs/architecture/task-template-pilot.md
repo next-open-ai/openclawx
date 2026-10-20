@@ -78,15 +78,15 @@ TP-R18：模板可选 `resultOutput` 默认输出配置、`reportUi` 不可变�
 ## 验证
 
 ```sh
-pnpm --filter @workmate/contracts build
-pnpm --filter @workmate/orchestrator test
-pnpm --filter @workmate/api typecheck
-pnpm --filter @workmate/api build
-pnpm --filter @workmate/renderer build
+pnpm --filter @openclawx/contracts build
+pnpm --filter @openclawx/orchestrator test
+pnpm --filter @openclawx/api typecheck
+pnpm --filter @openclawx/api build
+pnpm --filter @openclawx/renderer build
 pnpm tasks:smoke
 ```
 
-可选浏览器回归：安装 Playwright 后运行 `node scripts/template-tasks-browser-smoke.cjs`；也可通过 `WORKMATE_PLAYWRIGHT_MODULE` 指定已有模块路径，通过 `WORKMATE_BROWSER_CHANNEL=chrome` 使用 Chrome。需先完成 API 与 renderer 构建。
+可选浏览器回归：安装 Playwright 后运行 `node scripts/template-tasks-browser-smoke.cjs`；也可通过 `OPENCLAWX_PLAYWRIGHT_MODULE` 指定已有模块路径，通过 `OPENCLAWX_BROWSER_CHANNEL=chrome` 使用 Chrome。需先完成 API 与 renderer 构建。
 
 回归使用临时数据目录与独立账号，覆盖数据库测试数据初始化、客户查询、月份筛选、并发重试去重、结果数据集回存、账号隔离，以及模板配置、试跑发布、默认参数、定制报告、CSV 下载和旧任务流程，截图保存于系统临时目录，不修改真实业务数据。
 

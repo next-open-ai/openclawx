@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { databaseCredentialBridgeSchema } from '@workmate/contracts';
-import { withKeyLock } from '@workmate/orchestrator';
+import { databaseCredentialBridgeSchema } from '@openclawx/contracts';
+import { withKeyLock } from '@openclawx/orchestrator';
 
 type Bridge = { port: number; token: string };
 let bridge: Bridge | undefined;
@@ -11,14 +11,14 @@ const sessionSecrets = new Map<string, string>();
 const pending = new Map<string, { resolve: (value: string | undefined) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 process.on('message', (value: unknown) => {
   const m = value as { type?: string; id?: string; password?: string; error?: string } | null;
-  if (m?.type !== 'workmate:database-secret:response' || !m.id) return;
+  if (m?.type !== 'openclawx:database-secret:response' || !m.id) return;
   const request = pending.get(m.id);
   if (!request) return;
   pending.delete(m.id); clearTimeout(request.timer);
   if (m.error) request.reject(new Error('桌面安全凭据存储不可用，请解锁系统钥匙串后重试。'));
   else request.resolve(m.password);
 });
-export const databaseCredentialPersistence = () => process.send || bridge || process.env.WORKMATE_REQUIRE_DESKTOP_CREDENTIALS === '1' ? 'desktop' as const : 'session' as const;
+export const databaseCredentialPersistence = () => process.send || bridge || process.env.OPENCLAWX_REQUIRE_DESKTOP_CREDENTIALS === '1' ? 'desktop' as const : 'session' as const;
 export async function databaseSecret(key: string, password?: string): Promise<string | undefined> {
   return withKeyLock(`database-secret:${key}`, () => accessDatabaseSecret(key, password));
 }
@@ -47,7 +47,7 @@ async function accessDatabaseSecret(key: string, password?: string): Promise<str
     return undefined;
   }
   if (!process.send) {
-    if (process.env.WORKMATE_REQUIRE_DESKTOP_CREDENTIALS === '1') throw new Error('桌面安全凭据通道尚未就绪，请等待桌面启动；如持续失败，请完整重启开发服务。');
+    if (process.env.OPENCLAWX_REQUIRE_DESKTOP_CREDENTIALS === '1') throw new Error('桌面安全凭据通道尚未就绪，请等待桌面启动；如持续失败，请完整重启开发服务。');
     if (password !== undefined) sessionSecrets.set(key, password);
     return sessionSecrets.get(key);
   }
@@ -55,7 +55,7 @@ async function accessDatabaseSecret(key: string, password?: string): Promise<str
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => { pending.delete(id); reject(new Error('桌面安全凭据存储响应超时。')); }, 5000);
     pending.set(id, { resolve, reject, timer });
-    process.send!({ type: 'workmate:database-secret', id, key, operation: password === undefined ? 'read' : 'write', ...(password === undefined ? {} : { password }) }, error => {
+    process.send!({ type: 'openclawx:database-secret', id, key, operation: password === undefined ? 'read' : 'write', ...(password === undefined ? {} : { password }) }, error => {
       if (!error) return;
       clearTimeout(timer); pending.delete(id); reject(new Error('无法访问桌面安全凭据存储。'));
     });

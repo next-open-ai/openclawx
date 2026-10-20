@@ -1,6 +1,6 @@
-import type { ChatRunContext, KeyValueStore, ProjectTask } from '@workmate/orchestrator';
-import { ProviderIdSchema, resolveProviderServiceEndpoint } from '@workmate/contracts';
-import type { DecisionGuardPolicy, DecisionRuntimeConfig, ModelCapabilityRuntime } from '@workmate/contracts';
+import type { ChatRunContext, KeyValueStore, ProjectTask } from '@openclawx/orchestrator';
+import { ProviderIdSchema, resolveProviderServiceEndpoint } from '@openclawx/contracts';
+import type { DecisionGuardPolicy, DecisionRuntimeConfig, ModelCapabilityRuntime } from '@openclawx/contracts';
 import { ensureModelSecrets } from './secrets.js';
 
 /**
@@ -220,7 +220,7 @@ function profileFor(
     PRESET_DEFAULT_INSTRUCTIONS[employeeId] ||
     '按要求完成任务，不虚构执行结果。';
   const roleBrief = description ? ` Role brief: ${description}` : '';
-  const instructions = `${name}（Workmate 数字员工）。自我介绍时使用当前员工名称，客观说明能力，不夸大。${roleBrief} ${focus}`.trim();
+  const instructions = `${name}（OpenClawX 数字员工）。自我介绍时使用当前员工名称，客观说明能力，不夸大。${roleBrief} ${focus}`.trim();
   return { id: employeeId, name, instructions, toolIds: [] };
 }
 

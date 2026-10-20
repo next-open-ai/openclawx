@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@workmate/contracts';
+import type { AgentEvent } from '@openclawx/contracts';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -53,7 +53,7 @@ function toolResultFailed(data: Record<string, unknown>, message: Record<string,
 }
 
 /**
- * Map one DeepSeek Harness session-log event onto zero or more Workmate AgentEvents.
+ * Map one DeepSeek Harness session-log event onto zero or more OpenClawX AgentEvents.
  * Only emits user-visible text deltas (not reasoning) and tool activity.
  */
 export function mapDshSessionEvent(

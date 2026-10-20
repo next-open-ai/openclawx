@@ -1,5 +1,5 @@
 {
-  "name": "@workmate/orchestrator",
+  "name": "@openclawx/orchestrator",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
     "test": "pnpm build && node --test dist/test/*.js"
   },
   "dependencies": {
-    "@workmate/agent-core": "workspace:*",
-    "@workmate/contracts": "workspace:*"
+    "@openclawx/agent-core": "workspace:*",
+    "@openclawx/contracts": "workspace:*"
   }
 }

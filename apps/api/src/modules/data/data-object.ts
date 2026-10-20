@@ -1,4 +1,4 @@
-import { dataObjectAnnotationsSchema, dataObjectModelSchema, type DataObjectAnnotations, type DataResource } from '@workmate/contracts';
+import { dataObjectAnnotationsSchema, dataObjectModelSchema, type DataObjectAnnotations, type DataResource } from '@openclawx/contracts';
 
 export function readAnnotations(raw?: unknown): DataObjectAnnotations {
   // Missing metadata on older objects is valid; malformed stored metadata is not.

@@ -1,4 +1,4 @@
-# Workmate 平台 Benchmark 中心
+# OpenClawX 平台 Benchmark 中心
 
 Benchmark 用于评测平台特征、比较版本和验证技术取舍，不替代功能测试。常规回归和发布验收进入 [`docs/quality/`](../quality/README.md)。
 

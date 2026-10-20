@@ -22,7 +22,7 @@ const bundle = await build({ bundle: true, write: false, platform: 'browser', fo
   `},
   plugins: [{ name: 'workflow-fixture', setup(builder) {
     builder.onResolve({ filter: /^vue$/ }, () => ({ path: vueRequire.resolve('vue/dist/vue.esm-bundler.js') }));
-    builder.onResolve({ filter: /^@workmate\/contracts$/ }, () => ({ path: path.resolve('packages/contracts/dist/index.js') }));
+    builder.onResolve({ filter: /^@openclawx\/contracts$/ }, () => ({ path: path.resolve('packages/contracts/dist/index.js') }));
     builder.onLoad({ filter: /\.vue$/ }, args => {
       const { descriptor } = parse(fs.readFileSync(args.path, 'utf8'), { filename: args.path });
       const id = createHash('sha256').update(args.path).digest('hex').slice(0, 8);
@@ -60,7 +60,7 @@ const server = createServer(async (request, reply) => {
     await new Promise(resolve=>setTimeout(resolve,600));
     reply.setHeader('content-type','application/json');
     if(failNext){failNext=false;reply.statusCode=400;return reply.end(JSON.stringify({message:'模拟上传失败，请重试或移除'}));}
-    return reply.end(JSON.stringify({attachment:{id:'33333333-3333-4333-8333-333333333333',name:decodeURIComponent(request.headers['x-workmate-file-name']),size:bytes,summary:'已解析 · 收入 150000，利润 50000',status:'ready',kind:'document',mimeType:'text/plain',createdAt:Date.now()}}));
+    return reply.end(JSON.stringify({attachment:{id:'33333333-3333-4333-8333-333333333333',name:decodeURIComponent(request.headers['x-openclawx-file-name']),size:bytes,summary:'已解析 · 收入 150000，利润 50000',status:'ready',kind:'document',mimeType:'text/plain',createdAt:Date.now()}}));
   }
   if(url.pathname.startsWith('/api/')){reply.statusCode=404;return reply.end('No live services');}
   if(url.pathname==='/bundle.js'){reply.setHeader('content-type','text/javascript');return reply.end(bundle.outputFiles[0].text);}
@@ -70,9 +70,9 @@ const server = createServer(async (request, reply) => {
 });
 
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-const playwrightModule=process.env.WORKMATE_PLAYWRIGHT_MODULE || 'playwright';
+const playwrightModule=process.env.OPENCLAWX_PLAYWRIGHT_MODULE || 'playwright';
 const { chromium }=createRequire(import.meta.url)(playwrightModule);
-const browser=await chromium.launch({headless:true,args:['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream'],...(process.env.WORKMATE_BROWSER_CHANNEL ? {channel:process.env.WORKMATE_BROWSER_CHANNEL} : {})});
+const browser=await chromium.launch({headless:true,args:['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream'],...(process.env.OPENCLAWX_BROWSER_CHANNEL ? {channel:process.env.OPENCLAWX_BROWSER_CHANNEL} : {})});
 const page=await browser.newPage({viewport:{width:1100,height:900}});
 const errors=[];page.on('pageerror',error=>errors.push(error.message));
 try {
@@ -121,7 +121,7 @@ try {
   await page.getByRole('button',{name:'停止执行'}).waitFor();
   assert.equal(await page.evaluate(()=>window.fixture.calls.at(-1).content),'请解释报告中的利润指标。');
   await page.getByRole('button',{name:'停止执行'}).click();
-  await page.screenshot({path:'/tmp/workmate-project-composer.png'});
+  await page.screenshot({path:'/tmp/openclawx-project-composer.png'});
   assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({ok:true,cases:['default member','IME','failed submit retains draft','successful submit clears','running/stop','mention enter','document drop/failure/retry/send','project isolation','synthetic microphone + ASR manual confirmation'],audioPackets,screenshot:'/tmp/workmate-project-composer.png'}));
+  console.log(JSON.stringify({ok:true,cases:['default member','IME','failed submit retains draft','successful submit clears','running/stop','mention enter','document drop/failure/retry/send','project isolation','synthetic microphone + ASR manual confirmation'],audioPackets,screenshot:'/tmp/openclawx-project-composer.png'}));
 } finally { await browser.close();server.close(); }

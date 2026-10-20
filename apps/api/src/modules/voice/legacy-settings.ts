@@ -1,11 +1,11 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { AsrResourceSchema, VoiceModeSchema } from '@workmate/contracts';
+import { AsrResourceSchema, VoiceModeSchema } from '@openclawx/contracts';
 
 export const DEFAULT_REALTIME_VOICE_MODEL = '1.2.6.1';
 export const DEFAULT_REALTIME_VOICE_ID = 'zh_female_vv_jupiter_bigtts';
-export const DEFAULT_REALTIME_VOICE_INSTRUCTIONS = '你是 Workmate 的实时语音助手。使用简洁自然的中文交流，不要声称执行了尚未执行的业务操作。';
+export const DEFAULT_REALTIME_VOICE_INSTRUCTIONS = '你是 OpenClawX 的实时语音助手。使用简洁自然的中文交流，不要声称执行了尚未执行的业务操作。';
 
 export type RealtimeVoiceSettings = {
   enabled: boolean;
@@ -31,7 +31,7 @@ export type RealtimeVoiceSettings = {
 };
 
 function settingsPath() {
-  const root = process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate');
+  const root = process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx');
   return path.join(root, 'voice-realtime-settings.json');
 }
 
@@ -83,7 +83,7 @@ export function readRealtimeVoiceSettings(): RealtimeVoiceSettings {
 }
 
 export function publicRealtimeVoiceSettings(value = readRealtimeVoiceSettings()) {
-  const apiKey = process.env.WORKMATE_VOLCENGINE_REALTIME_API_KEY?.trim() || value.apiKey;
+  const apiKey = process.env.OPENCLAWX_VOLCENGINE_REALTIME_API_KEY?.trim() || value.apiKey;
   const asrKey = resolveAsrKey(value);
   return {
     enabled: value.enabled,
@@ -94,7 +94,7 @@ export function publicRealtimeVoiceSettings(value = readRealtimeVoiceSettings())
     voiceMode: value.voiceMode, asrEnabled: value.asrEnabled, asrReuseKey: value.asrReuseKey,
     asrResourceId: value.asrResourceId, asrEnablePunc: value.asrEnablePunc, asrEnableItn: value.asrEnableItn,
     asrConfigured: Boolean(asrKey), asrApiKeyMasked: asrKey ? `••••••••${asrKey.slice(-4)}` : '',
-    asrKeySource: value.asrReuseKey ? 'realtime' : process.env.WORKMATE_VOLCENGINE_ASR_API_KEY?.trim() ? 'environment' : 'settings',
+    asrKeySource: value.asrReuseKey ? 'realtime' : process.env.OPENCLAWX_VOLCENGINE_ASR_API_KEY?.trim() ? 'environment' : 'settings',
     configured: Boolean(apiKey),
     apiKeyMasked: apiKey ? `••••••••${apiKey.slice(-4)}` : '',
     model: value.model,
@@ -106,7 +106,7 @@ export function publicRealtimeVoiceSettings(value = readRealtimeVoiceSettings())
     loudness: value.loudness,
     enableMusic: value.enableMusic,
     clonedVoices: value.clonedVoices,
-    apiKeySource: process.env.WORKMATE_VOLCENGINE_REALTIME_API_KEY?.trim() ? 'environment' : 'settings',
+    apiKeySource: process.env.OPENCLAWX_VOLCENGINE_REALTIME_API_KEY?.trim() ? 'environment' : 'settings',
   };
 }
 
@@ -145,6 +145,6 @@ export function saveRealtimeVoiceSettings(input: Record<string, unknown>) {
 
 export function resolveAsrKey(value = readRealtimeVoiceSettings()) {
   return value.asrReuseKey
-    ? process.env.WORKMATE_VOLCENGINE_REALTIME_API_KEY?.trim() || value.apiKey
-    : process.env.WORKMATE_VOLCENGINE_ASR_API_KEY?.trim() || value.asrApiKey;
+    ? process.env.OPENCLAWX_VOLCENGINE_REALTIME_API_KEY?.trim() || value.apiKey
+    : process.env.OPENCLAWX_VOLCENGINE_ASR_API_KEY?.trim() || value.asrApiKey;
 }

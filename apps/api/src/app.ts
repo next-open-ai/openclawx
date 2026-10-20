@@ -3,7 +3,7 @@ import path from 'node:path';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
-import { setConversationSiteBundleResolver } from '@workmate/agent-core';
+import { setConversationSiteBundleResolver } from '@openclawx/agent-core';
 import { authRoutes } from './modules/auth/routes.js';
 import { authGuard } from './modules/auth/service.js';
 import { healthRoutes } from './modules/health/routes.js';
@@ -26,7 +26,7 @@ import { voiceRoutes } from './modules/voice/routes.js';
 
 export async function createApp() {
   const app = Fastify({ logger: true });
-  const staticRoot = process.env.WORKMATE_WEB_STATIC_DIR?.trim();
+  const staticRoot = process.env.OPENCLAWX_WEB_STATIC_DIR?.trim();
   await app.register(cors, { origin: false });
   // Preview tools map conversation mode to archived SITE bundles (no workspace hydrate).
   setConversationSiteBundleResolver(async (conversationId) => resolveConversationSiteBundleRoot(conversationId));
@@ -57,7 +57,7 @@ export async function createApp() {
   if (staticRoot) {
     const indexFile = path.join(staticRoot, 'index.html');
     if (!fs.existsSync(indexFile)) {
-      throw new Error(`WORKMATE_WEB_STATIC_DIR is missing index.html: ${indexFile}`);
+      throw new Error(`OPENCLAWX_WEB_STATIC_DIR is missing index.html: ${indexFile}`);
     }
     await app.register(fastifyStatic, {
       root: staticRoot,

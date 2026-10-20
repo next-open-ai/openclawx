@@ -6,11 +6,11 @@ import { spawn } from 'node:child_process';
 import { strToU8, zipSync } from 'fflate';
 
 const port = 4497;
-const dataDir = await mkdtemp(path.join(os.tmpdir(), 'workmate-attachments-regression-'));
+const dataDir = await mkdtemp(path.join(os.tmpdir(), 'openclawx-attachments-regression-'));
 const origin = `http://127.0.0.1:${port}`;
 const api = spawn(process.execPath, ['apps/api/dist/main.cjs'], {
   cwd: process.cwd(),
-  env: { ...process.env, WORKMATE_API_PORT: String(port), WORKMATE_DATA_DIR: dataDir, WORKMATE_ORCH_RUNNER: 'memory-echo' },
+  env: { ...process.env, OPENCLAWX_API_PORT: String(port), OPENCLAWX_DATA_DIR: dataDir, OPENCLAWX_ORCH_RUNNER: 'memory-echo' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 let logs = '';
@@ -27,7 +27,7 @@ async function waitFor(fn, timeout = 15_000) {
   throw new Error(`Timed out. API logs:\n${logs.slice(-2000)}`);
 }
 async function json(url, init) {
-  const response = await fetch(`${origin}${url}`, { ...init, headers: { ...(init?.headers || {}), ...(token ? { 'x-workmate-session': token } : {}) } });
+  const response = await fetch(`${origin}${url}`, { ...init, headers: { ...(init?.headers || {}), ...(token ? { 'x-openclawx-session': token } : {}) } });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(`${url} -> ${response.status}: ${body.message || JSON.stringify(body)}`);
   return body;
@@ -41,7 +41,7 @@ try {
   const sessionId = created.session.id;
   const source = Buffer.from('# Quarterly brief\nRevenue increased by 18 percent.\nRisk: supplier concentration.');
   const uploadResponse = await fetch(`${origin}/api/orch/sessions/${sessionId}/files`, {
-    method: 'POST', headers: { 'content-type': 'application/octet-stream', 'x-workmate-file-name': encodeURIComponent('季度简报.md'), 'x-workmate-session': token }, body: source,
+    method: 'POST', headers: { 'content-type': 'application/octet-stream', 'x-openclawx-file-name': encodeURIComponent('季度简报.md'), 'x-openclawx-session': token }, body: source,
   });
   const uploaded = await uploadResponse.json();
   assert.equal(uploadResponse.status, 200, JSON.stringify(uploaded));
@@ -49,7 +49,7 @@ try {
 
   const htmlSource = Buffer.from('<!doctype html><html><head><title>项目周报</title><style>.secret{display:none}</style></head><body><h1>本周进展</h1><p>已完成 HTML 附件支持。</p><script>window.evil = true</script><ul><li>保留正文</li><li>过滤脚本</li></ul></body></html>');
   const htmlUploadResponse = await fetch(`${origin}/api/orch/sessions/${sessionId}/files`, {
-    method: 'POST', headers: { 'content-type': 'application/octet-stream', 'x-workmate-file-name': encodeURIComponent('项目周报.html'), 'x-workmate-session': token }, body: htmlSource,
+    method: 'POST', headers: { 'content-type': 'application/octet-stream', 'x-openclawx-file-name': encodeURIComponent('项目周报.html'), 'x-openclawx-session': token }, body: htmlSource,
   });
   const uploadedHtml = await htmlUploadResponse.json();
   assert.equal(htmlUploadResponse.status, 200, JSON.stringify(uploadedHtml));
@@ -68,7 +68,7 @@ try {
     'ppt/notesSlides/notesSlide1.xml': strToU8('<p:notes xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>向管理层解释供应链改善计划</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:notes>'),
   }));
   const presentationUpload = await fetch(`${origin}/api/orch/sessions/${sessionId}/files`, {
-    method: 'POST', headers: { 'content-type': 'application/octet-stream', 'x-workmate-file-name': encodeURIComponent('年度经营报告.pptx'), 'x-workmate-session': token }, body: presentation,
+    method: 'POST', headers: { 'content-type': 'application/octet-stream', 'x-openclawx-file-name': encodeURIComponent('年度经营报告.pptx'), 'x-openclawx-session': token }, body: presentation,
   });
   const uploadedPresentation = await presentationUpload.json();
   assert.equal(presentationUpload.status, 200, JSON.stringify(uploadedPresentation));

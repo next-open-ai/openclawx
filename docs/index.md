@@ -2,12 +2,12 @@
 layout: home
 
 hero:
-  name: Workmate
+  name: OpenClawX
   text: 工程与产品文档中心
   tagline: 从产品需求、架构和 SDD，到计划、测试、Benchmark、部署与发布的完整工程知识体系。
   image:
     src: /logo.svg
-    alt: Workmate Documentation
+    alt: OpenClawX Documentation
   actions:
     - theme: brand
       text: 开始阅读

@@ -1,6 +1,6 @@
-# Workmate
+# OpenClawX
 
-**Workmate —— 跨平台、本地优先的「数字员工」AI 工作台**
+**OpenClawX —— 跨平台、本地优先的「数字员工」AI 工作台**
 
 > **语言：** 中文 (zh-CN) · [English](README-EN.md)
 >
@@ -8,7 +8,7 @@
 
 ---
 
-Workmate 是一套桌面级 Agent 工作台：其中的“数字员工”可以对话、运行**项目编排**、使用 **Skills**、检索**知识库 / MCP 连接 / 联网搜索**、管理**资产与自动化**，并且能通过**本地通道网关**被外部 IM（Telegram / 飞书）乃至**远程中继终端**调度。与常见“聊天壳 + 状态都在前端”的 Agent 应用不同，Workmate 把重编排放进**服务端状态机**：桌面 UI、网关进程与未来的远程终端共享同一份会话、审批、运行、资产与项目状态。
+OpenClawX 是一套桌面级 Agent 工作台：其中的“数字员工”可以对话、运行**项目编排**、使用 **Skills**、检索**知识库 / MCP 连接 / 联网搜索**、管理**资产与自动化**，并且能通过**本地通道网关**被外部 IM（Telegram / 飞书）乃至**远程中继终端**调度。与常见“聊天壳 + 状态都在前端”的 Agent 应用不同，OpenClawX 把重编排放进**服务端状态机**：桌面 UI、网关进程与未来的远程终端共享同一份会话、审批、运行、资产与项目状态。
 
 当前实现快照与验收边界见 [docs/current-state.md](docs/current-state.md)。
 
@@ -77,7 +77,7 @@ AgentScope 迁移说明见 `docs/migrations/agentscope.md`；协议 ABI 见 `doc
 桌面安装包可从发布页下载安装。当前 macOS 安装包未签名，首次下载后如果系统阻止启动，可在终端执行：
 
 ```bash
-xattr -cr "/Applications/Workmate.app"
+xattr -cr "/Applications/OpenClawX.app"
 ```
 
 如果你尚未把应用拖入 `Applications`，也可以对下载目录中的 `.app` 执行同样命令，然后再手动打开。
@@ -85,16 +85,16 @@ xattr -cr "/Applications/Workmate.app"
 如需通过 npm 安装并使用 CLI / Web Launcher：
 
 ```bash
-npm install -g @next-open-ai/workmate
-workmate doctor
-workmate init
-workmate start
+npm install -g @next-open-ai/openclawx
+openclawx doctor
+openclawx init
+openclawx start
 ```
 
 常见使用入口：
 
 1. 桌面版：安装后直接启动应用，在界面内完成模型、员工、知识库、自动化与通道配置。
-2. npm / CLI：适合本地拉起 Web Launcher，常用入口为 `workmate doctor`、`workmate init`、`workmate start`。
+2. npm / CLI：适合本地拉起 Web Launcher，常用入口为 `openclawx doctor`、`openclawx init`、`openclawx start`。
 3. 源码开发：在仓库根目录执行 `pnpm install && pnpm dev`，用于联调 desktop + api + renderer。
 
 ## 快速开始
@@ -120,10 +120,10 @@ pnpm web:start
 如果通过 npm 安装发布包，可使用：
 
 ```bash
-npm install -g @next-open-ai/workmate
-workmate doctor
-workmate init
-workmate start
+npm install -g @next-open-ai/openclawx
+openclawx doctor
+openclawx init
+openclawx start
 ```
 
 本地常用校验命令：
@@ -136,20 +136,20 @@ pnpm quality:console       # 打开本机测试控制台 http://127.0.0.1:47840
 ```
 
 默认开发界面端口为 `47831`，本地 API 为 `47832`，测试控制台为 `47840`；刻意避开常被占用的 `5173`。
-默认数据目录为 `~/.workmate`。
+默认数据目录为 `~/.openclawx`。
 
 在“设置 → 模型”配置 Provider 之前不会存储/使用任何模型密钥。无头/CI 冒烟脚本见 `scripts/*-smoke.mjs` 与设计文档。
 
 ## 运行形态
 
-Workmate 当前有 4 种实际运行形态：
+OpenClawX 当前有 4 种实际运行形态：
 
 | 运行形态 | 入口 | 支持级别 | 说明 |
 | --- | --- | --- | --- |
 | Desktop | `pnpm dev` / 安装包 | 完整 | 参考形态：Electron IPC、`safeStorage`、原生文件操作、桌面托管 gateway |
 | Web launcher | `pnpm web:build && pnpm web:start` | 已支持 | 由本地 Fastify API 托管构建后的前端，不含 Electron 专属能力 |
-| npm / CLI | `workmate start` | 已支持 | 与 web launcher 是同一运行时形态 |
-| Docker | `deploy/docker/workmate/` | 支持构建 / 部署方案 | 已提供 Docker 构建与部署文档，能力对齐仍在演进 |
+| npm / CLI | `openclawx start` | 已支持 | 与 web launcher 是同一运行时形态 |
+| Docker | `deploy/docker/openclawx/` | 支持构建 / 部署方案 | 已提供 Docker 构建与部署文档，能力对齐仍在演进 |
 
 完整能力对齐矩阵见 [docs/guides/runtime-modes.md](docs/guides/runtime-modes.md)。
 
@@ -209,7 +209,7 @@ Intel macOS 与 Linux 打包暂在 CI 停用（细节见 `.github/workflows/rele
 | 里程碑 | 状态 |
 | --- | --- |
 | M0 编排层 | ✅ 会话/项目状态机、域存储服务、可续跑审批、`/api/orch` REST+SSE |
-| M1 网关 + Telegram | ✅ `@workmate/channel` 协议、`apps/gateway`、Telegram 适配器 + 白名单；桩验收 ALL PASS |
+| M1 网关 + Telegram | ✅ `@openclawx/channel` 协议、`apps/gateway`、Telegram 适配器 + 白名单；桩验收 ALL PASS |
 | M2 门户 + 飞书 + 远程中继 | ✅ P1 门户与凭证链路(IPC+safeStorage)、P2 飞书适配器、P3 最小远程中继；桩验收 ALL PASS |
 
 ## 许可

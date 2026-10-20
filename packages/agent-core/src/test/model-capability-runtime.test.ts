@@ -4,14 +4,14 @@ import { createServer } from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { resolveProviderBaseUrl, suggestedSpeechVoices } from '@workmate/contracts';
-import type { ModelCapabilityRuntime } from '@workmate/contracts';
+import { resolveProviderBaseUrl, suggestedSpeechVoices } from '@openclawx/contracts';
+import type { ModelCapabilityRuntime } from '@openclawx/contracts';
 import { createModelCapabilityTools } from '../model-capability-runtime.js';
 import { iflytekTtsUrl } from '../speech-provider-adapters.js';
 import { transcribeDashScope, transcribeIflytek } from '../speech-provider-adapters.js';
 
 test('free CogView submits native parameters and saves the returned image URL', async () => {
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-cogview-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-cogview-'));
   let submitted: unknown;
   let baseUrl = '';
   const server = createServer(async (request, response) => {
@@ -46,7 +46,7 @@ test('free CogView submits native parameters and saves the returned image URL', 
 });
 
 test('free CogVideoX submits an async task, polls it and saves the MP4 result', async () => {
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-cogvideo-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-cogvideo-'));
   let submitted: unknown;
   let baseUrl = '';
   const server = createServer(async (request, response) => {
@@ -99,7 +99,7 @@ test('Qwen realtime models expose model-specific voices', () => {
 });
 
 test('local Alibaba ASR uploads temporary audio, resolves OSS and saves a text deliverable', async () => {
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-local-asr-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-local-asr-'));
   await import('node:fs/promises').then(({ writeFile }) => writeFile(path.join(workspaceRoot, 'meeting.mp3'), 'audio'));
   const hits: string[] = [];
   let submitted: any;
@@ -212,7 +212,7 @@ test('authorized model capabilities expose typed tools and invoke distinct provi
   const address = server.address();
   assert.ok(address && typeof address === 'object');
   const baseUrl = `http://127.0.0.1:${address.port}`;
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-capability-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-capability-'));
   await import('node:fs/promises').then(({ writeFile }) => writeFile(path.join(workspaceRoot, 'sample.wav'), 'audio'));
   const capabilities: ModelCapabilityRuntime['capability'][] = ['quantum-code', 'embedding', 'image', 'asr', 'tts'];
   const configs: ModelCapabilityRuntime[] = capabilities.map((capability) => ({ id: capability, capability, provider: 'openai-compatible', baseUrl, apiKey: '', modelId: capability, mode: 'auto' }));
@@ -244,7 +244,7 @@ test('authorized model capabilities expose typed tools and invoke distinct provi
 });
 
 test('non-realtime ASR validates workspace audio and preserves provider diagnostics', async () => {
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-asr-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-asr-'));
   await import('node:fs/promises').then(({ writeFile }) => Promise.all([
     writeFile(path.join(workspaceRoot, 'notes.txt'), 'not audio'),
     writeFile(path.join(workspaceRoot, 'sample.wav'), 'audio'),
@@ -276,7 +276,7 @@ test('non-realtime ASR validates workspace audio and preserves provider diagnost
 });
 
 test('non-realtime TTS supports output format and rejects non-audio responses', async () => {
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-tts-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-tts-'));
   let valid = true;
   const server = createServer((_request, response) => {
     response.setHeader('content-type', valid ? 'audio/wav' : 'application/json');
@@ -307,7 +307,7 @@ test('non-realtime TTS supports output format and rejects non-audio responses', 
 });
 
 test('DashScope non-realtime TTS downloads the generated audio URL and accepts a voice id', async () => {
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-qwen-tts-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-qwen-tts-'));
   let baseUrl = '';
   let requestBody: any;
   const server = createServer(async (request, response) => {
@@ -343,7 +343,7 @@ test('DashScope non-realtime TTS downloads the generated audio URL and accepts a
 });
 
 test('DashScope defaults match the actual model and 411 blocks blind retries within the run', async () => {
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-voice-411-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-voice-411-'));
   let fail = false;
   const received: any[] = [];
   let baseUrl = '';
@@ -389,7 +389,7 @@ test('DashScope defaults match the actual model and 411 blocks blind retries wit
 });
 
 test('Volcengine recorded-file ASR sends base64 audio with vendor headers', async () => {
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-volc-asr-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-volc-asr-'));
   await import('node:fs/promises').then(({ writeFile }) => writeFile(path.join(workspaceRoot, 'sample.wav'), 'audio'));
   let apiKey = '';
   let body: any;
@@ -416,7 +416,7 @@ test('Volcengine recorded-file ASR sends base64 audio with vendor headers', asyn
 });
 
 test('Volcengine TTS uses the configured default voice and saves decoded audio', async () => {
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-volc-tts-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-volc-tts-'));
   let body: any;
   const server = createServer(async (request, response) => {
     const chunks: Buffer[] = [];
@@ -438,7 +438,7 @@ test('Volcengine TTS uses the configured default voice and saves decoded audio',
 });
 
 test('iFlytek recorded-file ASR signs upload and polling requests', async () => {
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-ifly-asr-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-ifly-asr-'));
   await import('node:fs/promises').then(({ writeFile }) => writeFile(path.join(workspaceRoot, 'sample.wav'), 'audio'));
   const hits: URL[] = [];
   const orderResult = JSON.stringify({ lattice: [{ json_1best: JSON.stringify({ st: { rt: [{ ws: [{ cw: [{ w: '讯飞' }] }, { cw: [{ w: '转写' }] }] }] } }) }] });
@@ -472,7 +472,7 @@ test('disabled specialist models are not exposed to the controller model', () =>
 });
 
 test('Qwen Image 3 can use the shared endpoint when Workspace ID is omitted', async () => {
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-qwen-default-workspace-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-qwen-default-workspace-'));
   const nativeFetch = globalThis.fetch;
   let requestedUrl = '';
   try {
@@ -513,7 +513,7 @@ test('DashScope multimodal image protocol uses the native synchronous endpoint a
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address === 'object');
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-dashscope-sync-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-dashscope-sync-'));
   try {
     for (const modelId of ['wan2.7-image', 'qwen-image-2.0']) {
     const tools = createModelCapabilityTools({
@@ -574,7 +574,7 @@ test('DashScope asynchronous image protocol submits and polls a task', async () 
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address === 'object');
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-dashscope-async-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-dashscope-async-'));
   try {
     const tools = createModelCapabilityTools({
       workspaceRoot,
@@ -610,7 +610,7 @@ test('image protocol errors retain HTTP method, status, and request URL', async 
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address === 'object');
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-image-error-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-image-error-'));
   try {
     const tools = createModelCapabilityTools({
       workspaceRoot,
@@ -629,7 +629,7 @@ test('image protocol errors retain HTTP method, status, and request URL', async 
 
 test('image network errors retain method, endpoint, and low-level cause', async () => {
   const nativeFetch = globalThis.fetch;
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-image-network-error-'));
+  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-image-network-error-'));
   try {
     globalThis.fetch = (() => Promise.reject(Object.assign(new TypeError('fetch failed'), {
       cause: Object.assign(new Error('connection reset'), { code: 'ECONNRESET' }),

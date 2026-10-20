@@ -13,7 +13,7 @@ import ChatWorkflowPanel from '../workflows/ChatWorkflowPanel.vue';
 import WorkflowResultQuestion from '../workflows/WorkflowResultQuestion.vue';
 import ChatImagePreview from './ChatImagePreview.vue';
 import ChatAssetMediaPreview from './ChatAssetMediaPreview.vue';
-import type { ChatFileAttachment, ChatImageAttachment, DurableTask, VoiceWorkResult } from '@workmate/contracts';
+import type { ChatFileAttachment, ChatImageAttachment, DurableTask, VoiceWorkResult } from '@openclawx/contracts';
 import { deleteChatFile, sessionDurableTasks, updateDurableTaskStatus, uploadChatFile, uploadChatImage } from '../../services/orchestration';
 import ChatAutoScheduleRail from "./ChatAutoScheduleRail.vue";
 import { useModelConfig, type ProviderConfig } from "../../app/model-config";
@@ -42,8 +42,8 @@ import { readStored, writeStored } from '../../app/storage';
 
 const chatWorkflowPanel = ref<InstanceType<typeof ChatWorkflowPanel>>();
 const resultQuestion = ref<InstanceType<typeof WorkflowResultQuestion>>();
-const resultEvidence = ref<import('@workmate/contracts').WorkflowResultEvidence | null>(null);
-function resultChanged(value: import('@workmate/contracts').WorkflowResultEvidence | null) {
+const resultEvidence = ref<import('@openclawx/contracts').WorkflowResultEvidence | null>(null);
+function resultChanged(value: import('@openclawx/contracts').WorkflowResultEvidence | null) {
   resultEvidence.value = value;
   if (value) { autoSchedule.value = false; collaboratorIds.value = []; collaboratorMenuOpen.value = false; attachmentMenuOpen.value = false; void nextTick(() => document.querySelector<HTMLTextAreaElement>('[aria-label="对话输入框"]')?.focus()); }
 }
@@ -72,7 +72,7 @@ const props = defineProps<{
     attachments?: ChatImageAttachment[],
     fileAttachments?: ChatFileAttachment[],
     onRunAccepted?: (sessionId: string, runId: string) => void,
-    workflowResult?: import('@workmate/contracts').WorkflowResultReference,
+    workflowResult?: import('@openclawx/contracts').WorkflowResultReference,
   ) => Promise<void>;
   abortMessage?: () => void;
   approve: (

@@ -1,6 +1,6 @@
 import mysql from 'mysql2/promise';
 import pg from 'pg';
-import type { DataColumn, RemoteDatabaseConnection, RemoteDatabaseImport } from '@workmate/contracts';
+import type { DataColumn, RemoteDatabaseConnection, RemoteDatabaseImport } from '@openclawx/contracts';
 
 export type RemoteSession = {
   query(sql: string, values?: unknown[]): Promise<Record<string, unknown>[]>;

@@ -25,7 +25,7 @@ import ProjectComposer from "./ProjectComposer.vue";
 import ProjectTurnStatus from './ProjectTurnStatus.vue';
 import { conversationProgress, projectMessageAuthor, visibleProjectMessages } from './project-conversation-presentation.js';
 import ChatWorkflowPanel from '../workflows/ChatWorkflowPanel.vue';
-import type { ProjectInstruction } from '@workmate/contracts';
+import type { ProjectInstruction } from '@openclawx/contracts';
 
 const { resolvedTheme } = useTheme();
 const { runs: localRuns } = useProjects();
@@ -164,7 +164,7 @@ const statusText = (status: string) =>
 const statusClass = (status: string) =>
   ({
     queued: "bg-slate-500/10 text-slate-600",
-    running: "workmate-running-pill",
+    running: "openclawx-running-pill",
     completed: "bg-emerald-500/10 text-emerald-600",
     failed: "bg-rose-500/10 text-rose-600",
     cancelled: "bg-amber-500/10 text-amber-700",
@@ -273,10 +273,10 @@ function historyStatusText(status: string) {
     } as Record<string, string>
   )[status] ?? status;
 }
-const TREE_WIDTH_KEY = "workmate.project.tree-width";
-const TREE_COLLAPSED_KEY = "workmate.project.tree-collapsed";
-const DAG_COLLAPSED_KEY = "workmate.project.dag-collapsed";
-const desktopBridge = () => (window as Window & { workmateDesktop?: any }).workmateDesktop;
+const TREE_WIDTH_KEY = "openclawx.project.tree-width";
+const TREE_COLLAPSED_KEY = "openclawx.project.tree-collapsed";
+const DAG_COLLAPSED_KEY = "openclawx.project.dag-collapsed";
+const desktopBridge = () => (window as Window & { openclawxDesktop?: any }).openclawxDesktop;
 const treeWidth = ref(260);
 const treeCollapsed = ref(false);
 const dagCollapsed = ref(false);
@@ -350,13 +350,13 @@ const workspaceFolderName = computed(() => {
   return parts[parts.length - 1] || raw;
 });
 
-/** Short parent hint, e.g. ~/.workmate/projects */
+/** Short parent hint, e.g. ~/.openclawx/projects */
 const workspaceLocationHint = computed(() => {
   const raw = props.project.workspacePath?.trim() || '';
   if (!raw) return '';
   const normalized = raw.replace(/\\/g, '/');
-  const projectsMarker = '/.workmate/projects/';
-  if (normalized.includes(projectsMarker)) return '~/.workmate/projects';
+  const projectsMarker = '/.openclawx/projects/';
+  if (normalized.includes(projectsMarker)) return '~/.openclawx/projects';
   const parts = normalized.split('/').filter(Boolean);
   if (parts.length <= 1) return '';
   const parent = parts.slice(0, -1).join('/');
@@ -1252,8 +1252,8 @@ onBeforeUnmount(() => {
               @click="openMember(employee.id)"
             >
               <span class="relative grid h-10 w-10 place-items-center rounded-xl text-[10px] font-bold text-white" :style="{ background: employee.color }">
-                <i v-if="statusFor(employee.id) === 'running'" class="workmate-run-spin" />
-                <i v-if="statusFor(employee.id) === 'running'" class="workmate-run-pulse" />
+                <i v-if="statusFor(employee.id) === 'running'" class="openclawx-run-spin" />
+                <i v-if="statusFor(employee.id) === 'running'" class="openclawx-run-pulse" />
                 {{ employee.initials }}
                 <span :class="['absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white', statusDotClass(statusFor(employee.id))]" />
               </span>
@@ -1391,41 +1391,41 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /* Running-status polish: shimmering pill + orbiting/pulsing ring on the avatar. */
-.workmate-running-pill {
+.openclawx-running-pill {
   background: linear-gradient(90deg, #3b82f6 0%, #818cf8 45%, #22d3ee 100%);
   background-size: 200% 100%;
   color: #fff;
-  animation: workmate-shimmer 1.7s linear infinite;
+  animation: openclawx-shimmer 1.7s linear infinite;
 }
-.workmate-run-spin,
-.workmate-run-pulse {
+.openclawx-run-spin,
+.openclawx-run-pulse {
   position: absolute;
   inset: -3px;
   border-radius: 16px;
   pointer-events: none;
 }
-.workmate-run-spin {
+.openclawx-run-spin {
   border: 2px solid transparent;
   border-top-color: #818cf8;
   border-right-color: rgba(129, 140, 248, 0.55);
   filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.7));
-  animation: workmate-spin 1.05s linear infinite;
+  animation: openclawx-spin 1.05s linear infinite;
 }
-.workmate-run-pulse {
+.openclawx-run-pulse {
   box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
-  animation: workmate-pulse 1.7s ease-out infinite;
+  animation: openclawx-pulse 1.7s ease-out infinite;
 }
-@keyframes workmate-shimmer {
+@keyframes openclawx-shimmer {
   to {
     background-position: -200% 0;
   }
 }
-@keyframes workmate-spin {
+@keyframes openclawx-spin {
   to {
     transform: rotate(360deg);
   }
 }
-@keyframes workmate-pulse {
+@keyframes openclawx-pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
   }

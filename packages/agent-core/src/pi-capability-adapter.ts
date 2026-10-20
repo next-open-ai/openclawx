@@ -16,7 +16,7 @@ import {
 
 /**
  * Pi adapter. Pi performs ordinary filesystem operations with its unmodified
- * native coding tools; Workmate only selects tools by permission, hooks bash
+ * native coding tools; OpenClawX only selects tools by permission, hooks bash
  * at Pi's documented spawn boundary, and owns the artifact commit boundary.
  */
 export function createPiCapabilityTools(context: CapabilityContext): AgentTool<any>[] {

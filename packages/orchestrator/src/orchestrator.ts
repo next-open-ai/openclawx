@@ -35,7 +35,7 @@ export interface OrchestratorOptions {
     employeeId: string,
     ownerUserId?: string | null,
   ) => ChatRunContext['mcpConnections'] | Promise<ChatRunContext['mcpConnections']>;
-  durableTaskSourceResolver?: (sessionId: string, attachments: import('@workmate/contracts').ChatFileAttachment[]) => Promise<DurableTaskSourceInput[]>;
+  durableTaskSourceResolver?: (sessionId: string, attachments: import('@openclawx/contracts').ChatFileAttachment[]) => Promise<DurableTaskSourceInput[]>;
 }
 
 /**

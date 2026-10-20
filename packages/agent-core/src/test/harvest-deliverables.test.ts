@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import { finalizeOutputDeliverables, harvestWorkspaceDeliverables, isBusinessDeliverablePath, listOutputDeliverables, WORKSPACE_OUTPUT_DIR } from '../skill-runtime.js';
 
 test('harvestWorkspaceDeliverables stages root PDF into output/', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-harvest-'));
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-harvest-'));
   try {
     const pdfName = '上海到三亚5日行程.pdf';
     writeFileSync(path.join(root, pdfName), '%PDF-1.4 fake');
@@ -26,7 +26,7 @@ test('harvestWorkspaceDeliverables stages root PDF into output/', async () => {
 });
 
 test('harvestWorkspaceDeliverables picks up files already under output/', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-harvest-out-'));
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-harvest-out-'));
   try {
     mkdirSync(path.join(root, WORKSPACE_OUTPUT_DIR), { recursive: true });
     writeFileSync(path.join(root, WORKSPACE_OUTPUT_DIR, 'report.pdf'), '%PDF-1.4');
@@ -38,7 +38,7 @@ test('harvestWorkspaceDeliverables picks up files already under output/', async 
 });
 
 test('run-end output finalization ignores old output and returns a file touched by this run', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-harvest-delta-'));
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-harvest-delta-'));
   try {
     mkdirSync(path.join(root, WORKSPACE_OUTPUT_DIR), { recursive: true });
     const report = path.join(root, WORKSPACE_OUTPUT_DIR, 'report.pdf');
@@ -58,7 +58,7 @@ test('run-end output finalization ignores old output and returns a file touched 
 });
 
 test('run-end output finalization never promotes a root document', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-finalize-boundary-'));
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-finalize-boundary-'));
   try {
     writeFileSync(path.join(root, 'unrelated.pdf'), '%PDF-root');
     const finalized = await finalizeOutputDeliverables(root, { startedAtMs: Date.now() - 1_000, before: [] });

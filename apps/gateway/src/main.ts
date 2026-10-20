@@ -4,16 +4,16 @@ import { requestParentChannelSecrets, getChannelSecrets } from './parent.js';
 
 /**
  * Gateway process entry. The Electron desktop main forks this file with:
- *   WORKMATE_API_URL=<orchestrator base>   (defaults to the local api)
- *   WORKMATE_GATEWAY_CONFIG=<json file>    (optional override)
- *   WORKMATE_GATEWAY_STUB=1                (offline stub channel; acceptance only)
+ *   OPENCLAWX_API_URL=<orchestrator base>   (defaults to the local api)
+ *   OPENCLAWX_GATEWAY_CONFIG=<json file>    (optional override)
+ *   OPENCLAWX_GATEWAY_STUB=1                (offline stub channel; acceptance only)
  * When no file is given the config is read from the orchestrator KV key
  * `channels.v1` (written by the desktop settings / config script); credentials
  * are requested once from the parent (main) process over fork IPC.
  */
 async function main(): Promise<void> {
-  const apiBaseUrl = process.env.WORKMATE_API_URL ?? 'http://127.0.0.1:47832/api/orch';
-  const fileConfig = loadConfigFile(process.env.WORKMATE_GATEWAY_CONFIG);
+  const apiBaseUrl = process.env.OPENCLAWX_API_URL ?? 'http://127.0.0.1:47832/api/orch';
+  const fileConfig = loadConfigFile(process.env.OPENCLAWX_GATEWAY_CONFIG);
   const kvConfig = await loadConfigFromKv(apiBaseUrl);
   await requestParentChannelSecrets();
   const secrets = getChannelSecrets();
@@ -21,7 +21,7 @@ async function main(): Promise<void> {
     apiBaseUrl,
     ...kvConfig,
     ...fileConfig,
-    ...(process.env.WORKMATE_GATEWAY_STUB === '1' ? { allowAll: true } : {}),
+    ...(process.env.OPENCLAWX_GATEWAY_STUB === '1' ? { allowAll: true } : {}),
     channels: {
       telegram: {
         ...kvConfig.channels?.telegram,
@@ -52,8 +52,8 @@ async function main(): Promise<void> {
     },
   };
   const gateway = createGateway(config, {
-    stub: process.env.WORKMATE_GATEWAY_STUB === '1',
-    fakeFeishu: process.env.WORKMATE_FEISHU_FAKE === '1',
+    stub: process.env.OPENCLAWX_GATEWAY_STUB === '1',
+    fakeFeishu: process.env.OPENCLAWX_FEISHU_FAKE === '1',
   });
   const names = gateway.channels.map((channel) => channel.id).join(',');
   console.log(`[gateway] ready channels=${names || '(none)'}`);

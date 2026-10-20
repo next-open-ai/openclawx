@@ -13,7 +13,7 @@ const esbuild=createRequire(api.resolve('tsup'))('esbuild');
 const compiler=createRequire(realpathSync(r.resolve('vue/package.json')))('@vue/compiler-sfc');
 const fixture=[{id:'a',name:'学生信息',appType:'自定义应用',createdAt:1791858000000,published:true,publishUrl:'http://127.0.0.1:47832/student',lanUrl:'http://192.168.1.9:47832/student',customSite:{bound:true,updatedAt:1791860000000}},{id:'b',name:'经营分析',appType:'数据看板',createdAt:1791858000000,published:true,publishUrl:'http://127.0.0.1:47832/business',customSite:{bound:true,updatedAt:1791858000000}},{id:'pending',name:'未交付',published:true,publishUrl:'http://127.0.0.1:47832/pending',delivery:{status:'awaiting-binding'}}];
 const result=await esbuild.build({stdin:{resolveDir:renderer,contents:`import {createApp,ref,nextTick,h} from 'vue';import Gallery from './src/features/applications/ApplicationGallery.vue';
-const shown=ref(false);createApp({setup:()=>()=>h('div',[h('textarea',{id:'draft',value:'保留中的项目草稿'}),h('button',{id:'entry',onClick:()=>shown.value=true},'Workmate'),shown.value?h(Gallery,{onClose:()=>shown.value=false}):null])}).mount('#app');
+const shown=ref(false);createApp({setup:()=>()=>h('div',[h('textarea',{id:'draft',value:'保留中的项目草稿'}),h('button',{id:'entry',onClick:()=>shown.value=true},'OpenClawX'),shown.value?h(Gallery,{onClose:()=>shown.value=false}):null])}).mount('#app');
 const wait=()=>new Promise(r=>setTimeout(r,120));const check=(v,m)=>{if(!v)throw Error(m)};
 setTimeout(async()=>{try{
 document.querySelector('#entry').click();await wait();check(document.querySelectorAll('.app-card').length===2,'published filtering');
@@ -36,14 +36,14 @@ document.querySelector('#entry').click();await wait();document.body.dataset.resu
 }]});
 const server=createServer((req,res)=>{if(req.url==='/app.js'){res.setHeader('Content-Type','text/javascript');res.end(result.outputFiles[0].text);return;}res.setHeader('Content-Type','text/html');res.end('<meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{--background:#f7f8fc;--surface:#fff;--surface-muted:#f0f2f8;--text:#191d2b;--muted:#69738b;--border:#dfe4ef;--accent:#4963e7}body{margin:0;font-family:system-ui}*{box-sizing:border-box}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}</style><div id="app"></div><script src="/app.js"></script>');});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const out=await mkdtemp(join(tmpdir(),'workmate-gallery-'));
+const out=await mkdtemp(join(tmpdir(),'openclawx-gallery-'));
 async function run(width,height,label){return new Promise((resolve,reject)=>{
- const child=spawn(process.env.WORKMATE_TEST_CHROME||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',['--headless','--disable-gpu','--no-first-run',`--user-data-dir=${join(out,label+'-profile')}`,`--window-size=${width},${height}`,`--screenshot=${join(out,label+'.png')}`,'--dump-dom','--virtual-time-budget=2000',`http://127.0.0.1:${server.address().port}`]);let text='',errors='';
+ const child=spawn(process.env.OPENCLAWX_TEST_CHROME||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',['--headless','--disable-gpu','--no-first-run',`--user-data-dir=${join(out,label+'-profile')}`,`--window-size=${width},${height}`,`--screenshot=${join(out,label+'.png')}`,'--dump-dom','--virtual-time-budget=2000',`http://127.0.0.1:${server.address().port}`]);let text='',errors='';
  child.stdout.on('data',d=>text+=d);child.stderr.on('data',d=>errors+=d);const timer=setTimeout(()=>{child.kill();reject(Error('Chrome timeout'));},25000);
  child.on('error',reject);child.on('close',code=>{clearTimeout(timer);if(code!==0)return reject(Error(errors.slice(-600)));try{assert.match(text,/data-result="pass"/);resolve();}catch(e){reject(Error(text.slice(-1400)));}});
 });}
 async function mobile(){
- const child=spawn(process.env.WORKMATE_TEST_CHROME||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',['--headless','--disable-gpu','--no-first-run',`--user-data-dir=${join(out,'mobile-profile')}`,'--remote-debugging-port=0']);
+ const child=spawn(process.env.OPENCLAWX_TEST_CHROME||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',['--headless','--disable-gpu','--no-first-run',`--user-data-dir=${join(out,'mobile-profile')}`,'--remote-debugging-port=0']);
  let socket;
  try{
   const endpoint=await new Promise((resolve,reject)=>{let err='';const timer=setTimeout(()=>reject(Error('Chrome startup timeout')),15000);child.on('error',reject);child.stderr.on('data',d=>{err+=d;const match=err.match(/DevTools listening on (ws:\/\/[^\s]+)/);if(match){clearTimeout(timer);resolve(match[1]);}});});

@@ -7,9 +7,9 @@ import { Orchestrator, type AgentRunner, type OrcEvent } from '../index.js';
 import { runContext, waitFor } from './fake.js';
 
 test('DAP-R2/R4: reserved project creation is idempotent and owner checked; isolated execution carries owner context', async () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-data-project-'));
-  const previous = process.env.WORKMATE_WORKSPACES_DIR;
-  process.env.WORKMATE_WORKSPACES_DIR = path.join(root, 'runs');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-data-project-'));
+  const previous = process.env.OPENCLAWX_WORKSPACES_DIR;
+  process.env.OPENCLAWX_WORKSPACES_DIR = path.join(root, 'runs');
   const calls: Array<{ projectWorkspacePath?: string; runId?: string }> = [];
   const owners: Array<string | undefined> = [];
   const runner: AgentRunner = { async start(request, emit) {
@@ -46,5 +46,5 @@ test('DAP-R2/R4: reserved project creation is idempotent and owner checked; isol
     const brokenTask = (await orch.projects.getProject(broken.id))!.tasks[0];
     const failedRun = await orch.engine.load(brokenTask.runId!);
     assert.equal(failedRun?.status, 'failed'); assert.match(failedRun?.error || '', /交付目录写入失败/);
-  } finally { await orch.close(); if (previous === undefined) delete process.env.WORKMATE_WORKSPACES_DIR; else process.env.WORKMATE_WORKSPACES_DIR = previous; fs.rmSync(root, { recursive: true, force: true }); }
+  } finally { await orch.close(); if (previous === undefined) delete process.env.OPENCLAWX_WORKSPACES_DIR; else process.env.OPENCLAWX_WORKSPACES_DIR = previous; fs.rmSync(root, { recursive: true, force: true }); }
 });

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { dataSchemaAccessSchema, dataSchemaExecuteSchema, type DataSchemaPlan, type RemoteDatabaseConnection } from '@workmate/contracts';
-import { withKeyLock } from '@workmate/orchestrator';
+import { dataSchemaAccessSchema, dataSchemaExecuteSchema, type DataSchemaPlan, type RemoteDatabaseConnection } from '@openclawx/contracts';
+import { withKeyLock } from '@openclawx/orchestrator';
 import { compileSchemaProposal } from './schema-change.js';
 import { session,remoteFactory,type RemoteFactory } from './remote-database.js';
 import { discoverLiveTables,type LiveTable,LiveDataError } from './live-database.js';

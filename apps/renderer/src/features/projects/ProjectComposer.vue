@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import type { ProjectInstruction } from '@workmate/contracts';
+import type { ProjectInstruction } from '@openclawx/contracts';
 import DocumentAttachments from '../chat/DocumentAttachments.vue';
 import VoiceInputDialog from '../chat/VoiceInputDialog.vue';
 import { uploadProjectDocument } from '../../services/orchestration';

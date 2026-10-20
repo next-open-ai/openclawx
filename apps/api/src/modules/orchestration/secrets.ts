@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
  *
  * Model/search provider secrets live only in the Electron main process behind
  * `safeStorage`. When the API runs as the desktop's forked child it requests a
- * one-time decrypted snapshot over the fork IPC channel (`workmate:secrets`); the
+ * one-time decrypted snapshot over the fork IPC channel (`openclawx:secrets`); the
  * snapshot stays in this process's memory and is never persisted or logged.
  * The parent may also push updated snapshots when the user saves settings.
  * Standalone (`node dist/main.cjs`) runs simply get an empty keyring and any
@@ -54,7 +54,7 @@ export function applyParentSecrets(payload?: OpcaiSecrets) {
 }
 
 function loadSecretsFile(): OpcaiSecrets | null {
-  const file = process.env.WORKMATE_SECRETS_FILE;
+  const file = process.env.OPENCLAWX_SECRETS_FILE;
   if (!file) return null;
   try {
     const parsed = JSON.parse(readFileSync(file, 'utf8')) as OpcaiSecrets;
@@ -72,7 +72,7 @@ function ensurePushListener() {
   listeningForPushes = true;
   process.on('message', (message: unknown) => {
     const payload = message as { type?: string; payload?: OpcaiSecrets } | null;
-    if (!payload || payload.type !== 'workmate:secrets') return;
+    if (!payload || payload.type !== 'openclawx:secrets') return;
     applySecretsPayload(payload.payload);
   });
 }
@@ -86,7 +86,7 @@ export function requestParentSecrets(timeoutMs = 4_000, options?: { force?: bool
   requested = true;
   ensurePushListener();
   // Local acceptance/dev shortcut: seed the keyring from a JSON file
-  // (WORKMATE_SECRETS_FILE: {model?, search?}). Never used in desktop runs.
+  // (OPENCLAWX_SECRETS_FILE: {model?, search?}). Never used in desktop runs.
   const fromFile = loadSecretsFile();
   if (fromFile) {
     applySecretsPayload(fromFile);
@@ -103,14 +103,14 @@ export function requestParentSecrets(timeoutMs = 4_000, options?: { force?: bool
     }, timeoutMs);
     function onMessage(message: unknown) {
       const payload = message as { type?: string; payload?: OpcaiSecrets } | null;
-      if (!payload || payload.type !== 'workmate:secrets') return;
+      if (!payload || payload.type !== 'openclawx:secrets') return;
       clearTimeout(timer);
       process.off?.('message', onMessage);
       applySecretsPayload(payload.payload);
       resolve();
     }
     process.on('message', onMessage);
-    process.send?.({ type: 'workmate:secrets:request' });
+    process.send?.({ type: 'openclawx:secrets:request' });
   });
 }
 

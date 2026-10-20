@@ -12,7 +12,7 @@ import { WorkspaceCapabilityKernel } from '../capability-kernel.js';
 import { startArtifactSourceWrite, appendArtifactSourceWrite, finishArtifactSourceWrite } from '../artifact-source-writer.js';
 
 test('WA-R21: conversation and project native tools enforce the same boundary without material markers', async () => {
-  const parent = await mkdtemp(path.join(os.tmpdir(), 'workmate-universal-'));
+  const parent = await mkdtemp(path.join(os.tmpdir(), 'openclawx-universal-'));
   const outside = path.join(parent, 'outside.txt'); await writeFile(outside, 'private');
   try {
     for (const mode of ['conversation', 'project'] as const) {
@@ -40,7 +40,7 @@ test('WA-R21: conversation and project native tools enforce the same boundary wi
 });
 
 test('WA-R21: trusted exact-file grants are read-only and never authorize parent directories or siblings', async () => {
-  const parent = await mkdtemp(path.join(os.tmpdir(), 'workmate-grants-'));
+  const parent = await mkdtemp(path.join(os.tmpdir(), 'openclawx-grants-'));
   const root = path.join(parent, 'workspace'); await mkdir(root);
   const selected = path.join(parent, 'selected.txt'); await writeFile(selected, 'selected');
   const other = path.join(parent, 'other.txt'); await writeFile(other, 'other');
@@ -58,7 +58,7 @@ test('WA-R21: trusted exact-file grants are read-only and never authorize parent
 });
 
 test('WA-R22: canonical checks reject symlink escapes and dangling links, but permit a fresh workspace', async () => {
-  const parent = await mkdtemp(path.join(os.tmpdir(), 'workmate-realpaths-'));
+  const parent = await mkdtemp(path.join(os.tmpdir(), 'openclawx-realpaths-'));
   const root = path.join(parent, 'workspace'); await mkdir(root);
   const external = path.join(parent, 'external'); await mkdir(external);
   await writeFile(path.join(external, 'secret.txt'), 'secret');

@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { MobileVoiceAudioSchema, MobileVoiceCapabilitiesSchema, MobileVoiceCreateSchema, MobileVoiceSessionSchema } from '@workmate/contracts';
+import { MobileVoiceAudioSchema, MobileVoiceCapabilitiesSchema, MobileVoiceCreateSchema, MobileVoiceSessionSchema } from '@openclawx/contracts';
 
 export type MobileVoiceLink = { sessionId: string; orgId: string; ownerUserId: string; expiresAt: number };
 type Event = { type: string; event?: Record<string, unknown>; [key: string]: unknown };
@@ -40,7 +40,7 @@ export function mobilePublicOrigin(value: string | undefined): string | null {
   if (!value?.trim()) return null;
   const url = new URL(value.trim());
   if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
-    throw new Error('WORKMATE_MOBILE_PUBLIC_ORIGIN 必须是可信 HTTPS origin，不含路径、账号或查询参数。');
+    throw new Error('OPENCLAWX_MOBILE_PUBLIC_ORIGIN 必须是可信 HTTPS origin，不含路径、账号或查询参数。');
   }
   return url.origin;
 }

@@ -1,6 +1,6 @@
 # MySQL / PostgreSQL 数据对象
 
-状态：已实施并通过本地、隔离数据库验证，见 [status.md](status.md)。只修改 Workmate，不实现 Schema 版本。
+状态：已实施并通过本地、隔离数据库验证，见 [status.md](status.md)。只修改 OpenClawX，不实现 Schema 版本。
 
 ## 需求与任务
 

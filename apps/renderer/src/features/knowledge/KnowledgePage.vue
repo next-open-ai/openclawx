@@ -782,7 +782,7 @@ function resolvedEmbeddingFor(item: KnowledgeBase) {
 <template>
   <section class="flex h-full min-h-0 flex-col overflow-hidden">
     <header class="shrink-0 border-b border-[var(--border)] px-6 py-5 lg:px-8">
-      <p class="text-[11px] font-extrabold tracking-[.13em] text-[var(--accent)]">Workmate / KNOWLEDGE</p>
+      <p class="text-[11px] font-extrabold tracking-[.13em] text-[var(--accent)]">OpenClawX / KNOWLEDGE</p>
       <div class="mt-2 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 class="text-3xl font-bold tracking-[-.04em] lg:text-4xl">{{ t('knowledge.title') }}</h1>

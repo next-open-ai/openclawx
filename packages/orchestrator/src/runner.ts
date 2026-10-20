@@ -1,5 +1,5 @@
-import { streamAgentReply } from '@workmate/agent-core';
-import type { AgentEvent, ChatRequest } from '@workmate/contracts';
+import { streamAgentReply } from '@openclawx/agent-core';
+import type { AgentEvent, ChatRequest } from '@openclawx/contracts';
 
 /**
  * Orchestration-facing run handle. Testable without a live model

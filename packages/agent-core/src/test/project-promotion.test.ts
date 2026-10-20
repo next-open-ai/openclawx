@@ -6,7 +6,7 @@ import path from 'node:path';
 import { promoteWorkspaceDeliverablesToProject } from '../skill-runtime.js';
 
 test('UAT-R2: strict promotion surfaces actual copy failures without breaking legacy best-effort callers', async () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-promotion-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-promotion-'));
   try {
     const source = path.join(root, 'run'); fs.mkdirSync(path.join(source, 'output'), { recursive: true });
     fs.writeFileSync(path.join(source, 'output/index.html'), '<h1>synthetic</h1>');

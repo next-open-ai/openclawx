@@ -33,8 +33,8 @@ const assets='apps/renderer/dist/assets';
 const css=fs.readFileSync(assets+'/'+fs.readdirSync(assets).find(n=>/^index-.*\.css$/.test(n)),'utf8');
 const server=createServer((req,res)=>{res.setHeader('content-type',req.url==='/app.js'?'text/javascript':'text/html');res.end(req.url==='/app.js'?bundle.outputFiles[0].text:`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}${scoped}:root{--surface:#fff;--surface-muted:#f3f5fa;--border:#e0e5ef;--accent:#4965e4;--accent-soft:#edf0ff;--muted:#778196}body{font-family:system-ui;background:#f7f8fc;padding:20px}#app{margin:240px auto 0;max-width:1400px}</style><div id="app"></div><script type="module" src="/app.js"></script>`);});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
-const {chromium}=createRequire(import.meta.url)(process.env.WORKMATE_PLAYWRIGHT_MODULE||'playwright');
-const browser=await chromium.launch({headless:true,channel:process.env.WORKMATE_BROWSER_CHANNEL||'chrome'});
+const {chromium}=createRequire(import.meta.url)(process.env.OPENCLAWX_PLAYWRIGHT_MODULE||'playwright');
+const browser=await chromium.launch({headless:true,channel:process.env.OPENCLAWX_BROWSER_CHANNEL||'chrome'});
 const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
 try {
  await page.goto('http://127.0.0.1:'+server.address().port);
@@ -56,7 +56,7 @@ try {
   await page.getByRole('button',{name:/添加协作者/}).click();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`collaborator menu ${width}`);
   await page.getByRole('button',{name:'完成选择'}).click();
-  await page.screenshot({path:`/tmp/workmate-composer-${width}.png`});
+  await page.screenshot({path:`/tmp/openclawx-composer-${width}.png`});
  }
  await page.evaluate(()=>{window.fixture.inputBusy.value=true;});
  assert.equal(await page.getByRole('button',{name:'调用工作流',exact:true}).isDisabled(),true);

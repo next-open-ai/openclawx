@@ -14,7 +14,7 @@ const fixture=`
 const tasks=[],history=[];let count=0;
 const template={id:'business',version:'1',name:'业务模板',description:'收集月份后执行',defaults:{},agent:{employeeId:'research',prompt:'分析业务'},resultOutput:{destination:'task-results',instructions:'模板默认报告要求'}};
 const definitions=[{id:'custom-delete',revision:1,draft:{...template,id:'custom-delete',name:'可删除模板'},published:[],archived:false,createdAt:1,updatedAt:1}];
-const form='<label>月份<input id="month"></label><button id="confirm">确认参数，下一步</button><script>let channel="";addEventListener("message",e=>{if(e.data.type==="workmate.task.init")channel=e.data.channel});document.getElementById("confirm").onclick=()=>parent.postMessage({type:"workmate.task.submit",channel,parameters:{month:document.getElementById("month").value}},"*");parent.postMessage({type:"workmate.task.ready"},"*")</script>';
+const form='<label>月份<input id="month"></label><button id="confirm">确认参数，下一步</button><script>let channel="";addEventListener("message",e=>{if(e.data.type==="openclawx.task.init")channel=e.data.channel});document.getElementById("confirm").onclick=()=>parent.postMessage({type:"openclawx.task.submit",channel,parameters:{month:document.getElementById("month").value}},"*");parent.postMessage({type:"openclawx.task.ready"},"*")</script>';
 export const templateTasksApi={
 deleteTask:async item=>{if(window.failTaskDelete)throw new Error('任务删除失败，请重试');tasks.splice(tasks.findIndex(t=>t.id===item.id),1);return {deleted:true};},
 schedule:async(old,schedule)=>{const task=tasks.find(t=>t.id===old.id);task.schedule=JSON.parse(JSON.stringify(schedule));task.revision++;return {task:structuredClone(task)};},
@@ -38,8 +38,8 @@ const cssDir='apps/renderer/dist/assets';
 const productionCss=fs.readFileSync(path.join(cssDir,fs.readdirSync(cssDir).find(f=>f.startsWith('index-')&&f.endsWith('.css'))),'utf8');
 const server=createServer((req,res)=>{if(req.url==='/bundle.js'){res.setHeader('content-type','text/javascript');return res.end(bundle.outputFiles[0].text);}res.setHeader('content-type','text/html');res.end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${productionCss}${css}:root{--surface:#fff;--surface-muted:#f2f4fa;--background:#f8f9fc;--border:#dce1ed;--text:#202637;--muted:#68748b;--accent:#4963df;--accent-soft:#eef1ff}*{box-sizing:border-box}body{font-family:system-ui;margin:0;background:var(--background);color:var(--text)}#app{height:100dvh}</style><div id="app"></div><script type="module" src="/bundle.js"></script>`);});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-const {chromium}=createRequire(import.meta.url)(process.env.WORKMATE_PLAYWRIGHT_MODULE||'playwright');
-const browser=await chromium.launch({headless:true,...(process.env.WORKMATE_BROWSER_CHANNEL?{channel:process.env.WORKMATE_BROWSER_CHANNEL}:{})});
+const {chromium}=createRequire(import.meta.url)(process.env.OPENCLAWX_PLAYWRIGHT_MODULE||'playwright');
+const browser=await chromium.launch({headless:true,...(process.env.OPENCLAWX_BROWSER_CHANNEL?{channel:process.env.OPENCLAWX_BROWSER_CHANNEL}:{})});
 try{
 const page=await browser.newPage({viewport:{width:1280,height:900}});page.setDefaultTimeout(10000);const errors=[];page.on('pageerror',error=>errors.push(error.message));
 await page.goto('http://127.0.0.1:'+server.address().port);
@@ -49,10 +49,10 @@ await page.getByRole('button',{name:'管理模板',exact:true}).click();
 await page.getByRole('heading',{name:'模板管理',exact:true}).waitFor();
 const returnButton=page.getByRole('button',{name:'← 返回任务管理',exact:true});
 assert.ok(await returnButton.evaluate(el=>el.getBoundingClientRect().height>=44));
-await page.screenshot({path:'/tmp/workmate-tp19-templates-desktop.png'});
+await page.screenshot({path:'/tmp/openclawx-tp19-templates-desktop.png'});
 await page.setViewportSize({width:390,height:844});
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-await page.screenshot({path:'/tmp/workmate-tp19-templates-mobile.png'});
+await page.screenshot({path:'/tmp/openclawx-tp19-templates-mobile.png'});
 await page.setViewportSize({width:1280,height:900});
 page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'删除',exact:true}).click();
 assert.equal(await page.getByRole('button',{name:'删除',exact:true}).count(),1);
@@ -87,7 +87,7 @@ await page.locator('iframe[title="任务报告查看"]').contentFrame().getByTex
 await page.getByText('结构化结果 json-result',{exact:true}).click();
 assert.match(await page.locator('pre').innerText(),/json-result/);assert.match(await page.locator('pre').innerText(),/"total": 7/);
 const download=page.waitForEvent('download');await page.getByRole('button',{name:'下载 json-result.json',exact:true}).click();assert.equal((await download).suggestedFilename(),'json-result.json');
-await page.screenshot({path:'/tmp/workmate-task-records.png'});
+await page.screenshot({path:'/tmp/openclawx-task-records.png'});
 await page.getByRole('button',{name:'任务管理',exact:true}).click();
 await page.getByRole('button',{name:'从模板创建',exact:true}).click();
 await page.getByRole('button',{name:/业务模板.*使用模板创建/}).click();
@@ -115,13 +115,13 @@ page.once('dialog',dialog=>{assert.match(dialog.message(),/定时执行.*已有�
 await page.getByRole('button',{name:'删除任务：直接业务分析',exact:true}).click();
 await page.getByText('任务已删除，后续定时执行已停止；历史运行记录仍可查看。',{exact:true}).waitFor();
 assert.equal(await page.locator('.task-row').count(),1);
-await page.screenshot({path:'/tmp/workmate-task-delete-desktop.png'});
+await page.screenshot({path:'/tmp/openclawx-task-delete-desktop.png'});
 await page.setViewportSize({width:390,height:844});
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-await page.screenshot({path:'/tmp/workmate-task-delete-mobile.png'});
+await page.screenshot({path:'/tmp/openclawx-task-delete-mobile.png'});
 await page.getByRole('button',{name:'任务运行记录',exact:true}).click();
 await page.getByRole('button',{name:/直接业务分析.*直接创建/}).waitFor();
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-await page.screenshot({path:'/tmp/workmate-task-records-mobile.png'});
+await page.screenshot({path:'/tmp/openclawx-task-records-mobile.png'});
 assert.deepEqual(errors,[]);console.log('TP-T9/T11/T19/T20 browser PASS: two primary tabs; prominent secondary-template return; template/task deletion cancel/error/success; retained task history; direct weekly schedule and pause/resume; template interval/paused save; JSON records; desktop/mobile. API/execution fixtures only.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

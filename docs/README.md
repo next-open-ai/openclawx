@@ -1,8 +1,8 @@
-# Workmate 文档中心
+# OpenClawX 文档中心
 
 本页是产品、架构、开发、测试、评测、部署和编码智能体的统一文档入口。
 
-当前实现快照：[Workmate 当前功能状态](current-state.md)（2026-10-13）。操作步骤见 [用户手册](guides/user-manual.md)，与应用内手册同源。
+当前实现快照：[OpenClawX 当前功能状态](current-state.md)（2026-10-13）。操作步骤见 [用户手册](guides/user-manual.md)，与应用内手册同源。
 
 综合方法与传统项目改造指南：[AI 编程项目的工程文档体系与实践方法论](ai-engineering-documentation-methodology.md)。
 

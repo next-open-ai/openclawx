@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { diagnoseModelFailure } from '@workmate/agent-core';
-import type { AgentEvent, ChatRequest } from '@workmate/contracts';
+import { diagnoseModelFailure } from '@openclawx/agent-core';
+import type { AgentEvent, ChatRequest } from '@openclawx/contracts';
 import type { OrcEvent } from './events.js';
 import type { EventHub } from './hub.js';
 import { readJson, writeJson } from './repo.js';

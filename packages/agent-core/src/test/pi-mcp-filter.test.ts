@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { AgentSkillRuntime } from '@workmate/contracts';
+import type { AgentSkillRuntime } from '@openclawx/contracts';
 import type { AgentTool } from '@mariozechner/pi-agent-core';
 import { Type } from '../pi-tools.js';
 import {

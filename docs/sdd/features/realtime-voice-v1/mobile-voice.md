@@ -6,11 +6,11 @@
 
 - MV-01：移除桌面顶部重复语音入口，保留输入区话筒。手机输入区电话按钮开启全屏通话，显示时间、双方字幕、静音与挂断；错误可读，可返回文字聊天。
 - MV-02：QR 能力令牌绑定组织、用户、当前对话；创建、音频、事件、关闭每次验证令牌有效期与会话所有权。不能提交密钥、模型参数或任意对话 ID；不向手机发送系统提示词、工具参数与原始日志。
-- MV-03：复用 Workmate 直连火山服务及工作桥；工作能力开关、员工/Skill/MCP/审批不变。挂断不取消已经接受的工作；成果在同一条文字对话显示。纯通话字幕仅内存保留，挂断清除。
-- MV-04：手机麦克风要求可信 HTTPS；HTTP 保留文字聊天，语音入口说明原因。可选 WORKMATE_MOBILE_PUBLIC_ORIGIN 为 HTTPS origin，QR 优先使用该地址；不放宽浏览器安全。
+- MV-03：复用 OpenClawX 直连火山服务及工作桥；工作能力开关、员工/Skill/MCP/审批不变。挂断不取消已经接受的工作；成果在同一条文字对话显示。纯通话字幕仅内存保留，挂断清除。
+- MV-04：手机麦克风要求可信 HTTPS；HTTP 保留文字聊天，语音入口说明原因。可选 OPENCLAWX_MOBILE_PUBLIC_ORIGIN 为 HTTPS origin，QR 优先使用该地址；不放宽浏览器安全。
 - MV-05：上传有长度/PCM 校验、单连接队列上限；断开事件流、页面隐藏/退出、令牌撤销/重绑/过期及 30 分钟上限关闭通话资源。创建后 30 秒未订阅/上传回收，共用桌面语音容量。
-- MV-06：可显式启动独立手机 HTTPS 前置服务。该监听只接受 `/api/chat-mobile/` 下的 GET/POST，并转发到回环地址的 Workmate API；设置、管理、编排和普通桌面 API 一律不暴露。内部 47832、Electron 与浏览器原访问方式保持不变。
-- MV-07：桌面版默认为手机前置启用 TLS。未提供外部 PEM 时，在数据目录生成并持久化本地 CA 与服务器证书；服务器证书覆盖当前局域网 IPv4、localhost 和 127.0.0.1。局域网地址变化只重签服务器证书，不轮换 CA。二维码弹窗提供 CA 安装二维码；CA 公钥可通过 HTTP bootstrap 下载，CA 私钥永不通过接口返回。用户可用 `WORKMATE_MOBILE_HTTPS_ENABLED=0` 关闭，或用证书/私钥路径切换为外部证书。证书生成或独立端口监听失败时只禁用手机 HTTPS，不中止核心 API、桌面聊天或其他功能。
+- MV-06：可显式启动独立手机 HTTPS 前置服务。该监听只接受 `/api/chat-mobile/` 下的 GET/POST，并转发到回环地址的 OpenClawX API；设置、管理、编排和普通桌面 API 一律不暴露。内部 47832、Electron 与浏览器原访问方式保持不变。
+- MV-07：桌面版默认为手机前置启用 TLS。未提供外部 PEM 时，在数据目录生成并持久化本地 CA 与服务器证书；服务器证书覆盖当前局域网 IPv4、localhost 和 127.0.0.1。局域网地址变化只重签服务器证书，不轮换 CA。二维码弹窗提供 CA 安装二维码；CA 公钥可通过 HTTP bootstrap 下载，CA 私钥永不通过接口返回。用户可用 `OPENCLAWX_MOBILE_HTTPS_ENABLED=0` 关闭，或用证书/私钥路径切换为外部证书。证书生成或独立端口监听失败时只禁用手机 HTTPS，不中止核心 API、桌面聊天或其他功能。
 - MV-08：手机浏览器的 SSE 事件连接短暂关闭不得销毁上游实时语音会话；允许 EventSource 在 15 秒窗口内自动重连。音频上传允许连续两次瞬时失败并继续捕获，第三次失败才结束通话。SSE 重连期间仍由音频上传和服务端心跳维持会话；显式挂断、令牌失效、30 秒全链路无活动或上游关闭仍立即释放。
 - MV-09：手机 PCM 上传使用自适应批量。采集保持 PCM16LE/16k 单声道，待发送数据达到 100ms 后可一次排空最多 300ms（9600 字节），避免请求往返时间超过 100ms 时生产速度必然高于上传速度；积压保护由 3 秒调整为持续 6 秒，并继续受单包、请求体和顺序上传限制。CA 二维码打开独立安装引导页，证书文件使用单独下载地址；明确“继续访问”不等于系统信任。
 - MV-10：桌面手机入口同时展示用途分明的二维码。HTTP“快速连接”作为普通用户首选，支持文字聊天、任务同步与文件传输，不要求安装证书且明确不支持浏览器麦克风；HTTPS“安全语音”用于加密访问和实时语音；托管 TLS 时另列“仅首次”的 CA 安装二维码。三个入口复用同一能力令牌和当前对话，不改变鉴权、有效期与服务端能力边界。
@@ -28,27 +28,27 @@ MV-R1→02/05/08/09：Fastify stub 测试过期、跨令牌、重绑、跨所有
 
 ## 发布与回滚
 
-无业务数据迁移；桌面启动时会在 `WORKMATE_DATA_DIR/mobile-tls` 生成证书材料。HTTPS 入口只公开 `/api/chat-mobile/`，不公开设置/管理 API；QR 是 8 小时有效的能力凭证，不应分享。设置 `WORKMATE_MOBILE_HTTPS_ENABLED=0` 即关闭内置 TLS 并回滚到原 HTTP 文字对话，内部服务不变。删除 `mobile-tls` 会轮换 CA，已安装该 CA 的手机需重新安装。关闭工作关联只阻止新工作，关闭实时语音阻止新通话。
+无业务数据迁移；桌面启动时会在 `OPENCLAWX_DATA_DIR/mobile-tls` 生成证书材料。HTTPS 入口只公开 `/api/chat-mobile/`，不公开设置/管理 API；QR 是 8 小时有效的能力凭证，不应分享。设置 `OPENCLAWX_MOBILE_HTTPS_ENABLED=0` 即关闭内置 TLS 并回滚到原 HTTP 文字对话，内部服务不变。删除 `mobile-tls` 会轮换 CA，已安装该 CA 的手机需重新安装。关闭工作关联只阻止新工作，关闭实时语音阻止新通话。
 
 ### 内置第一期 HTTPS 前置配置
 
 桌面版默认启用并自动生成证书，无需设置。以下变量用于运维覆盖：
 
 ```text
-WORKMATE_MOBILE_HTTPS_ENABLED=1
-WORKMATE_MOBILE_HTTPS_HOST=0.0.0.0
-WORKMATE_MOBILE_HTTPS_PORT=47843
-WORKMATE_MOBILE_PUBLIC_ORIGIN=https://<可选的局域网域名或IP>:47843
+OPENCLAWX_MOBILE_HTTPS_ENABLED=1
+OPENCLAWX_MOBILE_HTTPS_HOST=0.0.0.0
+OPENCLAWX_MOBILE_HTTPS_PORT=47843
+OPENCLAWX_MOBILE_PUBLIC_ORIGIN=https://<可选的局域网域名或IP>:47843
 # 以下两项同时提供时改用外部证书；留空则使用托管证书
-WORKMATE_MOBILE_HTTPS_CERT_FILE=/绝对路径/mobile-cert.pem
-WORKMATE_MOBILE_HTTPS_KEY_FILE=/绝对路径/mobile-key.pem
+OPENCLAWX_MOBILE_HTTPS_CERT_FILE=/绝对路径/mobile-cert.pem
+OPENCLAWX_MOBILE_HTTPS_KEY_FILE=/绝对路径/mobile-key.pem
 ```
 
-托管模式首次使用时，在二维码弹窗选择“安装手机证书”，用手机扫描进入安装说明页，下载并按系统流程安装、信任 Workmate Mobile Local CA，然后返回扫描对话二维码。浏览器安全警告中的“继续访问”只临时绕过告警，不代表 CA 已被系统信任；地址栏仍显示红色标记时语音安全上下文不可靠。HTTPS 入口支持手机页面、状态轮询、消息、文件上传、SSE 和语音子路由；任何其他路径返回 404。若使用 Caddy/Nginx/正式网关，关闭内置开关并配置 `WORKMATE_MOBILE_PUBLIC_ORIGIN`；若直接使用内置前置但已有正式证书，则同时提供 CERT/KEY。
+托管模式首次使用时，在二维码弹窗选择“安装手机证书”，用手机扫描进入安装说明页，下载并按系统流程安装、信任 OpenClawX Mobile Local CA，然后返回扫描对话二维码。浏览器安全警告中的“继续访问”只临时绕过告警，不代表 CA 已被系统信任；地址栏仍显示红色标记时语音安全上下文不可靠。HTTPS 入口支持手机页面、状态轮询、消息、文件上传、SSE 和语音子路由；任何其他路径返回 404。若使用 Caddy/Nginx/正式网关，关闭内置开关并配置 `OPENCLAWX_MOBILE_PUBLIC_ORIGIN`；若直接使用内置前置但已有正式证书，则同时提供 CERT/KEY。
 
 ## 验证记录（2026-10-05）
 
-- `pnpm --filter @workmate/api test`：MV-R1/R2 和既有 ASR、工作桥测试通过，9 个测试；覆盖链接过期/撤销/重绑、跨令牌、所有权丢失、容量、PCM、断流/闲置回收和事件隐私。
+- `pnpm --filter @openclawx/api test`：MV-R1/R2 和既有 ASR、工作桥测试通过，9 个测试；覆盖链接过期/撤销/重绑、跨令牌、所有权丢失、容量、PCM、断流/闲置回收和事件隐私。
 - API/renderer 类型检查及构建通过；renderer 有既有动态导入/大包告警。`node scripts/voice-composer-regression.mjs`（VUI-R1–R7）与 `node scripts/voice-command-regression.mjs`（VC-R1–R4）通过。
 - 浏览器 390×844 模拟验证：电话入口、双方字幕、工作卡片、音频上传、静音/恢复、挂断（close=1、track.stop=1）、HTTP 阻断提示和拒绝权限提示通过，无横向溢出、无控制台错误。agent-browser CLI 不可用，按技能回退应用内浏览器。通过该技能发现并补充了通话时背景 inert/焦点隔离。
 - 可复验 `node scripts/mobile-voice-preview.mjs`，仅 localhost 合成音频，无密钥/真实录音/火山/Agent；`?mode=insecure` / `?mode=denied` 为错误态模拟。

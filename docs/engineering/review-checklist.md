@@ -11,8 +11,8 @@
 ## 模块边界
 
 - [ ] 模型 SDK/HTTP 只由 `packages/agent-core` 使用。
-- [ ] 公共 Schema 以 `@workmate/contracts` 为单一事实源。
-- [ ] 编排状态和循环位于 `@workmate/orchestrator`。
+- [ ] 公共 Schema 以 `@openclawx/contracts` 为单一事实源。
+- [ ] 编排状态和循环位于 `@openclawx/orchestrator`。
 - [ ] renderer 不直连模型、不读取凭据、不 import Node/Electron。
 - [ ] Tool/MCP 没有隐式承担模型路由。
 

@@ -19,7 +19,7 @@ source 新增可选联合分支，无数据迁移。旧调用保持原路由/结
 ## 当前证据
 
 - API 回归：40 通过、2 跳过，含新增 WP-T2/T3/T5 临时存储、实际文档上传和失败恢复用例；编排测试 70 通过。API 类型检查、构建通过。
-- 浏览器：`WORKMATE_WORKFLOW_SOURCE=project node scripts/chat-workflow-regression.mjs` 与默认 chat 模式均通过。生产面板覆盖正确来源路由、文档解析失败/重试、启动幂等、停止恢复、结果及资产、来源切换、隐藏停轮询、390px 布局与焦点返回；服务端均为隔离替身。
+- 浏览器：`OPENCLAWX_WORKFLOW_SOURCE=project node scripts/chat-workflow-regression.mjs` 与默认 chat 模式均通过。生产面板覆盖正确来源路由、文档解析失败/重试、启动幂等、停止恢复、结果及资产、来源切换、隐藏停轮询、390px 布局与焦点返回；服务端均为隔离替身。
 - `node scripts/workflow-chat-return-regression.mjs` 通过，直接运行生产导航函数，覆盖新子项目加载、逐级返回、返回原对话、无权/缺失目标、来源切换竞态和来源删除。项目输入组件浏览器回归通过，保留文字、文档及模拟 ASR 确认。
 - Renderer 类型检查和生产构建、`pnpm docs:build` 通过；构建仍有既有包体积/混合导入警告。并发专项通过（用户/全局限额、AgentScope stub 与 DSH MCP/Skill）。
 - 不得将隔离测试视为真实供应商端到端验收。未调用真实模型、未访问用户既有项目、未测试真实麦克风；不实现自动调用、结果自动注入问答或嵌套 DAG。

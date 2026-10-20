@@ -1,4 +1,4 @@
-# Workmate 本地 Embedding Sidecar 轻量架构方案
+# OpenClawX 本地 Embedding Sidecar 轻量架构方案
 
 > 关联文档：
 > - [embedding-provider-v1.md](./embedding-provider-v1.md)
@@ -10,7 +10,7 @@
 
 ## 1. 目标
 
-在不把推理能力塞进主进程的前提下，为 `workmate` 提供一个**轻安装、低感知、可本地运行**的 embedding 能力。
+在不把推理能力塞进主进程的前提下，为 `openclawx` 提供一个**轻安装、低感知、可本地运行**的 embedding 能力。
 
 核心目标是：
 
@@ -163,7 +163,7 @@ sidecar 是真正的本地 embedding 服务。
 
 ### 7.1 不随安装包预置
 
-不建议把模型随 `workmate` 安装包一起分发。
+不建议把模型随 `openclawx` 安装包一起分发。
 
 原因：
 
@@ -188,7 +188,7 @@ sidecar 是真正的本地 embedding 服务。
 需要有稳定缓存目录，例如：
 
 ```text
-~/.workmate/runtime/embedding/
+~/.openclawx/runtime/embedding/
   manifests/
   models/
   sidecar/
@@ -235,7 +235,7 @@ sidecar 对外统一暴露成 OpenAI-compatible embedding 服务。
 }
 ```
 
-这可以让当前 `workmate` 已有 provider 抽象直接复用，不需要为本地模型再发明一套新协议。
+这可以让当前 `openclawx` 已有 provider 抽象直接复用，不需要为本地模型再发明一套新协议。
 
 ## 9. 与现有 Provider 架构的兼容方式
 

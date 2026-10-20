@@ -14,6 +14,6 @@ WR-T10：API测试今天/昨天的上海午夜边界、最近PDF/MIME/后缀、�
 
 ## 验证
 
-实际执行：`pnpm --filter @workmate/contracts build`通过；`pnpm --filter @workmate/agent-core test`含构建215项全部通过（含真实30秒无响应截止）；`pnpm --filter @workmate/api test`133项，131通过、2个真实数据库测试跳过；`pnpm --filter @workmate/api build`通过；`node scripts/work-results-ui-regression.mjs`、`pnpm docs:build`及`git diff --check`通过。
+实际执行：`pnpm --filter @openclawx/contracts build`通过；`pnpm --filter @openclawx/agent-core test`含构建215项全部通过（含真实30秒无响应截止）；`pnpm --filter @openclawx/api test`133项，131通过、2个真实数据库测试跳过；`pnpm --filter @openclawx/api build`通过；`node scripts/work-results-ui-regression.mjs`、`pnpm docs:build`及`git diff --check`通过。
 
 首轮将API测试与contracts构建同时启动，API打包到旧contracts产物，新增字段的两个用例失败；待contracts/core构建完成后重建API，全部通过。最终源码又补测“今天我写的文件”，重跑全量API131通过/2跳过。API类型检查仍失败于原有 `voice/barge-in.test.ts:65` 的raw参数隐式any（TS7006），本轮不修改无关测试。没有调用真实供应商、读取用户成果或重启服务，无数据库迁移；供应商能否按新指令准确播报降级提示须人工复现。未运行并发/DSH专项（未改其逻辑）或完整renderer构建（无UI源码变化，结果协议兼容且解析器回归通过）。

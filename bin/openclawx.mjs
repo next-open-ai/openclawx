@@ -12,7 +12,7 @@ const args = new Set(process.argv.slice(3));
 
 function printDoctor() {
   const info = detectAgentscopeRuntime(projectRoot);
-  process.stdout.write(`Workmate ${packageJson.version}\n`);
+  process.stdout.write(`OpenClawX ${packageJson.version}\n`);
   process.stdout.write(`projectRoot: ${projectRoot}\n`);
   process.stdout.write(`dataDir: ${info.dataDir}\n`);
   process.stdout.write(`runtimeSource: ${info.sourceRoot} (${info.hasSource ? 'ok' : 'missing'})\n`);

@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 export function voiceSettingsPath(name: string) {
-  const root = process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate');
+  const root = process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx');
   return path.join(root, name);
 }
 export function readSettingsFile<T>(name: string): Partial<T> | null {

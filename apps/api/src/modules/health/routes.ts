@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import type { FastifyPluginAsync } from 'fastify';
-import { HealthResponseSchema } from '@workmate/contracts';
+import { HealthResponseSchema } from '@openclawx/contracts';
 import {
   DSH_ENV_FIX_TIMEOUT_MS,
   WORKSPACE_SCRAP_TOP_LEVEL,
@@ -20,7 +20,7 @@ import {
   workspacesRootDir,
   type DshInstallProgressEvent,
   type ScriptPythonDecision,
-} from '@workmate/agent-core';
+} from '@openclawx/agent-core';
 import { getOrchestrator } from '../orchestration/routes.js';
 
 type EnvCheckItem = {
@@ -61,7 +61,7 @@ type EnvCheckReport = {
 };
 
 function dataDir() {
-  return process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate');
+  return process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx');
 }
 
 function runtimeSourceRoot(projectRoot: string) {
@@ -108,10 +108,10 @@ function isSupportedPython(version: { major: number; minor: number; patch: numbe
 
 function resolveBundledAgentscopeRuntime(projectRoot: string) {
   const roots = [
-    process.env.WORKMATE_AGENTSCOPE_ROOT?.trim(),
+    process.env.OPENCLAWX_AGENTSCOPE_ROOT?.trim(),
     runtimeSourceRoot(projectRoot),
   ].filter(Boolean) as string[];
-  const override = process.env.WORKMATE_AGENTSCOPE_PYTHON?.trim();
+  const override = process.env.OPENCLAWX_AGENTSCOPE_PYTHON?.trim();
   if (override && fs.existsSync(override)) {
     const pythonVersion = readPythonVersion(override);
     if (isSupportedPython(pythonVersion)) {
@@ -219,8 +219,8 @@ async function buildEnvironmentReport(): Promise<EnvCheckReport> {
     name: 'Web / API 启动形态',
     status: 'ok',
     required: '可通过 HTTP 提供页面与 API',
-    found: process.env.WORKMATE_WEB_STATIC_DIR?.trim() ? '静态页面 + API 已启用' : 'API 模式',
-    help: process.env.WORKMATE_WEB_STATIC_DIR?.trim()
+    found: process.env.OPENCLAWX_WEB_STATIC_DIR?.trim() ? '静态页面 + API 已启用' : 'API 模式',
+    help: process.env.OPENCLAWX_WEB_STATIC_DIR?.trim()
       ? '当前进程同时托管前端静态页与 API，适用于 npm Web Launcher 与 Docker。'
       : '当前进程仅提供 API；若需完整 Web 界面，请同时提供前端静态构建目录。',
   });
@@ -269,7 +269,7 @@ async function buildEnvironmentReport(): Promise<EnvCheckReport> {
   const sourceLabel =
     decision.source === 'system' ? '系统 Python'
       : decision.source === 'bundled' ? '预装 agentscope-runtime'
-        : decision.source === 'override' ? 'WORKMATE_PYTHON 覆盖'
+        : decision.source === 'override' ? 'OPENCLAWX_PYTHON 覆盖'
           : '无可用解释器';
   items.push({
     id: 'python-script-env',
@@ -450,9 +450,9 @@ function runFixPip() {
 }
 
 function runFixAgentscope() {
-  const entry = path.join(process.cwd(), 'bin', 'workmate.mjs');
+  const entry = path.join(process.cwd(), 'bin', 'openclawx.mjs');
   if (!fs.existsSync(entry)) {
-    throw new Error(`找不到 Workmate CLI：${entry}。请在项目根目录启动服务后再试。`);
+    throw new Error(`找不到 OpenClawX CLI：${entry}。请在项目根目录启动服务后再试。`);
   }
   const result = spawnSync(process.execPath, [entry, 'init'], {
     cwd: process.cwd(),
@@ -465,7 +465,7 @@ function runFixAgentscope() {
   }
   return {
     ok: true as const,
-    message: 'AgentScope runtime 已初始化（workmate init）',
+    message: 'AgentScope runtime 已初始化（openclawx init）',
     detail: String(result.stdout || '').trim().slice(0, 1200),
   };
 }
@@ -534,7 +534,7 @@ async function runEnvironmentFix(actionId: string) {
 export const healthRoutes: FastifyPluginAsync = async (app) => {
   app.get('/health', async () => HealthResponseSchema.parse({
     status: 'ok',
-    service: 'workmate-api',
+    service: 'openclawx-api',
     version: process.env.npm_package_version ?? '0.1.0',
   }));
   app.get('/environment', async () => buildEnvironmentReport());

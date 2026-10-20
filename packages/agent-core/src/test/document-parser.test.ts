@@ -36,9 +36,9 @@ test('local document parser accepts only the supported binary formats', () => {
 });
 
 test('PPTX enhanced parser is enabled only by its isolated component marker', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-pptx-component-test-'));
-  const previous = process.env.WORKMATE_DATA_DIR;
-  process.env.WORKMATE_DATA_DIR = root;
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-pptx-component-test-'));
+  const previous = process.env.OPENCLAWX_DATA_DIR;
+  process.env.OPENCLAWX_DATA_DIR = root;
   try {
     assert.equal(await hasPptxEnhancedParser(), false);
     const component = path.join(root, 'components', 'pptx-enhanced');
@@ -46,8 +46,8 @@ test('PPTX enhanced parser is enabled only by its isolated component marker', as
     writeFileSync(path.join(component, 'installed.json'), '{"schemaVersion":1}');
     assert.equal(await hasPptxEnhancedParser(), true);
   } finally {
-    if (previous === undefined) delete process.env.WORKMATE_DATA_DIR;
-    else process.env.WORKMATE_DATA_DIR = previous;
+    if (previous === undefined) delete process.env.OPENCLAWX_DATA_DIR;
+    else process.env.OPENCLAWX_DATA_DIR = previous;
     rmSync(root, { recursive: true, force: true });
   }
 });
@@ -61,46 +61,46 @@ test('document quality gate rejects empty and replacement-heavy output', () => {
 test('DOCX base parsing stays inside Node and does not require packaged Python', async () => {
   const xml = '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Portable Word extraction &amp; packaging verification.</w:t></w:r></w:p></w:body></w:document>';
   const bytes = Buffer.from(zipSync({ 'word/document.xml': strToU8(xml) }));
-  const previousPython = process.env.WORKMATE_AGENTSCOPE_PYTHON;
-  process.env.WORKMATE_AGENTSCOPE_PYTHON = path.join(os.tmpdir(), 'python-that-does-not-exist');
+  const previousPython = process.env.OPENCLAWX_AGENTSCOPE_PYTHON;
+  process.env.OPENCLAWX_AGENTSCOPE_PYTHON = path.join(os.tmpdir(), 'python-that-does-not-exist');
   try {
     const result = await parseLocalDocument({ fileName: 'portable.docx', bytes });
     assert.equal(result.parser, 'builtin');
     assert.equal(result.markdown, 'Portable Word extraction & packaging verification.');
   } finally {
-    if (previousPython === undefined) delete process.env.WORKMATE_AGENTSCOPE_PYTHON;
-    else process.env.WORKMATE_AGENTSCOPE_PYTHON = previousPython;
+    if (previousPython === undefined) delete process.env.OPENCLAWX_AGENTSCOPE_PYTHON;
+    else process.env.OPENCLAWX_AGENTSCOPE_PYTHON = previousPython;
   }
 });
 
 test('PDF base parsing stays inside Node and does not require packaged Python', async () => {
-  const previousPython = process.env.WORKMATE_AGENTSCOPE_PYTHON;
-  process.env.WORKMATE_AGENTSCOPE_PYTHON = path.join(os.tmpdir(), 'python-that-does-not-exist');
+  const previousPython = process.env.OPENCLAWX_AGENTSCOPE_PYTHON;
+  process.env.OPENCLAWX_AGENTSCOPE_PYTHON = path.join(os.tmpdir(), 'python-that-does-not-exist');
   try {
     const result = await parseLocalDocument({ fileName: 'portable.pdf', bytes: textPdf('Portable PDF extraction verification content.') });
     assert.equal(result.parser, 'builtin');
     assert.match(result.markdown, /Portable PDF extraction verification content/);
   } finally {
-    if (previousPython === undefined) delete process.env.WORKMATE_AGENTSCOPE_PYTHON;
-    else process.env.WORKMATE_AGENTSCOPE_PYTHON = previousPython;
+    if (previousPython === undefined) delete process.env.OPENCLAWX_AGENTSCOPE_PYTHON;
+    else process.env.OPENCLAWX_AGENTSCOPE_PYTHON = previousPython;
   }
 });
 
 test('document parser invokes the isolated runtime and consumes structured output', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-parser-test-'));
-  const packageRoot = path.join(root, 'src', 'workmate_agentscope_runtime');
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-parser-test-'));
+  const packageRoot = path.join(root, 'src', 'openclawx_agentscope_runtime');
   mkdirSync(packageRoot, { recursive: true });
   writeFileSync(path.join(packageRoot, '__init__.py'), '');
   writeFileSync(path.join(packageRoot, 'document_parser.py'), [
     'import json, sys',
     'print(json.dumps({"markdown": "# Parsed\\n\\n" + "content " * 20, "parser": "markitdown", "warnings": []}))',
   ].join('\n'));
-  const previousRoot = process.env.WORKMATE_AGENTSCOPE_ROOT;
-  const previousPython = process.env.WORKMATE_AGENTSCOPE_PYTHON;
-  const previousData = process.env.WORKMATE_DATA_DIR;
-  process.env.WORKMATE_AGENTSCOPE_ROOT = root;
-  process.env.WORKMATE_DATA_DIR = root;
-  delete process.env.WORKMATE_AGENTSCOPE_PYTHON;
+  const previousRoot = process.env.OPENCLAWX_AGENTSCOPE_ROOT;
+  const previousPython = process.env.OPENCLAWX_AGENTSCOPE_PYTHON;
+  const previousData = process.env.OPENCLAWX_DATA_DIR;
+  process.env.OPENCLAWX_AGENTSCOPE_ROOT = root;
+  process.env.OPENCLAWX_DATA_DIR = root;
+  delete process.env.OPENCLAWX_AGENTSCOPE_PYTHON;
   const component = path.join(root, 'components', 'pptx-enhanced');
   mkdirSync(component, { recursive: true });
   writeFileSync(path.join(component, 'installed.json'), '{"schemaVersion":1}');
@@ -109,12 +109,12 @@ test('document parser invokes the isolated runtime and consumes structured outpu
     assert.equal(result.parser, 'markitdown');
     assert.match(result.markdown, /^# Parsed/);
   } finally {
-    if (previousRoot === undefined) delete process.env.WORKMATE_AGENTSCOPE_ROOT;
-    else process.env.WORKMATE_AGENTSCOPE_ROOT = previousRoot;
-    if (previousData === undefined) delete process.env.WORKMATE_DATA_DIR;
-    else process.env.WORKMATE_DATA_DIR = previousData;
-    if (previousPython === undefined) delete process.env.WORKMATE_AGENTSCOPE_PYTHON;
-    else process.env.WORKMATE_AGENTSCOPE_PYTHON = previousPython;
+    if (previousRoot === undefined) delete process.env.OPENCLAWX_AGENTSCOPE_ROOT;
+    else process.env.OPENCLAWX_AGENTSCOPE_ROOT = previousRoot;
+    if (previousData === undefined) delete process.env.OPENCLAWX_DATA_DIR;
+    else process.env.OPENCLAWX_DATA_DIR = previousData;
+    if (previousPython === undefined) delete process.env.OPENCLAWX_AGENTSCOPE_PYTHON;
+    else process.env.OPENCLAWX_AGENTSCOPE_PYTHON = previousPython;
     rmSync(root, { recursive: true, force: true });
   }
 });

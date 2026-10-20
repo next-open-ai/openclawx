@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import { parameterDataRequest } from '../../services/task-parameter-bridge';
-import {TaskScheduleSchema,type TaskSchedule} from '@workmate/contracts';
+import {TaskScheduleSchema,type TaskSchedule} from '@openclawx/contracts';
 import TaskScheduleEditor from './TaskScheduleEditor.vue';
 import TaskRunMonitor from './TaskRunMonitor.vue';
 import type {Employee} from '../../app/workspace';
@@ -96,19 +96,19 @@ function send(message: Record<string, unknown>) {
 }
 async function receive(event: MessageEvent) {
   if (!editing.value || event.source !== inputFrame.value?.contentWindow) return;
-  if (event.data?.type === 'workmate.task.ready') {
-    send({ type: 'workmate.task.init', parameters: parameters.value,submitLabel:'确认参数，下一步' }); return;
+  if (event.data?.type === 'openclawx.task.ready') {
+    send({ type: 'openclawx.task.init', parameters: parameters.value,submitLabel:'确认参数，下一步' }); return;
   }
-  if(event.data?.type==='workmate.task.request' && event.data.channel===channel) {
-    const activeChannel=channel;try{const data=await parameterDataRequest(event.data.path,event.data.query);if(channel===activeChannel)send({type:'workmate.task.response',id:event.data.id,data});}catch(cause){if(channel===activeChannel)send({type:'workmate.task.response',id:event.data.id,error:cause instanceof Error?cause.message:'查询失败'});}return;
+  if(event.data?.type==='openclawx.task.request' && event.data.channel===channel) {
+    const activeChannel=channel;try{const data=await parameterDataRequest(event.data.path,event.data.query);if(channel===activeChannel)send({type:'openclawx.task.response',id:event.data.id,data});}catch(cause){if(channel===activeChannel)send({type:'openclawx.task.response',id:event.data.id,error:cause instanceof Error?cause.message:'查询失败'});}return;
   }
-  if (event.data?.type !== 'workmate.task.submit' || event.data.channel !== channel || !selectedTemplate.value) return;
-  if (busy.value) { send({ type: 'workmate.task.saved', error: '正在处理，请稍后保存' }); return; }
+  if (event.data?.type !== 'openclawx.task.submit' || event.data.channel !== channel || !selectedTemplate.value) return;
+  if (busy.value) { send({ type: 'openclawx.task.saved', error: '正在处理，请稍后保存' }); return; }
   await action(async () => {
     try {
       parameters.value=(await api.validateParameters(selectedTemplate.value!,event.data.parameters)).parameters;
-      send({type:'workmate.task.saved',notice:'参数已确认'}); createStage.value='basic';
-    } catch(cause) {send({type:'workmate.task.saved',error:cause instanceof Error?cause.message:'参数无效'});throw cause;}
+      send({type:'openclawx.task.saved',notice:'参数已确认'}); createStage.value='basic';
+    } catch(cause) {send({type:'openclawx.task.saved',error:cause instanceof Error?cause.message:'参数无效'});throw cause;}
   });
 }
 async function saveTask() {

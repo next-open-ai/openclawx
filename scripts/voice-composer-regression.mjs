@@ -16,7 +16,7 @@ const result = await build({
   bundle: true, write: false, format: 'esm', platform: 'node',
   plugins: [{ name: 'voice-ui-test', setup(builder) {
     builder.onResolve({ filter: /^vue$/ }, () => ({ path: pathToFileURL(vueRequire.resolve('vue')).href, external: true }));
-    builder.onResolve({ filter: /^@workmate\/contracts$/ }, () => ({ path: pathToFileURL(path.resolve('packages/contracts/dist/index.js')).href, external: true }));
+    builder.onResolve({ filter: /^@openclawx\/contracts$/ }, () => ({ path: pathToFileURL(path.resolve('packages/contracts/dist/index.js')).href, external: true }));
     builder.onResolve({ filter: /services\/realtime-voice$/ }, () => ({ path: 'voice-service', namespace: 'mock' }));
     builder.onResolve({ filter: /services\/voice-task-notices$/ }, () => ({ path: 'voice-notices', namespace: 'notice-mock' }));
     builder.onLoad({ filter: /.*/, namespace: 'mock' }, () => ({ loader: 'js', contents: `

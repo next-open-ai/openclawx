@@ -4,13 +4,13 @@
 
 ## 产品目标
 
-Workmate 将 Jev 作为首个“有限问题决策模型”接入，但领域契约不得绑定单一厂商。决策模型用于分类、评分、路由和工具执行前的灰区风险判断，不替代确定性权限规则、主生成模型或人工审批。
+OpenClawX 将 Jev 作为首个“有限问题决策模型”接入，但领域契约不得绑定单一厂商。决策模型用于分类、评分、路由和工具执行前的灰区风险判断，不替代确定性权限规则、主生成模型或人工审批。
 
 ## 架构
 
-- `@workmate/contracts` 定义供应商无关的 `DecisionGuardPolicy` 和运行级 `DecisionRuntimeConfig`；应用模型目录新增 `decision` 能力。
+- `@openclawx/contracts` 定义供应商无关的 `DecisionGuardPolicy` 和运行级 `DecisionRuntimeConfig`；应用模型目录新增 `decision` 能力。
 - `agent-core/decision-runtime` 实现 `system-one-v1` Provider Adapter、超时、失败降级与 30 秒短时熔断。
-- Orchestrator/客户端运行上下文注入决策策略；实际执行前拦截位于 agent-core 工具边界，避免主模型遗忘调用。Pi 提供完整工具前置覆盖；AgentScope 的宿主 MCP/应用模型工具、DSH 的 Workmate 应用模型工具也复用同一守卫。
+- Orchestrator/客户端运行上下文注入决策策略；实际执行前拦截位于 agent-core 工具边界，避免主模型遗忘调用。Pi 提供完整工具前置覆盖；AgentScope 的宿主 MCP/应用模型工具、DSH 的 OpenClawX 应用模型工具也复用同一守卫。
 - AgentScope/DSH 的侧车原生文件与命令工具暂未提供统一的宿主 `beforeToolExecution` RPC。为防止 `enforce` 被绕过，开启强制守卫时 Orchestrator 会自动选择 Pi 完成本次运行；`observe` 仍保留所选侧车引擎，用于低风险灰度验证。
 - 主模型可按需调用 `decision_evaluate`；运行时系统指令承担内置 Decision Skill 的使用规范。
 - MCP 对外开放使用独立开关，首期仅保留配置契约，默认关闭，不启动额外监听或进程。
@@ -47,4 +47,4 @@ Workmate 将 Jev 作为首个“有限问题决策模型”接入，但领域契
 ## 首期边界
 
 - MCP 开关是兼容契约预留，尚未启动对外 MCP Server。
-- `beforeToolExecution` 对 Pi 提供完整覆盖，并覆盖 AgentScope/DSH 中由 Workmate 宿主提供的工具。侧车内部原生工具的直接 Hook 列入下一阶段；当前通过 `enforce → Pi` 的安全路由保证不漏检，而非宣称侧车自身已具备完整 Hook。
+- `beforeToolExecution` 对 Pi 提供完整覆盖，并覆盖 AgentScope/DSH 中由 OpenClawX 宿主提供的工具。侧车内部原生工具的直接 Hook 列入下一阶段；当前通过 `enforce → Pi` 的安全路由保证不漏检，而非宣称侧车自身已具备完整 Hook。

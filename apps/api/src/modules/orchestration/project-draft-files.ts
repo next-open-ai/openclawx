@@ -3,8 +3,8 @@ import os from 'node:os';
 import { constants } from 'node:fs';
 import { lstat, realpath, readdir, open } from 'node:fs/promises';
 import type { FastifyInstance } from 'fastify';
-import type { Orchestrator } from '@workmate/orchestrator';
-import { ProjectDraftFileQuerySchema, type ProjectDraftFiles } from '@workmate/contracts';
+import type { Orchestrator } from '@openclawx/orchestrator';
+import { ProjectDraftFileQuerySchema, type ProjectDraftFiles } from '@openclawx/contracts';
 import { requireAuth } from '../auth/service.js';
 import { canReadOwnedResource } from '../auth/ownership.js';
 
@@ -22,7 +22,7 @@ export function registerProjectDraftFileRoutes(app: FastifyInstance, orch: Orche
       if (!project || project.kind !== 'conversation' || !canReadOwnedResource(project, auth) || !run || !canReadOwnedResource(run, auth) || run.sessionId !== projectId || !project.tasks.some(task => task.runId === runId && task.id === run.taskId) || !/^[a-zA-Z0-9_-]{1,128}$/.test(runId)) {
         return reply.code(404).send({ message: '运行草稿不存在或无权访问。' });
       }
-      const parent = path.resolve(process.env.WORKMATE_WORKSPACES_DIR || path.join(os.homedir(), '.workmate', 'workspaces'));
+      const parent = path.resolve(process.env.OPENCLAWX_WORKSPACES_DIR || path.join(os.homedir(), '.openclawx', 'workspaces'));
       const root = path.join(parent, runId, 'output');
       const checked = async (relative = '') => {
         let target = parent;

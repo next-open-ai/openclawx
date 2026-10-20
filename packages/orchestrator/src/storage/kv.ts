@@ -1,5 +1,5 @@
 /**
- * Storage service contract for Workmate domain state.
+ * Storage service contract for OpenClawX domain state.
  *
  * M0 decision: the Fastify/API process is the single writer of domain data
  * (conversations, projects, employees, skill policies, …). The Electron main

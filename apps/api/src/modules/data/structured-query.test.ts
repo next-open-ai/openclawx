@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import Fastify from 'fastify';
-import { structuredDataQuerySchema, remoteDatabaseConnectionSchema, type StructuredDataQuery } from '@workmate/contracts';
+import { structuredDataQuerySchema, remoteDatabaseConnectionSchema, type StructuredDataQuery } from '@openclawx/contracts';
 import { compileStructuredQuery, executeLocalStructuredQuery, structuredQueryResult, type QueryTable } from './structured-query.js';
 import { queryLiveStructured, type LiveTable } from './live-database.js';
 import { dataRoutes } from './routes.js';
@@ -146,8 +146,8 @@ test('SDQ-R3/R6: local booleans, NULL, decimal/scientific syntax and invalid sto
 });
 
 test('SDQ-R1/R2/R7: authenticated API ownership, local/live aggregation, errors and old GET compatibility', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-sdq-')), previous = process.env.WORKMATE_DATA_DIR;
-  process.env.WORKMATE_DATA_DIR = dir;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-sdq-')), previous = process.env.OPENCLAWX_DATA_DIR;
+  process.env.OPENCLAWX_DATA_DIR = dir;
   const app = Fastify();
   let remoteBroken = false;
   const remoteCalls: string[] = [];
@@ -183,5 +183,5 @@ test('SDQ-R1/R2/R7: authenticated API ownership, local/live aggregation, errors 
     const liveResult = await call(livePayload); assert.equal(liveResult.statusCode, 200, liveResult.body); assert.equal(liveResult.json().rows[0].total, '123.45');
     remoteBroken = true;
     const error = await call(livePayload); assert.equal(error.statusCode, 502); assert.ok(!error.body.includes('secret-password'));
-  } finally { await app.close(); if (previous === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = previous; fs.rmSync(dir, { recursive: true, force: true }); }
+  } finally { await app.close(); if (previous === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = previous; fs.rmSync(dir, { recursive: true, force: true }); }
 });

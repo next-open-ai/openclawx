@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {ref,computed,watch,onMounted,onBeforeUnmount} from 'vue';
-import type {TaskTemplateDefinition,TaskSchedule,TemplateTaskDetail,TemplateTaskRun} from '@workmate/contracts';
+import type {TaskTemplateDefinition,TaskSchedule,TemplateTaskDetail,TemplateTaskRun} from '@openclawx/contracts';
 import type {Employee} from '../../app/workspace';
 import {employeeDisplayName} from '../../app/employees';
 import {useI18n} from '../../app/i18n';
@@ -31,7 +31,7 @@ let channel=crypto.randomUUID(),pendingId:string|undefined,timer:ReturnType<type
 let confirmTimer:ReturnType<typeof setTimeout>|undefined;
 const confirmationPending=ref(false);
 function clearConfirmation(){if(confirmTimer)clearTimeout(confirmTimer);confirmationPending.value=false;}
-function confirmParameters(){if(confirmationPending.value||busy.value)return;confirmationPending.value=true;send({type:'workmate.task.confirm'});confirmTimer=setTimeout(()=>{confirmationPending.value=false;error.value='参数页面未响应，请使用表单内确认按钮，或返回编辑器检查提交逻辑。';},8000);}
+function confirmParameters(){if(confirmationPending.value||busy.value)return;confirmationPending.value=true;send({type:'openclawx.task.confirm'});confirmTimer=setTimeout(()=>{confirmationPending.value=false;error.value='参数页面未响应，请使用表单内确认按钮，或返回编辑器检查提交逻辑。';},8000);}
 const date=(time:number)=>new Date(time).toLocaleString('zh-CN');
 const state=(run:TemplateTaskRun)=>run.status==='completed'?'已完成':run.status==='failed'?'执行失败':run.agentStatus==='waiting-approval'?'等待审批':run.agentStatus==='queued'?'排队中':'执行中';
 async function action(fn:()=>Promise<void>){if(busy.value)return;busy.value=true;error.value='';try{await fn();}catch(cause){error.value=cause instanceof Error?cause.message:'操作失败，请重试';}finally{busy.value=false;}}
@@ -49,22 +49,22 @@ async function open(record:TaskTemplateDefinition,asDesign=false){await action(a
 function send(message:Record<string,unknown>){frame.value?.contentWindow?.postMessage(JSON.parse(JSON.stringify({...message,channel})),'*');}
 async function receive(event:MessageEvent){
   if(!selected.value||event.source!==frame.value?.contentWindow)return;
-  if(event.data?.type==='workmate.task.ready'){send({type:'workmate.task.init',parameters:parameters.value,submitLabel:design.value?'确认验证参数':'确认参数'});return;}
+  if(event.data?.type==='openclawx.task.ready'){send({type:'openclawx.task.init',parameters:parameters.value,submitLabel:design.value?'确认验证参数':'确认参数'});return;}
   if(event.data?.channel!==channel)return;
-  if(event.data.type==='workmate.task.dirty'){confirmed.value=false;pendingId=undefined;step.value='parameters';notice.value='参数已修改，请重新确认。';return;}
-  if(event.data.type==='workmate.task.confirm-error'){clearConfirmation();confirmed.value=false;error.value=String(event.data.error||'请检查表单必填项');return;}
-  if(event.data.type==='workmate.task.request'){
-    const active=channel;try{const data=await parameterDataRequest(event.data.path,event.data.query);if(channel===active)send({type:'workmate.task.response',id:event.data.id,data});}catch(cause){if(channel===active)send({type:'workmate.task.response',id:event.data.id,error:cause instanceof Error?cause.message:'查询失败'});}return;
+  if(event.data.type==='openclawx.task.dirty'){confirmed.value=false;pendingId=undefined;step.value='parameters';notice.value='参数已修改，请重新确认。';return;}
+  if(event.data.type==='openclawx.task.confirm-error'){clearConfirmation();confirmed.value=false;error.value=String(event.data.error||'请检查表单必填项');return;}
+  if(event.data.type==='openclawx.task.request'){
+    const active=channel;try{const data=await parameterDataRequest(event.data.path,event.data.query);if(channel===active)send({type:'openclawx.task.response',id:event.data.id,data});}catch(cause){if(channel===active)send({type:'openclawx.task.response',id:event.data.id,error:cause instanceof Error?cause.message:'查询失败'});}return;
   }
-  if(event.data.type!=='workmate.task.submit'||busy.value)return;
+  if(event.data.type!=='openclawx.task.submit'||busy.value)return;
   clearConfirmation();
   await action(async()=>{try{
     const input=event.data.parameters;
     if(design.value)await api.trial(selected.value!,input);
     else await api.validateParameters(selected.value!.published.at(-1)!,input);
     parameters.value=JSON.parse(JSON.stringify(input));confirmed.value=true;pendingId=undefined;
-    notice.value=design.value?'参数验证成功，可以发布应用；尚未执行任务。':'参数已确认，请选择立即执行或定时执行。';send({type:'workmate.task.saved',notice:notice.value});step.value='execution';
-  }catch(cause){confirmed.value=false;send({type:'workmate.task.saved',error:cause instanceof Error?cause.message:'参数不正确'});throw cause;}});
+    notice.value=design.value?'参数验证成功，可以发布应用；尚未执行任务。':'参数已确认，请选择立即执行或定时执行。';send({type:'openclawx.task.saved',notice:notice.value});step.value='execution';
+  }catch(cause){confirmed.value=false;send({type:'openclawx.task.saved',error:cause instanceof Error?cause.message:'参数不正确'});throw cause;}});
 }
 async function publish(){if(!selected.value)return;await action(async()=>{await api.trial(selected.value!,parameters.value);selected.value=(await api.publish(selected.value!)).definition;await refresh();notice.value='发布成功。可以打开应用填写参数并执行任务。';});}
 async function launch(){if(!selected.value||!confirmed.value)return;await action(async()=>{

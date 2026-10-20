@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mapWorkmateModelToDshRoute } from '../dsh/model-route.js';
+import { mapOpenClawXModelToDshRoute } from '../dsh/model-route.js';
 import { createChatCompletionsPayloadPatch, toPiModel } from '../pi-model.js';
 
 const glmConfig = {
@@ -28,7 +28,7 @@ test('GLM-5.3 stays text-only and never receives a disabled thinking parameter',
 });
 
 test('GLM uses the Zhipu OpenAI-compatible endpoint in the dsh runtime', () => {
-  const route = mapWorkmateModelToDshRoute(glmConfig);
+  const route = mapOpenClawXModelToDshRoute(glmConfig);
   assert.equal(route.api, 'openai-completions');
   assert.equal(route.baseUrl, 'https://open.bigmodel.cn/api/paas/v4');
   assert.equal(route.apiKey, 'test-key');

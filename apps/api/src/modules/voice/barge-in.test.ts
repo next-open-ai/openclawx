@@ -7,7 +7,7 @@ import { registerRealtimeVoiceRoutes } from './realtime-routes.js';
 import Fastify from 'fastify';
 import { VoiceResponseGate } from './response-gate.js';
 import { explicitPlaybackStop } from './playback-control.js';
-import { RealtimeVoiceInterruptSchema, RealtimeVoicePlaybackSchema, RealtimeVoiceDiagnosticSchema } from '@workmate/contracts';
+import { RealtimeVoiceInterruptSchema, RealtimeVoicePlaybackSchema, RealtimeVoiceDiagnosticSchema } from '@openclawx/contracts';
 
 test('BI-A1: response fencing rejects retired IDs and untagged late events', () => {
   const gate = new VoiceResponseGate();

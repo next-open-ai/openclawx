@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {createWorkResultRanker} from '../work-results-ranking.js';
-import {WorkLookupResultSchema,WorkResultRankingDiagnosticSchema,type ModelConfig,type WorkResultItem} from '@workmate/contracts';
+import {WorkLookupResultSchema,WorkResultRankingDiagnosticSchema,type ModelConfig,type WorkResultItem} from '@openclawx/contracts';
 
 const asset:WorkResultItem={kind:'asset',id:crypto.randomUUID(),name:'三亚五日行程.pdf',createdAt:1,mimeType:'application/pdf',summary:'从上海出发，海滨休闲旅行'};
 test('WR-T7/T9: actual SDK semantic ranking, safe diagnostics and invalid/unavailable fallback',async()=>{

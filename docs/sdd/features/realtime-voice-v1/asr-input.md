@@ -15,7 +15,7 @@ Schema：packages/contracts/src/voice-asr.ts。POST /api/voice/asr/{session,audi
 
 ## 验证与回滚
 
-ASR-R1：旧配置默认、独立/复用/环境变量选择、掩码与密钥保持/清除（01）。ASR-R2：二进制 gzip/序号/末包/错误/损坏帧，mock WS 生命周期与超时（02）。ASR-R3：鉴权、跨用户拒绝、容量、finish/close（04）。UI 构建与人工验收录音修订、草稿追加、不自动发送、取消（03）。使用 `pnpm --filter @workmate/api test`、agent-core test、typecheck、build。真实服务测试只传合成测试音频，记录 Key 权限结果，不泄露密钥。
+ASR-R1：旧配置默认、独立/复用/环境变量选择、掩码与密钥保持/清除（01）。ASR-R2：二进制 gzip/序号/末包/错误/损坏帧，mock WS 生命周期与超时（02）。ASR-R3：鉴权、跨用户拒绝、容量、finish/close（04）。UI 构建与人工验收录音修订、草稿追加、不自动发送、取消（03）。使用 `pnpm --filter @openclawx/api test`、agent-core test、typecheck、build。真实服务测试只传合成测试音频，记录 Key 权限结果，不泄露密钥。
 
 兼容：新增字段无强制迁移，旧 API 调用保持新字段；回滚可切换 realtime 或关闭 ASR。ASR 与端到端独立计费，实际 Key 可用性由火山开通与配额决定。
 

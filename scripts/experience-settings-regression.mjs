@@ -13,7 +13,7 @@ const context={Error,AbortSignal,Promise,ref:value=>({value}),onMounted:fn=>moun
 vm.createContext(context);vm.runInContext(code+'\nglobalThis.refs={state,busy,error};globalThis.save=save;',context);
 await mounted();assert.equal(calls.length,1);assert.equal(context.refs.state.value.available,false);
 await context.save(true);assert.deepEqual(calls.slice(1).map(c=>c.options.method),['PUT','POST']);assert.equal(context.refs.state.value.available,true);
-assert.equal(JSON.parse(calls[1].options.body).available,undefined);assert.equal(calls[1].options.headers['x-workmate-session'],'synthetic');
+assert.equal(JSON.parse(calls[1].options.body).available,undefined);assert.equal(calls[1].options.headers['x-openclawx-session'],'synthetic');
 failed=true;await context.save();assert.equal(context.refs.busy.value,false);assert.match(context.refs.error.value,/管理员/);
 assert.match(source,/共享经验池/);assert.match(source,/本地文本匹配不是语义检索/);assert.match(source,/保存并验证知识库/);
 console.log('EX-T1 PASS: actual settings handlers, config-stage validation, status feedback, identity header and failure recovery.');

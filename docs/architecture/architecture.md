@@ -1,4 +1,4 @@
-# Workmate 项目架构、模块与主要逻辑（当前权威）
+# OpenClawX 项目架构、模块与主要逻辑（当前权威）
 
 > 状态：随实现演进维护；与 `README(.zh-CN)`、`docs/architecture/gateway-m*.md` 保持一致。
 > 目标读者：新成员快速建立全局观、评审人核对模块边界与数据流。
@@ -22,13 +22,13 @@ TA-R7：已移除旧模板管理及从模板创建流程，公开旧创建接口
 
 任务报告采用同样的独立项目编辑与返回草稿流程，但 SDK 只读取当前运行结果，不复用参数数据查询权限。模板默认输出要求可由任务覆盖，结果与报告快照随运行保存；后续模板编辑不改变历史。默认结果界面无需定制，JSON 记录始终保留。
 
-Workmate 是**本地优先的数字员工工作台**：不是单一聊天工具，而是把「对话 / 项目编排 / Skills / 知识库 / 自动化 / 资产」组织在**数字员工**职责之下，并通过**本地通道网关**让外部 IM（Telegram/飞书）与**远程中继终端**也能调度同一套能力。
+OpenClawX 是**本地优先的数字员工工作台**：不是单一聊天工具，而是把「对话 / 项目编排 / Skills / 知识库 / 自动化 / 资产」组织在**数字员工**职责之下，并通过**本地通道网关**让外部 IM（Telegram/飞书）与**远程中继终端**也能调度同一套能力。
 
 工程上最重要的三个约定：
 
-1. **编排在服务端，UI 只是客户端**：会话、运行、审批、项目状态机都归 `@workmate/orchestrator` 所有（由 `apps/api` 进程托管），桌面渲染层与未来终端走同一组 `/api/orch` REST/SSE；
-2. **域数据单写者**：domain KV 只由 api 进程写入（`~/.workmate/domain.json`）；Electron 主进程仅保留密钥与资产元数据；
-3. **分层依赖单向**：renderer 不 import Electron/Node；只有 `packages/agent-core` 能调用 Vercel AI SDK；通道协议层（`@workmate/channel`）与传输实现解耦。
+1. **编排在服务端，UI 只是客户端**：会话、运行、审批、项目状态机都归 `@openclawx/orchestrator` 所有（由 `apps/api` 进程托管），桌面渲染层与未来终端走同一组 `/api/orch` REST/SSE；
+2. **域数据单写者**：domain KV 只由 api 进程写入（`~/.openclawx/domain.json`）；Electron 主进程仅保留密钥与资产元数据；
+3. **分层依赖单向**：renderer 不 import Electron/Node；只有 `packages/agent-core` 能调用 Vercel AI SDK；通道协议层（`@openclawx/channel`）与传输实现解耦。
 
 ```text
 ┌────────────────────────── Electron 桌面（本地） ──────────────────────────┐
@@ -41,10 +41,10 @@ Workmate 是**本地优先的数字员工工作台**：不是单一聊天工具�
 │  │ apps/api（Fastify，端口 47832，localhost）                     │           │
 │  │   ├─ /api/chat        (旧 stateless 流式，兼容)               │           │
 │  │   ├─ /api/orch/**     (REST + SSE)                           │           │
-│  │   └─ @workmate/orchestrator   ← 编排层（唯一运行层）              │           │
+│  │   └─ @openclawx/orchestrator   ← 编排层（唯一运行层）              │           │
 │  └───────────────────────────────▲──────────────────────────────┘           │
 │                                  │ /api/orch                                │
-│  apps/gateway ── fork 拉起 ──────┘    @workmate/channel 协议                   │
+│  apps/gateway ── fork 拉起 ──────┘    @openclawx/channel 协议                   │
 │     Telegram 适配器 / 飞书适配器 / RelayDeviceClient(远程中继出连)             │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -75,7 +75,7 @@ Workmate 是**本地优先的数字员工工作台**：不是单一聊天工具�
 语音服务在 API 内采用独立能力边界：`voice/routes.ts` 仅为组合根，`realtime-routes.ts` 管理全双工会话，`asr-routes.ts` 管理单向语音输入，`chat-mobile/voice.ts` 管理手机令牌范围适配。会话生命周期保持隔离；实时语音的凭证、端点、模型和音色由统一 Provider/模型配置提供，通话行为仍由语音偏好管理，旧独立配置只作兼容回退。详见 `docs/sdd/features/voice-services-modularization-v1/` 与 `unified-provider-connections-v1/`。
 
 ### 渲染层「远程办公/连接」门户（P1）
-侧栏 `remote` 视图提供 Telegram/飞书凭证、白名单、默认员工及网关状态/重启；主进程提供对应 IPC。Workmate 已有本地用户/组织及 admin/member 登录体系；通道白名单仍是独立的入口控制，不能视为完整的数据调用者委托授权。
+侧栏 `remote` 视图提供 Telegram/飞书凭证、白名单、默认员工及网关状态/重启；主进程提供对应 IPC。OpenClawX 已有本地用户/组织及 admin/member 登录体系；通道白名单仍是独立的入口控制，不能视为完整的数据调用者委托授权。
 
 ## 4. 模块与边界（packages）
 
@@ -97,7 +97,7 @@ Workmate 是**本地优先的数字员工工作台**：不是单一聊天工具�
 
 Shell 字符串检查仅拦截明显越界探查，不是任意代码沙箱，也不消除检查与使用之间的竞态。DSH 原生文件工具不经过宿主逐调用检查，本期只同步资源契约和成果提交边界；完整强隔离需独立插件或 OS 沙箱。详见 WA-V1.6。
 
-## 5. `@workmate/orchestrator` 主要逻辑（M0 核心）
+## 5. `@openclawx/orchestrator` 主要逻辑（M0 核心）
 
 文件构成：
 
@@ -148,8 +148,8 @@ Shell 字符串检查仅拦截明显越界探查，不是任意代码沙箱，�
 
 | 层 | 路径 | 可见性 | 用途 |
 | --- | --- | --- | --- |
-| Run workspace | `~/.workmate/workspaces/<runId>/` | 不对用户文件树展示 | 过程脚本、`.py`/`.sh`、临时生成器 |
-| Project workspace | `~/.workmate/projects/<name>-<id>/` | 左侧「项目文件」树 | 最终交付（HTML/CSS/JS/文案/图片…） |
+| Run workspace | `~/.openclawx/workspaces/<runId>/` | 不对用户文件树展示 | 过程脚本、`.py`/`.sh`、临时生成器 |
+| Project workspace | `~/.openclawx/projects/<name>-<id>/` | 左侧「项目文件」树 | 最终交付（HTML/CSS/JS/文案/图片…） |
 
 规则：
 
@@ -254,7 +254,7 @@ API：
 数据库密码的 IPC 和桌面开发模式共用主进程 safeStorage 密文存储。开发 supervisor 独立启动 API 时，经主进程 loopback 随机端口及运行期 capability 通道按需读取/写入，描述符仅允许内部桌面身份注册且不落盘；断桥不降级明文或临时内存。纯 Node API（无桌面）仍只有会话密码。详见 LDO-R8，所有域元数据仍由 API 单写，主进程仅写密文。
 
 - Main 的 `storage-get/set` → 转发 `/api/orch/kv`（失败降级旧 sql.js）；启动时一次性迁移旧域键（跳过密钥键）。
-- 模型/搜索/通道 token：Main sql.js + `safeStorage`；经 fork IPC（`workmate:secrets` / `workmate:channels:secrets`）一次性下发给子进程，绝不落盘 domain.json。
+- 模型/搜索/通道 token：Main sql.js + `safeStorage`；经 fork IPC（`openclawx:secrets` / `openclawx:channels:secrets`）一次性下发给子进程，绝不落盘 domain.json。
 
 ## 6. 通道与远程办公（M1/M2）
 

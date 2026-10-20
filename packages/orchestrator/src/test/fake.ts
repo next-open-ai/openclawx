@@ -1,4 +1,4 @@
-import type { AgentEvent, AgentProfile, ChatRequest, ModelConfig } from '@workmate/contracts';
+import type { AgentEvent, AgentProfile, ChatRequest, ModelConfig } from '@openclawx/contracts';
 import { randomUUID } from 'node:crypto';
 import type { AgentRunner } from '../index.js';
 import type { ChatRunContext } from '../index.js';

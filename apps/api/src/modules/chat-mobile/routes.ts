@@ -4,7 +4,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
-import type { OrcEvent } from '@workmate/orchestrator';
+import type { OrcEvent } from '@openclawx/orchestrator';
 import { requireAuth } from '../auth/service.js';
 import type { AuthPrincipal } from '../auth/service.js';
 import { canReadOwnedResource, canWriteOwnedResource } from '../auth/ownership.js';
@@ -25,7 +25,7 @@ type SqlDatabase = {
 let dbPromise: Promise<SqlDatabase> | null = null;
 
 function dataDir() {
-  return process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate');
+  return process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx');
 }
 
 function databaseFile() {
@@ -33,7 +33,7 @@ function databaseFile() {
 }
 
 function apiListenPort() {
-  return Number(process.env.WORKMATE_API_PORT || 47832);
+  return Number(process.env.OPENCLAWX_API_PORT || 47832);
 }
 
 const MOBILE_DESKTOP_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
@@ -190,7 +190,7 @@ export function mobileChatHtml(token: string) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 <meta name="theme-color" content="#0f172a">
-<title>Workmate 手机对话</title>
+<title>OpenClawX 手机对话</title>
 <style>
 :root{--bg:#0b1220;--panel:#121a2b;--line:#243049;--text:#e8eefc;--muted:#8b97b2;--accent:#3d7eff;--user:#1d4ed8;--bot:#182234;--danger:#ef4444}
 *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:radial-gradient(1200px 600px at 10% -10%,#1a2a4a 0%,var(--bg) 55%);color:var(--text);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -223,7 +223,7 @@ ${mobileVoiceStyle}
   <header class="top">
     <div class="mark">W</div>
     <div style="min-width:0;flex:1">
-      <h1 id="title">Workmate</h1>
+      <h1 id="title">OpenClawX</h1>
       <p id="meta">手机端轻量对话 · 与电脑同步</p>
     </div>
     <button class="uploadToggle" id="uploadToggle" type="button">传文件</button>
@@ -409,7 +409,7 @@ ${mobileVoiceScript}
 }
 
 function expiredHtml() {
-  return '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>链接已过期</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b1220;color:#e8eefc;font:16px -apple-system,sans-serif}.card{max-width:420px;margin:24px;padding:28px;border:1px solid #243049;border-radius:20px;background:#121a2b}h1{margin:0 0 10px;font-size:20px}p{margin:0;color:#8b97b2;line-height:1.6}</style></head><body><section class="card"><h1>手机对话链接已过期</h1><p>请回到电脑上的 Workmate 对话页，重新打开二维码后再扫一次。</p></section></body></html>';
+  return '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>链接已过期</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b1220;color:#e8eefc;font:16px -apple-system,sans-serif}.card{max-width:420px;margin:24px;padding:28px;border:1px solid #243049;border-radius:20px;background:#121a2b}h1{margin:0 0 10px;font-size:20px}p{margin:0;color:#8b97b2;line-height:1.6}</style></head><body><section class="card"><h1>手机对话链接已过期</h1><p>请回到电脑上的 OpenClawX 对话页，重新打开二维码后再扫一次。</p></section></body></html>';
 }
 
 async function sessionBusy(sessionId: string) {
@@ -436,7 +436,7 @@ export const chatMobileRoutes: FastifyPluginAsync = async (app) => {
     if (!session || !canWriteOwnedResource(session, auth, { allowLegacyUnowned: true })) {
       return reply.code(404).send({ message: '对话不存在或无权访问。' });
     }
-    const publicOrigin = mobilePublicOrigin(process.env.WORKMATE_MOBILE_PUBLIC_ORIGIN);
+    const publicOrigin = mobilePublicOrigin(process.env.OPENCLAWX_MOBILE_PUBLIC_ORIGIN);
     const db = await database();
     const now = Date.now();
     const expiresAt = now + 8 * 60 * 60_000;
@@ -449,7 +449,7 @@ export const chatMobileRoutes: FastifyPluginAsync = async (app) => {
     flushDatabase(db);
     const port = apiListenPort();
     const lanUrls = listLanIPv4Addresses().map((ip) => `http://${ip}:${port}/api/chat-mobile/${token}`);
-    const managedTls = Boolean(process.env.WORKMATE_MOBILE_HTTPS_CA_FILE?.trim());
+    const managedTls = Boolean(process.env.OPENCLAWX_MOBILE_HTTPS_CA_FILE?.trim());
     const caUrl = managedTls && listLanIPv4Addresses()[0]
       ? `http://${listLanIPv4Addresses()[0]}:${port}/api/chat-mobile-ca`
       : undefined;
@@ -489,18 +489,18 @@ export const publicChatMobileRoutes: FastifyPluginAsync = async (app) => {
   // A CA certificate contains no secret. HTTP bootstrap is intentional: the
   // phone cannot trust the HTTPS listener until this public certificate is installed.
   app.get('/chat-mobile-ca', async (_request, reply) => {
-    const caFile = process.env.WORKMATE_MOBILE_HTTPS_CA_FILE?.trim();
+    const caFile = process.env.OPENCLAWX_MOBILE_HTTPS_CA_FILE?.trim();
     if (!caFile || !fs.existsSync(caFile)) return reply.code(404).send({ message: '本地手机证书不可用。' });
     return reply
       .header('cache-control', 'no-store')
       .header('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'")
       .type('text/html; charset=utf-8')
-      .send(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>安装 Workmate 手机证书</title><style>body{margin:0;background:#f4f7fb;color:#182033;font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.65}.card{max-width:520px;margin:36px auto;padding:26px;background:#fff;border:1px solid #dfe6f1;border-radius:20px;box-shadow:0 18px 50px #25385818}h1{font-size:22px;margin:0 0 8px}p{color:#596780}.notice{padding:12px 14px;background:#edf4ff;border-radius:12px;color:#31568e}.download{display:block;margin:20px 0;padding:13px;text-align:center;background:#4267e8;color:#fff;text-decoration:none;border-radius:12px;font-weight:700}ol{padding-left:22px}small{color:#7b879e}</style></head><body><main class="card"><h1>安装 Workmate 手机证书</h1><p class="notice">这是 Workmate 在当前电脑生成的本地 CA 公钥，不包含账号、密钥或聊天数据。</p><a class="download" href="/api/chat-mobile-ca/download">下载 CA 证书</a><ol><li>下载后打开手机“设置/安全/证书管理”。</li><li>选择安装 CA 证书，并选中刚下载的 <b>workmate-mobile-ca.crt</b>。</li><li>按系统提示启用信任。仅点击浏览器的“继续访问”不等于信任证书。</li><li>回到电脑，切换回手机对话二维码并重新扫码。</li></ol><p><b>Android：</b>通常位于“设置 → 安全 → 更多安全设置 → 加密与凭据 → 安装证书 → CA 证书”。<br><b>iPhone：</b>安装描述文件后，还需进入“设置 → 通用 → 关于本机 → 证书信任设置”启用完全信任。</p><small>若地址栏仍显示红色证书标记，说明 CA 尚未成功安装或信任。</small></main></body></html>`);
+      .send(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>安装 OpenClawX 手机证书</title><style>body{margin:0;background:#f4f7fb;color:#182033;font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.65}.card{max-width:520px;margin:36px auto;padding:26px;background:#fff;border:1px solid #dfe6f1;border-radius:20px;box-shadow:0 18px 50px #25385818}h1{font-size:22px;margin:0 0 8px}p{color:#596780}.notice{padding:12px 14px;background:#edf4ff;border-radius:12px;color:#31568e}.download{display:block;margin:20px 0;padding:13px;text-align:center;background:#4267e8;color:#fff;text-decoration:none;border-radius:12px;font-weight:700}ol{padding-left:22px}small{color:#7b879e}</style></head><body><main class="card"><h1>安装 OpenClawX 手机证书</h1><p class="notice">这是 OpenClawX 在当前电脑生成的本地 CA 公钥，不包含账号、密钥或聊天数据。</p><a class="download" href="/api/chat-mobile-ca/download">下载 CA 证书</a><ol><li>下载后打开手机“设置/安全/证书管理”。</li><li>选择安装 CA 证书，并选中刚下载的 <b>openclawx-mobile-ca.crt</b>。</li><li>按系统提示启用信任。仅点击浏览器的“继续访问”不等于信任证书。</li><li>回到电脑，切换回手机对话二维码并重新扫码。</li></ol><p><b>Android：</b>通常位于“设置 → 安全 → 更多安全设置 → 加密与凭据 → 安装证书 → CA 证书”。<br><b>iPhone：</b>安装描述文件后，还需进入“设置 → 通用 → 关于本机 → 证书信任设置”启用完全信任。</p><small>若地址栏仍显示红色证书标记，说明 CA 尚未成功安装或信任。</small></main></body></html>`);
   });
   app.get('/chat-mobile-ca/download', async (_request, reply) => {
-    const caFile = process.env.WORKMATE_MOBILE_HTTPS_CA_FILE?.trim();
+    const caFile = process.env.OPENCLAWX_MOBILE_HTTPS_CA_FILE?.trim();
     if (!caFile || !fs.existsSync(caFile)) return reply.code(404).send({ message: '本地手机证书不可用。' });
-    return reply.header('cache-control', 'no-store').header('content-disposition', 'attachment; filename="workmate-mobile-ca.crt"').type('application/x-x509-ca-cert').send(fs.readFileSync(caFile));
+    return reply.header('cache-control', 'no-store').header('content-disposition', 'attachment; filename="openclawx-mobile-ca.crt"').type('application/x-x509-ca-cert').send(fs.readFileSync(caFile));
   });
 
   // Capability URLs must never leak to external referrers or browser/shared caches.
@@ -513,7 +513,7 @@ export const publicChatMobileRoutes: FastifyPluginAsync = async (app) => {
     },
     capabilities: () => {
       const settings = readRealtimeVoiceSettings();
-      return { enabled: settings.enabled && Boolean(process.env.WORKMATE_VOLCENGINE_REALTIME_API_KEY?.trim() || settings.apiKey), workEnabled: settings.workLinkEnabled };
+      return { enabled: settings.enabled && Boolean(process.env.OPENCLAWX_VOLCENGINE_REALTIME_API_KEY?.trim() || settings.apiKey), workEnabled: settings.workLinkEnabled };
     },
     create: link => createBoundRealtimeVoice({ orgId: link.orgId, userId: link.ownerUserId }, link.sessionId),
     release: releaseBoundRealtimeVoice,

@@ -5,8 +5,8 @@ import path from 'node:path';
 import os from 'node:os';
 import Fastify from 'fastify';
 import { createServer } from 'node:http';
-import { MemoryStore, type AgentRunner } from '@workmate/orchestrator';
-import { dataObjectModelSchema, employeeDataAssociationKey } from '@workmate/contracts';
+import { MemoryStore, type AgentRunner } from '@openclawx/orchestrator';
+import { dataObjectModelSchema, employeeDataAssociationKey } from '@openclawx/contracts';
 import { createAgentDataExecutor, createDataAgentRunner, type AgentDataGateway } from './agent-query.js';
 import { createStructuredDataGateway, dataRoutes } from './routes.js';
 import { StructuredQueryError } from './structured-query.js';
@@ -163,8 +163,8 @@ test('ADQ-R1/R3: scoped binding API supports members, survives reload, rejects f
 });
 
 test('ADQ-R2/R3: actual local gateway reused by model tools, owner/org checked and aggregate is database-side', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-adq-')), old = process.env.WORKMATE_DATA_DIR;
-  process.env.WORKMATE_DATA_DIR = dir;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-adq-')), old = process.env.OPENCLAWX_DATA_DIR;
+  process.env.OPENCLAWX_DATA_DIR = dir;
   const app = Fastify(); app.addHook('preHandler', async request => { request.auth = { userId: 'u', orgId: 'o', role: 'admin', username: 'u', displayName: 'u', sessionId: 'test' }; });
   try {
     await app.register(dataRoutes);
@@ -215,5 +215,5 @@ test('ADQ-R2/R3: actual local gateway reused by model tools, owner/org checked a
       assert.equal(observedTotal, 30); assert.ok(exposedTools.every(tools => tools.includes('data_query')));
       assert.equal(events.filter(e => e.type === 'tool.completed' && e.toolName.startsWith('data_')).length, 3);
     } finally { model.closeAllConnections(); await new Promise<void>(resolve => model.close(() => resolve())); }
-  } finally { await app.close(); if (old === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = old; fs.rmSync(dir, { recursive: true, force: true }); }
+  } finally { await app.close(); if (old === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = old; fs.rmSync(dir, { recursive: true, force: true }); }
 });

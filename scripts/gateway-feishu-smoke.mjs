@@ -2,15 +2,15 @@
  * M2 P2 Feishu acceptance (offline fake channel + pure parse/dedupe checks).
  * Requires the local api in memory-echo mode with secrets file set.
  *
- * Launch api: WORKMATE_ORCH_RUNNER=memory-echo WORKMATE_DATA_DIR=<tmp>
- *   WORKMATE_SECRETS_FILE=<file> WORKMATE_API_PORT=4416 node apps/api/dist/main.cjs
- * Run: WORKMATE_API_PORT=4416 node scripts/gateway-feishu-smoke.mjs
+ * Launch api: OPENCLAWX_ORCH_RUNNER=memory-echo OPENCLAWX_DATA_DIR=<tmp>
+ *   OPENCLAWX_SECRETS_FILE=<file> OPENCLAWX_API_PORT=4416 node apps/api/dist/main.cjs
+ * Run: OPENCLAWX_API_PORT=4416 node scripts/gateway-feishu-smoke.mjs
  */
 import assert from 'node:assert/strict';
 import { createGateway } from '../apps/gateway/dist/gateway.js';
 import { parseFeishuEvent, isDuplicateMessage, markMessageProcessed } from '../apps/gateway/dist/adapters/feishu.js';
 
-const port = process.env.WORKMATE_API_PORT || '4416';
+const port = process.env.OPENCLAWX_API_PORT || '4416';
 const apiBase = `http://127.0.0.1:${port}/api/orch`;
 
 async function json(pathname, init) {

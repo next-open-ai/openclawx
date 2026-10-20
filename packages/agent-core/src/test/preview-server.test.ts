@@ -20,7 +20,7 @@ test('findFreePort returns a port from the hint range', async () => {
 });
 
 test('startPreviewServer serves index.html and reuses same root', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-preview-'));
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-preview-'));
   writeFileSync(path.join(root, 'index.html'), '<!doctype html><title>ok</title><h1>hello-preview</h1>', 'utf8');
   mkdirSync(path.join(root, 'bundle'), { recursive: true });
   writeFileSync(path.join(root, 'bundle', 'index.html'), '<!doctype html><h1>bundle</h1>', 'utf8');
@@ -58,7 +58,7 @@ test('startPreviewServer serves index.html and reuses same root', async () => {
 });
 
 test('preview root cannot escape workspace', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-preview-esc-'));
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-preview-esc-'));
   await assert.rejects(
     () => startPreviewServer({ workspaceRoot: root, root: '../outside' }),
     /safe relative path|outside/i,
@@ -66,14 +66,14 @@ test('preview root cannot escape workspace', async () => {
 });
 
 test('suggestPreviewRoot prefers directories with index.html', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-preview-suggest-'));
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-preview-suggest-'));
   mkdirSync(path.join(root, 'output'), { recursive: true });
   writeFileSync(path.join(root, 'output', 'index.html'), '<h1>out</h1>', 'utf8');
   assert.equal(await suggestPreviewRoot(root), 'output');
 });
 
 test('createPreviewServerTools auto-detects root and serves', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-preview-tools-'));
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-preview-tools-'));
   writeFileSync(path.join(root, 'index.html'), '<h1>tools</h1>', 'utf8');
   const tools = createPreviewServerTools({ workspaceRoot: root, workspaceAccess: 'write' });
   assert.deepEqual(
@@ -95,8 +95,8 @@ test('createPreviewServerTools auto-detects root and serves', async () => {
 });
 
 test('conversation preview maps SITE asset bundle without touching empty workspace', async () => {
-  const emptyWs = mkdtempSync(path.join(os.tmpdir(), 'workmate-preview-empty-'));
-  const bundleRoot = mkdtempSync(path.join(os.tmpdir(), 'workmate-preview-bundle-'));
+  const emptyWs = mkdtempSync(path.join(os.tmpdir(), 'openclawx-preview-empty-'));
+  const bundleRoot = mkdtempSync(path.join(os.tmpdir(), 'openclawx-preview-bundle-'));
   writeFileSync(path.join(bundleRoot, 'index.html'), '<h1>from-asset-bundle</h1>', 'utf8');
   setConversationSiteBundleResolver(async (conversationId) => (
     conversationId === 'sess-preview'
@@ -126,7 +126,7 @@ test('conversation preview maps SITE asset bundle without touching empty workspa
 });
 
 test('lan access binds 0.0.0.0 and returns localUrl', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-preview-lan-'));
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-preview-lan-'));
   writeFileSync(path.join(root, 'index.html'), '<h1>lan-site</h1>', 'utf8');
   try {
     const started = await startPreviewServer({ workspaceRoot: root, root: '.', access: 'lan', portHint: 8000 });
@@ -154,7 +154,7 @@ test('lan access binds 0.0.0.0 and returns localUrl', async () => {
 });
 
 test('preview_server_stop without id/port stops all site servers', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-preview-stop-all-'));
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-preview-stop-all-'));
   writeFileSync(path.join(root, 'index.html'), '<h1>stop-all</h1>', 'utf8');
   try {
     await startPreviewServer({ workspaceRoot: root, root: '.', access: 'local', portHint: 8000 });
@@ -174,7 +174,7 @@ test('preview_server_stop without id/port stops all site servers', async () => {
 });
 
 test('project preview maps project workspace root', async () => {
-  const project = mkdtempSync(path.join(os.tmpdir(), 'workmate-preview-project-'));
+  const project = mkdtempSync(path.join(os.tmpdir(), 'openclawx-preview-project-'));
   writeFileSync(path.join(project, 'index.html'), '<h1>project-root</h1>', 'utf8');
   mkdirSync(path.join(project, 'dist'), { recursive: true });
   writeFileSync(path.join(project, 'dist', 'index.html'), '<h1>project-dist</h1>', 'utf8');

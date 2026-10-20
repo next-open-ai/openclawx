@@ -24,9 +24,9 @@
 
 UAT-T1～T4 的实现与隔离验证完成，未合并对话/项目界面，未迁移数据，未同步子项目。项目化入口第一期已有修改保留。
 
-- `pnpm --filter @workmate/agent-core test`：164 项通过，新增严格/兼容晋升的实际文件复制故障测试。
-- `pnpm --filter @workmate/orchestrator test`：59 项通过，含一致预算、终态门控、真实项目文件晋升失败、上游异常、审批停车、交付期间取消、部分产物保留。
-- `pnpm --filter @workmate/api typecheck` / `test` / `build`：通过；测试 31 项通过，2 项真实外部数据库验收跳过。应用后续运行的真实工具导出/编辑/再次绑定、最新 Schema、原 app/project/URL 保持，以及失败保留已发布 HTML 已验收；runner 为确定性桩，不代表真实模型表现。
+- `pnpm --filter @openclawx/agent-core test`：164 项通过，新增严格/兼容晋升的实际文件复制故障测试。
+- `pnpm --filter @openclawx/orchestrator test`：59 项通过，含一致预算、终态门控、真实项目文件晋升失败、上游异常、审批停车、交付期间取消、部分产物保留。
+- `pnpm --filter @openclawx/api typecheck` / `test` / `build`：通过；测试 31 项通过，2 项真实外部数据库验收跳过。应用后续运行的真实工具导出/编辑/再次绑定、最新 Schema、原 app/project/URL 保持，以及失败保留已发布 HTML 已验收；runner 为确定性桩，不代表真实模型表现。
 - `pnpm concurrency:regression`：通过（临时目录、AgentScope 桩、全局/用户容量、dsh Skill/MCP 桥接）。
 - `node scripts/data-app-create-regression.mjs` / `node scripts/data-workbench-ux-regression.mjs`：通过；`git diff --check` 通过。本轮无新 UI，未重复桌面界面验收。
 

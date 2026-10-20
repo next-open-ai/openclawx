@@ -5,7 +5,7 @@ export * from './workspace-write.js';
 
 export const HealthResponseSchema = z.object({
   status: z.literal('ok'),
-  service: z.literal('workmate-api'),
+  service: z.literal('openclawx-api'),
   version: z.string(),
 });
 
@@ -719,7 +719,7 @@ export const ChatRequestSchema = z.object({
   decisionRuntime: DecisionRuntimeConfigSchema.optional(),
   /**
    * Stable run id shared by orchestrator records and the on-disk run workspace
-   * (`~/.workmate/workspaces/<runId>`). When omitted, agent-core generates one.
+   * (`~/.openclawx/workspaces/<runId>`). When omitted, agent-core generates one.
    */
   runId: z.string().min(1).max(120).optional(),
   /**
@@ -744,7 +744,7 @@ export const ChatRequestSchema = z.object({
   /**
    * Per-employee / per-run execution backend. When omitted, routing uses
    * runtime default (and optional prefer* hints). Ops force requires
-   * `WORKMATE_AGENT_ENGINE_FORCE=1` with `WORKMATE_AGENT_ENGINE`, or call-site override.
+   * `OPENCLAWX_AGENT_ENGINE_FORCE=1` with `OPENCLAWX_AGENT_ENGINE`, or call-site override.
    */
   engine: AgentEngineIdSchema.optional(),
 });

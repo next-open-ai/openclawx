@@ -4,33 +4,33 @@
  * forks the gateway when any channel is enabled.
  *
  * Usage (env vars):
- *   WORKMATE_API_PORT=47832 \
- *   WORKMATE_TG_BOT_TOKEN="123:ABC" \
- *   WORKMATE_GATEWAY_ALLOW="telegram:user:111111,telegram:chat:-100222222" \
- *   WORKMATE_DEFAULT_EMPLOYEE=general \
+ *   OPENCLAWX_API_PORT=47832 \
+ *   OPENCLAWX_TG_BOT_TOKEN="123:ABC" \
+ *   OPENCLAWX_GATEWAY_ALLOW="telegram:user:111111,telegram:chat:-100222222" \
+ *   OPENCLAWX_DEFAULT_EMPLOYEE=general \
  *   node scripts/gateway-config.mjs
  *
- * Reads token from WORKMATE_TG_BOT_TOKEN_FILE when the token itself is set there
+ * Reads token from OPENCLAWX_TG_BOT_TOKEN_FILE when the token itself is set there
  * instead (avoids pasting secrets into shell history).
  */
-const port = process.env.WORKMATE_API_PORT || '47832';
+const port = process.env.OPENCLAWX_API_PORT || '47832';
 const base = `http://127.0.0.1:${port}/api/orch`;
 
 import { readFileSync } from 'node:fs';
 
 function token() {
-  if (process.env.WORKMATE_TG_BOT_TOKEN) return process.env.WORKMATE_TG_BOT_TOKEN;
-  const file = process.env.WORKMATE_TG_BOT_TOKEN_FILE;
+  if (process.env.OPENCLAWX_TG_BOT_TOKEN) return process.env.OPENCLAWX_TG_BOT_TOKEN;
+  const file = process.env.OPENCLAWX_TG_BOT_TOKEN_FILE;
   if (file) return readFileSync(file, 'utf8').trim();
   return '';
 }
 
 const botToken = token();
 if (!botToken) {
-  console.error('缺少 Telegram bot token：设置 WORKMATE_TG_BOT_TOKEN 或 WORKMATE_TG_BOT_TOKEN_FILE。');
+  console.error('缺少 Telegram bot token：设置 OPENCLAWX_TG_BOT_TOKEN 或 OPENCLAWX_TG_BOT_TOKEN_FILE。');
   process.exit(2);
 }
-const allowlist = (process.env.WORKMATE_GATEWAY_ALLOW ?? '')
+const allowlist = (process.env.OPENCLAWX_GATEWAY_ALLOW ?? '')
   .split(',')
   .map((entry) => entry.trim())
   .filter(Boolean);
@@ -38,7 +38,7 @@ const allowlist = (process.env.WORKMATE_GATEWAY_ALLOW ?? '')
 const config = {
   version: 1,
   apiBaseUrl: base,
-  defaultEmployeeId: process.env.WORKMATE_DEFAULT_EMPLOYEE || 'general',
+  defaultEmployeeId: process.env.OPENCLAWX_DEFAULT_EMPLOYEE || 'general',
   channels: {
     telegram: { enabled: true, botToken },
   },

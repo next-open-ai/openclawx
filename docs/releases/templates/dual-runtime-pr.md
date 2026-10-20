@@ -1,4 +1,4 @@
-# Workmate 双运行形态改造 PR 文案
+# OpenClawX 双运行形态改造 PR 文案
 
 ## PR 标题候选
 
@@ -8,7 +8,7 @@
 
 ### 方案 B
 
-`feat: migrate Workmate toward dual publishable desktop + npm web runtime`
+`feat: migrate OpenClawX toward dual publishable desktop + npm web runtime`
 
 ### 方案 C
 
@@ -22,7 +22,7 @@
 
 ### 背景
 
-本 PR 的目标，是让 Workmate 从单一 Electron 桌面形态，升级为同时支持：
+本 PR 的目标，是让 OpenClawX 从单一 Electron 桌面形态，升级为同时支持：
 
 - Electron 桌面应用打包发布
 - npm 安装后由 Node.js 启动本地 Web 站点
@@ -122,11 +122,11 @@
 
 已执行：
 
-- `pnpm --filter @workmate/api typecheck`
+- `pnpm --filter @openclawx/api typecheck`
 - `pnpm web:build`
 - `pnpm agentscope:smoke`
 - `GET /api/health`
-- `pnpm orch:smoke`（在 `WORKMATE_ORCH_RUNNER=memory-approval` 的 smoke API 模式下通过）
+- `pnpm orch:smoke`（在 `OPENCLAWX_ORCH_RUNNER=memory-approval` 的 smoke API 模式下通过）
 
 ### 已知边界
 

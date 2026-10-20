@@ -1,15 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { savedDatabaseConnectionSchema, liveDataObjectCreateSchema, liveDataAccessSchema, liveDataRecordSchema, liveDataQuerySchema, type DataAppSqlOperation, type StructuredDataQuery, type LiveDataObjectInfo, type SavedDatabaseConnection, type DataColumn } from '@workmate/contracts';
+import { savedDatabaseConnectionSchema, liveDataObjectCreateSchema, liveDataAccessSchema, liveDataRecordSchema, liveDataQuerySchema, type DataAppSqlOperation, type StructuredDataQuery, type LiveDataObjectInfo, type SavedDatabaseConnection, type DataColumn } from '@openclawx/contracts';
 import { compileAppSql, appSqlResult } from './app-sql.js';
 import { createSchemaChangeService, migrateSchemaChanges } from './schema-change-service.js';
 import { session, remoteFactory, cell } from './remote-database.js';
 import { StructuredQueryError } from './structured-query.js';
-import type { DataObjectAnnotations } from '@workmate/contracts';
+import type { DataObjectAnnotations } from '@openclawx/contracts';
 import { resolveQueryRelations } from './query-relations.js';
 import { liveQueryTable, readBoundTableMetadata } from './live-database.js';
 import { requireAuth } from '../auth/service.js';
-import { withKeyLock } from '@workmate/orchestrator';
+import { withKeyLock } from '@openclawx/orchestrator';
 import { databaseCredentialPersistence, databaseSecret } from './database-secrets.js';
 import { inspectRemoteDatabase, remoteError, RemoteBusyError, RemoteInputError, type RemoteFactory } from './remote-database.js';
 import { discoverLiveTables, queryLiveTable, queryLiveStructured, mutateLiveTable, isLiveTableWritable, LiveDataError, type LiveTable } from './live-database.js';

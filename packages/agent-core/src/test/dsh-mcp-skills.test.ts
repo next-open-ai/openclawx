@@ -3,16 +3,16 @@ import { mkdtempSync, readFileSync, rmSync, existsSync, writeFileSync, mkdirSync
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import type { AgentSkillRuntime, McpConnectionRuntime } from '@workmate/contracts';
+import type { AgentSkillRuntime, McpConnectionRuntime } from '@openclawx/contracts';
 import {
-  buildWorkmateDshCordisYaml,
-  writeWorkmateDshCordis,
-  materializeWorkmateSkillsForDsh,
+  buildOpenClawXDshCordisYaml,
+  writeOpenClawXDshCordis,
+  materializeOpenClawXSkillsForDsh,
 } from '../dsh/index.js';
-import type { WorkmateDshModelRoute } from '../dsh/index.js';
+import type { OpenClawXDshModelRoute } from '../dsh/index.js';
 
-const route: WorkmateDshModelRoute = {
-  provider: 'workmate',
+const route: OpenClawXDshModelRoute = {
+  provider: 'openclawx',
   model: 'test-model',
   api: 'openai-completions',
   baseUrl: 'https://api.example.com/v1',
@@ -63,7 +63,7 @@ test('dsh cordis embeds stdio + http MCP clients before sdk-jsonrpc-server', () 
     },
   ];
 
-  const yaml = buildWorkmateDshCordisYaml({
+  const yaml = buildOpenClawXDshCordisYaml({
     route,
     mcpConnections,
     skillsEnabled: false,
@@ -84,23 +84,23 @@ test('dsh cordis embeds stdio + http MCP clients before sdk-jsonrpc-server', () 
 });
 
 test('dsh cordis enables skills + customSkillDirs when requested', () => {
-  const yaml = buildWorkmateDshCordisYaml({
+  const yaml = buildOpenClawXDshCordisYaml({
     route,
     skillsEnabled: true,
-    customSkillDirs: ['/tmp/workmate-skills'],
+    customSkillDirs: ['/tmp/openclawx-skills'],
   });
   assert.match(yaml, /skills:\n\s+enabled: true/);
-  assert.match(yaml, /customSkillDirs:\n\s+- "\/tmp\/workmate-skills"/);
+  assert.match(yaml, /customSkillDirs:\n\s+- "\/tmp\/openclawx-skills"/);
 });
 
 test('dsh cordis keeps skills disabled by default', () => {
-  const yaml = buildWorkmateDshCordisYaml(route);
+  const yaml = buildOpenClawXDshCordisYaml(route);
   assert.match(yaml, /skills:\n\s+enabled: false/);
   assert.doesNotMatch(yaml, /dsh-mcp-client/);
 });
 
 test('dsh cordis skips disabled MCP connections', () => {
-  const yaml = buildWorkmateDshCordisYaml({
+  const yaml = buildOpenClawXDshCordisYaml({
     route,
     mcpConnections: [
       {
@@ -116,12 +116,12 @@ test('dsh cordis skips disabled MCP connections', () => {
   assert.doesNotMatch(yaml, /dsh-mcp-client/);
 });
 
-test('materializeWorkmateSkillsForDsh writes kebab SKILL.md and skips platform harness', () => {
-  const cwd = mkdtempSync(path.join(os.tmpdir(), 'workmate-dsh-skills-'));
+test('materializeOpenClawXSkillsForDsh writes kebab SKILL.md and skips platform harness', () => {
+  const cwd = mkdtempSync(path.join(os.tmpdir(), 'openclawx-dsh-skills-'));
   try {
     const skills: AgentSkillRuntime[] = [
       skill({
-        id: 'workmate-workspace',
+        id: 'openclawx-workspace',
         name: 'Workspace',
         instructions: 'should skip',
       }),
@@ -133,7 +133,7 @@ test('materializeWorkmateSkillsForDsh writes kebab SKILL.md and skips platform h
       }),
     ];
 
-    const root = materializeWorkmateSkillsForDsh(cwd, skills);
+    const root = materializeOpenClawXSkillsForDsh(cwd, skills);
     assert.ok(root);
     assert.equal(root, path.join(cwd, '.agents', 'skills'));
 
@@ -143,16 +143,16 @@ test('materializeWorkmateSkillsForDsh writes kebab SKILL.md and skips platform h
     assert.match(body, /^---\nname: doc-writer\n/m);
     assert.match(body, /Write clear docs/);
     assert.match(body, /### Resource: tips\.md/);
-    assert.equal(existsSync(path.join(root!, 'workmate-workspace')), false);
+    assert.equal(existsSync(path.join(root!, 'openclawx-workspace')), false);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
 });
 
-test('materializeWorkmateSkillsForDsh keeps available skills without instructions (pi progressive disclosure)', () => {
-  const cwd = mkdtempSync(path.join(os.tmpdir(), 'workmate-dsh-skills-avail-'));
+test('materializeOpenClawXSkillsForDsh keeps available skills without instructions (pi progressive disclosure)', () => {
+  const cwd = mkdtempSync(path.join(os.tmpdir(), 'openclawx-dsh-skills-avail-'));
   try {
-    const root = materializeWorkmateSkillsForDsh(cwd, [
+    const root = materializeOpenClawXSkillsForDsh(cwd, [
       skill({
         id: 'skill-baseline-pdf-report',
         name: 'PDF 报告生成',
@@ -169,16 +169,16 @@ test('materializeWorkmateSkillsForDsh keeps available skills without instruction
   }
 });
 
-test('materializeWorkmateSkillsForDsh prefers on-disk SKILL.md from rootPath', () => {
-  const cwd = mkdtempSync(path.join(os.tmpdir(), 'workmate-dsh-skills-root-'));
-  const skillRoot = mkdtempSync(path.join(os.tmpdir(), 'workmate-skill-src-'));
+test('materializeOpenClawXSkillsForDsh prefers on-disk SKILL.md from rootPath', () => {
+  const cwd = mkdtempSync(path.join(os.tmpdir(), 'openclawx-dsh-skills-root-'));
+  const skillRoot = mkdtempSync(path.join(os.tmpdir(), 'openclawx-skill-src-'));
   try {
     writeFileSync(
       path.join(skillRoot, 'SKILL.md'),
       '---\nname: from-disk\ndescription: "disk"\n---\n\nFrom disk body.\n',
       'utf8',
     );
-    const root = materializeWorkmateSkillsForDsh(cwd, [
+    const root = materializeOpenClawXSkillsForDsh(cwd, [
       skill({
         id: 'from-disk',
         name: 'From Disk',
@@ -195,15 +195,15 @@ test('materializeWorkmateSkillsForDsh prefers on-disk SKILL.md from rootPath', (
   }
 });
 
-test('writeWorkmateDshCordis persists MCP + skills bridge for a run workspace', () => {
-  const cwd = mkdtempSync(path.join(os.tmpdir(), 'workmate-dsh-cordis-'));
+test('writeOpenClawXDshCordis persists MCP + skills bridge for a run workspace', () => {
+  const cwd = mkdtempSync(path.join(os.tmpdir(), 'openclawx-dsh-cordis-'));
   try {
-    const skillsRoot = materializeWorkmateSkillsForDsh(cwd, [
+    const skillsRoot = materializeOpenClawXSkillsForDsh(cwd, [
       skill({ id: 'review-notes', name: 'Review Notes', instructions: 'Review carefully.' }),
     ]);
     assert.ok(skillsRoot);
 
-    const cordisPath = writeWorkmateDshCordis(cwd, {
+    const cordisPath = writeOpenClawXDshCordis(cwd, {
       route,
       mcpConnections: [
         {
@@ -219,7 +219,7 @@ test('writeWorkmateDshCordis persists MCP + skills bridge for a run workspace', 
       customSkillDirs: [skillsRoot!],
     });
 
-    assert.equal(cordisPath, path.join(cwd, '.workmate-dsh.cordis.yml'));
+    assert.equal(cordisPath, path.join(cwd, '.openclawx-dsh.cordis.yml'));
     const yaml = readFileSync(cordisPath, 'utf8');
     assert.match(yaml, /serverName: "demo-mcp"/);
     assert.match(yaml, /enabled: true/);
@@ -234,11 +234,11 @@ test('writeWorkmateDshCordis persists MCP + skills bridge for a run workspace', 
 });
 
 test('materialize returns null when only skipped / empty skills', () => {
-  const cwd = mkdtempSync(path.join(os.tmpdir(), 'workmate-dsh-skills-empty-'));
+  const cwd = mkdtempSync(path.join(os.tmpdir(), 'openclawx-dsh-skills-empty-'));
   try {
     mkdirSync(cwd, { recursive: true });
     assert.equal(
-      materializeWorkmateSkillsForDsh(cwd, [
+      materializeOpenClawXSkillsForDsh(cwd, [
         skill({ id: 'skill-discovery', name: 'Discovery', instructions: 'x' }),
       ]),
       null,

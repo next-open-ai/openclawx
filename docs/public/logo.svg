@@ -1,15 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Quantummate">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none" aria-hidden="true">
   <defs>
-    <linearGradient id="g" x1="8" y1="7" x2="56" y2="57" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#8c77f3"/>
-      <stop offset="0.52" stop-color="#6357d9"/>
-      <stop offset="1" stop-color="#2ba0c4"/>
+    <linearGradient id="g" x1="0" y1=".2" x2="1" y2=".8" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="0.5" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#06b6d4"/>
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="17" fill="#171420"/>
-  <circle cx="31" cy="30" r="17" fill="none" stroke="url(#g)" stroke-width="5"/>
-  <path d="M40 40 52 52" stroke="url(#g)" stroke-width="6" stroke-linecap="round"/>
-  <circle cx="25" cy="25" r="3.5" fill="#b8abff"/>
-  <circle cx="38" cy="23" r="2.5" fill="#55c8e5"/>
-  <path d="M22 35c5 3 11 3 16-1" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="3" stroke-linecap="round"/>
+  <!-- OpenClawX open-ring mark -->
+  <path stroke="url(#g)" stroke-width="2.2" stroke-linecap="round" fill="none" d="M24.4 7.8 A13 13 0 1 1 15.6 7.8"/>
+  <!-- Antenna and signal point -->
+  <path stroke="url(#g)" stroke-width="1.4" stroke-linecap="round" d="M20 7.8V5"/>
+  <circle cx="20" cy="4.2" r="1.4" fill="url(#g)"/>
+  <!-- Left eye -->
+  <circle cx="14" cy="18" r="2.2" fill="url(#g)"/>
+  <circle cx="14.5" cy="17.4" r="0.5" fill="#fff" opacity="0.9"/>
+  <!-- Right eye -->
+  <circle cx="26" cy="18" r="2.2" fill="url(#g)"/>
+  <circle cx="26.5" cy="17.4" r="0.5" fill="#fff" opacity="0.9"/>
+  <!-- Smile -->
+  <path stroke="url(#g)" stroke-width="1.2" stroke-linecap="round" fill="none" d="M15 24q5 1.8 10 0"/>
 </svg>

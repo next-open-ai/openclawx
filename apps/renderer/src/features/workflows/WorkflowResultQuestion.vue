@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
-import type { WorkflowResultEvidence } from '@workmate/contracts';
+import type { WorkflowResultEvidence } from '@openclawx/contracts';
 import { workflowResultEvidence } from '../../services/orchestration';
 
 const props = defineProps<{ sessionId?: string; disabled: boolean }>();

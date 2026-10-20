@@ -1,5 +1,5 @@
 import type { AgentTool } from '@mariozechner/pi-agent-core';
-import type { DecisionRuntimeConfig } from '@workmate/contracts';
+import type { DecisionRuntimeConfig } from '@openclawx/contracts';
 import { Type, defineAgentTool } from './pi-tools.js';
 
 export type DecisionQuestion =

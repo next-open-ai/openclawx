@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const desktop = path.join(project, 'apps/desktop');
-const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-packaged-data-'));
+const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-packaged-data-'));
 const stage = path.join(root, 'stage');
 let apiChild;
 const run = (command, args, env = process.env, cwd = desktop) => new Promise((resolve, reject) => {
@@ -19,10 +19,10 @@ const run = (command, args, env = process.env, cwd = desktop) => new Promise((re
 });
 const require = createRequire(path.join(desktop, 'package.json'));
 try {
-  await run(process.execPath, [path.join(desktop, 'scripts/stage.mjs')], { ...process.env, WORKMATE_STAGE_DIR: stage });
+  await run(process.execPath, [path.join(desktop, 'scripts/stage.mjs')], { ...process.env, OPENCLAWX_STAGE_DIR: stage });
   // Prove the safety guard leaves an existing acceptance directory intact.
   const guarded = await new Promise(resolve => {
-    const child = spawn(process.execPath, [path.join(desktop, 'scripts/stage.mjs')], { cwd: desktop, env: { ...process.env, WORKMATE_STAGE_DIR: stage }, stdio: 'ignore' });
+    const child = spawn(process.execPath, [path.join(desktop, 'scripts/stage.mjs')], { cwd: desktop, env: { ...process.env, OPENCLAWX_STAGE_DIR: stage }, stdio: 'ignore' });
     child.once('exit', resolve);
   });
   assert.notEqual(guarded, 0);
@@ -39,15 +39,15 @@ try {
   const build = { ...manifest.build, directories: { app: clone, output: path.join(root, 'release'), buildResources: path.join(clone, 'build') },
     electronVersion: JSON.parse(readFileSync(require.resolve('electron/package.json'), 'utf8')).version,
     npmRebuild: false, extraResources: [{ from: path.join(stage, 'api'), to: 'api' }, { from: path.join(stage, 'agentscope-runtime'), to: 'agentscope-runtime' }] };
-  writeFileSync(path.join(clone, 'package.json'), JSON.stringify({ name: manifest.name, version: manifest.version, description: manifest.description, main: manifest.main, author: 'Workmate' }));
+  writeFileSync(path.join(clone, 'package.json'), JSON.stringify({ name: manifest.name, version: manifest.version, description: manifest.description, main: manifest.main, author: 'OpenClawX' }));
   const config = path.join(root, 'builder.json');
   writeFileSync(config, JSON.stringify(build));
   await run(process.execPath, [require.resolve('electron-builder/cli.js'), '--dir', '--config', config, '--publish', 'never'], { ...process.env, CSC_IDENTITY_AUTO_DISCOVERY: 'false' });
   assert.equal(process.platform, 'darwin', 'This unpacked desktop smoke currently targets macOS only.');
   const macDir = process.arch === 'arm64' ? 'mac-arm64' : 'mac';
-  const appRoot = path.join(root, 'release', macDir, 'Workmate.app/Contents');
+  const appRoot = path.join(root, 'release', macDir, 'OpenClawX.app/Contents');
   const apiRoot = path.join(appRoot, 'Resources/api');
-  const binary = path.join(appRoot, 'MacOS/Workmate');
+  const binary = path.join(appRoot, 'MacOS/OpenClawX');
   assert.ok(existsSync(binary) && existsSync(path.join(apiRoot, 'main.cjs')));
   const socket = createServer();
   await new Promise(resolve => socket.listen(0, '127.0.0.1', resolve));
@@ -56,7 +56,7 @@ try {
   const base = `http://127.0.0.1:${port}/api`;
   let output = '';
   apiChild = spawn(binary, [path.join(apiRoot, 'main.cjs')], { cwd: root,
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', WORKMATE_DATA_DIR: path.join(root, 'data'), WORKMATE_API_PORT: String(port), WORKMATE_API_HOST: '127.0.0.1', WORKMATE_AGENT_ENGINE: 'pi', WORKMATE_AGENTSCOPE_ENABLED: '0', WORKMATE_MOBILE_HTTPS_ENABLED: '0', NODE_PATH: path.join(apiRoot, 'node_deps') }, stdio: ['ignore', 'pipe', 'pipe'] });
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', OPENCLAWX_DATA_DIR: path.join(root, 'data'), OPENCLAWX_API_PORT: String(port), OPENCLAWX_API_HOST: '127.0.0.1', OPENCLAWX_AGENT_ENGINE: 'pi', OPENCLAWX_AGENTSCOPE_ENABLED: '0', OPENCLAWX_MOBILE_HTTPS_ENABLED: '0', NODE_PATH: path.join(apiRoot, 'node_deps') }, stdio: ['ignore', 'pipe', 'pipe'] });
   apiChild.stdout.on('data', chunk => { output = (output + chunk).slice(-12000); });
   apiChild.stderr.on('data', chunk => { output = (output + chunk).slice(-12000); });
   for (let attempt = 0; ; attempt++) {
@@ -66,7 +66,7 @@ try {
   }
   let session = '';
   const json = async (url, method = 'GET', body) => {
-    const response = await fetch(`${base}${url}`, { method, headers: { 'content-type': 'application/json', ...(session ? { 'x-workmate-session': session } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    const response = await fetch(`${base}${url}`, { method, headers: { 'content-type': 'application/json', ...(session ? { 'x-openclawx-session': session } : {}) }, body: body ? JSON.stringify(body) : undefined });
     const result = await response.json();
     assert.ok(response.ok, `${url}: ${response.status} ${JSON.stringify(result)}`);
     return result;

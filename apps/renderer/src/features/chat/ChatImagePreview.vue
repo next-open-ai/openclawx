@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from 'vue';
-import type { ChatImageAttachment } from '@workmate/contracts';
+import type { ChatImageAttachment } from '@openclawx/contracts';
 import { loadChatImageUrl } from '../../services/orchestration';
 const props = defineProps<{ sessionId?: string; image: ChatImageAttachment; index: number }>();
 const url = ref('');

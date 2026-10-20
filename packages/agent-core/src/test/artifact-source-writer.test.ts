@@ -10,7 +10,7 @@ import {
 } from '../artifact-source-writer.js';
 
 test('large artifact writer assembles ordered pieces and atomically exposes the final file', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-artifact-writer-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-artifact-writer-'));
   try {
     const session = startArtifactSourceWrite({ workspaceRoot: root, path: 'output/index.html', totalParts: 2 });
     appendArtifactSourceWrite({ writeId: session.id, seq: 1, content: '<h1>' });
@@ -33,7 +33,7 @@ test('large artifact writer rejects out-of-order pieces without writing a partia
 });
 
 test('large artifact writer supports project-root paths when explicitly enabled', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-artifact-project-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-artifact-project-'));
   try {
     const session = startArtifactSourceWrite({ workspaceRoot: root, path: 'index.html', totalParts: 1, requireOutput: false });
     appendArtifactSourceWrite({ writeId: session.id, seq: 1, content: '<main>project</main>' });

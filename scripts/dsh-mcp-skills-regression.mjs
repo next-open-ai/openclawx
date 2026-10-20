@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Regression: Workmate → dsh MCP + Skills bridge.
+ * Regression: OpenClawX → dsh MCP + Skills bridge.
  *
  * Deterministic (no live dsh binary / LLM). Asserts cordis composition and
  * skill materialization that streamAgentReplyViaDsh depends on.
@@ -18,13 +18,13 @@ const testFile = path.join(agentCore, 'dist', 'test', 'dsh-mcp-skills.test.js');
 
 function ensureBuilt() {
   if (fs.existsSync(testFile)) return;
-  const build = spawnSync('pnpm', ['--filter', '@workmate/agent-core', 'build'], {
+  const build = spawnSync('pnpm', ['--filter', '@openclawx/agent-core', 'build'], {
     cwd: projectRoot,
     stdio: 'inherit',
     shell: process.platform === 'win32',
   });
   if (build.status !== 0) {
-    throw new Error('Failed to build @workmate/agent-core for dsh MCP/Skills regression.');
+    throw new Error('Failed to build @openclawx/agent-core for dsh MCP/Skills regression.');
   }
   if (!fs.existsSync(testFile)) {
     throw new Error(`Missing compiled test: ${testFile}`);
@@ -55,7 +55,7 @@ function main() {
       'cordis skips disabled MCP / skills-off default',
       'materialize kebab SKILL.md + skip platform harness',
       'materialize prefers on-disk SKILL.md',
-      'writeWorkmateDshCordis persists MCP + skills bridge',
+      'writeOpenClawXDshCordis persists MCP + skills bridge',
     ],
     testFile,
   }, null, 2)}\n`);

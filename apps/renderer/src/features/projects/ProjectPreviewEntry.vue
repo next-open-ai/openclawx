@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { parameterValidator, parameterValidationMessage } from '@workmate/contracts';
-import type { TaskParameterProjectPreview } from '@workmate/contracts';
+import { parameterValidator, parameterValidationMessage } from '@openclawx/contracts';
+import type { TaskParameterProjectPreview } from '@openclawx/contracts';
 import { templateTasksApi as api } from '../../services/template-tasks';
 import { parameterDataRequest } from '../../services/task-parameter-bridge';
 import ProjectApplicationButton from './ProjectApplicationButton.vue';
@@ -40,21 +40,21 @@ function send(message:Record<string,unknown>) {
 async function receive(event:MessageEvent) {
   if (!dialog.value?.open || !preview.value || !channel.value || event.source !== frame.value?.contentWindow) return;
   const message = event.data;
-  if (message?.type === 'workmate.task.ready') {
-    send({type:'workmate.task.init',parameters:JSON.parse(JSON.stringify(preview.value.parameters)),submitLabel:'测试参数（不保存）'}); return;
+  if (message?.type === 'openclawx.task.ready') {
+    send({type:'openclawx.task.init',parameters:JSON.parse(JSON.stringify(preview.value.parameters)),submitLabel:'测试参数（不保存）'}); return;
   }
   if (message?.channel !== channel.value) return;
-  if (message.type === 'workmate.task.request') {
+  if (message.type === 'openclawx.task.request') {
     const active = channel.value;
-    try { const data = await parameterDataRequest(message.path,message.query); if(active === channel.value) send({type:'workmate.task.response',id:message.id,data}); }
-    catch(cause) { if(active === channel.value) send({type:'workmate.task.response',id:message.id,error:cause instanceof Error ? cause.message : '数据查询失败'}); }
-  } else if (message.type === 'workmate.task.submit') {
+    try { const data = await parameterDataRequest(message.path,message.query); if(active === channel.value) send({type:'openclawx.task.response',id:message.id,data}); }
+    catch(cause) { if(active === channel.value) send({type:'openclawx.task.response',id:message.id,error:cause instanceof Error ? cause.message : '数据查询失败'}); }
+  } else if (message.type === 'openclawx.task.submit') {
     try {
       const parsed = parameterValidator(preview.value.schema).safeParse(message.parameters);
-      if (!parsed.success) { send({type:'workmate.task.saved',error:parameterValidationMessage(parsed.error,preview.value.schema).replace('默认参数','测试参数').replace('请打开“设置默认参数”填写并应用后重试。','请填写后重新测试。')}); return; }
+      if (!parsed.success) { send({type:'openclawx.task.saved',error:parameterValidationMessage(parsed.error,preview.value.schema).replace('默认参数','测试参数').replace('请打开“设置默认参数”填写并应用后重试。','请填写后重新测试。')}); return; }
       result.value = JSON.stringify(parsed.data,null,2);
-      send({type:'workmate.task.saved',notice:'参数校验通过，仅供测试；未保存模板或创建任务。'});
-    } catch(cause) { send({type:'workmate.task.saved',error:cause instanceof Error ? cause.message : '参数校验失败'}); }
+      send({type:'openclawx.task.saved',notice:'参数校验通过，仅供测试；未保存模板或创建任务。'});
+    } catch(cause) { send({type:'openclawx.task.saved',error:cause instanceof Error ? cause.message : '参数校验失败'}); }
   }
 }
 watch(() => props.projectId, () => { close(); void identify(); }, {immediate:true});

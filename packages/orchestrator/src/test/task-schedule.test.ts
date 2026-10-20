@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {TaskScheduleSchema,type TaskSchedule} from '@workmate/contracts';
+import {TaskScheduleSchema,type TaskSchedule} from '@openclawx/contracts';
 import {nextTaskSchedule} from '../task-schedule.js';
 import {TemplateTaskService} from '../template-tasks.js';
 import {MemoryStore} from '../storage/memory.js';

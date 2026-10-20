@@ -28,10 +28,10 @@ const server = createServer((req,res)=>{
   res.end(`<body data-result="none"><script>addEventListener('message',e=>{if(e.data.kind==='submit')document.body.dataset.result='submitted';if(e.data.isolated)document.body.dataset.isolated='true'});</script><iframe sandbox="${old?sandbox.replace(' allow-forms',''):sandbox}" src="/child${old?'?old':''}"></iframe></body>`);
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-const chrome=process.env.WORKMATE_TEST_CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const chrome=process.env.OPENCLAWX_TEST_CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const profiles=[];
 async function run(mode){
- const profile=await mkdtemp(join(tmpdir(),'workmate-form-check-'));profiles.push(profile);
+ const profile=await mkdtemp(join(tmpdir(),'openclawx-form-check-'));profiles.push(profile);
  return new Promise((resolve,reject)=>{
   const child=spawn(chrome,['--headless','--disable-gpu','--no-first-run',`--user-data-dir=${profile}`,'--dump-dom','--virtual-time-budget=1500',`http://127.0.0.1:${server.address().port}/?${mode}`]);
   let out='',err='';child.stdout.on('data',d=>out+=d);child.stderr.on('data',d=>err+=d);

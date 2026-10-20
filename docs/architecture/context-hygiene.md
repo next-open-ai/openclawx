@@ -96,7 +96,7 @@ artifacts: output/report.pdf
    - 已写入路径列表
    - 最近错误摘要
 6. **输出结构**：`[anchors] + [LLM summary] + recent messages`  
-   锚点与摘要以 `[Workmate context summary]` 用户/助手对注入。
+   锚点与摘要以 `[OpenClawX context summary]` 用户/助手对注入。
 
 ## 非目标
 

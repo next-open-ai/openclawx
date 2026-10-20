@@ -36,13 +36,13 @@ export function requestParentChannelSecrets(timeoutMs = 4_000): Promise<void> {
     }, timeoutMs);
     function onMessage(message: unknown) {
       const payload = message as { type?: string; payload?: ChannelSecrets } | null;
-      if (!payload || payload.type !== 'workmate:channels:secrets') return;
+      if (!payload || payload.type !== 'openclawx:channels:secrets') return;
       clearTimeout(timer);
       process.off?.('message', onMessage);
       cache = { channels: payload.payload?.channels };
       resolve();
     }
     process.on('message', onMessage);
-    process.send?.({ type: 'workmate:channels:secrets:request' });
+    process.send?.({ type: 'openclawx:channels:secrets:request' });
   });
 }

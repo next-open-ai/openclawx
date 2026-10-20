@@ -1,5 +1,5 @@
-import { workflowResultReferenceSchema } from '@workmate/contracts';
-import type { Orchestrator } from '@workmate/orchestrator';
+import { workflowResultReferenceSchema } from '@openclawx/contracts';
+import type { Orchestrator } from '@openclawx/orchestrator';
 import type { AuthPrincipal } from '../auth/service.js';
 import { WorkflowRuns } from './workflow-runs.js';
 

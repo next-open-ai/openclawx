@@ -1,5 +1,5 @@
-import {withWorkResultAccess,createWorkResultRanker} from '@workmate/agent-core';
-import type {AgentRunner,KeyValueStore,Orchestrator,RunRecord} from '@workmate/orchestrator';
+import {withWorkResultAccess,createWorkResultRanker} from '@openclawx/agent-core';
+import type {AgentRunner,KeyValueStore,Orchestrator,RunRecord} from '@openclawx/orchestrator';
 import {createWorkResultService,isPrivateWorkOwner} from './service.js';
 
 export function createWorkResultRunner(store:KeyValueStore,orch:()=>Orchestrator,active:(u:string,o:string)=>unknown,base:AgentRunner):AgentRunner{

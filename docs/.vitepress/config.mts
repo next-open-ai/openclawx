@@ -19,8 +19,8 @@ const architectureItems = [
 
 export default defineConfig({
   lang: 'zh-CN',
-  title: 'Workmate Docs',
-  description: 'Workmate 产品、架构、SDD、工程、测试与平台评测文档',
+  title: 'OpenClawX Docs',
+  description: 'OpenClawX 产品、架构、SDD、工程、测试与平台评测文档',
   base: './',
   cleanUrls: false,
   lastUpdated: true,
@@ -35,7 +35,7 @@ export default defineConfig({
   },
   themeConfig: {
     logo: '/logo.svg',
-    siteTitle: 'Workmate Docs',
+    siteTitle: 'OpenClawX Docs',
     nav: [
       { text: '首页', link: '/' },
       { text: '产品', link: '/product/README' },
@@ -159,7 +159,7 @@ export default defineConfig({
     returnToTopLabel: '返回顶部',
     lastUpdated: { text: '最后更新' },
     footer: {
-      message: 'Workmate 工程与产品知识库',
+      message: 'OpenClawX 工程与产品知识库',
       copyright: 'Generated from the repository documentation source of truth.'
     }
   }

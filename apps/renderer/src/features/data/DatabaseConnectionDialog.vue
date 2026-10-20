@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
-import { remoteDatabaseConnectionSchema, remoteDatabaseImportSchema } from '@workmate/contracts';
+import { remoteDatabaseConnectionSchema, remoteDatabaseImportSchema } from '@openclawx/contracts';
 import { inspectDatabaseConnection, importDatabaseObject, refreshDatabaseObject, type DataSource } from '../../services/api';
 
 const props = defineProps<{ source?: DataSource | null }>();

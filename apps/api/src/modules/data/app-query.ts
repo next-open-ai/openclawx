@@ -1,10 +1,10 @@
-import { dataAppOperationSchema, dataAppInvokeSchema, dataAppSqlOperationSchema, dataAppStoredOperationSchema, dataAppSqlApprovalSchema, dataAppMutationSchema, structuredDataQuerySchema, type QueryAssetDefinition, type DataAppOperationSummary, type DataAppOperation, type StructuredDataQuery, type DataObjectModelSchema } from '@workmate/contracts';
+import { dataAppOperationSchema, dataAppInvokeSchema, dataAppSqlOperationSchema, dataAppStoredOperationSchema, dataAppSqlApprovalSchema, dataAppMutationSchema, structuredDataQuerySchema, type QueryAssetDefinition, type DataAppOperationSummary, type DataAppOperation, type StructuredDataQuery, type DataObjectModelSchema } from '@openclawx/contracts';
 import { createHash } from 'node:crypto';
 import type { AgentDataGateway } from './agent-query.js';
 import { guardSensitive, safeSchema, readAgentSchema } from './agent-query.js';
 import { StructuredQueryError } from './structured-query.js';
-import { dataAppSqlTrialSchema } from '@workmate/contracts';
-import { withKeyLock } from '@workmate/orchestrator';
+import { dataAppSqlTrialSchema } from '@openclawx/contracts';
+import { withKeyLock } from '@openclawx/orchestrator';
 
 type Owner = { userId: string; orgId: string };
 type DB = { run(sql: string, params?: unknown[]): void; exec(sql: string, params?: unknown[]): Array<{ values?: unknown[][] }> };
@@ -153,7 +153,7 @@ export class ManagedAppQueries {
   }
   async proposeSchema(appId:string,owner:Owner,raw:unknown){
     const scope=this.authorize(appId,owner);if(!this.gateway.schemaProposal)deny('结构创建暂不可用。');
-    const plan=await this.gateway.schemaProposal(scope.sourceId,owner,raw) as import('@workmate/contracts').DataSchemaPlan;
+    const plan=await this.gateway.schemaProposal(scope.sourceId,owner,raw) as import('@openclawx/contracts').DataSchemaPlan;
     this.authorize(appId,owner);
     return {id:plan.id,revision:plan.revision,tables:plan.tables,state:plan.state,notice:'仅保存建表草稿，未执行。请用户在项目预览与发布中开启结构创建并审核；批准前不能使用新表。'};
   }

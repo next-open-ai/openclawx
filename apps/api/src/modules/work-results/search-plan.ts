@@ -1,4 +1,4 @@
-import type {WorkResultSearchInput,WorkResultItem} from '@workmate/contracts';
+import type {WorkResultSearchInput,WorkResultItem} from '@openclawx/contracts';
 
 const DAY=86_400_000,SHANGHAI_OFFSET=8*60*60*1000;
 

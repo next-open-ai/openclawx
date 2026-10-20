@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import { commitOntologyCandidates, importOntologyCandidates, planOntologyQuery, publishOntologyDraft, readOntologyWorkflow, reviewOntologyCandidates, saveOntologyDraft } from '../ontology-runtime.js';
 
 test('ontology draft, publish, candidate review and commit form a closed loop', async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'workmate-ontology-flow-'));
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'openclawx-ontology-flow-'));
   const kb = { id: 'kb-flow', name: 'Flow', provider: 'lancedb' as const, enabled: true, dataDir: dir };
   try {
     await saveOntologyDraft(kb, { version: 1, nodes: [{ id: 'customer-a', type: 'customer', name: '客户A', aliases: ['A公司'], properties: {}, status: 'draft' }], edges: [] });
@@ -32,7 +32,7 @@ test('ontology draft, publish, candidate review and commit form a closed loop', 
 });
 
 test('five-step governance stages candidates, validates changes and rolls back by creating a new version', async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'workmate-ontology-governance-'));
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'openclawx-ontology-governance-'));
   const kb = { id: 'kb-governance', name: 'Governance', provider: 'lancedb' as const, enabled: true, dataDir: dir };
   try {
     const runtime = await import('../ontology-runtime.js');
@@ -55,7 +55,7 @@ test('five-step governance stages candidates, validates changes and rolls back b
 });
 
 test('draft repair removes orphan relations and defers their candidates', async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'workmate-ontology-repair-'));
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'openclawx-ontology-repair-'));
   const kb = { id: 'kb-repair', name: 'Repair', provider: 'lancedb' as const, enabled: true, dataDir: dir };
   try {
     const runtime = await import('../ontology-runtime.js');
@@ -70,7 +70,7 @@ test('draft repair removes orphan relations and defers their candidates', async 
 });
 
 test('governance detects duplicates, applies merge commands and supports undo', async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'workmate-ontology-governance-ops-'));
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'openclawx-ontology-governance-ops-'));
   const kb = { id: 'kb-governance-ops', name: 'GovernanceOps', provider: 'lancedb' as const, enabled: true, dataDir: dir };
   try {
     const runtime = await import('../ontology-runtime.js');
@@ -92,7 +92,7 @@ test('governance detects duplicates, applies merge commands and supports undo', 
 });
 
 test('governance resolves naming and isolated entities through explicit actions', async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'workmate-ontology-actions-'));
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'openclawx-ontology-actions-'));
   const kb = { id: 'kb-actions', name: 'Actions', provider: 'lancedb' as const, enabled: true, dataDir: dir };
   try {
     const runtime = await import('../ontology-runtime.js');

@@ -103,7 +103,7 @@ onBeforeUnmount(() => {
     <div :class="['mb-5 flex items-center', collapsed ? 'justify-center' : 'justify-between px-1']">
       <button type="button" data-app-gallery-entry class="flex items-center gap-2.5 rounded-lg outline-offset-4 hover:opacity-80" title="打开应用大厅" aria-label="打开应用大厅" @click="emit('openApplications')">
         <BrandLogo />
-        <span v-if="!collapsed" class="text-sm font-extrabold tracking-[.06em]">Workmate</span>
+        <span v-if="!collapsed" class="text-sm font-extrabold tracking-[.06em]">OpenClawX</span>
       </button>
       <button v-if="!collapsed" class="grid h-8 w-8 place-items-center rounded-[10px] text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]" type="button" title="收起侧栏" @click="emit('toggle')">
         <SidebarIcon name="chevron-left" />

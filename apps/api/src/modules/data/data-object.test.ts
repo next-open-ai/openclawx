@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import Fastify from 'fastify';
-import { dataObjectAnnotationsSchema } from '@workmate/contracts';
+import { dataObjectAnnotationsSchema } from '@openclawx/contracts';
 import { jsonDataRows, readAnnotations, modelReadableSchema } from './data-object.js';
 import { dataRoutes } from './routes.js';
 import './remote-database.test.js';
@@ -34,9 +34,9 @@ test('DO-R1/R4: JSON rows and model schema contain no samples or credentials', (
 });
 
 test('DO-R1–R5: old storage migration, save/read, ownership, app context and API sync', async () => {
-  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-data-objects-'));
-  const previousDir = process.env.WORKMATE_DATA_DIR;
-  process.env.WORKMATE_DATA_DIR = temp;
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-data-objects-'));
+  const previousDir = process.env.OPENCLAWX_DATA_DIR;
+  process.env.OPENCLAWX_DATA_DIR = temp;
   const require = createRequire(import.meta.url);
   const sqlRoot = path.dirname(require.resolve('sql.js/dist/sql-wasm.js'));
   const SQL = await require(path.join(sqlRoot, 'sql-wasm.js'))({ wasmBinary: fs.readFileSync(path.join(sqlRoot, 'sql-wasm.wasm')) });
@@ -146,7 +146,7 @@ test('DO-R1–R5: old storage migration, save/read, ownership, app context and A
     assert.equal(JSON.parse(disk.exec('SELECT annotations_json FROM data_sources WHERE id = ?', [source.id])[0].values[0][0]).description, 'paid orders'); disk.close();
   } finally {
     await app.close(); await new Promise<void>(resolve => remote.close(() => resolve()));
-    if (previousDir === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = previousDir;
+    if (previousDir === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = previousDir;
     fs.rmSync(temp, { recursive: true, force: true });
   }
 });

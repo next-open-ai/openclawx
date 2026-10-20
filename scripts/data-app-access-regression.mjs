@@ -19,15 +19,15 @@ const context = {
 };
 vm.createContext(context);
 vm.runInContext(ts.transpileModule(handler,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
-const send = (type='workmate.app.mutate',source=child)=>context.receive({source,data:{id:1,type,operationId:'edit',parameters:{id:1}}});
+const send = (type='openclawx.app.mutate',source=child)=>context.receive({source,data:{id:1,type,operationId:'edit',parameters:{id:1}}});
 await send(); action='update'; await send();
 assert.equal(confirms,0); assert.equal(calls.filter(c=>c.path.endsWith('/mutate')).length,2);
 assert.equal(calls[0].body.confirmed,undefined);
 action='delete'; await send(); assert.equal(confirms,0); assert.equal(messages.at(-1).ok,true);
 action='update'; approved=false; await send(); assert.equal(messages.at(-1).ok,false);
 approved=true; canWrite=false; await send(); assert.equal(messages.at(-1).ok,false);
-await send('workmate.app.access'); assert.equal(messages.at(-1).data.canWrite,false);
-const count=calls.length; await send('workmate.app.access',{}); assert.equal(calls.length,count);
+await send('openclawx.app.access'); assert.equal(messages.at(-1).data.canWrite,false);
+const count=calls.length; await send('openclawx.app.access',{}); assert.equal(calls.length,count);
 assert.equal(calls.filter(c=>c.path.endsWith('/mutate')).length,3);
 console.log('MDA-T18 PASS: actual preview handler direct insert/update/delete, approval/object denial and scoped access query.');
 const trialHandler = file.slice(file.indexOf('async function trialSql('), file.indexOf('const status ='));

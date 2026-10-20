@@ -6,7 +6,7 @@
 
 ## 自动回归
 
-在仓库根目录执行 `pnpm project:regression`。需要 Node 22+、已安装的工作区依赖和 Playwright/浏览器；非默认位置可用 `WORKMATE_PLAYWRIGHT_MODULE` 指定 Playwright 模块、`WORKMATE_BROWSER_CHANNEL=chrome` 使用本机 Chrome。
+在仓库根目录执行 `pnpm project:regression`。需要 Node 22+、已安装的工作区依赖和 Playwright/浏览器；非默认位置可用 `OPENCLAWX_PLAYWRIGHT_MODULE` 指定 Playwright 模块、`OPENCLAWX_BROWSER_CHANNEL=chrome` 使用本机 Chrome。
 
 命令依次运行编排/API 测试、前端构建、项目创建/输入框/预览发布浏览器回归，失败立即停止。构建必须先于浏览器回归完成，避免 Vite 清理产物导致测试读取 CSS 失败。
 

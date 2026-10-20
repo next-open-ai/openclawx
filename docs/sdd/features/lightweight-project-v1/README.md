@@ -35,16 +35,16 @@ LP-T6 implemented (2026-10-10): optional shared workspace selection contract, AP
 
 Validation (2026-10-10):
 
-- `pnpm --filter @workmate/contracts build`: passed.
-- `pnpm --filter @workmate/orchestrator test`: 75 passed, including explicit-turn/history, failure/cancel/reopen, approvals allowed/denied, conflict and symlink protection.
-- `pnpm --filter @workmate/api test`: 43 passed, 2 opt-in real DB tests skipped; includes strict private empty creation and rejecting legacy sync-run overwrite for conversation projects.
-- `pnpm --filter @workmate/api build` and renderer `typecheck`/`build`: passed; existing Vite chunk-size/mixed-import warnings remain.
+- `pnpm --filter @openclawx/contracts build`: passed.
+- `pnpm --filter @openclawx/orchestrator test`: 75 passed, including explicit-turn/history, failure/cancel/reopen, approvals allowed/denied, conflict and symlink protection.
+- `pnpm --filter @openclawx/api test`: 43 passed, 2 opt-in real DB tests skipped; includes strict private empty creation and rejecting legacy sync-run overwrite for conversation projects.
+- `pnpm --filter @openclawx/api build` and renderer `typecheck`/`build`: passed; existing Vite chunk-size/mixed-import warnings remain.
 - `pnpm concurrency:regression`: passed (synthetic runner).
 - `node scripts/workflow-chat-return-regression.mjs`, `node scripts/project-sharing-regression.mjs`: passed.
 - `scripts/project-composer-regression.mjs` with existing Playwright/Chrome: passed (default employee, IME, failed/successful send, stop, @ selection, document retry/isolation, synthetic ASR manual confirmation).
 - `scripts/lightweight-project-regression.mjs`: production form/handler in isolated Playwright HTTP fixture, desktop/narrow-screen screenshots visually inspected; creation does not plan/execute, failed request retains input, retry succeeds. CLI agent-browser unavailable; existing Playwright Chrome used. Component wiring verified structurally, not an end-to-end real supplier acceptance.
 
-Safety/limitations: renderer never recovers run files automatically into conversation projects; backend sync-run rejects that path. UI-read `.workmate` metadata does not trigger false file conflicts. A change to project files during execution rejects promotion instead of overwriting. Promotion uses a prepared directory plus rename/rollback; this is not an OS sandbox or a fully journaled power-loss transaction. If rollback itself fails the temporary sibling backup remains for recovery. Large workspaces (>5000 files or 512 MB) are rejected explicitly. Deleting old deliverables through model output is not yet supported; explicit editor/management remains separate. No real provider calls, user-project migrations or external publication were performed.
+Safety/limitations: renderer never recovers run files automatically into conversation projects; backend sync-run rejects that path. UI-read `.openclawx` metadata does not trigger false file conflicts. A change to project files during execution rejects promotion instead of overwriting. Promotion uses a prepared directory plus rename/rollback; this is not an OS sandbox or a fully journaled power-loss transaction. If rollback itself fails the temporary sibling backup remains for recovery. Large workspaces (>5000 files or 512 MB) are rejected explicitly. Deleting old deliverables through model output is not yet supported; explicit editor/management remains separate. No real provider calls, user-project migrations or external publication were performed.
 
 Loading: restart the running development API to register the new endpoint and refresh/restart renderer. This acceptance did not restart the user's active app process or modify existing projects. No stored-data migration is required; legacy records without kind retain DAG behavior.
 
@@ -52,8 +52,8 @@ Loading: restart the running development API to register the new endpoint and re
 
 Implemented presentation-only refinement: selected employee stays the speaker; known redundant lifecycle messages are hidden without changing stored messages; other system notices use “系统”. Conversation summaries are no longer synthesized/displayed. Inline per-turn errors and expandable structured diagnostics cover partial and absent replies; compact queue/working/approval states and cancellation remain visible. Legacy summaries, explicit workflow entry/results, tools, approvals and assets are unchanged. Manual and generated in-app manual synchronized.
 
-- `pnpm --filter @workmate/renderer build`: passed (includes Vue/TypeScript checking); existing bundle-size/mixed-import warnings remain. Initial typecheck caught the diagnostic HTTP field name and it was corrected to the shared contract's `status` before the successful rerun.
-- `pnpm --filter @workmate/orchestrator test`: 77 passed; no execution-layer changes.
+- `pnpm --filter @openclawx/renderer build`: passed (includes Vue/TypeScript checking); existing bundle-size/mixed-import warnings remain. Initial typecheck caught the diagnostic HTTP field name and it was corrected to the shared contract's `status` before the successful rerun.
+- `pnpm --filter @openclawx/orchestrator test`: 77 passed; no execution-layer changes.
 - `node scripts/project-conversation-presentation-regression.mjs`: passed using existing Playwright/Chrome, with production message template, projection and status component. Error/diagnostic desktop/mobile screenshots inspected; narrow-screen overflow check passed. No extra coordinator summary, preserved selected employee/assets/approval controls, error deduplication and no-reply failure verified.
 - Existing `lightweight-project-regression.mjs`, `project-composer-regression.mjs`, `project-live-state-regression.mjs`, `workflow-chat-return-regression.mjs`, `run-diagnostics-regression.mjs`: passed. The diagnostics fixture initially lacked the previously introduced live-state module adapter; it now loads the real pure helper and adds actual conversation terminal-projection assertions, without changing expected legacy behavior.
 - `pnpm docs:build`: passed. `git diff --check`: passed.

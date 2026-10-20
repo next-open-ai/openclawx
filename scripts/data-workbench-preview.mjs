@@ -8,7 +8,7 @@ const vueRequire = createRequire(fs.realpathSync('apps/renderer/node_modules/vue
 const viteRequire = createRequire(fs.realpathSync('apps/renderer/node_modules/vite/package.json'));
 const { parse, compileScript, compileStyle } = vueRequire('@vue/compiler-sfc');
 const { build } = viteRequire('esbuild');
-const employeePreview = process.env.WORKMATE_DATA_PREVIEW_EMPLOYEE === '1';
+const employeePreview = process.env.OPENCLAWX_DATA_PREVIEW_EMPLOYEE === '1';
 const bundle = await build({
   bundle: true, write: false, platform: 'browser', format: 'esm',
   define: { 'process.env.NODE_ENV': '"development"', 'import.meta.env': '{}', __VUE_OPTIONS_API__: 'true', __VUE_PROD_DEVTOOLS__: 'false', __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false' },
@@ -19,7 +19,7 @@ const bundle = await build({
   ` : `import {createApp} from 'vue'; import Page from './apps/renderer/src/features/data/DataWorkbenchPage.vue'; createApp(Page,{employeeId:'general',onOpenProject:()=>console.info('FIXTURE: received project navigation event; no model called')}).mount('#app');` },
   plugins: [{ name: 'data-object-fixture', setup(builder) {
     builder.onResolve({ filter: /^vue$/ }, () => ({ path: vueRequire.resolve('vue/dist/vue.esm-bundler.js') }));
-    builder.onResolve({ filter: /^@workmate\/contracts$/ }, () => ({ path: path.resolve('packages/contracts/dist/index.js') }));
+    builder.onResolve({ filter: /^@openclawx\/contracts$/ }, () => ({ path: path.resolve('packages/contracts/dist/index.js') }));
     builder.onLoad({ filter: /\.vue$/ }, args => {
       const { descriptor } = parse(fs.readFileSync(args.path, 'utf8'), { filename: args.path });
       const id = createHash('sha256').update(args.path).digest('hex').slice(0, 8);
@@ -45,7 +45,7 @@ const apps = [
   { id: 'pending-demo', name: '订单查询应用（待交付示例）', appType: '查询网站', delivery: { mode: 'custom', status: 'awaiting-binding' }, customSite: { bound: false }, publishUrl: 'http://127.0.0.1:47849/pending-demo' },
   { id: 'ready-demo', name: '销售看板（可用示例）', appType: '数据看板', delivery: { mode: 'custom', status: 'custom-ready' }, customSite: { bound: true }, publishUrl: 'http://127.0.0.1:47849/ready-demo' },
 ];
-let failCreate = process.env.WORKMATE_DATA_PREVIEW_FAILURE === 'create-and-refresh';
+let failCreate = process.env.OPENCLAWX_DATA_PREVIEW_FAILURE === 'create-and-refresh';
 let failRefresh = false;
 let creations = 0;
 let employeeListMode = 'normal';
@@ -53,7 +53,7 @@ let employeeBindings = [];
 // Second table makes table choice observable without touching business data.
 source.tables.push({ ...source.tables[0], id: 'demo-customers', name: '客户信息', rowCount: 1 });
 source.tableCount = 2;
-const livePreview = process.env.WORKMATE_DATA_PREVIEW_LIVE === '1';
+const livePreview = process.env.OPENCLAWX_DATA_PREVIEW_LIVE === '1';
 const fixtureConnections = [{ id: 'synthetic-connection', name: '演示连接（仅模拟）', engine: 'mysql', host: 'example.invalid', port: 3306, user: 'reader', tls: true, ca: '', database: '', credentialPersistence: 'session' }];
 let liveRows = [{ id: 'synthetic-row', values: { c_1: 'DEMO-001', c_2: '128.50' } }];
 const server = createServer(async (request, reply) => {
@@ -134,7 +134,7 @@ const server = createServer(async (request, reply) => {
     if (url.pathname === '/api/data/apps/project-create') {
       if (failCreate) { failCreate = false; reply.statusCode = 503; return json({ message: '模拟创建失败，请重试；输入内容应保留。' }); }
       const app = { ...apps[0], id: `created-demo-${++creations}`, name: payload.name, appType: '自定义应用', projectId: 'synthetic-project' };
-      apps.push(app); failRefresh = process.env.WORKMATE_DATA_PREVIEW_FAILURE === 'create-and-refresh';
+      apps.push(app); failRefresh = process.env.OPENCLAWX_DATA_PREVIEW_FAILURE === 'create-and-refresh';
       console.log(`FIXTURE: creation ${creations}, table ${payload.tableId}`);
       return json({ app, appId: app.id, projectId: app.projectId, started: true });
     }
@@ -147,7 +147,7 @@ const server = createServer(async (request, reply) => {
   }
   if (url.pathname === '/bundle.js') { reply.setHeader('content-type', 'text/javascript'); reply.end(bundle.outputFiles[0].text); }
   else if (url.pathname === '/style.css') { reply.setHeader('content-type', 'text/css'); reply.end(css); }
-  else { reply.setHeader('content-type', 'text/html'); reply.end('<!doctype html><html lang="zh-CN" data-theme="light"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Workmate 数据对象界面验收（模拟）</title><link rel="stylesheet" href="/style.css"><style>html,body,#app{height:100dvh;margin:0}</style><body><div id="app"></div><script type="module" src="/bundle.js"></script></body></html>'); }
+  else { reply.setHeader('content-type', 'text/html'); reply.end('<!doctype html><html lang="zh-CN" data-theme="light"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OpenClawX 数据对象界面验收（模拟）</title><link rel="stylesheet" href="/style.css"><style>html,body,#app{height:100dvh;margin:0}</style><body><div id="app"></div><script type="module" src="/bundle.js"></script></body></html>'); }
 });
 server.listen(47849, '127.0.0.1', () => console.log('Isolated data fixture: http://127.0.0.1:47849'));
 process.on('SIGINT', () => server.close(() => process.exit(0)));

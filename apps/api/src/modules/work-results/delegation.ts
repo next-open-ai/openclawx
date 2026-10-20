@@ -1,5 +1,5 @@
-import {VoiceWorkStartSchema,type VoiceWorkResult,type VoiceWorkBinding,type ChatFileAttachment} from '@workmate/contracts';
-import type {Orchestrator} from '@workmate/orchestrator';
+import {VoiceWorkStartSchema,type VoiceWorkResult,type VoiceWorkBinding,type ChatFileAttachment} from '@openclawx/contracts';
+import type {Orchestrator} from '@openclawx/orchestrator';
 import {readWorkAsset,assertWorkAssetOwner} from '../assets/routes.js';
 import {saveChatFile,deleteChatFile} from '../orchestration/chat-attachments.js';
 import {isPrivateWorkOwner} from './service.js';

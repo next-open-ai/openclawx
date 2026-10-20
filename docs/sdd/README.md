@@ -1,4 +1,4 @@
-# Workmate · SDD 规格索引
+# OpenClawX · SDD 规格索引
 
 本目录将“需求—设计—验证”作为同一条可追溯链路维护。它不是静态说明书：每次改变核心业务行为时，应同步更新受影响的规格与测试用例。
 
@@ -17,7 +17,7 @@
 | 数据应用 SQL/写入/建表/大厅 | [SQL 增量](features/managed-data-app-v1/sql-operations.md) · [状态](features/managed-data-app-v1/status.md) | 当前行为以上述增量为准，非任意 SQL 执行 |
 | 员工问数与可信查询资产 | [问数](features/agent-data-query-v1/README.md) · [资产](features/agent-data-query-v1/query-assets.md) | Pi/AgentScope；只在用户明确要求时收藏成功查询 |
 | 本地优先经验 | [规格](features/experience-local-first/README.md) · [状态](features/experience-local-first/status.md) | SQLite、异步 JSON、配置验证可用后后台知识库同步/预取 |
-| 统一 Agent Tool Interface | [features/unified-tool-interface/README.md](features/unified-tool-interface/README.md) | 已同步实现，待 Workmate 真实引擎验收 |
+| 统一 Agent Tool Interface | [features/unified-tool-interface/README.md](features/unified-tool-interface/README.md) | 已同步实现，待 OpenClawX 真实引擎验收 |
 | 通用应用模型机制 | [features/application-model-capabilities/README.md](features/application-model-capabilities/README.md) | 已同步实现，待真实 Provider 验收 |
 | 统一 Provider 连接 | [requirements](features/unified-provider-connections-v1/requirements.md) | 厂商模板、服务端点、兼容迁移已实现；待真实阿里/火山/智谱账号验收 |
 | 应用模型耗时与进度 | [requirements](features/application-model-timing/requirements.md) | 已形成需求与回归规格 |

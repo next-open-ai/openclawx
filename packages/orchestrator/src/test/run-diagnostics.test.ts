@@ -3,7 +3,7 @@ import test from 'node:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { diagnoseModelFailure } from '@workmate/agent-core';
+import { diagnoseModelFailure } from '@openclawx/agent-core';
 import { Orchestrator, type AgentRunner, type OrcEvent } from '../index.js';
 import { runContext, waitFor } from './fake.js';
 
@@ -12,7 +12,7 @@ import { runContext, waitFor } from './fake.js';
 for (const route of ['chat', 'project'] as const) {
   for (const outcome of ['completed', 'failed', 'balance'] as const) {
     test(`RD-R4 demo: ${route} streams progress before ${outcome} and preserves Run truth`, async () => {
-      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-routes-demo-'));
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-routes-demo-'));
       let release!: () => void;
       const gate = new Promise<void>(resolve => { release = resolve; });
       const diagnosis = diagnoseModelFailure(outcome === 'balance' ? '402 Insufficient Balance' : 'Model stream idle after 180s', { phase: 'after-tool', elapsedMs: 180000 });

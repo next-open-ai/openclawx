@@ -1,4 +1,4 @@
-import type { ModelConfig } from '@workmate/contracts';
+import type { ModelConfig } from '@openclawx/contracts';
 import {currentExperienceContext} from './context.js';
 
 /** Optional knowledge enrichment uses only the host's config-stage availability state.

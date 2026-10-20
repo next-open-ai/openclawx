@@ -13,8 +13,8 @@
 ## 自动验证
 
 ```bash
-pnpm --filter @workmate/renderer typecheck
-pnpm --filter @workmate/renderer build
+pnpm --filter @openclawx/renderer typecheck
+pnpm --filter @openclawx/renderer build
 pnpm manual:regression
 ```
 

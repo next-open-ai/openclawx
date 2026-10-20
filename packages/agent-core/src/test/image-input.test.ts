@@ -3,16 +3,16 @@ import test from 'node:test';
 import { mkdtemp, rm, symlink, readdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { ChatModelMessageSchema, ChatImagesSchema } from '@workmate/contracts';
+import { ChatModelMessageSchema, ChatImagesSchema } from '@openclawx/contracts';
 import { saveChatImage, readChatImage, deleteChatImages, assertVisionSupported, resolveChatImages } from '../image-input.js';
 import { toPiModel } from '../pi-model.js';
 import { toPiHistoryMessages } from '../pi-runtime.js';
 
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
 test('VIS-T1/T2 scoped images, validation, durable references and Pi multimodal history', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-vision-'));
-  const previous = process.env.WORKMATE_DATA_DIR;
-  process.env.WORKMATE_DATA_DIR = root;
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-vision-'));
+  const previous = process.env.OPENCLAWX_DATA_DIR;
+  process.env.OPENCLAWX_DATA_DIR = root;
   try {
     await assert.rejects(saveChatImage('../outside', { name: 'x.png', dataBase64: png }), /SCOPE/);
     await assert.rejects(saveChatImage('s1', { name: 'x.png', dataBase64: Buffer.from('<svg/>').toString('base64') }), /FORMAT/);
@@ -43,7 +43,7 @@ test('VIS-T1/T2 scoped images, validation, durable references and Pi multimodal 
     await deleteChatImages('s1');
     assert.deepEqual(await readdir(path.join(root, 'image-inputs')), []);
   } finally {
-    if (previous === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = previous;
+    if (previous === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = previous;
     await rm(root, { recursive: true, force: true });
   }
 });

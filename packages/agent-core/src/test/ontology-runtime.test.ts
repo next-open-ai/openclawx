@@ -4,12 +4,12 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import type { KnowledgeBaseRuntime } from '@workmate/contracts';
+import type { KnowledgeBaseRuntime } from '@openclawx/contracts';
 import { recallOntologyEvidence, resolveOntologyEntitiesWithModel } from '../knowledge-runtime.js';
 import { planOntologyQuery, readOntologyGraph, writeOntologyGraph } from '../ontology-runtime.js';
 
 test('ontology graph persists and expands aliases/relationships deterministically', async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'workmate-ontology-'));
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'openclawx-ontology-'));
   try {
     const kb = { id: 'kb-test', name: 'Test', provider: 'lancedb', dataDir: dir, enabled: true } as KnowledgeBaseRuntime;
     await writeOntologyGraph(kb, {
@@ -30,7 +30,7 @@ test('ontology graph persists and expands aliases/relationships deterministicall
 });
 
 test('legacy JSON graph migrates once into SQLite without deleting the backup', async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'workmate-ontology-migrate-'));
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'openclawx-ontology-migrate-'));
   const legacy = path.join(dir, 'ontology.json');
   try {
     writeFileSync(legacy, JSON.stringify({
@@ -48,7 +48,7 @@ test('legacy JSON graph migrates once into SQLite without deleting the backup', 
 });
 
 test('ontology query supports controlled two-hop traversal, predicates and evidence references', async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'workmate-ontology-query-'));
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'openclawx-ontology-query-'));
   try {
     const kb = { id: 'kb-query', name: 'Query', provider: 'lancedb', dataDir: dir, enabled: true } as KnowledgeBaseRuntime;
     await writeOntologyGraph(kb, {
@@ -74,7 +74,7 @@ test('ontology query supports controlled two-hop traversal, predicates and evide
 });
 
 test('ontology evidence references recall the bound local chunk without vector search', async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'workmate-ontology-evidence-'));
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'openclawx-ontology-evidence-'));
   try {
     const kb = { id: 'kb-evidence', name: 'Evidence', provider: 'lancedb', dataDir: dir, enabled: true } as KnowledgeBaseRuntime;
     writeFileSync(path.join(dir, 'chunks.json'), JSON.stringify([{ id: 'chunk-1', documentId: 'doc-1', documentTitle: '制度', title: '制度#1', content: '产品B由团队C负责。', source: 'policy.md', vector: [], createdAt: Date.now() }]));
@@ -92,7 +92,7 @@ test('ontology evidence references recall the bound local chunk without vector s
 });
 
 test('semantic matches seed deterministic graph traversal without creating graph data', async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'workmate-ontology-semantic-'));
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'openclawx-ontology-semantic-'));
   try {
     const kb = { id: 'kb-semantic', name: 'Semantic', provider: 'lancedb', dataDir: dir, enabled: true } as KnowledgeBaseRuntime;
     await writeOntologyGraph(kb, {
@@ -114,7 +114,7 @@ test('semantic matches seed deterministic graph traversal without creating graph
 });
 
 test('semantic entity linker accepts only high-confidence IDs from the bounded candidate set', async () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'workmate-ontology-linker-'));
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'openclawx-ontology-linker-'));
   const server = createServer((request, response) => {
     if (request.url !== '/v1/chat/completions') return void response.writeHead(404).end();
     response.setHeader('content-type', 'text/event-stream');

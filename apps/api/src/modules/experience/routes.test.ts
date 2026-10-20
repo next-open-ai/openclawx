@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import Fastify from 'fastify';
-import {MemoryStore} from '@workmate/orchestrator';
+import {MemoryStore} from '@openclawx/orchestrator';
 import {experienceRoutes,readExperienceSettings,createExperienceRunner} from './routes.js';
-import {currentExperienceContext} from '@workmate/agent-core';
-import type {KnowledgeBaseRuntime} from '@workmate/contracts';
+import {currentExperienceContext} from '@openclawx/agent-core';
+import type {KnowledgeBaseRuntime} from '@openclawx/contracts';
 test('EX-T1: configuration-only availability, fingerprint invalidation, target restriction, no secrets and admin writes',async()=>{
   const store=new MemoryStore();let calls=0,fail=false;
   let target:KnowledgeBaseRuntime|undefined={id:'kb',name:'经验库',provider:'lancedb',enabled:true,embeddingApiKey:'must-not-persist'};

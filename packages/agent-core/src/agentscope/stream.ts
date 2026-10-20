@@ -1,4 +1,4 @@
-import type { AgentEvent, ChatRequest } from '@workmate/contracts';
+import type { AgentEvent, ChatRequest } from '@openclawx/contracts';
 import { chatRequestToRunParams } from './client.js';
 import { prepareAgentscopeHostTools, type HostToolCall } from './host-tools.js';
 import { acquireSharedAgentscopeRunSlot, ensureSharedAgentscopeRuntime, markSharedAgentscopeHandleUnhealthy } from './process.js';

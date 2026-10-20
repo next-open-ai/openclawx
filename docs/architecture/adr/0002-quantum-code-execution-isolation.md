@@ -2,12 +2,12 @@
 
 > 状态：已接受  
 > 日期：2026-09-23  
-> 决策所有者：Workmate 架构组  
+> 决策所有者：OpenClawX 架构组
 > 关联：[应用模型能力 SDD](../../sdd/features/application-model-capabilities/README.md)
 
 ## 决策
 
-Workmate 管理代码执行边界，eSight 只生成或修复代码。量子代码执行提供三个明确模式：
+OpenClawX 管理代码执行边界，eSight 只生成或修复代码。量子代码执行提供三个明确模式：
 
 | 模式 | 用户名称 | 语义 |
 | --- | --- | --- |

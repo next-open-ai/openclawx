@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { AsrAudioSchema, AsrSessionSchema, type AsrEvent } from '@workmate/contracts';
-import { VolcengineAsrStream } from '@workmate/agent-core';
+import { AsrAudioSchema, AsrSessionSchema, type AsrEvent } from '@openclawx/contracts';
+import { VolcengineAsrStream } from '@openclawx/agent-core';
 import { readVoiceInputSettings, resolveAsrKey } from './asr-settings.js';
 
 type Owner = { userId: string; orgId: string };
@@ -29,7 +29,7 @@ export async function registerAsrRoutes(app: FastifyInstance, factory: Factory =
     const id = randomUUID();
     const row: Session = { owner: { userId: request.auth.userId, orgId: request.auth.orgId }, createdAt: Date.now(), stream: null as unknown as Stream, events: [], listeners: new Set() };
     try {
-      row.stream = factory({ apiKey: key, resourceId: config.resourceId, enablePunc: config.enablePunc, enableItn: config.enableItn, url: process.env.WORKMATE_VOLCENGINE_ASR_URL?.trim() || undefined }, (event) => {
+      row.stream = factory({ apiKey: key, resourceId: config.resourceId, enablePunc: config.enablePunc, enableItn: config.enableItn, url: process.env.OPENCLAWX_VOLCENGINE_ASR_URL?.trim() || undefined }, (event) => {
         // Replay lifecycle + latest full transcript only. Do not retain audio.
         if (event.type === 'transcript') row.events = row.events.filter((item) => item.type !== 'transcript');
         row.events.push(event); if (row.events.length > 16) row.events.shift();

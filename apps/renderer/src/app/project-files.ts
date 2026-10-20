@@ -7,7 +7,7 @@ export function isAgentProcessFile(relative: string) {
   const parts = relative.replace(/\\/g, '/').split('/');
   const name = parts.at(-1) ?? relative;
   if (parts.some((part) => ['.agents', '.dsh-sessions', '.git', '.python-packages', 'node_modules'].includes(part))) return true;
-  if (name === '.workmate-dsh.cordis.yml' || name === '.DS_Store') return true;
+  if (name === '.openclawx-dsh.cordis.yml' || name === '.DS_Store') return true;
   if (/\.(py|sh)$/i.test(name)) return true;
   if (/^(gen_|patch_|scaffold_|tmp_)/i.test(name) && /\.(js|mjs|cjs|ts)$/i.test(name) && !relative.includes('/')) return true;
   return false;

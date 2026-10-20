@@ -3,9 +3,9 @@ import os from 'node:os';
 import { constants } from 'node:fs';
 import { lstat, mkdir, open, readdir, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { withKeyLock, type Orchestrator, type Project } from '@workmate/orchestrator';
-import type { ProjectApplicationSnapshot, ProjectApplicationStatus, ProjectApplicationView, PublishProjectApplication } from '@workmate/contracts';
-import { ProjectApplicationSnapshotSchema } from '@workmate/contracts';
+import { withKeyLock, type Orchestrator, type Project } from '@openclawx/orchestrator';
+import type { ProjectApplicationSnapshot, ProjectApplicationStatus, ProjectApplicationView, PublishProjectApplication } from '@openclawx/contracts';
+import { ProjectApplicationSnapshotSchema } from '@openclawx/contracts';
 import { canReadOwnedResource, canWriteOwnedResource } from '../auth/ownership.js';
 import type { AuthPrincipal } from '../auth/service.js';
 
@@ -191,7 +191,7 @@ const services = new WeakMap<Orchestrator, ProjectApplications>();
 export function projectApplications(orch: Orchestrator) {
   let service = services.get(orch);
   if (!service) {
-    service = new ProjectApplications(orch, process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate'));
+    service = new ProjectApplications(orch, process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx'));
     services.set(orch, service);
   }
   return service;

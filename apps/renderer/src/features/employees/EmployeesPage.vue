@@ -444,7 +444,7 @@ watch(employeeModelSupportsBuiltinSearch, (ok) => {
 <template>
   <section class="mx-auto w-full max-w-6xl px-6 py-14 sm:px-12">
     <header class="mb-9">
-      <p class="mb-2 text-[11px] font-extrabold tracking-[.13em] text-[var(--accent)]">Workmate / TEAM</p>
+      <p class="mb-2 text-[11px] font-extrabold tracking-[.13em] text-[var(--accent)]">OpenClawX / TEAM</p>
       <h1 class="text-4xl font-bold tracking-[-.045em]">{{ t('employee.title') }}</h1>
       <p class="mt-3 max-w-2xl leading-relaxed text-[var(--muted)]">{{ selectedEmployee ? t('employee.detailSubtitle') : t('employee.subtitle') }}</p>
     </header>

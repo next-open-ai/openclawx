@@ -1,4 +1,4 @@
-# Workmate Embedding Provider v1 接口契约
+# OpenClawX Embedding Provider v1 接口契约
 
 > 依赖主案：[embedding-provider-v1.md](./embedding-provider-v1.md)  
 > 依赖实施计划：[embedding-provider-v1-implementation-plan.md](./embedding-provider-v1-implementation-plan.md)  
@@ -109,7 +109,7 @@
 
 ### 4.1 请求路径
 
-`workmate` 内部统一假设 provider base URL 为：
+`openclawx` 内部统一假设 provider base URL 为：
 
 ```text
 <baseUrl>
@@ -141,7 +141,7 @@ embedding 请求路径统一拼为：
 - `input: string`
 - `input: string[]`
 
-在 `workmate` 内部调用层，建议统一转成 `string[]` 再发送，避免分支复杂化。
+在 `openclawx` 内部调用层，建议统一转成 `string[]` 再发送，避免分支复杂化。
 
 ### 4.4 请求头
 

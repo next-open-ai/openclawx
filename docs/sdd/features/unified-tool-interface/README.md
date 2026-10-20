@@ -44,7 +44,7 @@ ExecutionBackend
 
 ## 4. 架构约束
 
-1. `@workmate/contracts` 是公共 DTO 和事件的事实源；
+1. `@openclawx/contracts` 是公共 DTO 和事件的事实源；
 2. `packages/agent-core` 持有 Registry、Dispatcher 和 Transport Adapter；
 3. Tool Backend 不感知 `pi | agentscope | dsh`；
 4. Transport Adapter 不包含工具业务逻辑；
@@ -71,7 +71,7 @@ ToolTransportAdapter
   cancel(invocationId)
 ```
 
-具体字段须先在 `@workmate/contracts` 以 Zod 冻结，禁止从某一引擎的私有 Tool 类型直接导出为公共契约。
+具体字段须先在 `@openclawx/contracts` 以 Zod 冻结，禁止从某一引擎的私有 Tool 类型直接导出为公共契约。
 
 ## 6. 实施拆解
 
@@ -126,7 +126,7 @@ ToolTransportAdapter
 | 时间 | 状态 | 结果与证据 |
 | --- | --- | --- |
 | 2026-09-24 | 待评审 | 工单建立，冻结“注册一次、三引擎调用”的目标与边界 |
-| 2026-09-24 | 进行中 | 在 `@workmate/contracts` 增加 Descriptor/Invocation/Result v1；实现 `unified-tool-runtime.ts` Registry/Dispatcher |
+| 2026-09-24 | 进行中 | 在 `@openclawx/contracts` 增加 Descriptor/Invocation/Result v1；实现 `unified-tool-runtime.ts` Registry/Dispatcher |
 | 2026-09-24 | 进行中 | Pi 改为消费统一 Session；AgentScope 的 MCP 与应用模型工具统一进入 Host Transport；dsh 增加 run-scoped 本地 MCP Transport |
 | 2026-09-24 | 实现完成，待验收 | UTI 专项测试覆盖注册、重复 ID、deadline、取消、AgentScope Host Transport、dsh MCP Transport；五包类型检查通过 |
 | 2026-09-24 | 边界复核通过 | 国产生图新增三类 Provider Adapter 时未修改 Pi、AgentScope、dsh Tool Transport 或 Agent Loop，验证供应商协议可以只扩展 AMC Backend；UTI 状态仍为“待验收”，不因 AMC 局部回归提前关闭。 |
@@ -135,6 +135,6 @@ ToolTransportAdapter
 | 2026-10-03 | 长任务误取消修复 | Bash 详情入口收进状态行；Renderer 不再用 120 秒界面静默阈值取消服务端运行，长编码任务统一服从服务端可配置运行超时。 |
 | 2026-10-03 | 默认执行预算调整 | 数字员工、Agent Core、AgentScope、Orchestrator 与项目调度的整轮默认超时统一为 30 分钟；旧的 10 分钟默认配置自动迁移。 |
 | 2026-10-03 | 前端等待预算对齐 | 移除聊天镜像层固定 12 分钟截止线；等待器按实际运行预算加两分钟结算缓冲，避免前端先于服务端取消长任务。 |
-| 2026-09-24 | Workmate 同步完成，待 E2E | UTI 实现已同步到 Workmate；专项测试 `4/4`、同名 invocation 回归 `1/1`、五包类型检查、API 与 Renderer 生产构建通过。真实安装态 AgentScope/DSH E2E 尚未执行。 |
+| 2026-09-24 | OpenClawX 同步完成，待 E2E | UTI 实现已同步到 OpenClawX；专项测试 `4/4`、同名 invocation 回归 `1/1`、五包类型检查、API 与 Renderer 生产构建通过。真实安装态 AgentScope/DSH E2E 尚未执行。 |
 
-当前验收说明：UTI 新增专项用例通过；Workmate `agent-core` 全量 `92/92` 通过。真实 AgentScope/dsh runtime E2E 仍需在具备运行环境时执行，因此本工单保持“待验收”。
+当前验收说明：UTI 新增专项用例通过；OpenClawX `agent-core` 全量 `92/92` 通过。真实 AgentScope/dsh runtime E2E 仍需在具备运行环境时执行，因此本工单保持“待验收”。

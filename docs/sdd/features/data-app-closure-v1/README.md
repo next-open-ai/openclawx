@@ -1,6 +1,6 @@
 # 数据应用交付闭环验收
 
-范围仅 Workmate。本阶段验证数据对象 → 最新标注 → 应用准备 → 工作区 HTML → 绑定 → 同源取数 → 原应用优化。不引入 Schema 版本、实时原库查询或跨表联查。
+范围仅 OpenClawX。本阶段验证数据对象 → 最新标注 → 应用准备 → 工作区 HTML → 绑定 → 同源取数 → 原应用优化。不引入 Schema 版本、实时原库查询或跨表联查。
 
 ## 需求、任务与契约
 
@@ -23,7 +23,7 @@ API 回归：模板立即就绪；新定制等待绑定且发布页不是模板�
 
 交互回归：`node scripts/data-workbench-ux-regression.mjs` 验证状态对应动作、旧应用回退、名称/说明搜索和下一步建议。界面验收使用隔离合成数据，不读写业务数据；检查搜索无匹配/清除、字段说明入口、未交付隐藏二维码、已交付分享收起、长名称及窄屏不撑开页面。
 
-DAC-T7 验收：`node scripts/data-app-create-regression.mjs` 运行真实 Vue setup 处理函数配内存 API 适配器。创建表选择默认当前表、请求只引用选中表；模板无需需求，AI 必须有非空需求；创建失败保留弹窗输入；成功后列表刷新失败有明确提示且仅创建一次、仍触发对话或打开模板。浏览器故障夹具：`WORKMATE_DATA_PREVIEW_FAILURE=create-and-refresh node scripts/data-workbench-preview.mjs`，首次创建失败，重试后列表刷新失败，只使用内存数据且不调用模型，不宣称真实模型验收。
+DAC-T7 验收：`node scripts/data-app-create-regression.mjs` 运行真实 Vue setup 处理函数配内存 API 适配器。创建表选择默认当前表、请求只引用选中表；模板无需需求，AI 必须有非空需求；创建失败保留弹窗输入；成功后列表刷新失败有明确提示且仅创建一次、仍触发对话或打开模板。浏览器故障夹具：`OPENCLAWX_DATA_PREVIEW_FAILURE=create-and-refresh node scripts/data-workbench-preview.mjs`，首次创建失败，重试后列表刷新失败，只使用内存数据且不调用模型，不宣称真实模型验收。
 
 DAC-T8 验收：同一 Vue setup 回归验证卸载导航快照、返回第二张表/应用页签并读取新的 delivery、刷新保留表、对象/表删除回退、读取失败后重试、过期请求不得覆盖选择、卸载后不写入状态。App 层按登录身份隔离导航；无模型调用。
 

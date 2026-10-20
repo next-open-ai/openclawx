@@ -62,7 +62,7 @@ export function buildDshEnvironmentCheck(status?: DshRuntimeStatus): DshEnvCheck
     command: dsh.bin || undefined,
     help: dsh.ok
       ? `编码引擎可用（来源：${dsh.source}）。启用员工引擎 dsh 时将通过 stdio JSON-RPC 调用。`
-      : '未安装 dsh runtime。仅在使用「dsh（编码）」引擎时需要；可点一键安装（需联网，约 200MB），或设置 WORKMATE_DSH_BIN。',
+      : '未安装 dsh runtime。仅在使用「dsh（编码）」引擎时需要；可点一键安装（需联网，约 200MB），或设置 OPENCLAWX_DSH_BIN。',
   };
 }
 
@@ -99,14 +99,14 @@ export function buildDshRemediationPlan(kind: DshRemediationKind = {}): DshRemed
 }
 
 /**
- * Resolve preferred WORKMATE_DSH_ROOT for desktop/API process env.
+ * Resolve preferred OPENCLAWX_DSH_ROOT for desktop/API process env.
  * User on-demand runtime wins over sibling harness checkouts.
  */
 export function resolvePreferredDshRoot(options?: {
   dataDir?: string;
   siblingHarnessRoot?: string | null;
 }): string {
-  const fromEnv = process.env.WORKMATE_DSH_ROOT?.trim();
+  const fromEnv = process.env.OPENCLAWX_DSH_ROOT?.trim();
   if (fromEnv) return fromEnv;
   const userRoot = dshRuntimeRoot(options?.dataDir);
   if (resolveDshJsonrpcBin(userRoot)) return userRoot;

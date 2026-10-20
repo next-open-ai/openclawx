@@ -6,12 +6,12 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import Fastify from 'fastify';
-import { MemoryStore } from '@workmate/orchestrator';
-import { dataObjectModelSchema, dataAppOperationSchema, structuredDataQuerySchema } from '@workmate/contracts';
+import { MemoryStore } from '@openclawx/orchestrator';
+import { dataObjectModelSchema, dataAppOperationSchema, structuredDataQuerySchema } from '@openclawx/contracts';
 import { ManagedAppQueries, bindAppQuery } from './app-query.js';
 import { createAgentDataExecutor, safeSchema, schemaPage, readAgentSchema } from './agent-query.js';
 import { readBoundTableMetadata } from './live-database.js';
-import { dataGetSchemaInputSchema } from '@workmate/contracts';
+import { dataGetSchemaInputSchema } from '@openclawx/contracts';
 import { createLiveDataService, migrateLiveData } from './live-data-routes.js';
 import { databaseSecret } from './database-secrets.js';
 import { dataRoutes, publicDataAppRoutes, createManagedAppQueries, createStructuredDataGateway } from './routes.js';
@@ -163,10 +163,10 @@ test('MDA-R1/R2/R3/R5: real SQLite compilation, scope/sensitivity/revocation, fa
 });
 
 test('MDA-R1/R3/R4/R5: API conversation project, token cannot query/CRUD, registration before binding, private authenticated execution', async () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-mda-'));
-  const keys = ['WORKMATE_DATA_DIR', 'WORKMATE_ORCH_RUNNER', 'WORKMATE_WORKSPACES_DIR'] as const;
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-mda-'));
+  const keys = ['OPENCLAWX_DATA_DIR', 'OPENCLAWX_ORCH_RUNNER', 'OPENCLAWX_WORKSPACES_DIR'] as const;
   const previous = Object.fromEntries(keys.map(k => [k, process.env[k]]));
-  process.env.WORKMATE_DATA_DIR = root; process.env.WORKMATE_WORKSPACES_DIR = path.join(root, 'runs'); process.env.WORKMATE_ORCH_RUNNER = 'memory-echo';
+  process.env.OPENCLAWX_DATA_DIR = root; process.env.OPENCLAWX_WORKSPACES_DIR = path.join(root, 'runs'); process.env.OPENCLAWX_ORCH_RUNNER = 'memory-echo';
   applyParentSecrets({ model: { activeProvider: 'ollama', providers: [{ provider: 'ollama', chatModel: 'synthetic', apiKey: 'synthetic' }] } });
   const app = Fastify();
   const liveCalls: string[] = [];
@@ -199,7 +199,7 @@ test('MDA-R1/R3/R4/R5: API conversation project, token cannot query/CRUD, regist
     const replay = await app.inject({ method: 'POST', url: '/api/data/apps/project-create', payload: request }); assert.equal(replay.json().projectId, created.projectId); assert.equal(replay.json().started, false);
     const listed = (await app.inject({ method: 'GET', url: '/api/data/apps' })).json()[0];
     const token = new URL(listed.publishUrl).searchParams.get('token')!, id = created.appId;
-    const html = '<!doctype html><html><body><h1>收入</h1><script>workmateData.query("total",{}).then(r=>document.body.append(JSON.stringify(r)))</script></body></html>';
+    const html = '<!doctype html><html><body><h1>收入</h1><script>openclawxData.query("total",{}).then(r=>document.body.append(JSON.stringify(r)))</script></body></html>';
     const bind = () => app.inject({ method: 'PUT', url: `/api/data-apps/${id}/custom-site?token=${token}`, payload: { html } });
     assert.equal((await bind()).statusCode, 400);
     const service = await createManagedAppQueries();
@@ -291,7 +291,7 @@ test('MDA-R1/R3/R4/R5: API conversation project, token cannot query/CRUD, regist
     }
     const page = await app.inject({ method: 'GET', url: `/api/data-apps/${id}/site?token=${token}` });
     assert.equal(page.statusCode, 200); assert.match(page.body, /sandbox="allow-scripts allow-forms"/); assert.doesNotMatch(page.body, /allow-same-origin/);
-    assert.match(page.body, /x-workmate-session/); assert.doesNotMatch(page.body, new RegExp(token)); assert.doesNotMatch(page.body, /localStorage/);
+    assert.match(page.body, /x-openclawx-session/); assert.doesNotMatch(page.body, new RegExp(token)); assert.doesNotMatch(page.body, /localStorage/);
     assert.equal((await invoke()).json().rows[0].total, 30);
   } finally {
     await app.close(); applyParentSecrets({}); for (const k of keys) { if (previous[k] === undefined) delete process.env[k]; else process.env[k] = previous[k]; }

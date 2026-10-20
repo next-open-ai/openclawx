@@ -1,12 +1,12 @@
 {
-  "name": "@workmate/desktop",
+  "name": "@openclawx/desktop",
   "version": "0.2.16",
   "private": true,
-  "description": "Workmate cross-platform local AI workspace.",
+  "description": "OpenClawX cross-platform local AI workspace.",
   "main": "src/main/index.cjs",
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "build": "pnpm --filter @workmate/contracts build && pnpm --filter @workmate/tools build && pnpm --filter @workmate/storage build && pnpm --filter @workmate/channel build && pnpm --filter @workmate/gateway build && pnpm --filter @workmate/agent-core build && pnpm --filter @workmate/orchestrator build && pnpm --filter @workmate/api build && pnpm --filter @workmate/renderer build",
+    "build": "pnpm --filter @openclawx/contracts build && pnpm --filter @openclawx/tools build && pnpm --filter @openclawx/storage build && pnpm --filter @openclawx/channel build && pnpm --filter @openclawx/gateway build && pnpm --filter @openclawx/agent-core build && pnpm --filter @openclawx/orchestrator build && pnpm --filter @openclawx/api build && pnpm --filter @openclawx/renderer build",
     "stage": "node scripts/stage.mjs",
     "package": "node ../../scripts/prepare-agentscope-runtime.mjs && pnpm build && pnpm stage && electron-builder --publish never",
     "typecheck": "tsc -p tsconfig.json --noEmit"

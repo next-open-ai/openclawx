@@ -15,9 +15,9 @@ function stringArg(name, fallback) {
 const port = numberArg('--port', 11480);
 const modelId = stringArg('--model-id', 'local-embedding-default');
 const dimension = numberArg('--dimension', 1024);
-const backendUrl = String(process.env.WORKMATE_LOCAL_EMBEDDING_BACKEND_URL || '').trim().replace(/\/$/, '');
-const backendModel = String(process.env.WORKMATE_LOCAL_EMBEDDING_BACKEND_MODEL || '').trim();
-const backendApiKey = String(process.env.WORKMATE_LOCAL_EMBEDDING_BACKEND_API_KEY || '').trim();
+const backendUrl = String(process.env.OPENCLAWX_LOCAL_EMBEDDING_BACKEND_URL || '').trim().replace(/\/$/, '');
+const backendModel = String(process.env.OPENCLAWX_LOCAL_EMBEDDING_BACKEND_MODEL || '').trim();
+const backendApiKey = String(process.env.OPENCLAWX_LOCAL_EMBEDDING_BACKEND_API_KEY || '').trim();
 
 function backendReady() {
   return Boolean(backendUrl && backendModel);
@@ -61,7 +61,7 @@ const server = http.createServer(async (request, reply) => {
         {
           id: backendModel || modelId,
           object: 'model',
-          owned_by: backendReady() ? 'workmate-local-proxy' : 'workmate-local-bootstrap',
+          owned_by: backendReady() ? 'openclawx-local-proxy' : 'openclawx-local-bootstrap',
         },
       ],
     });

@@ -57,6 +57,6 @@
 ## 验证证据
 
 - `scripts/provider-auto-config-regression.mjs`：权限、配置、临时网络错误分类及health清洗保留通过。
-- `@workmate/renderer`、`@workmate/api`类型检查通过；Renderer生产构建通过。
+- `@openclawx/renderer`、`@openclawx/api`类型检查通过；Renderer生产构建通过。
 - API包测试、VitePress生产构建和`git diff --check`通过。
 - 未使用真实供应商凭据执行付费调用，因此状态保持“待真实 Provider 验收”，不标记产品验收完成。

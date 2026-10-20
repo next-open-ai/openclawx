@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { remoteDatabaseConnectionSchema, remoteDatabaseImportSchema } from '@workmate/contracts';
+import { remoteDatabaseConnectionSchema, remoteDatabaseImportSchema } from '@openclawx/contracts';
 import { inspectRemoteDatabase, importRemoteDatabase, remoteIdentifier, remoteError, remoteFactory, type RemoteFactory } from './remote-database.js';
 
 test('RDB-R1/R2: defaults, selection validation, safe identifiers and error redaction', () => {
@@ -82,9 +82,9 @@ test('RDB-R2/R5: capacity and deadline release connections', async t => {
 });
 
 for (const engine of ['mysql', 'postgresql'] as const) {
-  const port = process.env[engine === 'mysql' ? 'WORKMATE_TEST_MYSQL_PORT' : 'WORKMATE_TEST_POSTGRES_PORT'];
+  const port = process.env[engine === 'mysql' ? 'OPENCLAWX_TEST_MYSQL_PORT' : 'OPENCLAWX_TEST_POSTGRES_PORT'];
   test(`RDB real acceptance: ${engine} inspect, comments, empty table, precision and READ ONLY`, { skip: !port }, async () => {
-    const connection = remoteDatabaseConnectionSchema.parse({ engine, host: '127.0.0.1', port: Number(port), user: 'workmate_reader', password: 'workmate-test-only', database: 'business', tls: false });
+    const connection = remoteDatabaseConnectionSchema.parse({ engine, host: '127.0.0.1', port: Number(port), user: 'openclawx_reader', password: 'openclawx-test-only', database: 'business', tls: false });
     const inspected = await inspectRemoteDatabase(connection);
     assert.ok(inspected.databases.includes('business'));
     const selected = inspected.tables.filter(t => ['orders', 'empty_table'].includes(t.name));

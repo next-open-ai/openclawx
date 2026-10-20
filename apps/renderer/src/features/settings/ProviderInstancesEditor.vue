@@ -22,7 +22,7 @@ import {
   type ProviderId,
   type ProviderInstance,
 } from '../../app/model-config';
-import type { ProviderService } from '@workmate/contracts';
+import type { ProviderService } from '@openclawx/contracts';
 
 import { useNotify } from '../../app/notify';
 import { testProviderConnection } from '../../services/api.js';

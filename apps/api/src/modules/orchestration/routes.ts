@@ -1,15 +1,15 @@
 import path from 'node:path';
 import os from 'node:os';
 import { randomUUID } from 'node:crypto';
-import { CreateConversationProjectSchema } from '@workmate/contracts';
+import { CreateConversationProjectSchema } from '@openclawx/contracts';
 import { createConversationDirectory, ProjectDirectoryError } from './conversation-directory.js';
 import { registerProjectApplicationRoutes } from './project-application-routes.js';
 import { registerProjectDraftFileRoutes } from './project-draft-files.js';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
-import { getSharedAgentscopeRuntimeStats, saveChatImage, readChatImage, ImageInputError } from '@workmate/agent-core';
-import { ChatFilesSchema, ChatImagesSchema, DurableTaskArtifactRoleSchema, DurableTaskStatusSchema } from '@workmate/contracts';
-import { JsonFileStore, Orchestrator, createScriptedRunner, type AgentRunner, type OrcEvent } from '@workmate/orchestrator';
-import type { ChatRunContext, ConfirmProjectInput, CreateProjectDraftInput, ProjectTask, ResolveProjectApprovalInput, UpdateProjectAccessInput } from '@workmate/orchestrator';
+import { getSharedAgentscopeRuntimeStats, saveChatImage, readChatImage, ImageInputError } from '@openclawx/agent-core';
+import { ChatFilesSchema, ChatImagesSchema, DurableTaskArtifactRoleSchema, DurableTaskStatusSchema } from '@openclawx/contracts';
+import { JsonFileStore, Orchestrator, createScriptedRunner, type AgentRunner, type OrcEvent } from '@openclawx/orchestrator';
+import type { ChatRunContext, ConfirmProjectInput, CreateProjectDraftInput, ProjectTask, ResolveProjectApprovalInput, UpdateProjectAccessInput } from '@openclawx/orchestrator';
 import { requireAuth, activeDataRunOwner } from '../auth/service.js';
 import { createStructuredDataGateway, createManagedAppQueries } from '../data/routes.js';
 import { createDataAgentRunner } from '../data/agent-query.js';
@@ -31,13 +31,13 @@ import { chatAttachmentStats, cleanupChatAttachments, deleteChatFile, deleteChat
  * (chat sessions, resumable runs, project scheduling).
  *
  * Domain persistence is a single-writer JSON document under the data dir
- * (`WORKMATE_DATA_DIR`, defaults to `~/.workmate`). Secrets never reach this store.
+ * (`OPENCLAWX_DATA_DIR`, defaults to `~/.openclawx`). Secrets never reach this store.
  */
 
 let instance: Orchestrator | null = null;
 
 function dataDir(): string {
-  return process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate');
+  return process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx');
 }
 
 function positiveIntFromEnv(name: string, fallback: number): number {
@@ -50,14 +50,14 @@ function publicChatSession<T extends { messages: Array<Record<string, unknown>> 
 }
 
 /**
- * Headless smoke mode: `WORKMATE_ORCH_RUNNER=memory-echo|memory-approval` swaps
+ * Headless smoke mode: `OPENCLAWX_ORCH_RUNNER=memory-echo|memory-approval` swaps
  * the real agent-core runner for a deterministic scripted one so end-to-end
  * HTTP acceptance tests need no model credentials or network. The production
  * default keeps agent-core as the only model boundary.
  */
 function scriptedRunner(): AgentRunner | null {
-  const mode = process.env.WORKMATE_ORCH_RUNNER;
-  const delayMs = positiveIntFromEnv('WORKMATE_ORCH_RUNNER_DELAY_MS', 0);
+  const mode = process.env.OPENCLAWX_ORCH_RUNNER;
+  const delayMs = positiveIntFromEnv('OPENCLAWX_ORCH_RUNNER_DELAY_MS', 0);
   if (mode === 'memory-echo' || mode === 'memory-approval') {
     return createScriptedRunner(mode === 'memory-approval', delayMs > 0 ? { delayMs } : undefined);
   }
@@ -99,9 +99,9 @@ export function getOrchestrator(): Orchestrator {
     instance = new Orchestrator({
       store,
       runner: runner ?? createWorkResultRunner(store,()=>getOrchestrator(),activeDataRunOwner,createExperienceRunner(store,activeDataRunOwner,createDataAgentRunner({ store, gateway: createStructuredDataGateway(), activeOwner: activeDataRunOwner, appQueries: createManagedAppQueries }))),
-      maxConcurrentRunsGlobal: positiveIntFromEnv('WORKMATE_MAX_CONCURRENT_RUNS_GLOBAL', 4),
-      maxConcurrentRunsPerUser: positiveIntFromEnv('WORKMATE_MAX_CONCURRENT_RUNS_PER_USER', 2),
-      maxQueueWaitMs: positiveIntFromEnv('WORKMATE_MAX_QUEUE_WAIT_MS', 120_000),
+      maxConcurrentRunsGlobal: positiveIntFromEnv('OPENCLAWX_MAX_CONCURRENT_RUNS_GLOBAL', 4),
+      maxConcurrentRunsPerUser: positiveIntFromEnv('OPENCLAWX_MAX_CONCURRENT_RUNS_PER_USER', 2),
+      maxQueueWaitMs: positiveIntFromEnv('OPENCLAWX_MAX_QUEUE_WAIT_MS', 120_000),
       contextResolver,
       chatContextResolver,
       chatMcpConnectionsResolver: async (employeeId, ownerUserId) => {
@@ -305,7 +305,7 @@ export const orchestrationRoutes: FastifyPluginAsync = async (app) => {
     const session = await orch.chat.getChatSession(sessionId);
     if (!session || !canWriteOwnedResource(session, auth, { allowLegacyUnowned: true })) return reply.code(404).send({ message: 'Chat session not found.' });
     try {
-      const encodedName = String(request.headers['x-workmate-file-name'] || '');
+      const encodedName = String(request.headers['x-openclawx-file-name'] || '');
       const name = decodeURIComponent(encodedName);
       if (!Buffer.isBuffer(request.body)) throw new Error('附件请求必须使用二进制上传。');
       return await saveChatFile(sessionId, { name, bytes: request.body });

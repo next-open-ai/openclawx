@@ -1,4 +1,4 @@
-import type { UnifiedMessage } from '@workmate/channel';
+import type { UnifiedMessage } from '@openclawx/channel';
 import { isAllowed, type GatewayConfig, type ThreadState } from './config.js';
 import { OrchestratorClient } from './orch.js';
 

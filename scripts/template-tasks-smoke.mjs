@@ -11,17 +11,17 @@ import { randomUUID } from 'node:crypto';
 import { choosePort } from './lib/web-launcher.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const dataDir = await mkdtemp(path.join(os.tmpdir(), 'workmate-task-http-'));
+const dataDir = await mkdtemp(path.join(os.tmpdir(), 'openclawx-task-http-'));
 const port = await choosePort(4459), base = `http://127.0.0.1:${port}/api`;
 let logs = '';
 const child = spawn(process.execPath, ['apps/api/dist/main.cjs'], { cwd: root, env: {
-  ...process.env, WORKMATE_API_PORT: String(port), WORKMATE_DATA_DIR: dataDir,
-  WORKMATE_AGENT_ENGINE: 'pi', WORKMATE_AGENTSCOPE_ENABLED: '0',
+  ...process.env, OPENCLAWX_API_PORT: String(port), OPENCLAWX_DATA_DIR: dataDir,
+  OPENCLAWX_AGENT_ENGINE: 'pi', OPENCLAWX_AGENTSCOPE_ENABLED: '0',
 }, stdio: ['ignore', 'pipe', 'pipe'] });
 child.stdout.on('data', value => { logs = (logs + value).slice(-5000); });
 child.stderr.on('data', value => { logs = (logs + value).slice(-5000); });
 async function request(url, { token, body, method = 'GET', status = 200 } = {}) {
-  const response = await fetch(`${base}${url}`, { method, headers: { 'content-type': 'application/json', ...(token ? { 'x-workmate-session': token } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const response = await fetch(`${base}${url}`, { method, headers: { 'content-type': 'application/json', ...(token ? { 'x-openclawx-session': token } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
   const result = await response.json(); assert.equal(response.status, status, JSON.stringify(result)); return result;
 }
 try {
@@ -61,7 +61,7 @@ try {
   const { templates } = await request('/task-templates', { token });
   assert.equal(templates[0].input.skillId, 'business-summary');
   const view = await request('/task-templates/business-summary/input?version=1.0.0', { token });
-  assert.match(view.html, /workmate.task.submit/);
+  assert.match(view.html, /openclawx.task.submit/);
   const input = { name: 'HTTP 闭环', templateId: 'business-summary', templateVersion: '1.0.0', parameters: { period: '2026-08', rows: [{ name: '华东', revenue: 120000, cost: 80000 }] } };
   await request('/template-tasks', { token, method: 'POST', body: { ...input, parameters: {} }, status: 400 });
   const { task } = await request('/template-tasks', { token, method: 'POST', body: input, status: 201 });
@@ -171,7 +171,7 @@ try {
   assert.equal((await request('/task-templates', stranger)).templates.length, 1);
   const custom = await request('/template-tasks', { token, method: 'POST', body: { ...input, templateId: definition.id, parameters: {} }, status: 201 });
   const customRun = await request(`/template-tasks/${custom.task.id}/runs`, { token, method: 'POST', body: { requestId: randomUUID() } });
-  const csv = await fetch(`${base}/template-tasks/${custom.task.id}/runs/${customRun.run.id}/export?format=csv`, { headers: { 'x-workmate-session': token } });
+  const csv = await fetch(`${base}/template-tasks/${custom.task.id}/runs/${customRun.run.id}/export?format=csv`, { headers: { 'x-openclawx-session': token } });
   assert.equal(csv.status, 200); assert.match(csv.headers.get('content-disposition'), /attachment/); assert.match(await csv.text(), /华东/);
   await request(`${endpoint}/archive`, { token, method: 'POST', body: { revision: 1, archived: true } });
   assert.equal((await request('/task-templates', { token })).templates.length, 1);
@@ -207,7 +207,7 @@ try {
   assert.ok((await request('/task-runs', { token })).records.some(item => item.taskId === custom.task.id));
   assert.equal((await request(`/task-runs/${custom.task.id}/${retainedRun.run.id}/json-result`, { token })).kind, 'json-result');
   assert.ok((await request(`${deletePath}/runs/${retainedRun.run.id}/result`, { token })).result);
-  const keptExport = await fetch(`${base}${deletePath}/runs/${retainedRun.run.id}/export?format=json`, { headers: { 'x-workmate-session': token } });
+  const keptExport = await fetch(`${base}${deletePath}/runs/${retainedRun.run.id}/export?format=json`, { headers: { 'x-openclawx-session': token } });
   assert.equal(keptExport.status, 200);
   console.log('PASS TP-T20: confirmed task API deletion, auth/revision/input guards, disabled schedule and retained history/result/export/JSON');
   const demo = await request('/data/demo/initialize', { token, method: 'POST', body: {} });

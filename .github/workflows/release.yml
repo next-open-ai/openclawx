@@ -82,7 +82,7 @@ jobs:
       - name: AgentScope smoke
         run: pnpm agentscope:smoke
         env:
-          WORKMATE_AGENTSCOPE_PYTHON: python
+          OPENCLAWX_AGENTSCOPE_PYTHON: python
       - name: dsh MCP/Skills regression
         if: ${{ false }} # Temporarily disabled in GitHub Actions; keep locally runnable.
         run: pnpm dsh:regression
@@ -90,9 +90,9 @@ jobs:
         if: ${{ false }} # Temporarily disabled in GitHub Actions; keep locally runnable.
         run: pnpm concurrency:regression
         env:
-          WORKMATE_AGENTSCOPE_PYTHON: python3
-          WORKMATE_CONCURRENCY_REGRESSION_READY_TIMEOUT_MS: '180000'
-          WORKMATE_CONCURRENCY_REGRESSION_DEBUG: '1'
+          OPENCLAWX_AGENTSCOPE_PYTHON: python3
+          OPENCLAWX_CONCURRENCY_REGRESSION_READY_TIMEOUT_MS: '180000'
+          OPENCLAWX_CONCURRENCY_REGRESSION_DEBUG: '1'
       - name: Package ${{ matrix.artifact }}
         # 每个 runner 都是目标架构原生环境，因此无需再把参数透传给 pnpm/electron-builder。
         run: pnpm package

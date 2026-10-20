@@ -1,6 +1,6 @@
-# Workmate
+# OpenClawX
 
-**Workmate - a cross-platform, local-first AI workspace for digital employees.**
+**OpenClawX - a cross-platform, local-first AI workspace for digital employees.**
 
 > **Languages:** [中文 (zh-CN)](README.md) · English
 >
@@ -8,7 +8,7 @@
 
 ---
 
-Workmate is a desktop agent workspace where digital employees can chat, run orchestrated projects, use Skills, search knowledge bases / MCP connectors / the web, manage assets, and coordinate through external channels such as Telegram, Feishu, and a remote relay. Heavy orchestration lives in a server-side state machine, so the desktop UI, gateway processes, and future remote terminals can share one consistent view of sessions, approvals, runs, assets, and project state.
+OpenClawX is a desktop agent workspace where digital employees can chat, run orchestrated projects, use Skills, search knowledge bases / MCP connectors / the web, manage assets, and coordinate through external channels such as Telegram, Feishu, and a remote relay. Heavy orchestration lives in a server-side state machine, so the desktop UI, gateway processes, and future remote terminals can share one consistent view of sessions, approvals, runs, assets, and project state.
 
 See [docs/current-state.md](docs/current-state.md) for the implementation snapshot and validation boundaries.
 
@@ -82,10 +82,10 @@ pnpm web:start
 For the packaged CLI / npm payload:
 
 ```bash
-npm install -g @next-open-ai/workmate
-workmate doctor
-workmate init
-workmate start
+npm install -g @next-open-ai/openclawx
+openclawx doctor
+openclawx init
+openclawx start
 ```
 
 Useful local validation commands:
@@ -98,18 +98,18 @@ pnpm quality:console
 ```
 
 Default renderer/API/test-console ports: `47831` / `47832` / `47840`.
-Default data directory: `~/.workmate`.
+Default data directory: `~/.openclawx`.
 
 ## Runtime shapes
 
-Workmate currently supports four practical runtime shapes:
+OpenClawX currently supports four practical runtime shapes:
 
 | Runtime | Entry | Support level | Notes |
 | --- | --- | --- | --- |
 | Desktop | `pnpm dev` / packaged app | Full | Reference experience: Electron IPC, `safeStorage`, native file actions, desktop-managed gateway |
 | Web launcher | `pnpm web:build && pnpm web:start` | Supported | Built renderer hosted by the local Fastify API; no Electron-only features |
-| npm / CLI | `workmate start` | Supported | Same runtime shape as the web launcher |
-| Docker | `deploy/docker/workmate/` | Build-supported | Images exist and are documented; parity is still evolving |
+| npm / CLI | `openclawx start` | Supported | Same runtime shape as the web launcher |
+| Docker | `deploy/docker/openclawx/` | Build-supported | Images exist and are documented; parity is still evolving |
 
 The detailed parity matrix lives in [docs/guides/runtime-modes.md](docs/guides/runtime-modes.md).
 

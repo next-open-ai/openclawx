@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
-import type { WorkflowDefinition, WorkflowExecutionSummary } from '@workmate/contracts';
+import type { WorkflowDefinition, WorkflowExecutionSummary } from '@openclawx/contracts';
 import * as orch from '../../services/orchestration';
 import { downloadAssetBestEffort, openAssetBestEffort } from '../../app/platform-actions';
 import { useAssets } from '../../app/assets';

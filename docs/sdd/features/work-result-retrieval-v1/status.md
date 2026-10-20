@@ -35,7 +35,7 @@ Pi/AgentScope在可信私有Run包装器中获得捕获身份的宿主工具；�
 
 已加入确定性名称归一化与组合关键词匹配；从当前范围或历史范围最多500条最近资产元数据中筛选，超过上限明确truncated。current补查本会话最近100个有效Run关联的缺失conversationId资产，不覆盖已有其他会话归属。Run候选支持本Run最近10条消息、每条最多4000字符，不扩大为全库正文扫描。语音与普通工具提示使用短关键词；current为空必须查history后才能描述历史匹配情况。返回摘要明确实际检索范围。
 
-实际执行：`pnpm --filter @workmate/api test` 114项，112通过、2个真实数据库用例跳过；`pnpm --filter @workmate/api typecheck`及build通过；`pnpm --filter @workmate/agent-core test` 207项通过；`node scripts/work-results-ui-regression.mjs`、`pnpm docs:build`及`git diff --check`通过。新增两组回归覆盖截图同名PDF的到/至、五天/5天、多关键词、这个PDF、无关成果排除、旧Run关联、语音桥工具调用、其他用户/会话隔离、消息主题与空结果范围。未改前端布局及输入契约，无迁移，保留所有历史文件；需加载新API并重新开始通话。未进行真实语音供应商/用户成果的端到端查询。
+实际执行：`pnpm --filter @openclawx/api test` 114项，112通过、2个真实数据库用例跳过；`pnpm --filter @openclawx/api typecheck`及build通过；`pnpm --filter @openclawx/agent-core test` 207项通过；`node scripts/work-results-ui-regression.mjs`、`pnpm docs:build`及`git diff --check`通过。新增两组回归覆盖截图同名PDF的到/至、五天/5天、多关键词、这个PDF、无关成果排除、旧Run关联、语音桥工具调用、其他用户/会话隔离、消息主题与空结果范围。未改前端布局及输入契约，无迁移，保留所有历史文件；需加载新API并重新开始通话。未进行真实语音供应商/用户成果的端到端查询。
 
 未使用真实用户成果、付费模型、实时语音供应商或业务数据库；未重启用户服务、自动下载成果或重新生成三亚PDF。真实语音工具选择、桌面卡片点击、安装包与大历史压力仍需验收。无数据迁移，关闭新增工具即可回滚，所有记录和文件保留。加载新API/renderer并重新开始通话后生效，旧通话不热更新工具集。
 

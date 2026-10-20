@@ -12,9 +12,9 @@
 
 ## 实际验证
 
-- `pnpm --filter @workmate/contracts build`通过。
-- `pnpm --filter @workmate/agent-core test`全量215项通过：新跨格式夹具、真正中文CID PDF、空/坏/不支持/超限/取消、字符/PPT页数/表格行截断、HTML不执行脚本、普通与AgentScope宿主工具路径边界、本地知识库入口在配置门槛前走统一服务。未执行真实知识库向量入库，测试确认没有嵌入配置时仍阻断。
-- `pnpm --filter @workmate/api typecheck`、`test`、`build`通过；API121项，119通过、2个真实数据库环境用例跳过。Word/PPT/HTML通过真实资产及聊天附件入口读取一致；读取失败不派单、显式委托副本交付、原件不变、幂等callId、忙碌/取消/完成读取、无模型/越权/共享拒绝、非法资产参数均覆盖。
+- `pnpm --filter @openclawx/contracts build`通过。
+- `pnpm --filter @openclawx/agent-core test`全量215项通过：新跨格式夹具、真正中文CID PDF、空/坏/不支持/超限/取消、字符/PPT页数/表格行截断、HTML不执行脚本、普通与AgentScope宿主工具路径边界、本地知识库入口在配置门槛前走统一服务。未执行真实知识库向量入库，测试确认没有嵌入配置时仍阻断。
+- `pnpm --filter @openclawx/api typecheck`、`test`、`build`通过；API121项，119通过、2个真实数据库环境用例跳过。Word/PPT/HTML通过真实资产及聊天附件入口读取一致；读取失败不派单、显式委托副本交付、原件不变、幂等callId、忙碌/取消/完成读取、无模型/越权/共享拒绝、非法资产参数均覆盖。
 - renderer build（含类型检查、手册生成）、work-results-ui-regression、pdf-resources-regression、用户手册回归、concurrency:regression及docs:build通过。界面解析器及桥接源码断言确认读取不进入自动任务通知，不冒充真实浏览器点击。
 
 首次跨格式回归发现旧表格读取默认编码导致中文CSV乱码，修复UTF-8后全量通过；新API测试最初误用了readChatFile并不存在的context字段，改为实际resolveChatFiles入口，类型检查和全量回归通过。依赖源访问波动，停止在线重试，使用已有本地缓存完成同版本xlsx依赖关联。未覆盖既有Provider及其他未提交改动。

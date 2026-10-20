@@ -40,7 +40,7 @@ const benefits = [
   },
   {
     title: '按需本机安装',
-    body: '不内置进安装包。首次约下载 200MB 到 ~/.workmate/dsh-runtime，需联网与本机 npm。',
+    body: '不内置进安装包。首次约下载 200MB 到 ~/.openclawx/dsh-runtime，需联网与本机 npm。',
   },
 ] as const;
 

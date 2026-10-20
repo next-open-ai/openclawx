@@ -4,7 +4,7 @@ import {mkdtemp,mkdir,readFile,writeFile,readdir,symlink,rm} from 'node:fs/promi
 import path from 'node:path';
 import os from 'node:os';
 import {createServer} from 'node:http';
-import {WorkspaceWriteStateSchema,WorkspaceWriteErrorSchema} from '@workmate/contracts';
+import {WorkspaceWriteStateSchema,WorkspaceWriteErrorSchema} from '@openclawx/contracts';
 import {validateToolArguments} from '@mariozechner/pi-ai';
 import {createSkillExecutionTools} from '../skill-runtime.js';
 import {extractToolDetails} from '../pi-tools.js';
@@ -58,7 +58,7 @@ test('FW-T2/T3: rejected reset preserves pieces; sessions are bounded per run wi
 
 test('FW-T1/T3/T4: production tools admit medium files, atomic replace, guarded append and recoverable finish',async()=>{
   resetStagedWritesForTests();
-  const root=await mkdtemp(path.join(os.tmpdir(),'workmate-fw-v2-'));
+  const root=await mkdtemp(path.join(os.tmpdir(),'openclawx-fw-v2-'));
   const project=path.join(root,'project');await mkdir(project);
   try{
     const tools=createSkillExecutionTools({runId:'fw-a',projectRoot:project,skills:[]});
@@ -97,12 +97,12 @@ test('FW-T1/T3/T4: production tools admit medium files, atomic replace, guarded 
     assert.equal(await readFile(path.join(project,'retry.txt'),'utf8'),'prefixsuffix');
     const denied=createSkillExecutionTools({runId:'fw-a',projectRoot:project,workspaceAccess:'read',skills:[]});
     assert.equal((extractToolDetails(await denied.find(t=>t.name==='start_workspace_write')!.execute('read',{path:'no.txt'})) as {ok:boolean}).ok,false);
-    assert.equal((await readdir(project)).some(name=>name.startsWith('.workmate-write-')),false);
+    assert.equal((await readdir(project)).some(name=>name.startsWith('.openclawx-write-')),false);
   }finally{await rm(root,{recursive:true,force:true});}
 });
 
 test('FW-T3/T4: cancelled queued write does not overwrite existing file; commit keeps assembly',async()=>{
-  resetStagedWritesForTests();const root=await mkdtemp(path.join(os.tmpdir(),'workmate-fw-cancel-'));
+  resetStagedWritesForTests();const root=await mkdtemp(path.join(os.tmpdir(),'openclawx-fw-cancel-'));
   try{
     await writeFile(path.join(root,'a.txt'),'old');
     const tools=createSkillExecutionTools({runId:'cancel',projectRoot:root,skills:[]});
@@ -121,7 +121,7 @@ test('FW-T3/T4: cancelled queued write does not overwrite existing file; commit 
 });
 
 test('FW-T5: logical write failures emit actionable failed events in the real Pi loop', {timeout:20000},async()=>{
-  const root=await mkdtemp(path.join(os.tmpdir(),'workmate-fw-events-'));
+  const root=await mkdtemp(path.join(os.tmpdir(),'openclawx-fw-events-'));
   let requests=0;
   const server=createServer((request,response)=>{
     request.resume();requests++;

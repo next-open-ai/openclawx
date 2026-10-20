@@ -1,4 +1,4 @@
-import type { RunFailure } from '@workmate/contracts';
+import type { RunFailure } from '@openclawx/contracts';
 
 /** Retain technical signatures, never arbitrary SDK response bodies or credentials. */
 export function diagnoseModelFailure(error: unknown, context: { phase: RunFailure['phase']; elapsedMs: number }): { message: string; failure: RunFailure } {

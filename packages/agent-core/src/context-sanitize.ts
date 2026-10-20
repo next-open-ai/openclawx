@@ -279,7 +279,7 @@ export function extractContextAnchors(messages: AgentMessage[]): ContextAnchors 
 
     if (role === 'user' && !goal) {
       const text = messageText(message).trim();
-      if (text && !text.startsWith('[Workmate context summary]')) {
+      if (text && !text.startsWith('[OpenClawX context summary]')) {
         goal = text.length > 800 ? `${text.slice(0, 800)}…` : text;
       }
     }

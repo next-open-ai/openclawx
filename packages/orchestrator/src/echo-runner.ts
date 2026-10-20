@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { AgentEvent, ChatRequest } from '@workmate/contracts';
+import type { AgentEvent, ChatRequest } from '@openclawx/contracts';
 import type { AgentRunner } from './runner.js';
 
 export interface ScriptedRunnerMode {
@@ -15,7 +15,7 @@ export interface ScriptedRunnerMode {
 /**
  * Deterministic runner for headless smoke tests and local demos (no network,
  * no model credentials). Activated in apps/api only when
- * `WORKMATE_ORCH_RUNNER=memory-echo|memory-approval`. Never used in production
+ * `OPENCLAWX_ORCH_RUNNER=memory-echo|memory-approval`. Never used in production
  * defaults — agent-core remains the only real model boundary.
  */
 export class ScriptedRunner implements AgentRunner {
@@ -53,7 +53,7 @@ export class ScriptedRunner implements AgentRunner {
   }
 }
 
-/** Echo-only scripted runner factory (activated via WORKMATE_ORCH_RUNNER). */
+/** Echo-only scripted runner factory (activated via OPENCLAWX_ORCH_RUNNER). */
 export function createScriptedRunner(approvalMode = false, overrides: Partial<ScriptedRunnerMode> = {}): ScriptedRunner {
   return new ScriptedRunner({
     ...(approvalMode ? { approvalOnFirstCall: true } : {}),

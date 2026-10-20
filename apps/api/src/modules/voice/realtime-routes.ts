@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import WebSocket from 'ws';
-import { VoiceSessionCreateSchema, RealtimeVoiceInterruptSchema, RealtimeVoicePlaybackSchema, RealtimeVoiceDiagnosticSchema, VoicePlaybackStopSchema } from '@workmate/contracts';
+import { VoiceSessionCreateSchema, RealtimeVoiceInterruptSchema, RealtimeVoicePlaybackSchema, RealtimeVoiceDiagnosticSchema, VoicePlaybackStopSchema } from '@openclawx/contracts';
 import { VoiceResponseGate } from './response-gate.js';
 import { explicitPlaybackStop } from './playback-control.js';
 import { getOrchestrator } from '../orchestration/routes.js';

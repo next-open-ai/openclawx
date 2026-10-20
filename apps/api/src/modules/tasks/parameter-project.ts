@@ -2,10 +2,10 @@ import { randomUUID, createHash } from 'node:crypto';
 import { lstat, readdir, open, realpath, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { constants } from 'node:fs';
-import type { Orchestrator, TaskOwner, TemplateTaskService } from '@workmate/orchestrator';
-import { TemplateTaskError, withKeyLock, parameterUiHtml,defaultReportSource,reportUiHtml,reportPreviewResult } from '@workmate/orchestrator';
-import { TaskParameterUiSchema, TaskParameterProjectPreviewSchema,TaskReportUiSchema } from '@workmate/contracts';
-import type { TaskParameterUi, TaskTemplateDefinition } from '@workmate/contracts';
+import type { Orchestrator, TaskOwner, TemplateTaskService } from '@openclawx/orchestrator';
+import { TemplateTaskError, withKeyLock, parameterUiHtml,defaultReportSource,reportUiHtml,reportPreviewResult } from '@openclawx/orchestrator';
+import { TaskParameterUiSchema, TaskParameterProjectPreviewSchema,TaskReportUiSchema } from '@openclawx/contracts';
+import type { TaskParameterUi, TaskTemplateDefinition } from '@openclawx/contracts';
 import { createConversationDirectory } from '../orchestration/conversation-directory.js';
 import {taskApplicationApiReference} from './task-applications.js';
 

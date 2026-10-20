@@ -4,8 +4,8 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, symlinkSyn
 import os from 'node:os';
 import path from 'node:path';
 import Fastify from 'fastify';
-import { Orchestrator, type AgentRunner } from '@workmate/orchestrator';
-import { PublishProjectApplicationSchema, type ProjectApplicationView } from '@workmate/contracts';
+import { Orchestrator, type AgentRunner } from '@openclawx/orchestrator';
+import { PublishProjectApplicationSchema, type ProjectApplicationView } from '@openclawx/contracts';
 import { registerProjectApplicationRoutes, projectSiteRoutes } from './project-application-routes.js';
 import { projectApplications, ProjectApplications } from './project-application.js';
 import type { AuthPrincipal } from '../auth/service.js';
@@ -14,9 +14,9 @@ const alice: AuthPrincipal = { userId: 'alice', orgId: 'org', role: 'member', us
 const context = { profile: { id: 'general', name: 'fixture', instructions: 'fixture', toolIds: [] }, model: { provider: 'ollama' as const, chatModel: 'fixture', apiKey: 'fixture' }, skills: [], searchProviders: [], mcpConnections: [], knowledgeBases: [] };
 
 test('PA-T1/T2/T3/T5/T6: independent turns, preview, publish, failure preservation and restart continuation', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-project-app-'));
-  const saved = { data: process.env.WORKMATE_DATA_DIR, runs: process.env.WORKMATE_WORKSPACES_DIR };
-  process.env.WORKMATE_DATA_DIR = root; process.env.WORKMATE_WORKSPACES_DIR = path.join(root, 'runs');
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-project-app-'));
+  const saved = { data: process.env.OPENCLAWX_DATA_DIR, runs: process.env.OPENCLAWX_WORKSPACES_DIR };
+  process.env.OPENCLAWX_DATA_DIR = root; process.env.OPENCLAWX_WORKSPACES_DIR = path.join(root, 'runs');
   const workspace = path.join(root, 'project'); mkdirSync(path.join(workspace, 'inputs'), { recursive: true });
   writeFileSync(path.join(workspace, 'inputs/private.json'), '{"private":"do not publish"}');
   let calls = 0;
@@ -65,11 +65,11 @@ test('PA-T1/T2/T3/T5/T6: independent turns, preview, publish, failure preservati
     const one = response.json<ProjectApplicationView>(); assert.equal(one.fileCount, 3);
     assert.equal((await get()).json().published, null, 'preview never publishes');
     const previewContent = await app.inject({ url: one.viewPath }); assert.match(previewContent.body, /version one/);
-    assert.ok(!previewContent.body.includes('window.workmateData='), 'ordinary static apps get no SDK');
+    assert.ok(!previewContent.body.includes('window.openclawxData='), 'ordinary static apps get no SDK');
     managed = true;
     const dataPreview = await app.inject({ url: one.viewPath });
-    assert.match(dataPreview.body, /window.workmateData=/); assert.match(dataPreview.body, /workmate.app.query/);
-    assert.ok(!dataPreview.body.includes('x-workmate-session'), 'read-only view ticket carries no data identity');
+    assert.match(dataPreview.body, /window.openclawxData=/); assert.match(dataPreview.body, /openclawx.app.query/);
+    assert.ok(!dataPreview.body.includes('x-openclawx-session'), 'read-only view ticket carries no data identity');
     managed = false;
     assert.match(String(previewContent.headers['content-security-policy']), /sandbox allow-scripts allow-forms/);
     assert.doesNotMatch(String(previewContent.headers['content-security-policy']), /allow-same-origin/);
@@ -136,18 +136,18 @@ test('PA-T1/T2/T3/T5/T6: independent turns, preview, publish, failure preservati
     await assert.rejects(clocked.content(expiring.viewPath.split('/')[3], 'index.html'), /过期/);
   } finally {
     await app.close(); await orch.close();
-    if (saved.data === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = saved.data;
-    if (saved.runs === undefined) delete process.env.WORKMATE_WORKSPACES_DIR; else process.env.WORKMATE_WORKSPACES_DIR = saved.runs;
+    if (saved.data === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = saved.data;
+    if (saved.runs === undefined) delete process.env.OPENCLAWX_WORKSPACES_DIR; else process.env.OPENCLAWX_WORKSPACES_DIR = saved.runs;
     rmSync(root, { recursive: true, force: true });
   }
 });
 
 test('PA-T2/T5: nested entry, excluded materials, unsafe files, limits and permission revocation', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-project-site-safety-'));
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-project-site-safety-'));
   const orch = Orchestrator.memory(); const service = new ProjectApplications(orch, root);
   const workspace = path.join(root, 'project'); mkdirSync(path.join(workspace, 'output'), { recursive: true });
   const page = path.join(workspace, 'output/index.html'); writeFileSync(page, '<h1>nested application</h1>');
-  for (const directory of ['inputs', 'scripts', '.workmate']) { mkdirSync(path.join(workspace, 'output', directory)); writeFileSync(path.join(workspace, 'output', directory, 'secret.html'), 'private'); }
+  for (const directory of ['inputs', 'scripts', '.openclawx']) { mkdirSync(path.join(workspace, 'output', directory)); writeFileSync(path.join(workspace, 'output', directory, 'secret.html'), 'private'); }
   writeFileSync(path.join(workspace, 'output/secret.env'), 'PRIVATE=secret');
   try {
     await orch.projects.createDraftOnce('safe', { kind: 'conversation', name: 'safe', goal: '', mode: 'dag', tasks: [], workspacePath: workspace, orgId: 'org', ownerUserId: 'alice' });

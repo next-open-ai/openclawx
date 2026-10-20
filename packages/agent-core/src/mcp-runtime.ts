@@ -5,7 +5,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { McpConnectionRuntime } from '@workmate/contracts';
+import type { McpConnectionRuntime } from '@openclawx/contracts';
 import { defineAgentTool, jsonSchemaParameters, type AgentTool } from './pi-tools.js';
 
 export interface McpConnection {
@@ -68,9 +68,9 @@ function prepareStdioLaunch(connection: McpConnection | McpConnectionRuntime) {
     ? ({ npx: 'npx.cmd', uvx: 'uvx.cmd' } as Record<string, string>)[requestedCommand.toLowerCase()] || requestedCommand
     : requestedCommand;
   const args = ('args' in connection && Array.isArray(connection.args) ? connection.args.map(String) : []).map(expandUserPath);
-  // Ensure sandbox dirs exist for filesystem-style MCP seeds (e.g. ~/.workmate/mcp-files).
+  // Ensure sandbox dirs exist for filesystem-style MCP seeds (e.g. ~/.openclawx/mcp-files).
   for (const arg of args) {
-    if (!arg.includes(`${path.sep}.workmate${path.sep}`) && !arg.endsWith(`${path.sep}.workmate`)) continue;
+    if (!arg.includes(`${path.sep}.openclawx${path.sep}`) && !arg.endsWith(`${path.sep}.openclawx`)) continue;
     try {
       fs.mkdirSync(arg, { recursive: true });
     } catch {
@@ -91,7 +91,7 @@ export async function connectMcpClient(connection: McpConnection | McpConnection
   client: Client;
   close: () => Promise<void>;
 }> {
-  const client = new Client({ name: 'workmate', version: '0.1.0' }, { capabilities: {} });
+  const client = new Client({ name: 'openclawx', version: '0.1.0' }, { capabilities: {} });
   let transport: { close?: () => Promise<void> };
 
   if (isStdio(connection) || connection.transport === 'stdio') {
@@ -154,7 +154,7 @@ function mcpContentToDetails(result: { content?: Array<{ type: string; text?: st
  */
 const DEFAULT_MCP_IDLE_TTL_MS = 600_000;
 function mcpIdleTtlMs(): number {
-  const raw = Number(process.env.WORKMATE_MCP_IDLE_TTL_MS || '');
+  const raw = Number(process.env.OPENCLAWX_MCP_IDLE_TTL_MS || '');
   if (Number.isFinite(raw) && raw >= 5_000) return Math.min(3_600_000, Math.round(raw));
   return DEFAULT_MCP_IDLE_TTL_MS;
 }
@@ -400,7 +400,7 @@ export type McpWarmResult = {
 
 /**
  * Pin MCP stdio/http clients into the process pool before a dsh/pi run.
- * Cold start is paid once; subsequent warms within WORKMATE_MCP_IDLE_TTL_MS
+ * Cold start is paid once; subsequent warms within OPENCLAWX_MCP_IDLE_TTL_MS
  * (default 10m) are cache hits. Also warms the local npm/uvx package cache so
  * a later dsh-sidecar `npx -y` spawn is much faster.
  */
@@ -442,7 +442,7 @@ export async function warmMcpConnections(
         toolNames,
       };
       items.push(item);
-      console.info('[workmate] MCP warm', {
+      console.info('[openclawx] MCP warm', {
         name: connection.name,
         cacheHit: item.cacheHit,
         durationMs: item.durationMs,
@@ -459,7 +459,7 @@ export async function warmMcpConnections(
         error: error instanceof Error ? error.message : String(error),
       };
       items.push(item);
-      console.warn('[workmate] MCP warm failed', { name: connection.name, error: item.error, durationMs: item.durationMs });
+      console.warn('[openclawx] MCP warm failed', { name: connection.name, error: item.error, durationMs: item.durationMs });
       return item;
     }
   }));

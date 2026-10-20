@@ -5,12 +5,12 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production \
-    WORKMATE_DATA_DIR=/opt/workmate-data \
-    WORKMATE_API_HOST=0.0.0.0 \
-    WORKMATE_API_PORT=47832 \
-    WORKMATE_AGENT_ENGINE=agentscope
+    OPENCLAWX_DATA_DIR=/opt/openclawx-data \
+    OPENCLAWX_API_HOST=0.0.0.0 \
+    OPENCLAWX_API_PORT=47832 \
+    OPENCLAWX_AGENT_ENGINE=agentscope
 
-WORKDIR /opt/workmate
+WORKDIR /opt/openclawx
 
 COPY package.docker.json ./package.json
 COPY README.md README-EN.md ./
@@ -21,10 +21,10 @@ COPY apps/renderer/dist ./apps/renderer/dist
 COPY runtimes/agentscope-runtime ./runtimes/agentscope-runtime
 
 RUN npm install --omit=dev --no-audit --no-fund
-RUN chmod +x bin/workmate.mjs
-RUN mkdir -p /opt/workmate-data && WORKMATE_DATA_DIR=/opt/workmate-data node bin/workmate.mjs init
+RUN chmod +x bin/openclawx.mjs
+RUN mkdir -p /opt/openclawx-data && OPENCLAWX_DATA_DIR=/opt/openclawx-data node bin/openclawx.mjs init
 
 EXPOSE 47832
-VOLUME ["/opt/workmate-data"]
+VOLUME ["/opt/openclawx-data"]
 
-CMD ["node", "bin/workmate.mjs", "start"]
+CMD ["node", "bin/openclawx.mjs", "start"]

@@ -1,4 +1,4 @@
-# Workmate 并发执行机制与进程拓扑
+# OpenClawX 并发执行机制与进程拓扑
 
 > 状态：随实现演进维护。本文聚焦 **multi-session / multi-user / AgentScope sidecar pool** 的运行时并发机制。
 > 权威总览仍以 `architecture.md` 为准；本文展开“如何并发运行、如何隔离、如何观测、当前边界在哪”。
@@ -7,7 +7,7 @@
 
 本阶段的目标不是分布式集群，而是先把单机 Web / Desktop 场景下的并发能力做扎实：
 
-- 多个网页标签页可同时打开同一 Workmate 实例
+- 多个网页标签页可同时打开同一 OpenClawX 实例
 - 多个本地用户可在同一 API 进程下并发发起 run
 - 同一 `session` 不会因并发发言而破坏上下文顺序
 - AgentScope 不再被视为单实例黑盒，而是可池化、可限流、可观测、可恢复
@@ -31,11 +31,11 @@
 Browser / Renderer / Gateway Client
   -> HTTP / SSE
 apps/api (Fastify, single local process)
-  -> @workmate/orchestrator
+  -> @openclawx/orchestrator
      -> InMemoryExecutionDispatcher
         -> capacity queue / priority scheduling / per-session lane
      -> RunEngine
-        -> @workmate/agent-core
+        -> @openclawx/agent-core
            -> AgentScope sidecar pool
               -> sidecar-1 (Python process, WS RPC)
               -> sidecar-2 (Python process, WS RPC)
@@ -86,7 +86,7 @@ pnpm concurrency:regression
 
 ## 4. Dispatcher：第一层并发治理
 
-`@workmate/orchestrator` 中的 `InMemoryExecutionDispatcher` 是当前单机模式下的第一层运行时调度器。
+`@openclawx/orchestrator` 中的 `InMemoryExecutionDispatcher` 是当前单机模式下的第一层运行时调度器。
 
 它负责四类约束：
 
@@ -222,7 +222,7 @@ sidecar 并发安全的关键不只是“多进程”，还包括**run 级 host 
 
 当前阈值：
 
-- `WORKMATE_AGENTSCOPE_QUEUE_WAIT_MS`
+- `OPENCLAWX_AGENTSCOPE_QUEUE_WAIT_MS`
 
 ### 6.2 异常实例摘除
 
@@ -244,7 +244,7 @@ sidecar 并发安全的关键不只是“多进程”，还包括**run 级 host 
 
 当前冷却参数：
 
-- `WORKMATE_AGENTSCOPE_RESTART_COOLDOWN_MS`
+- `OPENCLAWX_AGENTSCOPE_RESTART_COOLDOWN_MS`
 
 ### 6.4 自动补位
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { DEFAULT_EMBEDDING_META, suggestedSpeechVoices } from '@workmate/contracts';
+import { DEFAULT_EMBEDDING_META, suggestedSpeechVoices } from '@openclawx/contracts';
 import { useI18n } from '../../app/i18n';
 import {
   imageGenerationProtocols,
@@ -121,7 +121,7 @@ const realtimeVoices = computed(() => {
 });
 const realtimeProviderLabel = computed(() => realtimeConfigProvider.value?.type === 'qwen' ? '通义千问实时语音' : '火山实时语音');
 const realtimeProtocolSummary = computed(() => realtimeConfigProvider.value?.type === 'qwen'
-  ? '支持实时双向语音与 Function Calling；联网搜索由 Workmate Tool 提供，避免与工具调用冲突。'
+  ? '支持实时双向语音与 Function Calling；联网搜索由 OpenClawX Tool 提供，避免与工具调用冲突。'
   : '支持实时双向语音与 Function Calling；通话参数由火山 SeedDuplex 协议适配。');
 const realtimeMeteringSummary = computed(() => realtimeConfigProvider.value?.type === 'qwen'
   ? '计量：优先显示阿里结算帧返回的 Token/字符，同时保留本地音频时长。'

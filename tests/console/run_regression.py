@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a fixed Workmate regression group and write a machine-readable report."""
+"""Run a fixed OpenClawX regression group and write a machine-readable report."""
 import argparse
 from datetime import datetime, timezone
 import json
@@ -10,18 +10,18 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 GROUPS = {
     'quick': [
-        ('API 单元测试', ['pnpm', '--filter', '@workmate/api', 'test']),
-        ('Renderer 类型检查', ['pnpm', '--filter', '@workmate/renderer', 'typecheck']),
+        ('API 单元测试', ['pnpm', '--filter', '@openclawx/api', 'test']),
+        ('Renderer 类型检查', ['pnpm', '--filter', '@openclawx/renderer', 'typecheck']),
     ],
     'voice': [
-        ('语音 API 测试', ['pnpm', '--filter', '@workmate/api', 'test']),
+        ('语音 API 测试', ['pnpm', '--filter', '@openclawx/api', 'test']),
         ('语音界面回归', ['pnpm', 'voice:ui:regression']),
         ('语音命令回归', ['pnpm', 'voice:command:regression']),
     ],
     'core': [
-        ('Contracts 构建', ['pnpm', '--filter', '@workmate/contracts', 'build']),
-        ('Orchestrator 构建', ['pnpm', '--filter', '@workmate/orchestrator', 'build']),
-        ('API 构建', ['pnpm', '--filter', '@workmate/api', 'build']),
+        ('Contracts 构建', ['pnpm', '--filter', '@openclawx/contracts', 'build']),
+        ('Orchestrator 构建', ['pnpm', '--filter', '@openclawx/orchestrator', 'build']),
+        ('API 构建', ['pnpm', '--filter', '@openclawx/api', 'build']),
     ],
     'full': [('全仓测试', ['pnpm', 'test']), ('全仓构建', ['pnpm', 'build'])],
 }

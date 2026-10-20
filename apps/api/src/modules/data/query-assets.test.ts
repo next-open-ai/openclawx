@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {MemoryStore} from '@workmate/orchestrator';
-import {dataObjectModelSchema,structuredDataQuerySchema,dataAppSqlOperationSchema} from '@workmate/contracts';
+import {MemoryStore} from '@openclawx/orchestrator';
+import {dataObjectModelSchema,structuredDataQuerySchema,dataAppSqlOperationSchema} from '@openclawx/contracts';
 import {createQueryAssets,explicitQuerySave} from './query-assets.js';
 import type {AgentDataGateway} from './agent-query.js';
 const owner={userId:'u',orgId:'o'},allow=async()=>{};

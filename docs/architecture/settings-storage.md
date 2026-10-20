@@ -1,14 +1,14 @@
-# Workmate 配置持久化
+# OpenClawX 配置持久化
 
-Workmate 在 Web / Docker 模式下，前端不直接依赖浏览器 `localStorage` 保存核心运行配置，而是通过 `apps/api` 的 `settings/*` 接口统一持久化到 `WORKMATE_DATA_DIR`。
+OpenClawX 在 Web / Docker 模式下，前端不直接依赖浏览器 `localStorage` 保存核心运行配置，而是通过 `apps/api` 的 `settings/*` 接口统一持久化到 `OPENCLAWX_DATA_DIR`。
 
 默认数据目录：
 
 ```bash
-~/.workmate
+~/.openclawx
 ```
 
-若设置了环境变量，则以 `WORKMATE_DATA_DIR` 为准。
+若设置了环境变量，则以 `OPENCLAWX_DATA_DIR` 为准。
 
 ## 设计原则
 

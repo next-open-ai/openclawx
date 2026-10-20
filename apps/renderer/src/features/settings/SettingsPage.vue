@@ -550,7 +550,7 @@ function handleDefaultEmployeeChange(event: Event) {
 <template>
   <section :class="['mx-auto w-full px-6 py-16 sm:px-12', tab === 'users' || tab === 'general' || tab === 'models' ? 'max-w-6xl' : 'max-w-3xl']">
     <header class="mb-8">
-      <p class="mb-2 text-[11px] font-extrabold tracking-[.13em] text-[var(--accent)]">Workmate / PREFERENCES</p>
+      <p class="mb-2 text-[11px] font-extrabold tracking-[.13em] text-[var(--accent)]">OpenClawX / PREFERENCES</p>
       <h1 class="text-4xl font-bold tracking-[-.045em]">{{ t('settings.title') }}</h1>
       <p class="mt-3 max-w-xl leading-relaxed text-[var(--muted)]">{{ t('settings.subtitleTabs') }}</p>
     </header>
@@ -920,7 +920,7 @@ function handleDefaultEmployeeChange(event: Event) {
           <div>
             <h3 class="text-[16px] font-bold">执行引擎</h3>
             <p class="mt-1 max-w-2xl text-[13px] leading-relaxed text-[var(--muted)]">
-              选择本机可用引擎与默认引擎。数字员工可覆盖默认。运维强制请设 <code class="rounded bg-[var(--surface)] px-1">WORKMATE_AGENT_ENGINE_FORCE=1</code> 并指定 <code class="rounded bg-[var(--surface)] px-1">WORKMATE_AGENT_ENGINE</code>。
+              选择本机可用引擎与默认引擎。数字员工可覆盖默认。运维强制请设 <code class="rounded bg-[var(--surface)] px-1">OPENCLAWX_AGENT_ENGINE_FORCE=1</code> 并指定 <code class="rounded bg-[var(--surface)] px-1">OPENCLAWX_AGENT_ENGINE</code>。
             </p>
           </div>
         </div>

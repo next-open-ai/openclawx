@@ -1,4 +1,4 @@
-# Workmate M2 「远程办公」门户 / 飞书 / 远程中继 · 设计与实现记录
+# OpenClawX M2 「远程办公」门户 / 飞书 / 远程中继 · 设计与实现记录
 
 > 状态：P1（门户与凭证链路）、P2（飞书）、P3（远程中继基础）均已实现并通过离线桩验收；
 > 真机 Telegram/飞书与公网中继联调需真实凭证/域名，属发布前人工步骤（文末给出）。
@@ -11,8 +11,8 @@
 - 主进程 `apps/desktop/src/main/index.cjs`：
   - 分层配置：元数据 → 域 KV `channels.v1`；凭证（Telegram botToken/飞书 appSecret/中继 token）
     → sql.js `settings.channels.v1`，字段级 `safeStorage` 加密；
-  - IPC：`workmate:get-channel-settings`、`save-channel-settings`、`gateway-status`、`gateway-restart`；
-  - 网关子进程 fork 后应答 `workmate:channels:secrets:request`（一次性下发解密凭证）。
+  - IPC：`openclawx:get-channel-settings`、`save-channel-settings`、`gateway-status`、`gateway-restart`；
+  - 网关子进程 fork 后应答 `openclawx:channels:secrets:request`（一次性下发解密凭证）。
 - 网关 `apps/gateway/src/parent.ts`：子进程向主进程拉取凭证并合并进 `channels.*`（文件配置优先，其次 KV，凭证仅填充空字段）。
 - 不做用户/身份体系；白名单维持字符串配置（默认拒绝）。
 

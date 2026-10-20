@@ -6,7 +6,7 @@ import type {
   StreamSink,
   UnifiedMessage,
   UnifiedReply,
-} from '@workmate/channel';
+} from '@openclawx/channel';
 
 export interface DingTalkConfig {
   clientId: string;

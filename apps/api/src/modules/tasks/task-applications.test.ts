@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,readFile,rm} from 'node:fs/promises';
 import os from 'node:os';import path from 'node:path';
-import {Orchestrator,TemplateTaskService,templateAgentExecutor,createScriptedRunner} from '@workmate/orchestrator';
+import {Orchestrator,TemplateTaskService,templateAgentExecutor,createScriptedRunner} from '@openclawx/orchestrator';
 import {TaskApplications} from './task-applications.js';
 import {ParameterProjects} from './parameter-project.js';
 const owner={orgId:'task-app-org',userId:'task-app-owner'};
 test('TA-T1/T2: editor references, explicit publish, isolated idempotent launch, schedules and pinned snapshots',async()=>{
- const root=await mkdtemp(path.join(os.tmpdir(),'workmate-task-app-'));const runner=createScriptedRunner();
+ const root=await mkdtemp(path.join(os.tmpdir(),'openclawx-task-app-'));const runner=createScriptedRunner();
  const orch=Orchestrator.open(path.join(root,'domain.json'),{runner,chatContextResolver:async()=>({profile:{id:'general',name:'General',instructions:'',toolIds:[]},model:{provider:'ollama',chatModel:'test',apiKey:'test'},skills:[],searchProviders:[],mcpConnections:[],knowledgeBases:[]})});
  const tasks=new TemplateTaskService(orch.store,undefined,undefined,templateAgentExecutor(orch)),projects=new ParameterProjects(orch,tasks,root),apps=new TaskApplications(orch,tasks,projects);
  try{

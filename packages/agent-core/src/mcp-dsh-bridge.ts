@@ -7,7 +7,7 @@ import {
   ListToolsRequestSchema,
   type CallToolResult,
 } from '@modelcontextprotocol/sdk/types.js';
-import type { McpConnectionRuntime } from '@workmate/contracts';
+import type { McpConnectionRuntime } from '@openclawx/contracts';
 import { acquirePooledMcpForBridge, releasePooledMcpForBridge, type PooledMcpHandle } from './mcp-runtime.js';
 
 export type McpDshBridge = {
@@ -45,7 +45,7 @@ function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
 
 function createProxyServer(pooled: PooledMcpHandle, onListTools: () => void): Server {
   const server = new Server(
-    { name: 'workmate-mcp-dsh-bridge', version: '0.1.0' },
+    { name: 'openclawx-mcp-dsh-bridge', version: '0.1.0' },
     {
       capabilities: { tools: {} },
       ...(pooled.instructions ? { instructions: pooled.instructions } : {}),
@@ -199,10 +199,10 @@ export async function openDshMcpBridges(
       pooled = null; // ownership transferred to bridge.close
       bridges.push(bridge);
       cordisConnections.push(bridge.connection);
-      console.info('[workmate] MCP dsh bridge', { name: connection.name, url: bridge.url });
+      console.info('[openclawx] MCP dsh bridge', { name: connection.name, url: bridge.url });
     } catch (error) {
       if (pooled) releasePooledMcpForBridge(pooled);
-      console.warn('[workmate] MCP dsh bridge failed; falling back to stdio', {
+      console.warn('[openclawx] MCP dsh bridge failed; falling back to stdio', {
         name: connection.name,
         error: error instanceof Error ? error.message : String(error),
       });

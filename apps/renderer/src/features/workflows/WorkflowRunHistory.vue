@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from 'vue';
-import type { WorkflowExecutionSummary } from '@workmate/contracts';
+import type { WorkflowExecutionSummary } from '@openclawx/contracts';
 import * as orch from '../../services/orchestration';
 import { downloadAssetBestEffort, openAssetBestEffort } from '../../app/platform-actions';
 

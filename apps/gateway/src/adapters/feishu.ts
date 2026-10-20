@@ -5,7 +5,7 @@ import type {
   StreamSink,
   UnifiedMessage,
   UnifiedReply,
-} from '@workmate/channel';
+} from '@openclawx/channel';
 
 /**
  * Feishu (Lark) channel adapter (M2 P2).

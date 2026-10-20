@@ -1,5 +1,5 @@
 import {randomUUID} from 'node:crypto';
-import type {ModelConfig} from '@workmate/contracts';
+import type {ModelConfig} from '@openclawx/contracts';
 import {ingestKnowledge,searchKnowledgeBase} from '../knowledge-runtime.js';
 import {currentExperienceContext} from './context.js';
 import {listLocalExperiences,putLocalExperience} from './local-store.js';
@@ -28,7 +28,7 @@ export async function saveExperience(input:SaveExperienceInput){
   const local=await putLocalExperience(record);
   if(remote){const target=remote.target!,key=`save:${experienceRoot()}:${remote.settings.fingerprint}:${record.id}:${record.revision}`;
     if(!schedule(key,async()=>{
-      try{await remote.authorize?.();if(remote.isTargetCurrent&&!await remote.isTargetCurrent())record.syncState='skipped';else{if(remote.sync){await remote.sync(record);record.syncState='synced';}else{const result=await ingestKnowledge({kb:target,title:record.title,fileName:`workmate-experience-${record.id}.txt`,content:`Experience-ID: ${record.id}\nUser-ID: ${record.userId}\nOrg-ID: ${record.orgId}\nAgent-ID: ${record.agentId}\n${formatExperienceCard(record)}`,source:`workmate-experience:${record.id}`,model:input.model});record.syncState=result.status==='ready'?'synced':'submitted';}}}catch{record.syncState='failed';}
+      try{await remote.authorize?.();if(remote.isTargetCurrent&&!await remote.isTargetCurrent())record.syncState='skipped';else{if(remote.sync){await remote.sync(record);record.syncState='synced';}else{const result=await ingestKnowledge({kb:target,title:record.title,fileName:`openclawx-experience-${record.id}.txt`,content:`Experience-ID: ${record.id}\nUser-ID: ${record.userId}\nOrg-ID: ${record.orgId}\nAgent-ID: ${record.agentId}\n${formatExperienceCard(record)}`,source:`openclawx-experience:${record.id}`,model:input.model});record.syncState=result.status==='ready'?'synced':'submitted';}}}catch{record.syncState='failed';}
       const current=(await listLocalExperiences()).find(r=>r.id===record.id);
       if(current&&current.revision===record.revision&&current.syncTarget===record.syncTarget)await putLocalExperience({...current,syncState:record.syncState});
     })){record.syncState='failed';await putLocalExperience(record);}
@@ -52,7 +52,7 @@ export async function loadExperience(input:LoadExperienceInput){
   if(remote&&!validCache)schedule('load:'+key,async()=>{
     await remote.authorize?.();if(remote.isTargetCurrent&&!await remote.isTargetCurrent())return;
     const found=remote.search?undefined:await searchKnowledgeBase(remote.target!,query,5,input.model);
-    const hits=remote.search?await remote.search(query):found!.flatMap(hit=>{const id=hit.source?.startsWith('workmate-experience:')?hit.source.slice('workmate-experience:'.length):[hit.source,hit.title,hit.content].join('\n').match(/(?:Experience-ID:\s*|workmate-experience-)([a-f0-9-]{36})/i)?.[1];return id?[{id,score:hit.score}]:[];});
+    const hits=remote.search?await remote.search(query):found!.flatMap(hit=>{const id=hit.source?.startsWith('openclawx-experience:')?hit.source.slice('openclawx-experience:'.length):[hit.source,hit.title,hit.content].join('\n').match(/(?:Experience-ID:\s*|openclawx-experience-)([a-f0-9-]{36})/i)?.[1];return id?[{id,score:hit.score}]:[];});
     if(semanticCache.size>=200)semanticCache.delete(semanticCache.keys().next().value!);semanticCache.set(key,{at:Date.now(),hits});
   });
   const results=hits.sort((a,b)=>b.score-a.score).slice(0,Math.min(3,Math.max(1,input.topK||3))).map(({record,score})=>({id:record.id,title:record.title,situation:record.situation,action:record.action,pitfall:record.pitfall,whenNot:record.whenNot,tags:record.tags,score:Number(score.toFixed(4))}));

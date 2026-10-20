@@ -1,5 +1,5 @@
 import sqlParser from 'node-sql-parser';
-import { dataAppParametersSchema, type DataAppSqlOperation } from '@workmate/contracts';
+import { dataAppParametersSchema, type DataAppSqlOperation } from '@openclawx/contracts';
 import { StructuredQueryError } from './structured-query.js';
 
 export type SqlTable = {

@@ -1,4 +1,4 @@
-"""Convert local office documents to Markdown for Workmate knowledge ingest."""
+"""Convert local office documents to Markdown for OpenClawX knowledge ingest."""
 
 from __future__ import annotations
 

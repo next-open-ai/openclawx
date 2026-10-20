@@ -71,7 +71,7 @@ function defaultRuntimeRoot(): string {
 
 function resolvePython(runtimeRoot: string, override?: string): string {
   if (override) return override;
-  if (process.env.WORKMATE_AGENTSCOPE_PYTHON) return process.env.WORKMATE_AGENTSCOPE_PYTHON;
+  if (process.env.OPENCLAWX_AGENTSCOPE_PYTHON) return process.env.OPENCLAWX_AGENTSCOPE_PYTHON;
   const candidates = [
     path.join(runtimeRoot, '.venv', 'Scripts', 'python.exe'),
     path.join(runtimeRoot, '.venv', 'bin', 'python3'),
@@ -87,21 +87,21 @@ function resolvePython(runtimeRoot: string, override?: string): string {
 const PORT_WAIT_MS = process.platform === 'win32' ? 90_000 : 45_000;
 
 function matchPortLine(line: string): number | null {
-  const match = line.trim().match(/^WORKMATE_AGENTSCOPE_PORT=(\d+)\s*$/);
+  const match = line.trim().match(/^OPENCLAWX_AGENTSCOPE_PORT=(\d+)\s*$/);
   return match ? Number(match[1]) : null;
 }
 
 /**
- * Spawn the Python Sidecar, wait for WORKMATE_AGENTSCOPE_PORT=, connect WS client, hello().
+ * Spawn the Python Sidecar, wait for OPENCLAWX_AGENTSCOPE_PORT=, connect WS client, hello().
  */
 export async function startAgentscopeRuntime(options: AgentscopeSupervisorOptions = {}): Promise<AgentscopeHandle> {
   const host = options.host ?? '127.0.0.1';
-  const token = options.token ?? process.env.WORKMATE_AGENTSCOPE_TOKEN ?? randomBytes(16).toString('hex');
-  const runtimeRoot = options.runtimeRoot ?? process.env.WORKMATE_AGENTSCOPE_ROOT ?? defaultRuntimeRoot();
+  const token = options.token ?? process.env.OPENCLAWX_AGENTSCOPE_TOKEN ?? randomBytes(16).toString('hex');
+  const runtimeRoot = options.runtimeRoot ?? process.env.OPENCLAWX_AGENTSCOPE_ROOT ?? defaultRuntimeRoot();
   const python = resolvePython(runtimeRoot, options.pythonPath);
   const srcPath = path.join(runtimeRoot, 'src');
 
-  const child = spawn(python, ['-m', 'workmate_agentscope_runtime', '--host', host, '--port', '0', '--token', token], {
+  const child = spawn(python, ['-m', 'openclawx_agentscope_runtime', '--host', host, '--port', '0', '--token', token], {
     cwd: runtimeRoot,
     env: {
       ...process.env,
@@ -109,7 +109,7 @@ export async function startAgentscopeRuntime(options: AgentscopeSupervisorOption
       PYTHONPATH: [srcPath, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter),
       PYTHONUNBUFFERED: '1',
       PYTHONIOENCODING: 'utf-8',
-      WORKMATE_AGENTSCOPE_TOKEN: token,
+      OPENCLAWX_AGENTSCOPE_TOKEN: token,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
@@ -137,7 +137,7 @@ export async function startAgentscopeRuntime(options: AgentscopeSupervisorOption
     createInterface({ input: child.stderr }).on('line', (line) => {
       stderrTail.push(line);
       onLine(line);
-      if (process.env.WORKMATE_AGENTSCOPE_DEBUG === '1') process.stderr.write(`[agentscope] ${line}\n`);
+      if (process.env.OPENCLAWX_AGENTSCOPE_DEBUG === '1') process.stderr.write(`[agentscope] ${line}\n`);
     });
     child.once('exit', (code) => {
       finish(reject, new Error(`AgentScope runtime exited early (code ${code ?? '?'})`));
@@ -204,7 +204,7 @@ const sharedPool: PooledHandle[] = [];
 const sharedRunStates = new Map<string, SharedAgentscopeRunState>();
 
 function runtimeSettingsFile(): string {
-  const dataDir = process.env.WORKMATE_DATA_DIR || path.join(process.env.HOME || '/tmp', '.workmate');
+  const dataDir = process.env.OPENCLAWX_DATA_DIR || path.join(process.env.HOME || '/tmp', '.openclawx');
   return path.join(dataDir, 'runtime-settings.json');
 }
 
@@ -225,26 +225,26 @@ function readRuntimeSettingNumber(key: 'sidecarSharedMaxRuns' | 'sidecarPoolSize
 function sharedMaxRuns(): number {
   const stored = readRuntimeSettingNumber('sidecarSharedMaxRuns');
   if (stored) return stored;
-  const raw = Number(process.env.WORKMATE_AGENTSCOPE_SHARED_MAX_RUNS || '');
+  const raw = Number(process.env.OPENCLAWX_AGENTSCOPE_SHARED_MAX_RUNS || '');
   return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 8;
 }
 
 function sidecarPoolSize(): number {
   const stored = readRuntimeSettingNumber('sidecarPoolSize');
   if (stored) return stored;
-  const raw = Number(process.env.WORKMATE_AGENTSCOPE_POOL_SIZE || '');
+  const raw = Number(process.env.OPENCLAWX_AGENTSCOPE_POOL_SIZE || '');
   return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 1;
 }
 
 function sidecarQueueWaitMs(): number {
   const stored = readRuntimeSettingNumber('sidecarQueueWaitMs');
   if (stored) return Math.max(5_000, stored);
-  const raw = Number(process.env.WORKMATE_AGENTSCOPE_QUEUE_WAIT_MS || '');
+  const raw = Number(process.env.OPENCLAWX_AGENTSCOPE_QUEUE_WAIT_MS || '');
   return Number.isFinite(raw) && raw > 0 ? Math.max(5_000, Math.round(raw)) : 120_000;
 }
 
 function sidecarRestartCooldownMs(): number {
-  const raw = Number(process.env.WORKMATE_AGENTSCOPE_RESTART_COOLDOWN_MS || '');
+  const raw = Number(process.env.OPENCLAWX_AGENTSCOPE_RESTART_COOLDOWN_MS || '');
   return Number.isFinite(raw) && raw > 0 ? Math.max(1_000, Math.round(raw)) : 15_000;
 }
 

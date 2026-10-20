@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
-import { DEFAULT_EMBEDDING_META, resolveProviderServiceEndpoint, suggestedSpeechVoices } from '@workmate/contracts';
-import type { AgentCapabilityAssignment, AgentCapabilityMode, CapabilityBinding, DecisionGuardPolicy, DecisionProtocol, DecisionRuntimeConfig, ImageGenerationProtocol, ModelCapability, ProviderEndpointKind, ProviderEndpointOverrides, ProviderService } from '@workmate/contracts';
+import { DEFAULT_EMBEDDING_META, resolveProviderServiceEndpoint, suggestedSpeechVoices } from '@openclawx/contracts';
+import type { AgentCapabilityAssignment, AgentCapabilityMode, CapabilityBinding, DecisionGuardPolicy, DecisionProtocol, DecisionRuntimeConfig, ImageGenerationProtocol, ModelCapability, ProviderEndpointKind, ProviderEndpointOverrides, ProviderService } from '@openclawx/contracts';
 import { getServerModelConfig, saveServerModelConfig, setCapabilityHealthObserver, type CapabilityHealthObservation } from '../services/api.js';
 import { getLegacyRealtimeMigrationSource } from '../services/realtime-voice.js';
 
@@ -364,7 +364,7 @@ function observeCapabilityHealth(observation: CapabilityHealthObservation) {
   if (healthSaveTimer) clearTimeout(healthSaveTimer);
   healthSaveTimer = setTimeout(() => {
     const snapshot = sanitizeModelSettings(JSON.parse(JSON.stringify(settings.value)) as ModelSettings);
-    void (window.workmateDesktop ? window.workmateDesktop.saveModelConfig(snapshot) : saveServerModelConfig(snapshot)).catch(() => undefined);
+    void (window.openclawxDesktop ? window.openclawxDesktop.saveModelConfig(snapshot) : saveServerModelConfig(snapshot)).catch(() => undefined);
   }, 150);
 }
 
@@ -854,7 +854,7 @@ function normalize(value: unknown): ModelSettings {
 
 async function load() {
   if (loaded.value) return;
-  const stored = window.workmateDesktop ? await window.workmateDesktop.getModelConfig() : await getServerModelConfig();
+  const stored = window.openclawxDesktop ? await window.openclawxDesktop.getModelConfig() : await getServerModelConfig();
   const before = JSON.stringify(stored ?? {});
   let next = normalize(stored);
   if (!next.models.some((item) => item.capability === 'realtime')) {
@@ -866,8 +866,8 @@ async function load() {
   const after = JSON.stringify(next);
   // Persist only when migration/pruning removed invalid catalog entries.
   if (before !== after) {
-    if (window.workmateDesktop) {
-      try { await window.workmateDesktop.saveModelConfig(next); } catch { /* ignore */ }
+    if (window.openclawxDesktop) {
+      try { await window.openclawxDesktop.saveModelConfig(next); } catch { /* ignore */ }
     } else {
       try { await saveServerModelConfig(next); } catch { /* ignore */ }
     }
@@ -1084,7 +1084,7 @@ export function useModelConfig() {
   const save = async (value: ModelSettings) => {
     const plainSettings = sanitizeModelSettings(JSON.parse(JSON.stringify(normalize(value))) as ModelSettings);
     settings.value = plainSettings;
-    if (window.workmateDesktop) await window.workmateDesktop.saveModelConfig(plainSettings);
+    if (window.openclawxDesktop) await window.openclawxDesktop.saveModelConfig(plainSettings);
     else await saveServerModelConfig(plainSettings);
   };
 

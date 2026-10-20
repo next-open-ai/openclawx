@@ -4,7 +4,7 @@ import type {
   IOutboundTransport,
   UnifiedMessage,
   UnifiedReply,
-} from '@workmate/channel';
+} from '@openclawx/channel';
 
 /**
  * Offline stub channel used by acceptance scripts: feed() injects a message,

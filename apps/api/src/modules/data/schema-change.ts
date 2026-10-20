@@ -1,6 +1,6 @@
 import sqlParser from 'node-sql-parser';
 import { createHash } from 'node:crypto';
-import { dataSchemaProposalSchema } from '@workmate/contracts';
+import { dataSchemaProposalSchema } from '@openclawx/contracts';
 import { StructuredQueryError } from './structured-query.js';
 const parser=new sqlParser.Parser();
 const fail=(message:string):never=>{throw new StructuredQueryError(message,'DATA_SCHEMA_SQL_INVALID',400);};

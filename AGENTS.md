@@ -5,8 +5,8 @@
 ## 必守红线
 
 1. **回归测试**：新模块 / 公共行为变更必须带可运行回归；合入前至少跑相关包 `test`，涉及并发/dsh 时跑 `pnpm concurrency:regression` / `pnpm dsh:regression`。
-2. **分层清晰**：renderer 不 import Electron/Node；**只有** `packages/agent-core` 可调用模型 SDK；编排状态在 `@workmate/orchestrator`（由 `apps/api` 托管）。
-3. **强模块化**：契约以 `@workmate/contracts`（Zod）为单一事实源；通道协议与传输解耦（`@workmate/channel`）。
+2. **分层清晰**：renderer 不 import Electron/Node；**只有** `packages/agent-core` 可调用模型 SDK；编排状态在 `@openclawx/orchestrator`（由 `apps/api` 托管）。
+3. **强模块化**：契约以 `@openclawx/contracts`（Zod）为单一事实源；通道协议与传输解耦（`@openclawx/channel`）。
 4. **域数据单写者**：domain KV 仅 api 进程写入；密钥在主进程 `safeStorage`，禁止写进 domain.json。
 5. **小步可回滚**：改行为前先读权威架构文档；禁止无关大重构。
 6. **规格驱动**：公共行为或跨包接口必须有稳定需求/任务 ID、契约与关联测试后再实现。
@@ -16,7 +16,7 @@
 
 ### EasyMate业务同步
 
-共同业务变更应同步同目录EasyMate的对应契约、实现及回归，并运行其 `pnpm work-results:parity` 检查已登记成果检索模块。EasyMate继续保持单Pi Agent，不同步AgentScope/DSH、多Agent内核或Workmate品牌/端口/运行时路径；产品差异必须记录。此门禁只覆盖登记模块，不代表全业务自动同步。
+共同业务变更应同步同目录EasyMate的对应契约、实现及回归，并运行其 `pnpm work-results:parity` 检查已登记成果检索模块。EasyMate继续保持单Pi Agent，不同步AgentScope/DSH、多Agent内核或OpenClawX品牌/端口/运行时路径；产品差异必须记录。此门禁只覆盖登记模块，不代表全业务自动同步。
 
 开始修改前必须：
 

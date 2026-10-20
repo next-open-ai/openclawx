@@ -18,7 +18,7 @@ const bundle = await build({ bundle: true, write: false, platform: 'browser', fo
   `},
   plugins: [{ name: 'workflow-fixture', setup(builder) {
     builder.onResolve({ filter: /^vue$/ }, () => ({ path: vueRequire.resolve('vue/dist/vue.esm-bundler.js') }));
-    builder.onResolve({ filter: /^@workmate\/contracts$/ }, () => ({ path: path.resolve('packages/contracts/dist/index.js') }));
+    builder.onResolve({ filter: /^@openclawx\/contracts$/ }, () => ({ path: path.resolve('packages/contracts/dist/index.js') }));
     builder.onLoad({ filter: /\.vue$/ }, args => {
       const { descriptor } = parse(fs.readFileSync(args.path, 'utf8'), { filename: args.path });
       const id = createHash('sha256').update(args.path).digest('hex').slice(0, 8);
@@ -42,7 +42,7 @@ const server = createServer(async (request, reply) => {
     await new Promise(resolve=>setTimeout(resolve,600));
     reply.setHeader('content-type','application/json');
     if(failNext){failNext=false;reply.statusCode=400;return reply.end(JSON.stringify({message:'模拟上传失败，请重试或移除'}));}
-    return reply.end(JSON.stringify({attachment:{id:'33333333-3333-4333-8333-333333333333',name:decodeURIComponent(request.headers['x-workmate-file-name']),size:bytes,summary:'已解析 · 收入 150000，利润 50000',status:'ready',kind:'document',mimeType:'text/plain',createdAt:Date.now()}}));
+    return reply.end(JSON.stringify({attachment:{id:'33333333-3333-4333-8333-333333333333',name:decodeURIComponent(request.headers['x-openclawx-file-name']),size:bytes,summary:'已解析 · 收入 150000，利润 50000',status:'ready',kind:'document',mimeType:'text/plain',createdAt:Date.now()}}));
   }
   if(url.pathname.startsWith('/api/')){reply.statusCode=404;return reply.end('No live services');}
   if(url.pathname==='/bundle.js'){reply.setHeader('content-type','text/javascript');return reply.end(bundle.outputFiles[0].text);}

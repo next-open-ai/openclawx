@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
-import {TaskApplicationCreateSchema,TaskApplicationLaunchSchema} from '@workmate/contracts';
-import type {TaskTemplateDefinition} from '@workmate/contracts';
-import {TemplateTaskError,withKeyLock,type Orchestrator,type TemplateTaskService,type TaskOwner} from '@workmate/orchestrator';
+import {TaskApplicationCreateSchema,TaskApplicationLaunchSchema} from '@openclawx/contracts';
+import type {TaskTemplateDefinition} from '@openclawx/contracts';
+import {TemplateTaskError,withKeyLock,type Orchestrator,type TemplateTaskService,type TaskOwner} from '@openclawx/orchestrator';
 import type {ParameterProjects} from './parameter-project.js';
 import {listWorkEmployees} from '../work-results/delegation.js';
 

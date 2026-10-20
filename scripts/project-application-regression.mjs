@@ -9,11 +9,11 @@ const vueRequire = createRequire(fs.realpathSync('apps/renderer/node_modules/vue
 const viteRequire = createRequire(fs.realpathSync('apps/renderer/node_modules/vite/package.json'));
 const { build } = viteRequire('esbuild');
 const { parse, compileScript } = vueRequire('@vue/compiler-sfc');
-const { Orchestrator } = apiRequire('@workmate/orchestrator');
+const { Orchestrator } = apiRequire('@openclawx/orchestrator');
 const Fastify = apiRequire('fastify');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-application-browser-'));
-const savedData = process.env.WORKMATE_DATA_DIR, savedRuns = process.env.WORKMATE_WORKSPACES_DIR;
-process.env.WORKMATE_DATA_DIR = root; process.env.WORKMATE_WORKSPACES_DIR = path.join(root, 'runs');
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-application-browser-'));
+const savedData = process.env.OPENCLAWX_DATA_DIR, savedRuns = process.env.OPENCLAWX_WORKSPACES_DIR;
+process.env.OPENCLAWX_DATA_DIR = root; process.env.OPENCLAWX_WORKSPACES_DIR = path.join(root, 'runs');
 const compiled = await build({ entryPoints: ['apps/api/src/modules/orchestration/project-application-routes.ts'], bundle: true, packages: 'external', platform: 'node', format: 'cjs', write: false });
 const bridge = new Module(path.resolve('apps/api/application-fixture.cjs'));
 bridge.filename = path.resolve('apps/api/application-fixture.cjs'); bridge.paths = apiRequire.resolve.paths('fastify');
@@ -92,8 +92,8 @@ app.get('/bundle.js', (_, reply) => reply.type('text/javascript').send(browserBu
 app.get('/style.css', (_, reply) => reply.type('text/css').send(css));
 app.get('/', (_, reply) => reply.type('text/html').send('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"><style>:root{--background:#f7f8fc;--surface:#fff;--surface-muted:#f1f3f8;--text:#202637;--muted:#65708a;--border:#dce2ee;--accent:#4665df;--accent-soft:#eef1ff}body{margin:0;padding:32px;background:var(--background);color:var(--text);font-family:system-ui}</style><div id="app"></div><script type="module" src="/bundle.js"></script>'));
 const origin = await app.listen({ host: '127.0.0.1', port: 0 });
-const { chromium } = createRequire(import.meta.url)(process.env.WORKMATE_PLAYWRIGHT_MODULE || 'playwright');
-const browser = await chromium.launch({ headless: true, ...(process.env.WORKMATE_BROWSER_CHANNEL ? { channel: process.env.WORKMATE_BROWSER_CHANNEL } : {}) });
+const { chromium } = createRequire(import.meta.url)(process.env.OPENCLAWX_PLAYWRIGHT_MODULE || 'playwright');
+const browser = await chromium.launch({ headless: true, ...(process.env.OPENCLAWX_BROWSER_CHANNEL ? { channel: process.env.OPENCLAWX_BROWSER_CHANNEL } : {}) });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } }); const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -113,7 +113,7 @@ try {
   await page.getByRole('button', { name: '确认发布', exact: true }).click();
   await page.getByText('本地发布成功。后续修改不会自动更新此版本。').waitFor();
   await iframe.getByRole('heading', { name: '经营分析 · 第一版' }).waitFor();
-  await page.screenshot({ path: '/tmp/workmate-project-application-desktop.png' });
+  await page.screenshot({ path: '/tmp/openclawx-project-application-desktop.png' });
   await sendTurn('保留内容，改进第二版');
   await page.getByRole('button', { name: '打开已发布版本', exact: true }).click();
   await iframe.getByRole('heading', { name: '经营分析 · 第一版' }).waitFor();
@@ -137,7 +137,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.locator('dialog').evaluate(node => node.scrollWidth <= node.clientWidth), true);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-  await page.screenshot({ path: '/tmp/workmate-project-application-mobile.png' });
+  await page.screenshot({ path: '/tmp/openclawx-project-application-mobile.png' });
   await page.getByRole('button', { name: '关闭项目应用' }).click();
   await page.goto(origin + '/?readonly');
   await page.setExtraHTTPHeaders({ 'x-fixture-user': 'bob' });
@@ -154,12 +154,12 @@ try {
   assert.equal(await page.getByRole('button', { name: '更新发布', exact: true }).isDisabled(), true);
   await page.getByRole('button', { name: '打开已发布版本', exact: true }).click(); await iframe.getByRole('heading', { name: '经营分析 · 第三版' }).waitFor();
   assert.deepEqual(errors, []);
-  assert.equal(unsafeRequests, 0, 'sandboxed generated pages cannot call Workmate management APIs');
+  assert.equal(unsafeRequests, 0, 'sandboxed generated pages cannot call OpenClawX management APIs');
   assert.equal(requests.length, 3, 'creation and two modifications ran through ProjectService');
   console.log('PA-T4/T6 PASS: durable ProjectService/RunEngine creation + two modifications, real history/material seeding, actual Vue/Fastify, relative CSS/module JS, isolation, explicit confirmation, no auto-publish, failure/stale retention, update, narrow layout, read-only/running/missing-entry states. Synthetic runner; no supplier calls.');
 } finally {
   await browser.close(); await app.close(); await orch.close();
-  if (savedData === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = savedData;
-  if (savedRuns === undefined) delete process.env.WORKMATE_WORKSPACES_DIR; else process.env.WORKMATE_WORKSPACES_DIR = savedRuns;
+  if (savedData === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = savedData;
+  if (savedRuns === undefined) delete process.env.OPENCLAWX_WORKSPACES_DIR; else process.env.OPENCLAWX_WORKSPACES_DIR = savedRuns;
   fs.rmSync(root, { recursive: true, force: true });
 }

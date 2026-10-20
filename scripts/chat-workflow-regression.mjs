@@ -9,7 +9,7 @@ const vueRequire = createRequire(fs.realpathSync('apps/renderer/node_modules/vue
 const viteRequire = createRequire(fs.realpathSync('apps/renderer/node_modules/vite/package.json'));
 const { parse, compileScript, compileStyle } = vueRequire('@vue/compiler-sfc');
 const { build } = viteRequire('esbuild');
-const projectMode = process.env.WORKMATE_WORKFLOW_SOURCE === 'project';
+const projectMode = process.env.OPENCLAWX_WORKFLOW_SOURCE === 'project';
 const sourceRoot = projectMode ? 'projects' : 'sessions';
 const panelLabel = projectMode ? '项目工作流' : '对话工作流';
 const projectWorkspace = fs.readFileSync('apps/renderer/src/features/projects/ProjectConversationWorkspace.vue', 'utf8');
@@ -54,7 +54,7 @@ const bundle = await build({ bundle: true, write: false, platform: 'browser', fo
   ` },
   plugins: [{ name: 'isolated-vue', setup(builder) {
     builder.onResolve({ filter: /^vue$/ }, () => ({ path: vueRequire.resolve('vue/dist/vue.esm-bundler.js') }));
-    builder.onResolve({ filter: /^@workmate\/contracts$/ }, () => ({ path: path.resolve('packages/contracts/dist/index.js') }));
+    builder.onResolve({ filter: /^@openclawx\/contracts$/ }, () => ({ path: path.resolve('packages/contracts/dist/index.js') }));
     builder.onLoad({ filter: /\.vue$/ }, args => {
       const { descriptor } = parse(fs.readFileSync(args.path, 'utf8'), { filename: args.path });
       const id = createHash('sha256').update(args.path).digest('hex').slice(0,8); const scoped = descriptor.styles.some(style => style.scoped);
@@ -111,8 +111,8 @@ const server = createServer(async (request, reply) => {
   reply.setHeader('content-type','text/html');reply.end('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"><style>:root{--background:#f7f8fc;--surface:#fff;--surface-muted:#f1f3f8;--text:#202637;--muted:#65708a;--border:#dce2ee;--accent:#4665df;--accent-soft:#eef1ff}body{background:var(--background);color:var(--text);font-family:system-ui;padding:16px}</style><body><div id="app"></div><script type="module" src="/bundle.js"></script></body></html>');
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-const {chromium}=createRequire(import.meta.url)(process.env.WORKMATE_PLAYWRIGHT_MODULE||'playwright');
-const browser=await chromium.launch({headless:true,...(process.env.WORKMATE_BROWSER_CHANNEL?{channel:process.env.WORKMATE_BROWSER_CHANNEL}:{})});
+const {chromium}=createRequire(import.meta.url)(process.env.OPENCLAWX_PLAYWRIGHT_MODULE||'playwright');
+const browser=await chromium.launch({headless:true,...(process.env.OPENCLAWX_BROWSER_CHANNEL?{channel:process.env.OPENCLAWX_BROWSER_CHANNEL}:{})});
 const page=await browser.newPage({viewport:{width:1100,height:950}});const errors=[];page.on('pageerror',error=>errors.push(error.message));
 try {
   await page.goto('http://127.0.0.1:'+server.address().port);
@@ -129,7 +129,7 @@ try {
   await page.getByLabel('选择参考文档').setInputFiles({name:'九月.txt',mimeType:'text/plain',buffer:Buffer.from('收入 150000')});
   await page.getByText('模拟文档解析失败').waitFor();assert.equal(await page.getByRole('button',{name:'确认并运行'}).isDisabled(),true);
   await page.getByRole('button',{name:'重试失败文档'}).click();await page.getByText('已解析：收入 150000').waitFor();
-  await page.screenshot({path:'/tmp/workmate-chat-workflow-dialog.png'});
+  await page.screenshot({path:'/tmp/openclawx-chat-workflow-dialog.png'});
   await page.getByRole('button',{name:'确认并运行'}).click();await page.getByText('模拟启动未完成，请重试本次调用').waitFor();
   assert.equal(await page.getByRole('textbox',{name:'工作流本次要求'}).inputValue(),'分析九月数据');
   assert.equal(await page.getByRole('textbox',{name:'工作流本次要求'}).isDisabled(),true);
@@ -146,7 +146,7 @@ try {
   const popupPromise=page.waitForEvent('popup');await page.getByRole('button',{name:'查看成果',exact:true}).click();const popup=await popupPromise;await popup.close();
   assert.deepEqual(archives,[{runId:'66666666-6666-4666-8666-666666666666',projectId,relativePath:'output/report.pdf'}]);
   await page.getByText('已登记资产').waitFor();
-  await page.screenshot({path:'/tmp/workmate-chat-workflow-results.png'});
+  await page.screenshot({path:'/tmp/openclawx-chat-workflow-results.png'});
   if(projectMode) assert.equal(await page.getByRole('button',{name:'基于成果提问',exact:true}).count(),0);
   else {
     const ask=page.getByRole('button',{name:'基于成果提问',exact:true});
@@ -156,7 +156,7 @@ try {
     assert.deepEqual(await page.evaluate(()=>window.fixture.evidence.value.reference),{invocationId:records[0].id,revision});
     assert.equal(await page.getByRole('textbox',{name:'普通对话'}).inputValue(),'解释利润');
     assert.equal(submissions.length,starts,'choosing evidence cannot run workflow');
-    await page.screenshot({path:'/tmp/workmate-workflow-result-question.png'});
+    await page.screenshot({path:'/tmp/openclawx-workflow-result-question.png'});
     await page.getByRole('button',{name:'取消引用'}).click();
     await page.getByLabel('成果问答依据').waitFor({state:'hidden'});
     evidenceFail=true;await ask.click();await page.getByRole('alert').filter({hasText:'成果不存在或无权访问。'}).waitFor();

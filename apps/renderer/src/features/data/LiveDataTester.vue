@@ -62,7 +62,7 @@ const title = computed(() => ({ enable: '开启原库写入', disable: '恢复�
     <dialog ref="dialog" class="edit-dialog" :aria-label="title" @cancel.prevent="!busy && dialog?.close()"><form @submit.prevent="submit"><header><h3>{{ title }}</h3><button type="button" :disabled="busy" aria-label="关闭" @click="dialog?.close()">×</button></header><div class="edit-body">
       <p v-if="action === 'enable'" class="warning">开启后，该对象中有主键的表可通过 Gateway 新增、修改和删除原库数据。建议先在测试库验证，并确保有备份；数据库账号权限仍然生效。确定开启吗？</p>
       <p v-else-if="action === 'disable'">恢复后将拒绝后续写入。已经完成的写入不会撤销。</p>
-      <p v-else-if="action === 'delete'" class="warning">确定删除这条原库记录吗？此操作无法在 Workmate 中撤销。</p>
+      <p v-else-if="action === 'delete'" class="warning">确定删除这条原库记录吗？此操作无法在 OpenClawX 中撤销。</p>
       <template v-else><p class="warning">将写入原数据库。主键不可修改；自动生成字段由数据库处理。新增时留空字段不提交，由数据库默认值处理。</p><label v-for="col in columns" :key="col.id" class="field"><span>{{ col.name }} <small>{{ col.description }}</small></span><input v-model="draft[col.id]" :disabled="busy || nulls[col.id]" maxlength="8192" /><span v-if="metadata?.columns.find(c => c.id === col.id)?.nullable" class="null-toggle"><input v-model="nulls[col.id]" type="checkbox" :disabled="busy" />设为 NULL</span></label></template>
       <p v-if="error" role="alert" class="failure">{{ error }}</p>
     </div><footer><button type="button" class="secondary" :disabled="busy" @click="dialog?.close()">取消</button><button class="primary" :disabled="busy">{{ busy ? '处理中…' : '确认' + title }}</button></footer></form></dialog>

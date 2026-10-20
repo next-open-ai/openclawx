@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { asrCommand, consumeAsrEvents, realtimeVoiceCapabilities } from '../../services/realtime-voice';
-import type { AsrEvent } from '@workmate/contracts';
+import type { AsrEvent } from '@openclawx/contracts';
 import VoiceControlBar from './VoiceControlBar.vue';
 import { voiceEnvelope } from './voice-presentation';
 

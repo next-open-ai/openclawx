@@ -6,7 +6,7 @@ import LiveDatabaseDialog from './LiveDatabaseDialog.vue';
 import LiveDataTester from './LiveDataTester.vue';
 import StructuredDataQuery from './StructuredDataQuery.vue';
 import DataAppCreateDialog, { type DataAppCreateDraft } from './DataAppCreateDialog.vue';
-import { dataObjectAnnotationsSchema, type DataObjectAnnotations } from '@workmate/contracts';
+import { dataObjectAnnotationsSchema, type DataObjectAnnotations } from '@openclawx/contracts';
 const demoOpen = ref(false);
 const databaseDialogOpen = ref(false);
 const liveDatabaseOpen = ref(false);
@@ -593,7 +593,7 @@ onUnmounted(() => {
   <section class="relative flex h-full min-h-0 flex-col overflow-hidden bg-[var(--background)]">
     <header class="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--border)] px-8 py-6">
       <div>
-        <p class="text-xs font-bold tracking-[.14em] text-[var(--accent)]">WORKMATE / DATA</p>
+        <p class="text-xs font-bold tracking-[.14em] text-[var(--accent)]">OPENCLAWX / DATA</p>
         <h1 class="mt-2 text-3xl font-bold tracking-[-.045em]">数据工作台</h1>
         <p class="mt-2 text-sm text-[var(--muted)]">接入数据，补充结构说明，让 AI 基于真实数据创建应用。</p>
       </div>

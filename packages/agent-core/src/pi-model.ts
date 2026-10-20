@@ -1,6 +1,6 @@
 import type { Model, Api } from '@mariozechner/pi-ai';
 import { registerBuiltInApiProviders } from '@mariozechner/pi-ai/dist/providers/register-builtins.js';
-import type { ModelConfig } from '@workmate/contracts';
+import type { ModelConfig } from '@openclawx/contracts';
 
 let builtinsRegistered = false;
 
@@ -51,7 +51,7 @@ export function supportsBuiltinEnableSearch(provider: ModelConfig['provider']) {
 const ZERO_COST = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
 /**
- * Map Workmate ModelConfig → pi-ai Model.
+ * Map OpenClawX ModelConfig → pi-ai Model.
  * OpenAI-compatible providers (DeepSeek / Qwen / Ollama / custom) use openai-completions.
  */
 export function toPiModel(config: ModelConfig): Model<Api> {
@@ -86,7 +86,7 @@ export function createChatCompletionsPayloadPatch(config: ModelConfig) {
     // single active block. When an OpenAI-compatible endpoint interleaves
     // multiple parallel tool calls, their JSON fragments can be concatenated
     // and the tool invocation fails with "Unexpected non-whitespace character
-    // after JSON". Workmate executes tools serially anyway, so explicitly
+    // after JSON". OpenClawX executes tools serially anyway, so explicitly
     // request a single tool call per model turn.
     if (Array.isArray(body.tools) && body.tools.length > 0) {
       body.parallel_tool_calls = false;

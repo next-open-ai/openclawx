@@ -6,7 +6,7 @@ import test from 'node:test';
 import { executeAgentscopeCapabilityCalls } from '../agentscope-capability-adapter.js';
 
 test('AgentScope adapter uses the shared write and explicit commit capabilities', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-agentscope-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-agentscope-'));
   const context = { runId: 'agentscope-test', workspaceRoot: root, workspaceAccess: 'write' as const, workspaceMode: 'conversation' as const };
   const [written] = await executeAgentscopeCapabilityCalls(context, [{
     id: 'write-1', name: 'write', input: { path: 'site/index.html', content: '<main>hello</main>' },
@@ -22,7 +22,7 @@ test('AgentScope adapter uses the shared write and explicit commit capabilities'
 });
 
 test('AgentScope project mode keeps committed files at the project root', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-agentscope-project-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-agentscope-project-'));
   const context = { runId: 'agentscope-project', workspaceRoot: root, workspaceAccess: 'write' as const, workspaceMode: 'project' as const };
   const [written] = await executeAgentscopeCapabilityCalls(context, [{
     id: 'write-project', name: 'write', input: { path: 'index.html', content: '<main>project</main>' },

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { RunModelRef, TokenUsage } from '@workmate/contracts';
+import type { RunModelRef, TokenUsage } from '@openclawx/contracts';
 import type { ChatSessionService } from './chat-session.js';
 import type { ProjectService } from './project.js';
 import { deleteKey, readJson, writeJson } from './repo.js';
@@ -48,7 +48,7 @@ export function applyUsageEvent(
   run: RunRecord,
   usage: TokenUsage,
   model?: RunModelRef,
-  capability?: import('@workmate/contracts').ModelCapability,
+  capability?: import('@openclawx/contracts').ModelCapability,
 ): void {
   if (model && !run.model) {
     run.model = {
@@ -121,7 +121,7 @@ export interface UsageStats {
     baseUrl?: string;
     providerLabel?: string;
     key: string;
-    capability?: import('@workmate/contracts').ModelCapability;
+    capability?: import('@openclawx/contracts').ModelCapability;
   }>;
   byProject: Array<UsageBucketTotals & { projectId: string; name: string }>;
   byChat: Array<UsageBucketTotals & { sessionId: string; title: string }>;
@@ -215,7 +215,7 @@ function addRunToTotals(target: UsageBucketTotals, run: RunRecord) {
   return true;
 }
 
-function modelKey(model: RunModelInfo | undefined, capability?: import('@workmate/contracts').ModelCapability): string {
+function modelKey(model: RunModelInfo | undefined, capability?: import('@openclawx/contracts').ModelCapability): string {
   if (!model) return 'unknown';
   return [model.provider, model.chatModel, model.baseUrl || '', model.providerLabel || '', capability || 'chat'].join('|');
 }

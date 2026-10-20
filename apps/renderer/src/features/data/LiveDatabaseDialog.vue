@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
-import { savedDatabaseConnectionSchema } from '@workmate/contracts';
+import { savedDatabaseConnectionSchema } from '@openclawx/contracts';
 import { liveDataRequest, type SavedDatabaseConnection } from '../../services/live-data';
 import type { DataSource } from '../../services/api';
 const props = defineProps<{ initialConnectionId?: string; credentialOnly?: boolean }>();

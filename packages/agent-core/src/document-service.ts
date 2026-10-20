@@ -1,7 +1,7 @@
 import path from 'node:path';
 import {unzipSync} from 'fflate';
 import * as XLSX from 'xlsx';
-import {DocumentReadResultSchema,type DocumentReadResult,type DocumentInfo} from '@workmate/contracts';
+import {DocumentReadResultSchema,type DocumentReadResult,type DocumentInfo} from '@openclawx/contracts';
 import {parseLocalDocument,hasPptxEnhancedParser} from './document-parser.js';
 import {DocumentProcessingError} from './document-errors.js';
 

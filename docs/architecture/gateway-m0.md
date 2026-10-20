@@ -1,6 +1,6 @@
-# Workmate 通道网关 · M0 设计与实现记录
+# OpenClawX 通道网关 · M0 设计与实现记录
 
-> 状态：M0 核心已实现（`@workmate/orchestrator` + api orchestration 模块 + desktop 域存储转发）。
+> 状态：M0 核心已实现（`@openclawx/orchestrator` + api orchestration 模块 + desktop 域存储转发）。
 > 本文记录决策、架构、接口与后续里程碑。不修改业务行为、不引入 UI 变化。
 
 ## 1. 背景与目标
@@ -24,12 +24,12 @@ Vue Renderer ──────────┐
         apps/api (Fastify, 单进程宿主)
           ├─ /api/chat          (既有 stateless 流式)
           ├─ /api/orch/**       (新增: 结构化编排 REST+SSE)
-          │     └─ @workmate/orchestrator   (编排层，新增)
+          │     └─ @openclawx/orchestrator   (编排层，新增)
           │           ├─ ChatSessionService (普通对话)
           │           ├─ ProjectService    (项目状态机/调度器)
           │           ├─ RunEngine         (可续跑 run、审批停车/决议)
           │           └─ KeyValueStore     (域存储单写者)
-          └─ 域数据: ~/.workmate/domain.json (WORKMATE_DATA_DIR)
+          └─ 域数据: ~/.openclawx/domain.json (OPENCLAWX_DATA_DIR)
 Electron Main: sql.js 仅存密钥(模型/搜索配置, safeStorage)与资产
                storageGet/Set IPC → 转发 /api/orch/kv
 ```
@@ -41,7 +41,7 @@ Electron Main: sql.js 仅存密钥(模型/搜索配置, safeStorage)与资产
 - 新增 `KeyValueStore` 接口 + `JsonFileStore`（临时文件 + 原子 rename）。
 - **api 进程是域数据唯一写者**：employees/skills/policies/sessions/projects/runs
   等统一经 orchestrator 落盘。
-- 桌面主进程 `workmate:storage-get/set` 转发到 `/api/orch/kv`；启动时一次性
+- 桌面主进程 `openclawx:storage-get/set` 转发到 `/api/orch/kv`；启动时一次性
   迁移旧 sql.js 中除 `model-settings`/`search-settings` 外的键（api 已有则跳过）。
 - 密钥不跨边界：模型/搜索配置仍在主进程 safeStorage；后续经 fork IPC keyring 下发。
 
@@ -66,13 +66,13 @@ Electron Main: sql.js 仅存密钥(模型/搜索配置, safeStorage)与资产
   `runContextByTask/defaultContext` 时（远程终端场景）自动组装。
 - 密钥通道：`secrets.ts` → api 子进程启动后经 fork IPC 向 Electron 主进程请求一次性
   解密快照（`model`/`search`），主进程 `startApi` 注册 `message` 应答；仅存内存、绝不落盘。
-  本地验收可用 `WORKMATE_SECRETS_FILE` 预置同构 JSON（桌面运行不经过此路径）。
+  本地验收可用 `OPENCLAWX_SECRETS_FILE` 预置同构 JSON（桌面运行不经过此路径）。
 - 待办：渲染层侧的同款 normalize 下沉后，本文件将大幅收缩为纯共享函数调用。
 
 ### 5.2 远程 confirm（无客户端 context）验收
 
 `scripts/remote-project-confirm.mjs`：预置域 KV（员工目录+运行时偏好）并以
-`WORKMATE_SECRETS_FILE` 载入 keyring 后，远程终端仅 `POST /projects` + `confirm {}`，
+`OPENCLAWX_SECRETS_FILE` 载入 keyring 后，远程终端仅 `POST /projects` + `confirm {}`，
 服务端组装器自动解析模型（ollama/chat-x）、提供平台工作区 Tools 并完成
 waterfall 两任务 → `[remote-confirm] ALL PASS`。
 
@@ -122,7 +122,7 @@ waterfall 两任务 → `[remote-confirm] ALL PASS`。
 
 ### 5.1 HTTP 边界验收（无头网关冒烟）
 
-api 提供 `WORKMATE_ORCH_RUNNER=memory-echo|memory-approval` 确定性 runner
+api 提供 `OPENCLAWX_ORCH_RUNNER=memory-echo|memory-approval` 确定性 runner
 （无模型/网络），配合 `scripts/headless-gateway-smoke.mjs`（真实 HTTP 客户端，
 等价于未来桌面 renderer / 网关的调用方式）跑通：
 

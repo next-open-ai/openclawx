@@ -9,7 +9,7 @@ test('DingTalk text messages normalize into the shared channel contract', async 
     data: JSON.stringify({
       conversationId: 'conversation-1',
       msgtype: 'text',
-      text: { content: '  hello workmate  ' },
+      text: { content: '  hello openclawx  ' },
       senderStaffId: 'staff-1',
       senderNick: 'Alice',
       sessionWebhook: 'https://example.invalid/webhook',
@@ -20,7 +20,7 @@ test('DingTalk text messages normalize into the shared channel contract', async 
   assert.equal(message.channelId, 'dingtalk');
   assert.equal(message.threadId, 'conversation-1');
   assert.equal(message.userId, 'staff-1');
-  assert.equal(message.messageText, 'hello workmate');
+  assert.equal(message.messageText, 'hello openclawx');
   await message.ack?.({ ok: true });
   assert.deepEqual(acknowledgements, [['message-1', { ok: true }]]);
 });

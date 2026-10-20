@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import type { ChatFileAttachment } from '@workmate/contracts';
+import type { ChatFileAttachment } from '@openclawx/contracts';
 const props = defineProps<{ disabled: boolean; compact?: boolean; uploadFile: (file: File) => Promise<{ attachment: ChatFileAttachment; warning?: string }> }>();
 const emit = defineEmits<{ change: [fileIds: string[]]; uploading: [value: boolean]; valid: [value: boolean] }>();
 const picker = ref<HTMLInputElement>();

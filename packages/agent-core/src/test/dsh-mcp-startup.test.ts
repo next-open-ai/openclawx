@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildWorkmateDshCordisYaml } from '../dsh/cordis-compose.js';
-import type { WorkmateDshModelRoute } from '../dsh/model-route.js';
+import { buildOpenClawXDshCordisYaml } from '../dsh/cordis-compose.js';
+import type { OpenClawXDshModelRoute } from '../dsh/model-route.js';
 
-const route: WorkmateDshModelRoute = {
-  provider: 'workmate',
+const route: OpenClawXDshModelRoute = {
+  provider: 'openclawx',
   model: 'test-model',
   api: 'openai-completions',
   baseUrl: 'https://api.example.com/v1',
@@ -16,7 +16,7 @@ const route: WorkmateDshModelRoute = {
 };
 
 test('dsh cordis requires MCP startup success before jsonrpc accepts traffic', () => {
-  const yaml = buildWorkmateDshCordisYaml({
+  const yaml = buildOpenClawXDshCordisYaml({
     route,
     mcpConnections: [
       {

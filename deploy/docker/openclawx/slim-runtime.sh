@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Slim a prepared Workmate Docker builder tree without changing runtime behavior.
+# Slim a prepared OpenClawX Docker builder tree without changing runtime behavior.
 set -euo pipefail
 
-ROOT="${1:-/opt/workmate}"
+ROOT="${1:-/opt/openclawx}"
 VENV="${ROOT}/runtimes/agentscope-runtime/.venv"
 
 echo "[slim] root=${ROOT}"

@@ -12,8 +12,8 @@
 
 | 项目 | 结果与证据 |
 | --- | --- |
-| agent-core | `pnpm --filter @workmate/agent-core test`，109/109通过 |
-| orchestrator | `pnpm --filter @workmate/orchestrator test`，41/41通过 |
+| agent-core | `pnpm --filter @openclawx/agent-core test`，109/109通过 |
+| orchestrator | `pnpm --filter @openclawx/orchestrator test`，41/41通过 |
 | 类型与构建 | Contracts构建、API及Renderer类型检查与构建通过；Renderer存在既有分包提示，不影响构建 |
 | VIS-M2-T1 | `vision-capability.test.ts`：可信原问题、上下文、图像白名单、禁用/无图不暴露、成功与失败复用、请求次数上限、预取消和请求中取消通过 |
 | VIS-M2-T2 | `node scripts/vision-chat-regression.mjs`：保留M1鉴权/隔离/直接看图回归；新增文本主模型→视觉工具→回答及追问，验证主模型不收原图、视觉模型收到原图及对应问题、进度事件与完成状态、持久化不含base64 |

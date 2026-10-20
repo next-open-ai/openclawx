@@ -13,7 +13,7 @@ interface FileShape {
  * - Whole document is kept in memory; writes go to a temp file and are then
  *   atomically renamed, so a crash never leaves a truncated document.
  * - Only the API/orchestrator process should open a given file (single-writer
- *   invariant). Use `WORKMATE_DATA_DIR` to place it next to the other local state.
+ *   invariant). Use `OPENCLAWX_DATA_DIR` to place it next to the other local state.
  */
 export class JsonFileStore implements KeyValueStore {
   private readonly file: string;

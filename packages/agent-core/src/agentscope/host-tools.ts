@@ -1,4 +1,4 @@
-import type { ChatRequest } from '@workmate/contracts';
+import type { ChatRequest } from '@openclawx/contracts';
 import { loadMcpToolset, type HostedMcpToolDescriptor } from '../mcp-runtime.js';
 import { extractToolDetails, type AgentTool } from '../pi-tools.js';
 import { executeAgentscopeCapabilityCalls } from '../agentscope-capability-adapter.js';

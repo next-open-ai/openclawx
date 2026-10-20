@@ -1,8 +1,8 @@
 import type {FastifyPluginAsync} from 'fastify';
 import {createHash} from 'node:crypto';
-import {experienceSettingsSchema,type ExperienceSettingsState,type KnowledgeBaseRuntime} from '@workmate/contracts';
-import {withExperienceContext,searchKnowledgeBase} from '@workmate/agent-core';
-import type {KeyValueStore,AgentRunner,RunRecord} from '@workmate/orchestrator';
+import {experienceSettingsSchema,type ExperienceSettingsState,type KnowledgeBaseRuntime} from '@openclawx/contracts';
+import {withExperienceContext,searchKnowledgeBase} from '@openclawx/agent-core';
+import type {KeyValueStore,AgentRunner,RunRecord} from '@openclawx/orchestrator';
 import {requireAuth} from '../auth/service.js';
 import {requireSystemAdmin} from '../auth/ownership.js';
 import {readExperienceKnowledgeTarget} from '../settings/routes.js';
@@ -48,7 +48,7 @@ export const experienceRoutes:FastifyPluginAsync<{store:()=>KeyValueStore;resolv
     const target=state.knowledgeBaseId?(opts.resolve||readExperienceKnowledgeTarget)(state.knowledgeBaseId):undefined;
     if(!state.enabled||!target)return reply.code(400).send({message:'请先保存一个启用的系统经验知识库目标。'});
     const signature=fingerprint(target);let available=false;
-    try{await (opts.test?opts.test(target):searchKnowledgeBase(target,'Workmate experience readiness',1));available=true;}catch{}
+    try{await (opts.test?opts.test(target):searchKnowledgeBase(target,'OpenClawX experience readiness',1));available=true;}catch{}
     // A delayed config test must not approve a newer configuration.
     const latest=(opts.resolve||readExperienceKnowledgeTarget)(target.id);
     if(await store.get(KEY)!==raw||!latest||fingerprint(latest)!==signature)return reply.code(409).send({message:'配置已变化，请重新测试。'});

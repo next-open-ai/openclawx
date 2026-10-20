@@ -1,12 +1,12 @@
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import type { AgentEvent, ChatRequest, McpConnectionRuntime } from '@workmate/contracts';
+import type { AgentEvent, ChatRequest, McpConnectionRuntime } from '@openclawx/contracts';
 import { DshJsonRpcClient } from './jsonrpc-client.js';
 import { resolveDshLaunch, resolveDshWorkspace } from './launch.js';
 import { createDshEventMapContext, mapDshSessionEvent, unwrapAssembledDelta } from './map-events.js';
-import { mapWorkmateModelToDshRoute } from './model-route.js';
-import { writeWorkmateDshCordis } from './cordis-compose.js';
-import { materializeWorkmateSkillsForDsh } from './skills-materialize.js';
+import { mapOpenClawXModelToDshRoute } from './model-route.js';
+import { writeOpenClawXDshCordis } from './cordis-compose.js';
+import { materializeOpenClawXSkillsForDsh } from './skills-materialize.js';
 import { warmMcpConnections, type McpWarmResult } from '../mcp-runtime.js';
 import { openDshMcpBridges } from '../mcp-dsh-bridge.js';
 import { createModelCapabilityTools, MODEL_CAPABILITY_BY_TOOL } from '../model-capability-runtime.js';
@@ -54,7 +54,7 @@ function buildPrompt(input: ChatRequest, mcpCatalog?: DshMcpCatalog): string {
   const lines: string[] = [];
   const profile = input.profile?.instructions?.trim();
   if (profile) {
-    lines.push(`[Workmate agent profile]\n${profile.slice(0, 8_000)}`);
+    lines.push(`[OpenClawX agent profile]\n${profile.slice(0, 8_000)}`);
   }
   const skillNames = (input.skills ?? [])
     .filter((skill) => skill.mode === 'available' || skill.mode === 'default')
@@ -101,7 +101,7 @@ function buildPrompt(input: ChatRequest, mcpCatalog?: DshMcpCatalog): string {
   return lines.join('\n\n');
 }
 
-function credentialEnv(route: ReturnType<typeof mapWorkmateModelToDshRoute>): NodeJS.ProcessEnv {
+function credentialEnv(route: ReturnType<typeof mapOpenClawXModelToDshRoute>): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...route.env };
   env.OPENAI_API_KEY = route.apiKey;
   env.DEEPSEEK_API_KEY = route.apiKey;
@@ -117,10 +117,10 @@ function enabledMcpConnections(connections: McpConnectionRuntime[] | undefined):
 
 /**
  * Stream a ChatRequest through DeepSeek Harness JSON-RPC sidecar (coding engine).
- * Injects Workmate ModelConfig, MCP connections, and authorized skills into cordis.
+ * Injects OpenClawX ModelConfig, MCP connections, and authorized skills into cordis.
  *
  * MCP strategy:
- * 1. Warm/pin connectors in the Workmate process pool (first call cold, later hits fast).
+ * 1. Warm/pin connectors in the OpenClawX process pool (first call cold, later hits fast).
  * 2. Bridge warmed stdio MCPs over localhost HTTP so dsh reuses the live process
  *    (no second npx cold start) and we can gate the first prompt on tools/list.
  * 3. Release bridge + warm pin after the run so idle TTL can reap unused servers.
@@ -176,7 +176,7 @@ export async function* streamAgentReplyViaDsh(input: ChatRequest & {
       applicationModelBridge = await openUnifiedToolMcpBridge({ runId, session: applicationModels, name: 'application-models' });
     }
     const projectFilesBefore = projectBound ? await snapshotWorkspaceFiles(cwd) : null;
-    const route = mapWorkmateModelToDshRoute(input.model);
+    const route = mapOpenClawXModelToDshRoute(input.model);
     const userText = lastUserText(input);
     const mcpEnabled = filterMcpConnectionsForTask(
       enabledMcpConnections(input.mcpConnections),
@@ -251,11 +251,11 @@ export async function* streamAgentReplyViaDsh(input: ChatRequest & {
       ...(applicationModelBridge ? [applicationModelBridge.connection] : []),
     ];
 
-    const skillsRoot = materializeWorkmateSkillsForDsh(cwd, input.skills);
-    const customCordis = process.env.WORKMATE_DSH_CORDIS?.trim();
+    const skillsRoot = materializeOpenClawXSkillsForDsh(cwd, input.skills);
+    const customCordis = process.env.OPENCLAWX_DSH_CORDIS?.trim();
     const cordisConfig = customCordis
       ? path.resolve(customCordis)
-      : writeWorkmateDshCordis(cwd, {
+      : writeOpenClawXDshCordis(cwd, {
           route,
           // Bridged http URLs when possible; never pass connectors that failed warm
           // (failOnStartupError:true would otherwise block the whole dsh boot).
@@ -273,7 +273,7 @@ export async function* streamAgentReplyViaDsh(input: ChatRequest & {
       DSH_SESSION_ROOT: path.join(cwd, '.dsh-sessions'),
       DSH_SYSTEM_PROMPT: (() => {
         const base = input.profile?.instructions?.slice(0, 4_000)
-          || 'You are a careful coding agent working inside a Workmate workspace.';
+          || 'You are a careful coding agent working inside a OpenClawX workspace.';
         const mcpNames = mcpCatalog.labels;
         const deliverable = `\n\n${workspaceModeContract(projectBound ? 'project' : 'conversation')}\n\n${capabilityAdapter.systemPromptContract()}`
           + '\n\nAfter deliverables exist and one short verification pass succeeds, stop. '

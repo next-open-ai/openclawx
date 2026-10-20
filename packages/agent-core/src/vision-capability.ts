@@ -1,5 +1,5 @@
 import { complete } from '@mariozechner/pi-ai';
-import type { ChatModelMessage, ModelCapabilityRuntime } from '@workmate/contracts';
+import type { ChatModelMessage, ModelCapabilityRuntime } from '@openclawx/contracts';
 import { resolveChatImages, ImageInputError } from './image-input.js';
 import { toPiModel, createChatCompletionsPayloadPatch } from './pi-model.js';
 import { Type, defineAgentTool } from './pi-tools.js';

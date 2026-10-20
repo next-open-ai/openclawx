@@ -20,7 +20,7 @@ export class DshCapabilityAdapter {
       ? 'This is PROJECT MODE: write final files directly in the current project root (for example index.html, src/, assets/). Never create or use output/.'
       : 'For a conversation deliverable, write the finished file under output/. It will be verified and atomically committed only after this run completes successfully.';
     return [
-      'Workmate capability policy: operate only inside the current workspace.',
+      'OpenClawX capability policy: operate only inside the current workspace.',
       RESOURCE_ACCESS_CONTRACT,
       'Use the engine filesystem and bash tools only for the task. Do not access parent paths or network resources.',
       location,

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { constants } from 'node:fs';
 import { access, lstat, mkdir, realpath } from 'node:fs/promises';
-import type { CreateConversationProject } from '@workmate/contracts';
+import type { CreateConversationProject } from '@openclawx/contracts';
 
 export class ProjectDirectoryError extends Error {}
 

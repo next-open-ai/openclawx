@@ -7,14 +7,14 @@
  *  3. project: draft → confirm → scheduler completes tasks → transcripts
  *
  * Requires the API running in smoke mode so no model/network is needed:
- *   WORKMATE_ORCH_RUNNER=memory-approval WORKMATE_DATA_DIR=<tmp> node apps/api/dist/main.cjs
+ *   OPENCLAWX_ORCH_RUNNER=memory-approval OPENCLAWX_DATA_DIR=<tmp> node apps/api/dist/main.cjs
  *
  * Usage:
- *   WORKMATE_API_PORT=4399 node scripts/headless-gateway-smoke.mjs
+ *   OPENCLAWX_API_PORT=4399 node scripts/headless-gateway-smoke.mjs
  */
 import assert from 'node:assert/strict';
 
-const port = process.env.WORKMATE_API_PORT || '47832';
+const port = process.env.OPENCLAWX_API_PORT || '47832';
 const base = `http://127.0.0.1:${port}/api/orch`;
 
 async function json(pathname, init) {

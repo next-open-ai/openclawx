@@ -17,7 +17,7 @@ export type StorageCleanupCandidate = {
 };
 
 function dataDir() {
-  return path.resolve(process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate'));
+  return path.resolve(process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx'));
 }
 
 function directorySize(root: string): number {
@@ -49,7 +49,7 @@ function childDirectories(root: string) {
 
 export async function scanStorageCleanup(auth: Pick<AuthPrincipal, 'orgId' | 'userId' | 'role'>) {
   const root = dataDir();
-  const stagingRoot = path.resolve(process.env.WORKMATE_ASSET_STAGING_DIR?.trim() || process.env.WORKMATE_WORKSPACES_DIR?.trim() || path.join(root, 'assets', '.staging'));
+  const stagingRoot = path.resolve(process.env.OPENCLAWX_ASSET_STAGING_DIR?.trim() || process.env.OPENCLAWX_WORKSPACES_DIR?.trim() || path.join(root, 'assets', '.staging'));
   const legacyWorkspaceRoot = path.resolve(root, 'workspaces');
   const assetsRoot = path.resolve(root, 'assets');
   const now = Date.now();
@@ -96,7 +96,7 @@ export async function scanStorageCleanup(auth: Pick<AuthPrincipal, 'orgId' | 'us
 export async function executeStorageCleanup(auth: Pick<AuthPrincipal, 'orgId' | 'userId' | 'role'>) {
   const scan = await scanStorageCleanup(auth);
   const root = dataDir();
-  const stagingRoot = path.resolve(process.env.WORKMATE_ASSET_STAGING_DIR?.trim() || process.env.WORKMATE_WORKSPACES_DIR?.trim() || path.join(root, 'assets', '.staging'));
+  const stagingRoot = path.resolve(process.env.OPENCLAWX_ASSET_STAGING_DIR?.trim() || process.env.OPENCLAWX_WORKSPACES_DIR?.trim() || path.join(root, 'assets', '.staging'));
   const legacyWorkspaceRoot = path.resolve(root, 'workspaces');
   const assetsRoot = path.resolve(root, 'assets');
   let deleted = 0;

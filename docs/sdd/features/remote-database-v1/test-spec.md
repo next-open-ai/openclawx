@@ -9,4 +9,4 @@
 | RDB-R5 | capacity / 路由权限 | 管理员才能连接任意地址，成员无权配置；跨用户访问拒绝；并发最多 2 操作 |
 | RDB-R1/R2 | opt-in real acceptance | 独立 MySQL/PostgreSQL 数据库：可访问库/表、空表、注释、大整数无精度损失、写操作拒绝 |
 
-真实数据库测试需指定 WORKMATE_TEST_MYSQL_PORT / WORKMATE_TEST_POSTGRES_PORT，未指定时显式 skip，不与普通 mock 测试混淆。只允许在专用测试数据库中创建测试表，不访问用户现有数据库。
+真实数据库测试需指定 OPENCLAWX_TEST_MYSQL_PORT / OPENCLAWX_TEST_POSTGRES_PORT，未指定时显式 skip，不与普通 mock 测试混淆。只允许在专用测试数据库中创建测试表，不访问用户现有数据库。

@@ -112,7 +112,7 @@ export class WorkspaceCapabilityKernel {
       await this.authorizeFile(target, 'write');
       if (target !== source) {
         await mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
-        const temporary = `${target}.workmate-${this.context.runId}.tmp`;
+        const temporary = `${target}.openclawx-${this.context.runId}.tmp`;
         await this.authorizeFile(temporary, 'write');
         await copyFile(source, temporary);
         // The staging file lives beside target, so this final replacement is

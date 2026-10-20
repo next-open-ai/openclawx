@@ -119,14 +119,14 @@ function fallbackStatus(): LocalEmbeddingStatus {
 }
 
 async function fetchStatus() {
-  if (!window.workmateDesktop?.getLocalEmbeddingStatus) {
+  if (!window.openclawxDesktop?.getLocalEmbeddingStatus) {
     status.value = fallbackStatus();
     loaded.value = true;
     return status.value;
   }
   loading.value = true;
   try {
-    status.value = await window.workmateDesktop.getLocalEmbeddingStatus();
+    status.value = await window.openclawxDesktop.getLocalEmbeddingStatus();
     loaded.value = true;
     return status.value;
   } finally {
@@ -143,7 +143,7 @@ export function useLocalEmbedding() {
   const refresh = async () => fetchStatus();
 
   const setEnabled = async (enabled: boolean) => {
-    if (!window.workmateDesktop?.setLocalEmbeddingEnabled) {
+    if (!window.openclawxDesktop?.setLocalEmbeddingEnabled) {
       status.value = {
         ...(status.value ?? fallbackStatus()),
         enabled,
@@ -155,14 +155,14 @@ export function useLocalEmbedding() {
       };
       return status.value;
     }
-    const result = await window.workmateDesktop.setLocalEmbeddingEnabled(enabled);
+    const result = await window.openclawxDesktop.setLocalEmbeddingEnabled(enabled);
     status.value = result.status;
     loaded.value = true;
     return result.status;
   };
 
   const saveSettings = async (value: { autoRestart?: boolean; backendUrl?: string; backendModel?: string; backendApiKey?: string }) => {
-    if (!window.workmateDesktop?.saveLocalEmbeddingSettings) {
+    if (!window.openclawxDesktop?.saveLocalEmbeddingSettings) {
       status.value = {
         ...(status.value ?? fallbackStatus()),
         settings: {
@@ -173,7 +173,7 @@ export function useLocalEmbedding() {
       };
       return status.value.settings;
     }
-    const next = await window.workmateDesktop.saveLocalEmbeddingSettings(value);
+    const next = await window.openclawxDesktop.saveLocalEmbeddingSettings(value);
     status.value = {
       ...(status.value ?? fallbackStatus()),
       settings: next,
@@ -183,8 +183,8 @@ export function useLocalEmbedding() {
   };
 
   const restart = async () => {
-    if (!window.workmateDesktop?.restartLocalEmbedding) return status.value ?? fallbackStatus();
-    const result = await window.workmateDesktop.restartLocalEmbedding();
+    if (!window.openclawxDesktop?.restartLocalEmbedding) return status.value ?? fallbackStatus();
+    const result = await window.openclawxDesktop.restartLocalEmbedding();
     status.value = result.status;
     loaded.value = true;
     return result.status;

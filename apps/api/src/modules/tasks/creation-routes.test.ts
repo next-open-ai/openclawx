@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import Fastify from 'fastify';
-import {MemoryStore,TemplateTaskService,TemplateTaskError} from '@workmate/orchestrator';
+import {MemoryStore,TemplateTaskService,TemplateTaskError} from '@openclawx/orchestrator';
 import {registerTaskCreationRoutes} from './creation-routes.js';
 
 test('TA-T7: retired template creation returns 410; direct tasks remain reusable, editable and deletable',async()=>{

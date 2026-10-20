@@ -28,7 +28,7 @@ async function immutableFile(root: string, relative: string, bytes: Buffer) {
 }
 export async function materializeWorkflowFiles(scope: string, fileIds: string[], root: string, requestId: string, query: string, trustedExistingProject = false) {
   if (!fileIds.length) return { documents: [], prompt: '' };
-  const managedRoot = path.resolve(process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate'), 'projects');
+  const managedRoot = path.resolve(process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx'), 'projects');
   if (!trustedExistingProject && path.dirname(path.resolve(root)) !== managedRoot) throw new Error('文档材料只能写入新建的托管项目目录');
   const files = await Promise.all(fileIds.map(id => readChatFile(scope, id)));
   if (files.reduce((sum, file) => sum + file.attachment.size, 0) > 50 * 1024 * 1024) throw new Error('附件总大小不能超过 50 MB');

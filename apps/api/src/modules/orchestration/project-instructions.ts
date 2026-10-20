@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { ProjectInstructionSchema } from '@workmate/contracts';
-import { withKeyLock, type Orchestrator, type ConfirmProjectInput } from '@workmate/orchestrator';
+import { ProjectInstructionSchema } from '@openclawx/contracts';
+import { withKeyLock, type Orchestrator, type ConfirmProjectInput } from '@openclawx/orchestrator';
 import { requireAuth } from '../auth/service.js';
 import { canWriteOwnedResource } from '../auth/ownership.js';
 import { saveChatFile } from './chat-attachments.js';
@@ -15,7 +15,7 @@ export function registerProjectInstructionRoutes(app: FastifyInstance, orch: Orc
     if (project.executionWorkspaceMode === 'isolated' && project.kind !== 'conversation') return reply.code(400).send({ message: '此类隔离数据应用项目暂不支持参考文档上传，请使用文字描述要求' });
     if (!ProjectInstructionSchema.safeParse({ employeeId: 'upload', content: 'upload', requestId }).success) return reply.code(400).send({ message: '上传标识无效' });
     try {
-      const name = decodeURIComponent(String(request.headers['x-workmate-file-name'] || ''));
+      const name = decodeURIComponent(String(request.headers['x-openclawx-file-name'] || ''));
       if (!/\.(pdf|docx|pptx|ppsx|xlsx|xls|csv|md|txt|html|htm)$/i.test(name) || !Buffer.isBuffer(request.body)) throw new Error('请选择支持的文档文件');
       return await saveChatFile(workflowFileScope(auth, `project:${projectId}`, requestId), { name, bytes: request.body });
     } catch (cause) { return reply.code(400).send({ message: cause instanceof Error ? cause.message : '上传失败' }); }

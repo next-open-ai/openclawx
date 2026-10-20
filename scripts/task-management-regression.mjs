@@ -26,7 +26,7 @@ const api={
 };
 const code=ts.transpileModule(compileScript(parse(source).descriptor,{id:'task-management'}).content,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const exports={};const messages=[];
-vm.runInNewContext(code,{exports,require:id=>id==='vue'?{...vue,onMounted(){},onBeforeUnmount(){}}:id==='@workmate/contracts'?contracts:id.endsWith('/template-tasks')?{templateTasksApi:api}:id.endsWith('/i18n')?{useI18n:()=>({t:key=>key})}:{},crypto:{randomUUID},window:{confirm:()=>true},structuredClone,Error});
+vm.runInNewContext(code,{exports,require:id=>id==='vue'?{...vue,onMounted(){},onBeforeUnmount(){}}:id==='@openclawx/contracts'?contracts:id.endsWith('/template-tasks')?{templateTasksApi:api}:id.endsWith('/i18n')?{useI18n:()=>({t:key=>key})}:{},crypto:{randomUUID},window:{confirm:()=>true},structuredClone,Error});
 const state=exports.default.setup({employees:[{id:'general',name:'通用助理'}]},{expose(){},emit(){}});
 assert.equal(state.detail.value,null);assert.equal(state.detailOpen.value,false);
 await state.run(task);assert.equal(state.detailOpen.value,false,'row run does not open a detail panel');
@@ -40,8 +40,8 @@ await state.editTask(task);assert.equal(state.editing.value,true);assert.equal(s
 state.name.value='修改任务';state.parameters.value={topic:'新参数'};await state.saveTask();assert.equal(state.editing.value,false);assert.equal(state.detailOpen.value,false,'save returns to the list');
 assert.equal(state.detail.value.task.id,'task');assert.equal(saved.parameters.topic,'新参数');assert.equal(state.detail.value.runs.length,3);
 template.parameterUi={};await state.edit(template,task);state.inputFrame.value={contentWindow:{postMessage:value=>messages.push(value)}};
-const frame=state.inputFrame.value.contentWindow;await state.receive({source:frame,data:{type:'workmate.task.ready'}});
-await state.receive({source:frame,data:{type:'workmate.task.submit',channel:messages[0].channel,parameters:{topic:'表单修改'}}});
+const frame=state.inputFrame.value.contentWindow;await state.receive({source:frame,data:{type:'openclawx.task.ready'}});
+await state.receive({source:frame,data:{type:'openclawx.task.submit',channel:messages[0].channel,parameters:{topic:'表单修改'}}});
 assert.equal(state.createStage.value,'basic');await state.saveTask();assert.equal(saved.parameters.topic,'表单修改');
 fail=true;await state.run();assert.equal(state.error.value,'network');await state.run();assert.equal(ids.at(-1),ids.at(-2),'retry keeps original request ID');
 await state.deleteTask(state.detail.value.task);assert.equal(state.detail.value,null);assert.equal(state.tasks.value.length,0);

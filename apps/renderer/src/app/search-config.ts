@@ -18,8 +18,8 @@ function normalize(value: unknown): SearchSettings {
 }
 export function useSearchConfig() {
   const configuredProviders = computed(() => settings.value.providers.filter((item) => item.enabled && item.apiKey.trim()));
-  const load = async () => { if (loaded.value) return; const value = window.workmateDesktop ? await window.workmateDesktop.getSearchConfig() : await getServerSearchConfig(); settings.value = normalize(value); loaded.value = true; };
-  const save = async (value = settings.value) => { const next = normalize(JSON.parse(JSON.stringify(value))); settings.value = next; if (window.workmateDesktop) await window.workmateDesktop.saveSearchConfig(next); else await saveServerSearchConfig(next); };
+  const load = async () => { if (loaded.value) return; const value = window.openclawxDesktop ? await window.openclawxDesktop.getSearchConfig() : await getServerSearchConfig(); settings.value = normalize(value); loaded.value = true; };
+  const save = async (value = settings.value) => { const next = normalize(JSON.parse(JSON.stringify(value))); settings.value = next; if (window.openclawxDesktop) await window.openclawxDesktop.saveSearchConfig(next); else await saveServerSearchConfig(next); };
   const runtimeProviders = (preferredOverride?: SearchProviderId | 'auto' | null) => {
     const rows = configuredProviders.value.map(({ id, label, apiKey, baseUrl, enabled }) => ({
       id,

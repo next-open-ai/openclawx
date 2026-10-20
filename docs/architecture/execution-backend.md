@@ -32,7 +32,7 @@ Renderer / Gateway
 - `packages/orchestrator` → `AgentRunner`（可测试注入）
 - `packages/agent-core` → `ExecutionBackend` 注册表 + `streamAgentReply`
 
-## 3. API（`@workmate/agent-core`）
+## 3. API（`@openclawx/agent-core`）
 
 | 符号 | 作用 |
 |------|------|
@@ -46,20 +46,20 @@ Renderer / Gateway
 ### 解析优先级
 
 1. `override`（调用方强制）
-2. `WORKMATE_AGENT_ENGINE` **且** `WORKMATE_AGENT_ENGINE_FORCE=1`（运维强制，绕过 allowlist）
+2. `OPENCLAWX_AGENT_ENGINE` **且** `OPENCLAWX_AGENT_ENGINE_FORCE=1`（运维强制，绕过 allowlist）
 3. `ChatRequest.engine` / 员工 prefs（须 ∈ `enabledEngines`）
 4. runtime-settings `defaultEngine`（须 ∈ allowlist）
 5. `preferCoding` → `dsh` / `preferProcessIsolation` → `agentscope`（须 ∈ allowlist）
-6. 软 `WORKMATE_AGENT_ENGINE`（无 FORCE 时仅作回退，须 ∈ allowlist）
+6. 软 `OPENCLAWX_AGENT_ENGINE`（无 FORCE 时仅作回退，须 ∈ allowlist）
 7. allowlist 中第一个已注册后端，否则 `pi`
 
-> 注意：桌面启动器**不再**默认注入 `WORKMATE_AGENT_ENGINE=pi`，否则会盖住员工配置的 dsh。
+> 注意：桌面启动器**不再**默认注入 `OPENCLAWX_AGENT_ENGINE=pi`，否则会盖住员工配置的 dsh。
 
 ### 两层配置
 
 | 层 | 存储 | 字段 |
 |----|------|------|
-| 部署 | `~/.workmate/runtime-settings.json`（`/api/settings/runtime`） | `enabledEngines`, `defaultEngine` |
+| 部署 | `~/.openclawx/runtime-settings.json`（`/api/settings/runtime`） | `enabledEngines`, `defaultEngine` |
 | 员工 | `workspace.employee-runtime-prefs` | `engine: pi\|agentscope\|dsh\|null`（null=继承默认） |
 
 显式请求未注册的 id 会 **抛错**。员工选了未启用引擎时 **回退** 到 default / allowlist。
@@ -75,9 +75,9 @@ Renderer / Gateway
 详见 [dsh-sidecar.md](dsh-sidecar.md)。摘要：
 
 1. `ExecutionBackend` `id: 'dsh'` 已在 `execution-backends.ts` 注册
-2. 本机需 sibling `deepseek-harness` 或 `WORKMATE_DSH_BIN`（可选 `WORKMATE_DSH_ROOT`）
-3. 默认按回合用 Workmate `ModelConfig` 生成 `llm-pi-ai` cordis；`WORKMATE_DSH_CORDIS` 可覆盖
-4. `WORKMATE_AGENT_ENGINE=dsh`、设置页默认引擎、或员工 prefs `engine: dsh`（须在 enabledEngines 内）
+2. 本机需 sibling `deepseek-harness` 或 `OPENCLAWX_DSH_BIN`（可选 `OPENCLAWX_DSH_ROOT`）
+3. 默认按回合用 OpenClawX `ModelConfig` 生成 `llm-pi-ai` cordis；`OPENCLAWX_DSH_CORDIS` 可覆盖
+4. `OPENCLAWX_AGENT_ENGINE=dsh`、设置页默认引擎、或员工 prefs `engine: dsh`（须在 enabledEngines 内）
 5. 事件经自包含 JSON-RPC 客户端映射为 `AgentEvent`
 
 ## 5. 关键路径

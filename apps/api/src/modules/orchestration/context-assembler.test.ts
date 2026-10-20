@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { MemoryStore, type ProjectTask } from '@workmate/orchestrator';
+import { MemoryStore, type ProjectTask } from '@openclawx/orchestrator';
 import { resolveSkillRuntimeFor, resolveTaskContext } from './context-assembler.js';
-import { workflowDefinitionSchema } from '@workmate/contracts';
+import { workflowDefinitionSchema } from '@openclawx/contracts';
 
 const task = {
   id: 'voice-pdf', title: 'PDF', objective: '生成 PDF', employeeId: 'general', skillIds: [],

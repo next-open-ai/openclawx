@@ -128,7 +128,7 @@ def _system_prompt(params: dict[str, Any]) -> str:
     instructions = str(profile.get("instructions") or "You are a helpful assistant.")
     memory = str(params.get("sessionSummary") or "").strip()
     parts = [
-        f"You are {name} inside Workmate (AgentScope engine).",
+        f"You are {name} inside OpenClawX (AgentScope engine).",
         instructions,
         "Use host read/write/edit/bash tools for workspace work. After a finished user-facing file is verified, call commit_artifact exactly once; only committed files enter the asset library. Be concise and actionable.",
     ]
@@ -176,7 +176,7 @@ async def run_agentscope_react(
     host_invoke: HostInvokeFn,
     resume_payload: dict[str, Any] | None = None,
 ) -> None:
-    """Drive AgentScope Agent.reply_stream and map events → Workmate AgentEvent."""
+    """Drive AgentScope Agent.reply_stream and map events → OpenClawX AgentEvent."""
     model_cfg = params.get("model") if isinstance(params.get("model"), dict) else {}
     if not model_cfg.get("chatModel"):
         await emit(make_event(run.run_id, "run.failed", message="Missing model.chatModel for AgentScope run."))
@@ -192,7 +192,7 @@ async def run_agentscope_react(
     )
     max_iters = int(params.get("maxSteps") or 16)
     agent = Agent(
-        name=str((params.get("profile") or {}).get("name") or "Workmate"),
+        name=str((params.get("profile") or {}).get("name") or "OpenClawX"),
         system_prompt=_system_prompt(params),
         model=model,
         toolkit=toolkit,

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import type { FastifyPluginAsync } from 'fastify';
-import { listPreviewServers, startPreviewServer, stopPreviewServer } from '@workmate/agent-core';
+import { listPreviewServers, startPreviewServer, stopPreviewServer } from '@openclawx/agent-core';
 import { requireAuth } from '../auth/service.js';
 import type { AuthPrincipal } from '../auth/service.js';
 import { canReadOwnedResource, canWriteOwnedResource } from '../auth/ownership.js';
@@ -30,11 +30,11 @@ type AssetAccessGrant = {
 let databasePromise: Promise<SqlDatabase> | null = null;
 
 function dataDir(): string {
-  return process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate');
+  return process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx');
 }
 
 function conversationStagingRoot(runId: string) {
-  const configured = process.env.WORKMATE_ASSET_STAGING_DIR?.trim() || process.env.WORKMATE_WORKSPACES_DIR?.trim();
+  const configured = process.env.OPENCLAWX_ASSET_STAGING_DIR?.trim() || process.env.OPENCLAWX_WORKSPACES_DIR?.trim();
   return path.resolve(configured || path.join(dataDir(), 'assets', '.staging'), runId);
 }
 
@@ -43,7 +43,7 @@ function legacyConversationWorkspaceRoot(runId: string) {
 }
 
 function databaseFile() {
-  return path.join(dataDir(), 'workmate.sqlite');
+  return path.join(dataDir(), 'openclawx.sqlite');
 }
 
 async function database(): Promise<SqlDatabase> {
@@ -423,9 +423,9 @@ async function archiveBundle(value: Parameters<typeof archiveArtifact>[0]) {
   fs.renameSync(temporary, assetRoot);
   const relativePath = path.relative(dataDir(), path.join(folder, entry)).split(path.sep).join('/');
   if (existing) {
-    db.run('UPDATE assets SET name=?,relative_path=?,mime_type=?,size_bytes=?,sha256=?,entry_path=?,manifest_json=? WHERE id=?', [name, relativePath, 'application/x-workmate-bundle', sizeBytes, sha256, entry, JSON.stringify(manifest), id]);
+    db.run('UPDATE assets SET name=?,relative_path=?,mime_type=?,size_bytes=?,sha256=?,entry_path=?,manifest_json=? WHERE id=?', [name, relativePath, 'application/x-openclawx-bundle', sizeBytes, sha256, entry, JSON.stringify(manifest), id]);
   } else {
-    db.run('INSERT INTO assets (id,name,relative_path,mime_type,size_bytes,created_at,conversation_id,employee_id,run_id,sha256,project_id,workspace_relative,org_id,owner_user_id,user_id,access_scope,access_grants,kind,entry_path,manifest_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [id,name,relativePath,'application/x-workmate-bundle',sizeBytes,Date.now(),value.conversationId||null,value.employeeId||null,runId,sha256,value.projectId||null,'output',value.orgId||null,value.ownerUserId||null,value.ownerUserId||null,value.accessScope||'private',JSON.stringify(value.accessGrants||[]),'bundle',entry,JSON.stringify(manifest)]);
+    db.run('INSERT INTO assets (id,name,relative_path,mime_type,size_bytes,created_at,conversation_id,employee_id,run_id,sha256,project_id,workspace_relative,org_id,owner_user_id,user_id,access_scope,access_grants,kind,entry_path,manifest_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [id,name,relativePath,'application/x-openclawx-bundle',sizeBytes,Date.now(),value.conversationId||null,value.employeeId||null,runId,sha256,value.projectId||null,'output',value.orgId||null,value.ownerUserId||null,value.ownerUserId||null,value.accessScope||'private',JSON.stringify(value.accessGrants||[]),'bundle',entry,JSON.stringify(manifest)]);
   }
   flushDatabase(db); return assetRows(db.exec(`${ASSET_SELECT} WHERE id = ?`, [id]))[0];
 }

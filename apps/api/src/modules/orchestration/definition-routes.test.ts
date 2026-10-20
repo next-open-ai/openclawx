@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import Fastify from 'fastify';
-import { MemoryStore } from '@workmate/orchestrator';
+import { MemoryStore } from '@openclawx/orchestrator';
 import { registerDefinitionRoutes } from './definition-routes.js';
 
 test('WA-R1/R2: private definitions persist, validate DAGs and isolate users', async () => {

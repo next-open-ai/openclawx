@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import type { KeyValueStore } from '@workmate/orchestrator';
-import { withKeyLock } from '@workmate/orchestrator';
-import { employeeDataAssociationSchema, employeeDataAssociationKey } from '@workmate/contracts';
+import type { KeyValueStore } from '@openclawx/orchestrator';
+import { withKeyLock } from '@openclawx/orchestrator';
+import { employeeDataAssociationSchema, employeeDataAssociationKey } from '@openclawx/contracts';
 import { requireAuth } from '../auth/service.js';
 import type { AgentDataGateway } from './agent-query.js';
 

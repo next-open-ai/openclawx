@@ -34,7 +34,7 @@ test('WA-R18: budget is shared across tools and checked before side effects', as
 });
 
 test('WA-R19: material tools reject outside paths, symlinks and shell exploration but permit project files', async () => {
-  const parent = await mkdtemp(path.join(os.tmpdir(), 'workmate-material-'));
+  const parent = await mkdtemp(path.join(os.tmpdir(), 'openclawx-material-'));
   const root = path.join(parent, 'project'); await mkdir(root);
   await mkdir(path.join(root, 'inputs')); await writeFile(path.join(parent, 'private.txt'), 'not a source');
   await writeFile(path.join(root, 'inputs/source.txt'), 'source');
@@ -61,7 +61,7 @@ test('WA-R20: Pi text-channel errors remain visible even when details is empty',
 });
 
 test('WA-R18: real Pi loop stops a multi-tool response at budget without another provider request', { timeout: 20_000 }, async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-budget-loop-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-budget-loop-'));
   let requests = 0;
   const server = createServer((request, response) => {
     requests++; request.resume();
@@ -95,7 +95,7 @@ test('WA-R18: real Pi loop stops a multi-tool response at budget without another
 });
 
 test('WA-R19: material workflow injects missing-data policy and accepts a truthful text result without forced export', { timeout: 20_000 }, async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-missing-data-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-missing-data-'));
   let requests = 0; let payload = '';
   const server = createServer(async (request, response) => {
     requests++; for await (const chunk of request) payload += chunk;

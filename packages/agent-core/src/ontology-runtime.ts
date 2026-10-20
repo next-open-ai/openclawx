@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { OntologyGraphSchema, OntologyWorkflowSchema, type KnowledgeBaseRuntime, type OntologyCandidate, type OntologyEdge, type OntologyGovernanceCommand, type OntologyGraph, type OntologyNode, type OntologyQueryConstraints, type OntologyWorkflow } from '@workmate/contracts';
+import { OntologyGraphSchema, OntologyWorkflowSchema, type KnowledgeBaseRuntime, type OntologyCandidate, type OntologyEdge, type OntologyGovernanceCommand, type OntologyGraph, type OntologyNode, type OntologyQueryConstraints, type OntologyWorkflow } from '@openclawx/contracts';
 
 export type OntologyEvidenceRef = { documentId?: string; chunkId?: string; source?: string; nodeId?: string; edgeId?: string };
 export type OntologyQueryPath = { nodeIds: string[]; edgeIds: string[]; depth: number };
@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url);
 let sqlPromise: Promise<SqlJs> | null = null;
 const queues = new Map<string, Promise<unknown>>();
 
-function dir(kb: KnowledgeBaseRuntime) { return kb.dataDir?.trim() ? path.resolve(kb.dataDir) : path.resolve(process.env.WORKMATE_KNOWLEDGE_DIR?.trim() || '.workmate-knowledge', kb.id); }
+function dir(kb: KnowledgeBaseRuntime) { return kb.dataDir?.trim() ? path.resolve(kb.dataDir) : path.resolve(process.env.OPENCLAWX_KNOWLEDGE_DIR?.trim() || '.openclawx-knowledge', kb.id); }
 function dbPath(kb: KnowledgeBaseRuntime) { return path.join(dir(kb), 'ontology.sqlite'); }
 function emptyGraph(): OntologyGraph { return { version: 1, nodes: [], edges: [] }; }
 

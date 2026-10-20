@@ -17,12 +17,12 @@
 
 ## 实际验证
 
-- `pnpm --filter @workmate/contracts build`：通过。
-- `pnpm --filter @workmate/agent-core test`：192/192通过；新增2项覆盖工具缺省关闭、严格协议、取消、异步并发域隔离、AgentScope宿主ABI。
-- `pnpm --filter @workmate/api test`：68项中66通过、2项原有真实MySQL/PostgreSQL测试跳过、0失败。新增6项包括普通成员关联接口持久化／跨用户组织隔离、实际sql.js网关、所属权、敏感字段、关联/账号撤销、共享、体积、返回前复核、模拟模型驱动真实Pi连续3次工具调用并取得收入合计30。没有调用付费模型。
-- `pnpm --filter @workmate/api typecheck`、`pnpm --filter @workmate/agent-core typecheck`、`pnpm --filter @workmate/renderer typecheck`：通过；API与renderer构建通过。renderer保留原有混合导入／大chunk提示。
+- `pnpm --filter @openclawx/contracts build`：通过。
+- `pnpm --filter @openclawx/agent-core test`：192/192通过；新增2项覆盖工具缺省关闭、严格协议、取消、异步并发域隔离、AgentScope宿主ABI。
+- `pnpm --filter @openclawx/api test`：68项中66通过、2项原有真实MySQL/PostgreSQL测试跳过、0失败。新增6项包括普通成员关联接口持久化／跨用户组织隔离、实际sql.js网关、所属权、敏感字段、关联/账号撤销、共享、体积、返回前复核、模拟模型驱动真实Pi连续3次工具调用并取得收入合计30。没有调用付费模型。
+- `pnpm --filter @openclawx/api typecheck`、`pnpm --filter @openclawx/agent-core typecheck`、`pnpm --filter @openclawx/renderer typecheck`：通过；API与renderer构建通过。renderer保留原有混合导入／大chunk提示。
 - `pnpm concurrency:regression`：通过；包含DSH MCP/Skill桥接与AgentScope侧车并发场景。没有新增DSH数据桥接。
-- 隔离浏览器：`WORKMATE_DATA_PREVIEW_EMPLOYEE=1 node scripts/data-workbench-preview.mjs`，真实Vue组件配合合成列表，验证选择计数、搜索、DSH提示、读取失败、空列表和失效关联、刷新恢复；最终版本另验未保存标记→保存成功→重载仍选中→模拟保存失败保留修改→重试清空成功关闭。截图检查布局。agent-browser命令不可用，以内置浏览器替代。临时页面/服务已关闭，未保存实际员工设置。
+- 隔离浏览器：`OPENCLAWX_DATA_PREVIEW_EMPLOYEE=1 node scripts/data-workbench-preview.mjs`，真实Vue组件配合合成列表，验证选择计数、搜索、DSH提示、读取失败、空列表和失效关联、刷新恢复；最终版本另验未保存标记→保存成功→重载仍选中→模拟保存失败保留修改→重试清空成功关闭。截图检查布局。agent-browser命令不可用，以内置浏览器替代。临时页面/服务已关闭，未保存实际员工设置。
 - `pnpm docs:build`、`git diff --check`、`node --check scripts/data-workbench-preview.mjs`：通过。
 - 首轮测试出现构建先后次序导致缺少新导出，以及测试断言误用宿主状态名／工具消息JSON转义；修正测试契约、按依赖顺序构建后重跑通过。未掩盖运行失败。
 

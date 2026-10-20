@@ -5,7 +5,7 @@ import type {
   StreamSink,
   UnifiedMessage,
   UnifiedReply,
-} from '@workmate/channel';
+} from '@openclawx/channel';
 
 const API = 'https://api.telegram.org/bot';
 const MAX_TEXT = 4096;

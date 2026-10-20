@@ -1,6 +1,6 @@
 # 数据对象验收规格
 
-自动化入口：`pnpm --filter @workmate/api test`，用例位于 `apps/api/src/modules/data/data-object.test.ts`。
+自动化入口：`pnpm --filter @openclawx/api test`，用例位于 `apps/api/src/modules/data/data-object.test.ts`。
 
 | 测试 | 验收断言 |
 | --- | --- |

@@ -2,14 +2,14 @@ import { createHash, randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { copyFile, lstat, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { workspacesRootDir } from '@workmate/agent-core';
-import { DurableTaskSchema } from '@workmate/contracts';
+import { workspacesRootDir } from '@openclawx/agent-core';
+import { DurableTaskSchema } from '@openclawx/contracts';
 import type {
   DurableTask,
   DurableTaskArtifactRole,
   DurableTaskStatus,
   DurableTaskWorkingSetEntry,
-} from '@workmate/contracts';
+} from '@openclawx/contracts';
 import { deleteKey, listJsonIds, readJson, writeJson } from './repo.js';
 import type { KeyValueStore } from './storage/kv.js';
 import { namespaceKey } from './storage/kv.js';
@@ -24,8 +24,8 @@ const RESUMABLE = new Set<DurableTaskStatus>(['running', 'waiting_user', 'waitin
 const CONTINUATION_PATTERN = /(?:尚未|未完成|还需|仍需|下一步|请继续|需要继续|等待.+后)/i;
 
 function tasksRootDir(): string {
-  return process.env.WORKMATE_TASKS_DIR?.trim()
-    || path.join(process.env.WORKMATE_DATA_DIR?.trim() || path.join(os.homedir(), '.workmate'), 'tasks');
+  return process.env.OPENCLAWX_TASKS_DIR?.trim()
+    || path.join(process.env.OPENCLAWX_DATA_DIR?.trim() || path.join(os.homedir(), '.openclawx'), 'tasks');
 }
 
 function safeLogicalPath(value: string): string {

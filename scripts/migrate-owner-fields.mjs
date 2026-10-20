@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 function parseArgs(argv) {
   const out = {
     write: false,
-    dataDir: process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate'),
+    dataDir: process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx'),
   };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -134,7 +134,7 @@ async function migrateAssetsDatabase(file, write) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const domainFile = path.join(args.dataDir, 'domain.json');
-  const sqliteFile = path.join(args.dataDir, 'workmate.sqlite');
+  const sqliteFile = path.join(args.dataDir, 'openclawx.sqlite');
   if (!fs.existsSync(domainFile)) throw new Error(`domain.json not found: ${domainFile}`);
 
   const raw = fs.readFileSync(domainFile, 'utf8');

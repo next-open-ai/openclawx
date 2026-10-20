@@ -26,12 +26,12 @@ export function supportsLocalDocumentParsing(fileName: string): boolean {
 }
 
 export function pptxEnhancedComponentRoot(): string {
-  const dataRoot = process.env.WORKMATE_DATA_DIR?.trim() || path.join(os.homedir(), '.workmate');
+  const dataRoot = process.env.OPENCLAWX_DATA_DIR?.trim() || path.join(os.homedir(), '.openclawx');
   return path.join(dataRoot, 'components', 'pptx-enhanced');
 }
 
 export function doclingEnhancedComponentRoot(): string {
-  const dataRoot = process.env.WORKMATE_DATA_DIR?.trim() || path.join(os.homedir(), '.workmate');
+  const dataRoot = process.env.OPENCLAWX_DATA_DIR?.trim() || path.join(os.homedir(), '.openclawx');
   return path.join(dataRoot, 'components', 'docling-enhanced');
 }
 
@@ -61,12 +61,12 @@ export function documentTextLooksUsable(markdown: string): boolean {
 }
 
 function runtimeRoot(): string {
-  return process.env.WORKMATE_AGENTSCOPE_ROOT?.trim()
+  return process.env.OPENCLAWX_AGENTSCOPE_ROOT?.trim()
     || path.resolve(process.cwd(), 'runtimes', 'agentscope-runtime');
 }
 
 function parserPython(): string {
-  return process.env.WORKMATE_AGENTSCOPE_PYTHON?.trim()
+  return process.env.OPENCLAWX_AGENTSCOPE_PYTHON?.trim()
     || detectBundledPython(runtimeRoot())?.command
     || (process.platform === 'win32' ? 'python' : 'python3');
 }
@@ -147,14 +147,14 @@ export async function parseLocalDocument(input: {
       }
     }
   }
-  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'workmate-document-'));
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'openclawx-document-'));
   const safeName = path.basename(input.fileName).replace(/[^a-zA-Z0-9._-]+/g, '_') || 'document';
   const sourcePath = path.join(tempRoot, safeName);
   try {
     await writeFile(sourcePath, input.bytes, { mode: 0o600 });
     const root = runtimeRoot();
     const invocation = pythonArgv(parserPython(), [
-      '-m', 'workmate_agentscope_runtime.document_parser', sourcePath,
+      '-m', 'openclawx_agentscope_runtime.document_parser', sourcePath,
     ]);
     const pythonPath = [
       path.join(pptxEnhancedComponentRoot(), 'python-packages'),

@@ -1,7 +1,7 @@
-import {createWorkResultRanker} from '@workmate/agent-core';
+import {createWorkResultRanker} from '@openclawx/agent-core';
 import {randomUUID} from 'node:crypto';
-import {WorkResultRankingDiagnosticSchema,type WorkResultRanker,type WorkResultRanking} from '@workmate/contracts';
-import type {Orchestrator} from '@workmate/orchestrator';
+import {WorkResultRankingDiagnosticSchema,type WorkResultRanker,type WorkResultRanking} from '@openclawx/contracts';
+import type {Orchestrator} from '@openclawx/orchestrator';
 import {resolveEmployeeChatModel} from '../orchestration/context-assembler.js';
 import {isPrivateWorkOwner} from './service.js';
 

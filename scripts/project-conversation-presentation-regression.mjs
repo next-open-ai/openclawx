@@ -67,8 +67,8 @@ const server=createServer((req,res)=>{
   res.setHeader('content-type','text/html');res.end('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"><style>:root{--background:#f7f8fc;--surface:#fff;--surface-muted:#f1f3f8;--text:#202637;--muted:#65708a;--border:#dce2ee;--accent:#4665df;--accent-soft:#eef1ff}body{margin:0;background:var(--background);color:var(--text);font-family:system-ui}</style><div id="app"></div><script type="module" src="/bundle.js"></script>');
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-const {chromium}=createRequire(import.meta.url)(process.env.WORKMATE_PLAYWRIGHT_MODULE || 'playwright');
-const browser=await chromium.launch({headless:true,...(process.env.WORKMATE_BROWSER_CHANNEL?{channel:process.env.WORKMATE_BROWSER_CHANNEL}:{})});
+const {chromium}=createRequire(import.meta.url)(process.env.OPENCLAWX_PLAYWRIGHT_MODULE || 'playwright');
+const browser=await chromium.launch({headless:true,...(process.env.OPENCLAWX_BROWSER_CHANNEL?{channel:process.env.OPENCLAWX_BROWSER_CHANNEL}:{})});
 try {
   const page=await browser.newPage({viewport:{width:1280,height:800}});const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await page.goto('http://127.0.0.1:'+server.address().port);
@@ -86,10 +86,10 @@ try {
   assert.equal(await page.getByRole('alert').innerText(),task.error);
   await page.getByText('运行诊断',{exact:true}).click();
   await page.getByText(failure.signature,{exact:true}).waitFor();
-  await page.screenshot({path:'/tmp/workmate-project-turn-error-desktop.png'});
+  await page.screenshot({path:'/tmp/openclawx-project-turn-error-desktop.png'});
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  await page.screenshot({path:'/tmp/workmate-project-turn-error-mobile.png'});
+  await page.screenshot({path:'/tmp/openclawx-project-turn-error-mobile.png'});
   await set({...state,messages:[user,notice,{...assistant,content:task.error}]});
   assert.equal(await page.getByText(task.error,{exact:true}).count(),1,'error already in answer is not duplicated');
   await set({...state,messages:[user,notice]});

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { RunTextDeltaPositionSchema } from '@workmate/contracts';
+import { RunTextDeltaPositionSchema } from '@openclawx/contracts';
 import { Orchestrator, type AgentRunner, type OrcEvent } from '../index.js';
 import { runContext, waitFor } from './fake.js';
 

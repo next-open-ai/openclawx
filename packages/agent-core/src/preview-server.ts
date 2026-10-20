@@ -2,7 +2,7 @@
  * Local static site preview / LAN deploy — long-lived HTTP servers.
  * - local (default): bind 127.0.0.1 (this machine only)
  * - lan: bind 0.0.0.0 so other devices on the same network can open the site
- * Runs inside the Workmate host (API) process so servers survive agent turns
+ * Runs inside the OpenClawX host (API) process so servers survive agent turns
  * and work when agent-core is bundled into a single main.cjs (no fork worker).
  */
 import http from 'node:http';
@@ -73,7 +73,7 @@ const live = new Map<string, LivePreview>();
 
 /**
  * Host-provided lookup for conversation SITE asset bundles
- * (`~/.workmate/assets/<id>/files`). Registered by the API process.
+ * (`~/.openclawx/assets/<id>/files`). Registered by the API process.
  */
 export type ConversationSiteBundleResolver = (conversationId: string) => Promise<{
   assetId: string;

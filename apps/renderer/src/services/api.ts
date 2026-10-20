@@ -1,10 +1,10 @@
 import { getStoredSessionToken } from './auth';
 import { createRequestCoalescer } from './request-coalescer';
-import type { DataAppDelivery } from '@workmate/contracts';
-import { dataAppProjectExecutionSchema, type DataAppProjectCreate, type DataAppProjectExecute } from '@workmate/contracts';
+import type { DataAppDelivery } from '@openclawx/contracts';
+import { dataAppProjectExecutionSchema, type DataAppProjectCreate, type DataAppProjectExecute } from '@openclawx/contracts';
 import { DSH_ENV_FIX_ACTION_ID } from '../features/dsh/environment-ui';
 
-export interface HealthStatus { status: 'ok'; service: 'workmate-api'; version: string; }
+export interface HealthStatus { status: 'ok'; service: 'openclawx-api'; version: string; }
 export interface EnvCheckItem {
   id: string;
   name: string;
@@ -416,7 +416,7 @@ export interface RuntimeSkill {
 
 export interface ToolActivity { invocationId?: string; progress?: number; toolName: string; summary: string; detail?: string; status: 'running' | 'completed' | 'failed'; startedAt?: number; durationMs?: number; at?: number; }
 export interface CapabilityHealthObservation {
-  capability: import('@workmate/contracts').ModelCapability;
+  capability: import('@openclawx/contracts').ModelCapability;
   modelId: string;
   ok: boolean;
   summary: string;
@@ -509,7 +509,7 @@ export type StreamChatInput = {
   searchProviders?: Array<{ id: 'bocha' | 'tavily' | 'brave' | 'exa' | 'zhipu' | 'aliyun'; label: string; apiKey: string; baseUrl?: string; enabled: boolean; preferred: boolean }>;
   mcpConnections?: McpConnectionPayload[];
   knowledgeBases?: KnowledgeBasePayload[];
-  modelCapabilities?: import('@workmate/contracts').ModelCapabilityRuntime[];
+  modelCapabilities?: import('@openclawx/contracts').ModelCapabilityRuntime[];
   runId?: string;
   projectWorkspacePath?: string;
   maxSteps?: number;
@@ -614,11 +614,11 @@ export async function streamChat(
         if (event.type === 'capability.progress' && event.capability && event.summary) onToolActivity?.({ invocationId: event.invocationId, progress: event.progress, toolName: `model:${event.capability}`, summary: event.summary, status: 'running' });
         if (event.type === 'capability.completed' && event.capability && event.summary) {
           onToolActivity?.({ invocationId: event.invocationId, toolName: `model:${event.capability}`, summary: event.summary, status: event.ok ? 'completed' : 'failed' });
-          if (event.modelId) capabilityHealthObserver?.({ capability: event.capability as import('@workmate/contracts').ModelCapability, modelId: event.modelId, ok: event.ok !== false, summary: event.summary });
+          if (event.modelId) capabilityHealthObserver?.({ capability: event.capability as import('@openclawx/contracts').ModelCapability, modelId: event.modelId, ok: event.ok !== false, summary: event.summary });
         }
         if (event.type === 'capability.failed' && event.capability && event.summary) {
           onToolActivity?.({ invocationId: event.invocationId, toolName: `model:${event.capability}`, summary: event.summary, status: 'failed' });
-          if (event.modelId) capabilityHealthObserver?.({ capability: event.capability as import('@workmate/contracts').ModelCapability, modelId: event.modelId, ok: false, summary: event.summary });
+          if (event.modelId) capabilityHealthObserver?.({ capability: event.capability as import('@openclawx/contracts').ModelCapability, modelId: event.modelId, ok: false, summary: event.summary });
         }
         if (event.type === 'tool.approval_required' && event.skillId && event.capability && event.summary) onApproval?.({ skillId: event.skillId, capability: event.capability, summary: event.summary });
         if (event.type === 'artifact.created' && event.runId && event.path) await onArtifact?.({ runId: event.runId, path: event.path });
@@ -1651,7 +1651,7 @@ export function archivedAssetContentUrl(assetId: string, options: { download?: b
 
 /**
  * Load protected asset media through the authenticated fetch wrapper. Native
- * img/audio/video requests cannot attach Workmate's session header.
+ * img/audio/video requests cannot attach OpenClawX's session header.
  */
 export async function loadArchivedAssetContentUrl(assetId: string, signal?: AbortSignal) {
   const response = await fetch(archivedAssetContentUrl(assetId), { signal });
@@ -1659,9 +1659,9 @@ export async function loadArchivedAssetContentUrl(assetId: string, signal?: Abor
   return URL.createObjectURL(await response.blob());
 }
 
-export type { DataColumn } from '@workmate/contracts';
-import type { DataColumn } from '@workmate/contracts';
-export type DataTable = import('@workmate/contracts').DataResource;
+export type { DataColumn } from '@openclawx/contracts';
+import type { DataColumn } from '@openclawx/contracts';
+export type DataTable = import('@openclawx/contracts').DataResource;
 export type DataApiConnection = {
   baseUrl: string;
   path: string;
@@ -1680,7 +1680,7 @@ export type DataApiConnection = {
 };
 export type DataSource = {
   accessMode?: 'live' | 'snapshot' | 'local';
-  liveConnection?: import('@workmate/contracts').LiveDataObjectInfo;
+  liveConnection?: import('@openclawx/contracts').LiveDataObjectInfo;
   id: string;
   name: string;
   assetId: string;
@@ -1689,11 +1689,11 @@ export type DataSource = {
   rowCount: number;
   summary: string;
   createdAt: number;
-  annotations: import('@workmate/contracts').DataObjectAnnotations;
+  annotations: import('@openclawx/contracts').DataObjectAnnotations;
   isDefault?: boolean;
   tables?: DataTable[];
   api?: DataApiConnection | null;
-  databaseConnection?: import('@workmate/contracts').RemoteDatabasePublicConnection;
+  databaseConnection?: import('@openclawx/contracts').RemoteDatabasePublicConnection;
   syncError?: string;
 };
 export type DataApiSourceInput = {
@@ -1738,10 +1738,10 @@ async function databaseRequest<T>(url: string, input: unknown): Promise<T> {
     throw error;
   } finally { clearTimeout(timer); }
 }
-export function inspectDatabaseConnection(connection: import('@workmate/contracts').RemoteDatabaseConnection) {
+export function inspectDatabaseConnection(connection: import('@openclawx/contracts').RemoteDatabaseConnection) {
   return databaseRequest<{ databases: string[]; tables: Array<{ schema: string; name: string; description: string }> }>('/data/databases/inspect', connection);
 }
-export function importDatabaseObject(input: import('@workmate/contracts').RemoteDatabaseImport) {
+export function importDatabaseObject(input: import('@openclawx/contracts').RemoteDatabaseImport) {
   return databaseRequest<DataSource>('/data/sources/database', input);
 }
 export function refreshDatabaseObject(sourceId: string, password: string) {
@@ -1770,7 +1770,7 @@ export async function getDataSource(sourceId: string) {
   return body;
 }
 
-export async function updateDataObjectAnnotations(sourceId: string, annotations: import('@workmate/contracts').DataObjectAnnotations) {
+export async function updateDataObjectAnnotations(sourceId: string, annotations: import('@openclawx/contracts').DataObjectAnnotations) {
   const response = await fetch(`${dataApiBase()}/api/data/sources/${encodeURIComponent(sourceId)}/annotations`, {
     method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(annotations),
   });
@@ -1781,7 +1781,7 @@ export async function updateDataObjectAnnotations(sourceId: string, annotations:
 
 export async function getDataObjectSchema(sourceId: string) {
   const response = await fetch(`${dataApiBase()}/api/data/gateway/schema?sourceId=${encodeURIComponent(sourceId)}`);
-  const body = await response.json() as import('@workmate/contracts').DataObjectModelSchema & { message?: string };
+  const body = await response.json() as import('@openclawx/contracts').DataObjectModelSchema & { message?: string };
   if (!response.ok) throw new Error(body.message || '读取数据对象 Schema 失败。');
   return body;
 }

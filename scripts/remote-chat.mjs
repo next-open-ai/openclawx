@@ -7,13 +7,13 @@
  * turn parks on approval, then `allow` WITHOUT `resumeContext` must auto-resume
  * via the resolver and settle (echo#2).
  *
- * Launch:  WORKMATE_SECRETS_FILE=<file> WORKMATE_ORCH_RUNNER=memory-approval \
- *          WORKMATE_DATA_DIR=<tmp> WORKMATE_API_PORT=4406 node apps/api/dist/main.cjs
- * Run:     WORKMATE_API_PORT=4406 node scripts/remote-chat.mjs
+ * Launch:  OPENCLAWX_SECRETS_FILE=<file> OPENCLAWX_ORCH_RUNNER=memory-approval \
+ *          OPENCLAWX_DATA_DIR=<tmp> OPENCLAWX_API_PORT=4406 node apps/api/dist/main.cjs
+ * Run:     OPENCLAWX_API_PORT=4406 node scripts/remote-chat.mjs
  */
 import assert from 'node:assert/strict';
 
-const port = process.env.WORKMATE_API_PORT || '47832';
+const port = process.env.OPENCLAWX_API_PORT || '47832';
 const base = `http://127.0.0.1:${port}/api/orch`;
 
 async function json(pathname, init) {

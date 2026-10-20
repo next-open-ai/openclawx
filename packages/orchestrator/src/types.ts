@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@workmate/contracts';
+import type { AgentEvent } from '@openclawx/contracts';
 
 /**
  * Canonical domain records owned by the orchestration service.
@@ -27,11 +27,11 @@ export interface ChatMessage {
   id: string;
   role: ChatRole;
   content: string;
-  attachments?: import('@workmate/contracts').ChatImageAttachment[];
-  fileAttachments?: import('@workmate/contracts').ChatFileAttachment[];
+  attachments?: import('@openclawx/contracts').ChatImageAttachment[];
+  fileAttachments?: import('@openclawx/contracts').ChatFileAttachment[];
   /** Server-produced, bounded attachment content for model context only. */
   attachmentContext?: string;
-  workflowResult?: import('@workmate/contracts').WorkflowResultReference;
+  workflowResult?: import('@openclawx/contracts').WorkflowResultReference;
   responseMode?: 'text-only';
   createdAt: number;
   /** Turn id — the user message that started the exchange. */
@@ -156,11 +156,11 @@ export interface RunUsageStep {
   reasoningTokens?: number;
   totalTokens: number;
   model?: RunModelInfo;
-  capability?: import('@workmate/contracts').ModelCapability;
+  capability?: import('@openclawx/contracts').ModelCapability;
 }
 
 export interface RunUsageModelBucket extends RunModelInfo {
-  capability?: import('@workmate/contracts').ModelCapability;
+  capability?: import('@openclawx/contracts').ModelCapability;
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
@@ -204,7 +204,7 @@ export interface RunRecord {
   status: RunStatus;
   error?: string;
   startedAt: number;
-  failure?: import('@workmate/contracts').RunFailure;
+  failure?: import('@openclawx/contracts').RunFailure;
   finishedAt?: number;
   /** Accumulated assistant text (final). */
   transcript: string;
@@ -223,7 +223,7 @@ export interface RunRecord {
   /** Token consumption for this execution (input/output/cache/…). */
   usage?: RunUsage;
   /** Resolved execution backend (pi / agentscope / dsh). */
-  engine?: import('@workmate/contracts').AgentEngineId;
+  engine?: import('@openclawx/contracts').AgentEngineId;
 }
 
 /* ------------------------------------------------------------------ *

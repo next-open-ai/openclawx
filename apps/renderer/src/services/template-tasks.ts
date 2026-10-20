@@ -1,8 +1,8 @@
 import { getStoredSessionToken } from './auth';
-import type {TaskSchedule} from '@workmate/contracts';
-import type {TaskApplicationCreate,TaskApplicationLaunch} from '@workmate/contracts';
-import {TaskParameterProjectInfoSchema,TaskParameterProjectPreviewSchema,TaskTemplateProblemSchema,TaskReportProjectPreviewSchema} from '@workmate/contracts';
-import type { TaskTemplate, TemplateTask, TaskCreateInput, TemplateTaskDetail, TemplateTaskRun, TaskResult, TaskTemplateConfiguration, TaskTemplateDefinition, TaskSkillDescriptor, TaskTemplateTrial, TaskExportFormat,TaskRunListPage } from '@workmate/contracts';
+import type {TaskSchedule} from '@openclawx/contracts';
+import type {TaskApplicationCreate,TaskApplicationLaunch} from '@openclawx/contracts';
+import {TaskParameterProjectInfoSchema,TaskParameterProjectPreviewSchema,TaskTemplateProblemSchema,TaskReportProjectPreviewSchema} from '@openclawx/contracts';
+import type { TaskTemplate, TemplateTask, TaskCreateInput, TemplateTaskDetail, TemplateTaskRun, TaskResult, TaskTemplateConfiguration, TaskTemplateDefinition, TaskSkillDescriptor, TaskTemplateTrial, TaskExportFormat,TaskRunListPage } from '@openclawx/contracts';
 export type { TaskTemplate, TemplateTask, TemplateTaskDetail, TemplateTaskRun, TaskResult };
 export type { TaskTemplateConfiguration, TaskTemplateDefinition, TaskSkillDescriptor, TaskTemplateTrial, TaskExportFormat };
 const base = () => window.location.protocol === 'file:' ? 'http://127.0.0.1:47832/api' : '/api';

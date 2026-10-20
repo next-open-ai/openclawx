@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { ModelCapabilityRuntime } from '@workmate/contracts';
+import type { ModelCapabilityRuntime } from '@openclawx/contracts';
 import { saveChatImage, assertVisionSupported } from '../image-input.js';
 import { createModelCapabilityToolSession } from '../model-capability-runtime.js';
 import { toPiHistoryMessages } from '../pi-runtime.js';
@@ -24,9 +24,9 @@ test('VIS-M2-T5 normalizes dated Qwen vision snapshots only for MaaS deployment 
 });
 
 test('VIS-M2-T1 targeted vision uses trusted question, scoped images, cache and cancellation', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-vision-tool-'));
-  const previousDir = process.env.WORKMATE_DATA_DIR;
-  process.env.WORKMATE_DATA_DIR = root;
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-vision-tool-'));
+  const previousDir = process.env.OPENCLAWX_DATA_DIR;
+  process.env.OPENCLAWX_DATA_DIR = root;
   const payloads: Array<any> = [];
   let fail = false;
   let hold: (() => void) | undefined;
@@ -99,7 +99,7 @@ test('VIS-M2-T1 targeted vision uses trusted question, scoped images, cache and 
   } finally {
     server.closeAllConnections();
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    if (previousDir === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = previousDir;
+    if (previousDir === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = previousDir;
     await rm(root, { recursive: true, force: true });
   }
 });

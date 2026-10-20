@@ -6,7 +6,7 @@ import {
   type IChannel,
   type UnifiedMessage,
   type UnifiedReply,
-} from '@workmate/channel';
+} from '@openclawx/channel';
 import { createTelegramChannel } from './adapters/telegram.js';
 import { createStubChannel } from './adapters/stub.js';
 import { createFeishuChannel } from './adapters/feishu.js';

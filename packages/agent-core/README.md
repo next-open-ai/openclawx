@@ -1,4 +1,4 @@
-# @workmate/agent-core
+# @openclawx/agent-core
 
 模型执行层（纯 pi 栈）：
 
@@ -17,4 +17,4 @@
 | Summary 注入块 | `sessionSummaryMessagePair` | 与会话记忆共用前缀 |
 | 项目交付晋升 | `publish_to_project` | 项目绑定 run |
 
-会话水位线与落盘仍在 `@workmate/orchestrator`。
+会话水位线与落盘仍在 `@openclawx/orchestrator`。

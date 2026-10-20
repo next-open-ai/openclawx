@@ -1,4 +1,4 @@
-import type { DataRelation, StructuredDataQuery } from '@workmate/contracts';
+import type { DataRelation, StructuredDataQuery } from '@openclawx/contracts';
 import { StructuredQueryError, type QueryTable } from './structured-query.js';
 
 type Resource = { id: string; columns: Array<{ id: string; type: string }> };

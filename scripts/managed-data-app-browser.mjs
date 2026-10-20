@@ -11,15 +11,15 @@ const deliveryExports = {};
 const transpile = file => ts.transpileModule(readFileSync(new URL(file, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 vm.runInNewContext(transpile('../apps/api/src/modules/data/app-delivery-prompt.ts'), {exports:deliveryExports});
 vm.runInNewContext(transpile('../apps/api/src/modules/data/app-query-page.ts'), {exports,require:specifier=>{assert.equal(specifier,'./app-delivery-prompt.js');return deliveryExports;}});
-const { chromium } = createRequire(import.meta.url)(process.env.WORKMATE_PLAYWRIGHT_MODULE || 'playwright');
+const { chromium } = createRequire(import.meta.url)(process.env.OPENCLAWX_PLAYWRIGHT_MODULE || 'playwright');
 let queries = 0;
-const pageHtml = exports.managedAppPage('synthetic-app', `<main style="max-width:700px;margin:40px auto;font:16px system-ui"><h1>经营分析</h1><p>数据由受控查询加载</p><strong id="total">加载中</strong><button id="retry">刷新</button><script>async function load(){try{const r=await workmateData.query('total',{});document.querySelector('#total').textContent='收入合计 '+r.rows[0].total}catch(e){document.querySelector('#total').textContent=e.message}}document.querySelector('#retry').onclick=load;load();</script></main>`);
+const pageHtml = exports.managedAppPage('synthetic-app', `<main style="max-width:700px;margin:40px auto;font:16px system-ui"><h1>经营分析</h1><p>数据由受控查询加载</p><strong id="total">加载中</strong><button id="retry">刷新</button><script>async function load(){try{const r=await openclawxData.query('total',{});document.querySelector('#total').textContent='收入合计 '+r.rows[0].total}catch(e){document.querySelector('#total').textContent=e.message}}document.querySelector('#retry').onclick=load;load();</script></main>`);
 const server = createServer(async (request, response) => {
   let raw = ''; for await (const part of request) raw += part;
   const json = (code, value) => { response.writeHead(code, { 'content-type': 'application/json' }); response.end(JSON.stringify(value)); };
   if (request.url === '/api/auth/login') return json(200, { token: JSON.parse(raw).username === 'owner' ? 'synthetic-private-session' : 'wrong-session' });
   if (request.url?.startsWith('/api/data/apps/')) {
-    if (request.headers['x-workmate-session'] !== 'synthetic-private-session') return json(404, { message: '无权访问' });
+    if (request.headers['x-openclawx-session'] !== 'synthetic-private-session') return json(404, { message: '无权访问' });
     if (request.url.endsWith('/operations')) return json(200, { operations: [{ operationId: 'total' }] });
     queries++; assert.deepEqual(JSON.parse(raw), { operationId: 'total', parameters: {} });
     return queries === 2 ? json(502, { message: '数据库连接不可用，请重试' }) : json(200, { rows: [{ total: 30 }], hasMore: false });
@@ -27,7 +27,7 @@ const server = createServer(async (request, response) => {
   response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); response.end(pageHtml);
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const browser = await chromium.launch({ channel: process.env.WORKMATE_BROWSER_CHANNEL || 'chrome', headless: true });
+const browser = await chromium.launch({ channel: process.env.OPENCLAWX_BROWSER_CHANNEL || 'chrome', headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } }); const errors = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto(`http://127.0.0.1:${server.address().port}/`);

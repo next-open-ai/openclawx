@@ -3,10 +3,10 @@ import os from 'node:os';
 import path from 'node:path';
 import type { FastifyPluginAsync } from 'fastify';
 import { unzipSync, zipSync } from 'fflate';
-import { reconcileProjectOutputDirectory, storeAudioInput } from '@workmate/agent-core';
+import { reconcileProjectOutputDirectory, storeAudioInput } from '@openclawx/agent-core';
 
 function dataDir(): string {
-  return process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate');
+  return process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx');
 }
 
 function projectRoot(folder: string) {
@@ -18,7 +18,7 @@ function projectRoot(folder: string) {
 type WorkspaceMetadata = { version: 1; kind: 'static-site' | 'files'; entrypoint: string | null; updatedAt: number };
 
 function workspaceMetadataPath(root: string) {
-  return path.join(projectRoot(root), '.workmate', 'project.json');
+  return path.join(projectRoot(root), '.openclawx', 'project.json');
 }
 
 function refreshWorkspaceMetadata(root: string): WorkspaceMetadata {
@@ -77,8 +77,8 @@ function listProjectFiles(root: string, directory = projectRoot(root), relative 
       || entry.name === '.git'
       || entry.name === '.agents'
       || entry.name === '.dsh-sessions'
-      || entry.name === '.workmate-dsh.cordis.yml'
-      || entry.name === '.workmate'
+      || entry.name === '.openclawx-dsh.cordis.yml'
+      || entry.name === '.openclawx'
       || entry.name === 'node_modules'
       || entry.name === '.python-packages'
     ) continue;

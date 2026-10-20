@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { Orchestrator, MemoryStore, createScriptedRunner, type ChatRunContext } from '@workmate/orchestrator';
+import { Orchestrator, MemoryStore, createScriptedRunner, type ChatRunContext } from '@openclawx/orchestrator';
 import { completionNotice, VoiceWorkBridge } from './work-bridge.js';
-import { VoiceSessionCreateSchema, type VoiceWorkResult } from '@workmate/contracts';
+import { VoiceSessionCreateSchema, type VoiceWorkResult } from '@openclawx/contracts';
 
 const context: ChatRunContext = { profile: { id: 'general', name: 'General', instructions: '', toolIds: [] }, model: { provider: 'ollama', chatModel: 'test', apiKey: 'test' }, skills: [], searchProviders: [], mcpConnections: [], knowledgeBases: [] };
 const owner = { orgId: 'org-test', userId: 'user-test' };

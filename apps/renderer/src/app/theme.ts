@@ -23,7 +23,7 @@ export const themeIcons: Record<ThemePreference, string> = {
   aurora: '◈',
 };
 
-const storageKey = 'workmate.theme-preference';
+const storageKey = 'openclawx.theme-preference';
 const preference = ref<ThemePreference>(readPreference());
 const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 

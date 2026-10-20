@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { TemplateTaskInputSchema, TaskTemplateConfigurationSchema, TaskPresentationSchema, TaskDeliverySchema, type TaskTemplateDefinition, type TaskTemplateTrial, type TaskSkillDescriptor, type TaskExportFormat, type TaskPresentation, type TaskTemplate, type TemplateTask, type TemplateTaskDetail, type TemplateTaskRun, type TaskResult } from '@workmate/contracts';
+import { TemplateTaskInputSchema, TaskTemplateConfigurationSchema, TaskPresentationSchema, TaskDeliverySchema, type TaskTemplateDefinition, type TaskTemplateTrial, type TaskSkillDescriptor, type TaskExportFormat, type TaskPresentation, type TaskTemplate, type TemplateTask, type TemplateTaskDetail, type TemplateTaskRun, type TaskResult } from '@openclawx/contracts';
 import { validateParameterUi, parameterUiHtml } from './task-parameter-ui.js';
 import {validateReportUi,reportUiHtml} from './task-report-ui.js';
 import type { KeyValueStore } from './storage/kv.js';
 import {nextTaskSchedule} from './task-schedule.js';
 import { withKeyLock } from './lock.js';
 import { businessSummarySkill, businessSummaryTemplate } from './task-skills/business-summary/index.js';
-import {DirectTaskInputSchema,TaskResultOutputSchema,TaskRunJsonResultSchema,TaskScheduleUpdateSchema,parameterValidationMessage,taskExecutionInputProblem,type TaskTemplateProblem,type TaskRunListItem} from '@workmate/contracts';
+import {DirectTaskInputSchema,TaskResultOutputSchema,TaskRunJsonResultSchema,TaskScheduleUpdateSchema,parameterValidationMessage,taskExecutionInputProblem,type TaskTemplateProblem,type TaskRunListItem} from '@openclawx/contracts';
 
 const DIRECT_ID='__direct-agent__';
 function directTemplate(task: {name:string;employeeId?:string;prompt?:string}): TaskTemplate {

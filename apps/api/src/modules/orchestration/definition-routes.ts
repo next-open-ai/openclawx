@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import type { KeyValueStore } from '@workmate/orchestrator';
-import { algorithmDefinitionSchema, workflowDefinitionSchema } from '@workmate/contracts';
+import type { KeyValueStore } from '@openclawx/orchestrator';
+import { algorithmDefinitionSchema, workflowDefinitionSchema } from '@openclawx/contracts';
 import { requireAuth } from '../auth/service.js';
 
 /** Private reusable definitions only; existing ProjectService remains the execution owner. */

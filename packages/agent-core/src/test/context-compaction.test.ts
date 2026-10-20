@@ -13,7 +13,7 @@ test('compaction thresholds are defined for mid-run hygiene pipeline', () => {
   assert.ok(COMPACTION_WINDOW_RATIO > 0.5 && COMPACTION_WINDOW_RATIO < 0.95);
 });
 
-test('session summary pair keeps Workmate prefix for re-injection', () => {
+test('session summary pair keeps OpenClawX prefix for re-injection', () => {
   const pair = sessionSummaryMessagePair('Goal: ship index.html\nPaths: output/index.html');
   assert.equal(pair.length, 2);
   assert.ok(pair[0]!.content.startsWith(SESSION_SUMMARY_PREFIX));

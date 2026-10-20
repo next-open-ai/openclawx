@@ -1,4 +1,4 @@
-import { BusinessSummaryInputSchema, BusinessSummaryResultSchema, type TaskTemplate, type TaskSkillDescriptor } from '@workmate/contracts';
+import { BusinessSummaryInputSchema, BusinessSummaryResultSchema, type TaskTemplate, type TaskSkillDescriptor } from '@openclawx/contracts';
 import { inputHtml } from './assets/input.js';
 import { reportHtml } from './assets/report.js';
 

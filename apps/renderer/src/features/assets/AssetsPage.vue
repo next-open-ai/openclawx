@@ -740,7 +740,7 @@ onBeforeUnmount(() => {
   <section class="flex h-full min-h-0 flex-col overflow-hidden">
     <div class="mx-auto flex h-full min-h-0 w-full max-w-[1400px] flex-col px-6 py-8 sm:px-10">
       <header class="shrink-0">
-        <p class="text-[11px] font-extrabold tracking-[.13em] text-[var(--accent)]">Workmate / ASSETS</p>
+        <p class="text-[11px] font-extrabold tracking-[.13em] text-[var(--accent)]">OpenClawX / ASSETS</p>
         <div class="mt-2 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 class="text-4xl font-bold tracking-[-.045em]">我的{{ t('assets.title') }}</h1>

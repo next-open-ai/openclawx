@@ -8,17 +8,17 @@ import Fastify from 'fastify';
 import { dataRoutes, publicDataAppRoutes } from './routes.js';
 import { getOrchestrator } from '../orchestration/routes.js';
 import { applyParentSecrets } from '../orchestration/secrets.js';
-import { createSkillExecutionTools } from '@workmate/agent-core';
+import { createSkillExecutionTools } from '@openclawx/agent-core';
 import { createRequire } from 'node:module';
 import { AppProjectCoordinator } from './app-project.js';
-import type { ProjectService } from '@workmate/orchestrator';
+import type { ProjectService } from '@openclawx/orchestrator';
 
 test('DAP-R2: retry recovers a project created before association persistence without duplicate launch', async () => {
   const require = createRequire(import.meta.url);
   const sqlRoot = path.dirname(require.resolve('sql.js/dist/sql-wasm.js'));
   const SQL = await require(path.join(sqlRoot, 'sql-wasm.js'))({ wasmBinary: fs.readFileSync(path.join(sqlRoot, 'sql-wasm.wasm')) });
   const db = new SQL.Database(); AppProjectCoordinator.migrate(db);
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-app-recovery-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-app-recovery-'));
   let interrupted = true; let creations = 0; let starts = 0;
   const projects = new Map<string, object>();
   // Simulate a durable project write followed by interruption before the SQL link write.
@@ -45,18 +45,18 @@ test('DAP-R2: retry recovers a project created before association persistence wi
 });
 
 test('DAP-R1–R5: project-only creation, replay/conflict, owned project execution, latest schema and safe delivery', async () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-app-project-api-'));
-  const keys = ['WORKMATE_DATA_DIR', 'WORKMATE_WORKSPACES_DIR', 'WORKMATE_ASSET_STAGING_DIR', 'WORKMATE_API_ORIGIN', 'WORKMATE_ORCH_RUNNER', 'WORKMATE_ORCH_RUNNER_DELAY_MS'] as const;
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-app-project-api-'));
+  const keys = ['OPENCLAWX_DATA_DIR', 'OPENCLAWX_WORKSPACES_DIR', 'OPENCLAWX_ASSET_STAGING_DIR', 'OPENCLAWX_API_ORIGIN', 'OPENCLAWX_ORCH_RUNNER', 'OPENCLAWX_ORCH_RUNNER_DELAY_MS'] as const;
   const previous = Object.fromEntries(keys.map(key => [key, process.env[key]]));
-  process.env.WORKMATE_DATA_DIR = root; process.env.WORKMATE_WORKSPACES_DIR = path.join(root, 'runs');
-  process.env.WORKMATE_ASSET_STAGING_DIR = path.join(root, 'runs');
-  process.env.WORKMATE_ORCH_RUNNER = 'memory-echo'; process.env.WORKMATE_ORCH_RUNNER_DELAY_MS = '500';
+  process.env.OPENCLAWX_DATA_DIR = root; process.env.OPENCLAWX_WORKSPACES_DIR = path.join(root, 'runs');
+  process.env.OPENCLAWX_ASSET_STAGING_DIR = path.join(root, 'runs');
+  process.env.OPENCLAWX_ORCH_RUNNER = 'memory-echo'; process.env.OPENCLAWX_ORCH_RUNNER_DELAY_MS = '500';
   // Synthetic keyring + scripted runner: no model server or actual credentials are used.
   applyParentSecrets({ model: { activeProvider: 'ollama', providers: [{ provider: 'ollama', chatModel: 'synthetic', apiKey: 'synthetic' }] } });
   const app = Fastify();
   app.addHook('preHandler', async request => { request.auth = { userId: String(request.headers['x-test-user'] || 'owner'), orgId: 'test', username: 'test', displayName: 'test', role: 'admin', sessionId: 'test' }; });
   await app.register(dataRoutes, { prefix: '/api' }); await app.register(publicDataAppRoutes, { prefix: '/api' });
-  const origin = await app.listen({ host: '127.0.0.1', port: 0 }); process.env.WORKMATE_API_ORIGIN = origin;
+  const origin = await app.listen({ host: '127.0.0.1', port: 0 }); process.env.OPENCLAWX_API_ORIGIN = origin;
   const request = (url: string, body: object) => app.inject({ method: 'POST', url: `/api${url}`, payload: body });
   const wait = async (id: string) => { for (let i = 0; i < 60; i++) { const project = await getOrchestrator().projects.getProject(id); if (project?.status !== 'running') return project; await new Promise(resolve => setTimeout(resolve, 50)); } throw new Error('Project did not settle'); };
   try {

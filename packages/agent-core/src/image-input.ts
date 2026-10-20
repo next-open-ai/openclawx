@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile, readFile, lstat, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { ChatImageAttachmentSchema, type ChatImageAttachment, type ChatModelMessage } from '@workmate/contracts';
+import { ChatImageAttachmentSchema, type ChatImageAttachment, type ChatModelMessage } from '@openclawx/contracts';
 import type { ImageContent } from '@mariozechner/pi-ai';
 
 const LIMIT = 10 * 1024 * 1024;
@@ -14,7 +14,7 @@ export class ImageInputError extends Error {
 }
 function directory(sessionId: string): string {
   if (!/^[a-zA-Z0-9_-]{1,120}$/.test(sessionId)) throw new ImageInputError('IMAGE_SCOPE_INVALID', '缺少有效会话。');
-  return path.join(process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate'), 'image-inputs', sessionId);
+  return path.join(process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx'), 'image-inputs', sessionId);
 }
 function imageMime(data: Buffer): ChatImageAttachment['mimeType'] {
   if (data.length > 24 && data.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) return 'image/png';
@@ -70,7 +70,7 @@ export async function deleteChatImages(sessionId: string): Promise<void> {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
   }
 }
-export function assertVisionSupported(messages: ChatModelMessage[], supportsVision: boolean | undefined, engine: string, capabilities: import('@workmate/contracts').ModelCapabilityRuntime[] = []): void {
+export function assertVisionSupported(messages: ChatModelMessage[], supportsVision: boolean | undefined, engine: string, capabilities: import('@openclawx/contracts').ModelCapabilityRuntime[] = []): void {
   if (!messages.some((message) => message.attachments?.length)) return;
   if (engine !== 'pi') throw new ImageInputError('VISION_ENGINE_UNSUPPORTED', '当前识图闭环仅支持 Pi，请切换员工执行引擎。');
   if (!supportsVision && !capabilities.some((model) => model.capability === 'vision' && model.mode !== 'disabled')) throw new ImageInputError('VISION_MODEL_UNSUPPORTED', '请选用视觉主模型，或配置“图片理解”应用模型并为员工开启该能力。');

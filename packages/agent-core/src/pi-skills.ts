@@ -1,5 +1,5 @@
 /**
- * Bridge Workmate AgentSkillRuntime (employee policy + progressive disclosure)
+ * Bridge OpenClawX AgentSkillRuntime (employee policy + progressive disclosure)
  * onto pi-coding-agent's Agent Skills prompt format (agentskills.io).
  *
  * Execution / approval gates stay in skill-runtime tools; this module only
@@ -12,7 +12,7 @@ import {
   loadSkillsFromDir,
   type Skill as PiSkill,
 } from '@mariozechner/pi-coding-agent';
-import type { AgentSkillRuntime } from '@workmate/contracts';
+import type { AgentSkillRuntime } from '@openclawx/contracts';
 
 function skillMdPath(rootPath: string) {
   const direct = path.join(rootPath, 'SKILL.md');
@@ -21,7 +21,7 @@ function skillMdPath(rootPath: string) {
   return existsSync(lower) ? lower : direct;
 }
 
-/** Map authorized Workmate runtimes onto pi Skill records for prompt formatting. */
+/** Map authorized OpenClawX runtimes onto pi Skill records for prompt formatting. */
 export function toPiSkills(skills: AgentSkillRuntime[]): PiSkill[] {
   const out: PiSkill[] = [];
   for (const skill of skills) {
@@ -33,7 +33,7 @@ export function toPiSkills(skills: AgentSkillRuntime[]): PiSkill[] {
         description: skill.description,
         filePath: `${skill.id}.md`,
         baseDir: skill.id,
-        source: 'workmate',
+        source: 'openclawx',
         disableModelInvocation: skill.mode !== 'default',
       });
       continue;
@@ -43,7 +43,7 @@ export function toPiSkills(skills: AgentSkillRuntime[]): PiSkill[] {
       description: skill.description,
       filePath: skillMdPath(root),
       baseDir: root,
-      source: 'workmate',
+      source: 'openclawx',
       disableModelInvocation: skill.mode !== 'default',
     });
   }
@@ -63,7 +63,7 @@ export function formatAuthorizedSkillsCatalog(skills: AgentSkillRuntime[]): stri
       return [
         formatted,
         '',
-        'Workmate policy: call load_skill with the exact skill id (name) before reading files or running scripts. Default-mode skills may already include instructions in this prompt.',
+        'OpenClawX policy: call load_skill with the exact skill id (name) before reading files or running scripts. Default-mode skills may already include instructions in this prompt.',
       ].join('\n');
     }
   } catch {
@@ -76,7 +76,7 @@ export function formatAuthorizedSkillsCatalog(skills: AgentSkillRuntime[]): stri
  * Optionally enrich from on-disk skill trees (managed library dirs) using
  * pi-coding-agent discovery, then intersect with authorized ids.
  */
-export function discoverPiSkillsUnder(dir: string, source = 'workmate-library'): PiSkill[] {
+export function discoverPiSkillsUnder(dir: string, source = 'openclawx-library'): PiSkill[] {
   if (!dir || !existsSync(dir)) return [];
   try {
     return loadSkillsFromDir({ dir, source }).skills ?? [];

@@ -1,6 +1,6 @@
 # 工作流与算法 · WA-V1
 
-状态：第一阶段已实现并通过隔离验收。范围为 Workmate；不改变其他子项目，不替换现有项目调度器。
+状态：第一阶段已实现并通过隔离验收。范围为 OpenClawX；不改变其他子项目，不替换现有项目调度器。
 
 ## 需求、契约与测试
 
@@ -44,7 +44,7 @@ API：`/api/orch/definitions/{workflows|algorithms}` GET 返回 items；PUT `/:i
 - 验证：Fastify 注入上传、隔离、篡改文件 ID、准备/幂等冲突与磁盘原件/文本证据；Renderer 类型检查/构建和选择/移除/错误状态检查。无新增模型调用、不改变员工授权、不同步其它子项目。旧运行无材料按空数组读取，回滚 UI 不删除材料。
 - 上传契约：POST `/api/orch/definitions/workflows/:id/uploads/:requestId`，二进制正文与编码文件名头；返回既有 ChatFileAttachment 与可选 warning。附件写入新的托管项目目录，禁止借用已归属其它项目的目录。
 - 证据（2026-10-09）：Contracts 构建、Renderer 类型检查/构建、API 类型检查/构建通过；API 35 通过、0 失败、2 个既有外部环境用例跳过。`node scripts/workflow-algorithm-regression.mjs` 通过。新增 WA-R13/R14/R15 集成测试使用 TXT 实际解析并验证磁盘原件、节选和所有步骤目标，未调用真实模型；其它格式复用既有解析器，未逐个新增实测。
-- `node scripts/workflow-documents-preview.mjs` 隔离 UI 验证：添加、上传等待态禁用启动、失败禁止启动、重试成功、只提供文档可运行、移除更新材料集合。截图 `/tmp/workmate-workflow-documents.png`。扫描件 OCR、真实员工读取效果尚未实测。
+- `node scripts/workflow-documents-preview.mjs` 隔离 UI 验证：添加、上传等待态禁用启动、失败禁止启动、重试成功、只提供文档可运行、移除更新材料集合。截图 `/tmp/openclawx-workflow-documents.png`。扫描件 OCR、真实员工读取效果尚未实测。
 
 ## WA-V1.4 调度恢复竞态修复（已实现并通过隔离回归）
 
@@ -52,8 +52,8 @@ API：`/api/orch/definitions/{workflows|algorithms}` GET 返回 items；PUT `/:i
 - WA-R17 / WA-T17：项目页失败/取消后的主操作为“恢复执行”，调用既有 resumeIncomplete，只运行未完成节点，保留上游证据与工作区。已完成项目仍可全量再次调度。无数据迁移，不自动重试用户任务，不调用真实模型。
 - 契约不变；回归覆盖恢复检查与上下文准备并发、真实重启、部分成果不假成功、审批保持、完成节点不重跑。运行 Orchestrator 测试、并发专项及 Renderer 类型检查/构建。回滚代码不删除材料和成果。
 - 根因证据：本次项目第三节点没有 runId，错误文本来自 recoverOrphanedExecution，不是模型错误；恢复原先启动即异步运行、无项目锁、只检查单个任务 AbortController，可能在上下文准备/步骤交接时误判并覆盖项目消息快照。修复按整轮登记本进程所有权，恢复读改写使用同一项目锁；旧调度轮清理不得删除新轮状态。
-- 2026-10-09 验证：`pnpm --filter @workmate/orchestrator test` 67/67 通过（新增 project-boot-recovery.test.ts 三项）；`pnpm concurrency:regression` 通过；Renderer typecheck/build、API build、`node scripts/workflow-algorithm-regression.mjs`、`git diff --check` 通过。构建保留既有 bundle 大小告警。手册已同步。
-- `pnpm --filter @workmate/api test`：35 通过、0 失败、2 个既有外部环境用例跳过。未新增真实模型或桌面 UI 实测。
+- 2026-10-09 验证：`pnpm --filter @openclawx/orchestrator test` 67/67 通过（新增 project-boot-recovery.test.ts 三项）；`pnpm concurrency:regression` 通过；Renderer typecheck/build、API build、`node scripts/workflow-algorithm-regression.mjs`、`git diff --check` 通过。构建保留既有 bundle 大小告警。手册已同步。
+- `pnpm --filter @openclawx/api test`：35 通过、0 失败、2 个既有外部环境用例跳过。未新增真实模型或桌面 UI 实测。
 - 自动测试使用内存持久化状态模拟重启，不是重启用户实际进程；未调用真实模型、未修改用户 domain.json、未自动重跑本次项目。历史上已覆盖的消息不凭模型输出补造，原 RunRecord 与文件仍可查看。待审批取消的调度唤醒另列后续检查，不扩展本轮修复范围。
 
 ## WA-V1.5 工具中止与材料任务收敛（已实现，隔离回归通过）
@@ -62,7 +62,7 @@ API：`/api/orch/definitions/{workflows|algorithms}` GET 返回 items；PUT `/:i
 - WA-R19 / WA-T19：带本次运行材料的任务仅依据提供材料、项目文件与授权数据工具分析。缺少必要业务数据时明确说明缺口、提供可支持的框架，不自动搜遍用户磁盘、不以报价代替收入。原生文件工具限制在项目目录（含符号链接校验）；shell 拦截明显越界路径与目录切换。此策略不是 OS 沙箱，不能证明任意脚本被隔离；不改变普通对话和其它子项目。
 - WA-R20 / WA-T20：依赖失败的下游显示“前置任务失败”，而非循环依赖；保留上游真实错误。工具错误优先提取文本通道中的具体错误，避免只显示 tool failed。
 - 无公共 Schema/持久化迁移。Agent-core/Orchestrator 测试、模拟 Agent 多工具轮中止、取消与预算边界、材料越界、缺数据提示和下游依赖回归；运行并发专项及 API 构建。真实模型和用户项目不自动重跑。
-- 2026-10-09：`pnpm --filter @workmate/agent-core test` 173/173 通过；`pnpm --filter @workmate/orchestrator test` 68/68 通过；`pnpm concurrency:regression` 通过。新增 execution-guards.test.ts 六项、project-dependency-failure.test.ts 一项。核心取消回归使用真实 Pi Agent 循环和本机模拟 SSE Provider：预算为 1、模型同轮返回 3 个 write，只产生第一个文件、只有一次 Provider 请求和一次失败终态。
+- 2026-10-09：`pnpm --filter @openclawx/agent-core test` 173/173 通过；`pnpm --filter @openclawx/orchestrator test` 68/68 通过；`pnpm concurrency:regression` 通过。新增 execution-guards.test.ts 六项、project-dependency-failure.test.ts 一项。核心取消回归使用真实 Pi Agent 循环和本机模拟 SSE Provider：预算为 1、模型同轮返回 3 个 write，只产生第一个文件、只有一次 Provider 请求和一次失败终态。
 - 材料不足测试验证约束确实注入并允许真实文本结果不被强制导出；不代表真实模型永远正确判断业务数据。范围拦截不是任意代码沙箱；已有 Skill 专用读取/脚本工具及审批继续沿用，不扩大权限。普通对话不启用材料限定，默认 50 步不变，小于 50 的显式配置现在也会被遵守。
 - 未修改用户 domain.json、未重跑付费模型、未删除或覆盖本次项目文件；手册已同步。历史错误记录不重写，重新恢复后的执行使用新逻辑。无配置迁移；回滚这些文件即可恢复旧行为，不影响已存材料与成果。
 - API build、`git diff --check` 通过；API test 35 通过、0 失败、2 个既有外部环境用例跳过。未新增桌面 UI 实测，本轮未改变界面代码；真实模型闭环仍待用户启动验证。
@@ -82,9 +82,9 @@ API：`/api/orch/definitions/{workflows|algorithms}` GET 返回 items；PUT `/:i
 
 ## 验收记录 · 2026-10-09
 
-- `pnpm --filter @workmate/contracts build`、Renderer/API 类型检查、Renderer 构建通过。
-- `pnpm --filter @workmate/api test`：32 通过、2 项依赖外部环境的既有用例跳过；新定义 API 注入测试通过。
-- `pnpm --filter @workmate/orchestrator test`：63/63 通过。
+- `pnpm --filter @openclawx/contracts build`、Renderer/API 类型检查、Renderer 构建通过。
+- `pnpm --filter @openclawx/api test`：32 通过、2 项依赖外部环境的既有用例跳过；新定义 API 注入测试通过。
+- `pnpm --filter @openclawx/orchestrator test`：63/63 通过。
 - `node scripts/workflow-algorithm-regression.mjs`：新实例 ID、依赖重映射、快照独立、移除员工拒绝和不额外授权通过。
 - 隔离浏览器使用真实 Vue 页面、内存 HTTP 桩与模拟 Skill：两步工作流创建保存、员工选择、依赖展示、未配置模型时阻止运行、算法登记/员工关联及重新编辑均通过。未触发真实模型或业务数据写入。
 - 已有员工策略的存储接口沿用原实现；算法登记与策略保存不构成跨存储事务，若后者失败需按错误提示重试，不声明原子完成。真实算法质量、运行环境和账户模型权限待实际使用验证。
@@ -92,6 +92,6 @@ API：`/api/orch/definitions/{workflows|algorithms}` GET 返回 items；PUT `/:i
 ### WA-V1.1 验证记录
 
 - Renderer `typecheck`、`build` 通过，保留现有 bundle 大小告警；`node scripts/workflow-algorithm-regression.mjs` 通过。
-- `pnpm --filter @workmate/api test`：32 通过、0 失败、2 个既有外部环境用例跳过。无服务端/调度接口变化。
+- `pnpm --filter @openclawx/api test`：32 通过、0 失败、2 个既有外部环境用例跳过。无服务端/调度接口变化。
 - 隔离浏览器验收：两阶段表单、规划等待态、两步依赖图与交付要求、返回保留步骤、规划后保存、无模型手动创建保存、规划错误保留输入均通过。模拟规划，不调用真实模型，不修改业务数据。
 - 本轮不迭代算法，菜单隐藏；未同步其他子项目。旧定义兼容，无数据迁移。真实模型及实际项目运行未新增实测。

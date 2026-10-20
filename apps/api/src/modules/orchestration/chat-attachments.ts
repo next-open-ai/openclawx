@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { deleteAudioInput, readDocument, supportsDocumentReading, storeAudioInput } from '@workmate/agent-core';
-import { ChatFileAttachmentSchema, ChatFilesSchema, type ChatFileAttachment } from '@workmate/contracts';
+import { deleteAudioInput, readDocument, supportsDocumentReading, storeAudioInput } from '@openclawx/agent-core';
+import { ChatFileAttachmentSchema, ChatFilesSchema, type ChatFileAttachment } from '@openclawx/contracts';
 
 const GLOBAL_LIMIT = 2 * 1024 * 1024 * 1024;
 const SESSION_LIMIT = 200 * 1024 * 1024;
@@ -31,7 +31,7 @@ const MIME_BY_EXT: Record<string, { kind: ChatFileAttachment['kind']; max: numbe
   '.webm': { kind: 'audio', max: 25 * 1024 * 1024, mime: 'audio/webm' },
 };
 
-function root() { return path.join(process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate'), 'chat-attachments'); }
+function root() { return path.join(process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx'), 'chat-attachments'); }
 function safeSegment(value: string) { return value.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120); }
 function safeName(value: string) { return path.basename(value).replace(/[\\/\x00-\x1f]/g, '_').slice(0, 180) || 'attachment'; }
 function folder(sessionId: string, id: string) { return path.join(root(), safeSegment(sessionId), safeSegment(id)); }

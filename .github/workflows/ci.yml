@@ -27,7 +27,7 @@ jobs:
       - name: AgentScope smoke
         run: pnpm agentscope:smoke
         env:
-          WORKMATE_AGENTSCOPE_PYTHON: python
+          OPENCLAWX_AGENTSCOPE_PYTHON: python
       - name: dsh MCP/Skills regression
         if: ${{ false }} # Temporarily disabled in GitHub Actions; keep locally runnable.
         run: pnpm dsh:regression
@@ -35,7 +35,7 @@ jobs:
         if: ${{ false }} # Temporarily disabled in GitHub Actions; keep locally runnable.
         run: pnpm concurrency:regression
         env:
-          WORKMATE_AGENTSCOPE_PYTHON: python3
+          OPENCLAWX_AGENTSCOPE_PYTHON: python3
       - run: pnpm size:check
 
   desktop-package:
@@ -68,7 +68,7 @@ jobs:
       - name: AgentScope smoke
         run: pnpm agentscope:smoke
         env:
-          WORKMATE_AGENTSCOPE_PYTHON: python
+          OPENCLAWX_AGENTSCOPE_PYTHON: python
       - name: Package ${{ matrix.artifact }}
         run: pnpm package
         env:

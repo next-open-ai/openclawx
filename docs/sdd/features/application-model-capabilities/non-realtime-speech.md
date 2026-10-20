@@ -102,7 +102,7 @@ ASR/TTS 继续作为 Capability Model Backend，通过 `model_transcribe_audio` 
 - 测试：3.1/3.0 flash/3.0 plus/v3/v2 默认音色；自定义音色保留；411 后改变文字/音色仍不产生重复 HTTP 请求；正常请求产物落盘。
 - 兼容：已有 voice 保留；空 voice 使用匹配默认值；未知阿里模型要求明确配置音色，不猜测。真实厂商验收与 Mock 测试分别记录。
 - 官方依据：[Qwen-Audio 音色列表及 411 说明](https://help.aliyun.com/zh/model-studio/qwen-audio-tts-voice-list)、[CosyVoice 音色列表](https://help.aliyun.com/zh/model-studio/cosyvoice-voice-list)。此前将所有阿里 TTS 的默认音色设为 longanyang 是适配缺陷，不能把 411 直接归类为暂时性服务故障。
-- 验证：2026-09-24 `pnpm --filter @workmate/agent-core test` 103/103 通过，包含五模型默认音色、配置音色保留、411 后连续十次调用只产生一次上游请求、新运行恢复的回归。附件仅含应用 HTTP 访问日志，未包含实际 TTS model/voice；本机 API 读取返回 401，未执行真实付费合成，不声称已复现用户实际参数组合。
+- 验证：2026-09-24 `pnpm --filter @openclawx/agent-core test` 103/103 通过，包含五模型默认音色、配置音色保留、411 后连续十次调用只产生一次上游请求、新运行恢复的回归。附件仅含应用 HTTP 访问日志，未包含实际 TTS model/voice；本机 API 读取返回 401，未执行真实付费合成，不声称已复现用户实际参数组合。
 
 | 日期 | 状态 | 证据 |
 | --- | --- | --- |

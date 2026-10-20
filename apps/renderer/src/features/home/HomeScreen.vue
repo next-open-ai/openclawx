@@ -11,7 +11,7 @@ onMounted(async () => {
 
 <template>
   <main class="home-screen">
-    <p class="eyebrow">Workmate / FOUNDATION READY</p>
+    <p class="eyebrow">OpenClawX / FOUNDATION READY</p>
     <h1>你的本地 AI 工作台</h1>
     <p class="description">Electron、独立 Vue 界面、Fastify API 与 Agent Core 已完成基础连接。</p>
     <p class="status" role="status">{{ status }}</p>

@@ -8,11 +8,11 @@
  * convention as services/api.ts.
  */
 
-import type { ChatFileAttachment, ChatImageAttachment, DurableTask, DurableTaskStatus, RunTextDeltaPosition } from '@workmate/contracts';
-import type { AlgorithmDefinition, WorkflowDefinition, CreateConversationProject } from '@workmate/contracts';
-import type { ProjectApplicationStatus, ProjectApplicationView, ProjectApplicationSnapshot, PublishProjectApplication } from '@workmate/contracts';
-import type { ProjectDraftFiles } from '@workmate/contracts';
-import type { WorkflowExecutionInput, WorkflowExecutionSummary, WorkflowInvocationInput, WorkflowInvocationResult } from '@workmate/contracts';
+import type { ChatFileAttachment, ChatImageAttachment, DurableTask, DurableTaskStatus, RunTextDeltaPosition } from '@openclawx/contracts';
+import type { AlgorithmDefinition, WorkflowDefinition, CreateConversationProject } from '@openclawx/contracts';
+import type { ProjectApplicationStatus, ProjectApplicationView, ProjectApplicationSnapshot, PublishProjectApplication } from '@openclawx/contracts';
+import type { ProjectDraftFiles } from '@openclawx/contracts';
+import type { WorkflowExecutionInput, WorkflowExecutionSummary, WorkflowInvocationInput, WorkflowInvocationResult } from '@openclawx/contracts';
 
 const apiBase = () =>
   window.location.protocol === 'file:' ? 'http://127.0.0.1:47832' : '';
@@ -89,7 +89,7 @@ export interface ServerRunRecord {
   status: 'running' | 'completed' | 'failed' | 'cancelled' | 'waiting-approval';
   error?: string;
   engine?: 'pi' | 'agentscope' | 'dsh' | 'opencode' | 'claude-code';
-  failure?: import('@workmate/contracts').RunFailure;
+  failure?: import('@openclawx/contracts').RunFailure;
   startedAt: number;
   finishedAt?: number;
   transcript: string;
@@ -121,11 +121,11 @@ export interface ServerRunRecord {
       reasoningTokens?: number;
       totalTokens: number;
       model?: { provider: string; chatModel: string; baseUrl?: string; providerLabel?: string };
-      capability?: import('@workmate/contracts').ModelCapability;
+      capability?: import('@openclawx/contracts').ModelCapability;
     }>;
     byModel?: Array<{
       provider: string; chatModel: string; baseUrl?: string; providerLabel?: string;
-      capability?: import('@workmate/contracts').ModelCapability;
+      capability?: import('@openclawx/contracts').ModelCapability;
       inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; reasoningTokens: number; totalTokens: number;
     }>;
   };
@@ -156,7 +156,7 @@ export interface ServerUsageStats {
     chatModel: string;
     baseUrl?: string;
     providerLabel?: string;
-    capability?: import('@workmate/contracts').ModelCapability;
+    capability?: import('@openclawx/contracts').ModelCapability;
   }>;
   byProject: Array<ServerUsageBucket & { projectId: string; name: string }>;
   byChat: Array<ServerUsageBucket & { sessionId: string; title: string }>;
@@ -317,7 +317,7 @@ export interface OrcEvent extends RunTextDeltaPosition {
   message?: ServerMessage;
   error?: string;
   ts?: number;
-  failure?: import('@workmate/contracts').RunFailure;
+  failure?: import('@openclawx/contracts').RunFailure;
 }
 
 /* ------------------------------------------------------------------ *
@@ -433,7 +433,7 @@ export async function getProject(id: string): Promise<ServerProject | null> {
   }
 }
 
-export function workflowResultEvidence(sessionId: string, requestId: string): Promise<{ evidence: import('@workmate/contracts').WorkflowResultEvidence }> {
+export function workflowResultEvidence(sessionId: string, requestId: string): Promise<{ evidence: import('@openclawx/contracts').WorkflowResultEvidence }> {
   return request(`/sessions/${encodeURIComponent(sessionId)}/workflow-invocations/${encodeURIComponent(requestId)}/evidence`);
 }
 
@@ -531,7 +531,7 @@ export async function resolveTaskApproval(input: {
  * ------------------------------------------------------------------ */
 
 export interface ServerChatMessage {
-  workflowResult?: import('@workmate/contracts').WorkflowResultReference;
+  workflowResult?: import('@openclawx/contracts').WorkflowResultReference;
   attachments?: ChatImageAttachment[];
   fileAttachments?: ChatFileAttachment[];
   id: string;
@@ -602,14 +602,14 @@ export async function clearChatSession(id: string): Promise<ServerChatSession> {
  * Send a chat message. `context` is optional: the server assembles the run
  * context for the session's employee (domain KV + keyring) when omitted.
  */
-export async function sendChatMessage(id: string, input: { content: string; attachments?: ChatImageAttachment[]; fileAttachments?: ChatFileAttachment[]; employeeId?: string; context?: Record<string, unknown>; workflowResult?: import('@workmate/contracts').WorkflowResultReference }): Promise<{ runId: string; turnId: string; attemptNo: number }> {
+export async function sendChatMessage(id: string, input: { content: string; attachments?: ChatImageAttachment[]; fileAttachments?: ChatFileAttachment[]; employeeId?: string; context?: Record<string, unknown>; workflowResult?: import('@openclawx/contracts').WorkflowResultReference }): Promise<{ runId: string; turnId: string; attemptNo: number }> {
   return request(`/sessions/${encodeURIComponent(id)}/messages`, { method: 'POST', body: JSON.stringify(input) });
 }
 
 export async function uploadChatFile(sessionId: string, file: File): Promise<{ attachment: ChatFileAttachment; warning?: string }> {
   const response = await fetch(`${apiBase()}/api/orch/sessions/${encodeURIComponent(sessionId)}/files`, {
     method: 'POST',
-    headers: { 'content-type': 'application/octet-stream', 'x-workmate-file-name': encodeURIComponent(file.name) },
+    headers: { 'content-type': 'application/octet-stream', 'x-openclawx-file-name': encodeURIComponent(file.name) },
     body: file,
   });
   const body = await response.json().catch(() => ({})) as { attachment?: ChatFileAttachment; warning?: string; message?: string };
@@ -619,7 +619,7 @@ export async function uploadChatFile(sessionId: string, file: File): Promise<{ a
 
 export async function uploadWorkflowDocument(workflowId: string, requestId: string, file: File): Promise<{ attachment: ChatFileAttachment; warning?: string }> {
   const response = await fetch(`${apiBase()}/api/orch/definitions/workflows/${encodeURIComponent(workflowId)}/uploads/${encodeURIComponent(requestId)}`, {
-    method: 'POST', headers: { 'content-type': 'application/octet-stream', 'x-workmate-file-name': encodeURIComponent(file.name) }, body: file,
+    method: 'POST', headers: { 'content-type': 'application/octet-stream', 'x-openclawx-file-name': encodeURIComponent(file.name) }, body: file,
   });
   const body = await response.json().catch(() => ({})) as { attachment?: ChatFileAttachment; warning?: string; message?: string };
   if (!response.ok || !body.attachment) throw new Error(body.message || '文档上传失败');
@@ -628,7 +628,7 @@ export async function uploadWorkflowDocument(workflowId: string, requestId: stri
 
 export async function uploadProjectDocument(projectId: string, requestId: string, file: File): Promise<{ attachment: ChatFileAttachment; warning?: string }> {
   const response = await fetch(`${apiBase()}/api/orch/projects/${encodeURIComponent(projectId)}/uploads/${encodeURIComponent(requestId)}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Workmate-File-Name': encodeURIComponent(file.name) }, body: file,
+    method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-OpenClawX-File-Name': encodeURIComponent(file.name) }, body: file,
   });
   const body = await response.json().catch(() => ({})) as { attachment?: ChatFileAttachment; warning?: string; message?: string };
   if (!response.ok || !body.attachment) throw new Error(body.message || '文档上传失败');

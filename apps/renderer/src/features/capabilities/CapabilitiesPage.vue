@@ -80,7 +80,7 @@ function manifestToSkill(manifest: { path: string; content: string }, source: Sk
 async function upsert(skill: SkillRecord) { const index = skills.value.findIndex((item) => item.source !== 'builtin' && canonical(item.name) === canonical(skill.name)); if (index >= 0) skills.value[index] = { ...skills.value[index], ...skill, id: skills.value[index].id }; else skills.value.push(skill); await saveSkills(); }
 async function refresh() { await load(); }
 async function discover() { if (discoverQuery.value.trim().length < 2) return; searching.value = true; searchError.value = ''; results.value = []; try { results.value = (await discoverSkills(discoverQuery.value.trim())).items ?? []; if (!results.value.length) searchError.value = t('capabilities.noResults'); } catch (error) { searchError.value = error instanceof Error ? error.message : String(error); } finally { searching.value = false; } }
-async function importLocal() { if (!isAdmin.value) return; const manifest = await window.workmateDesktop?.pickSkill(); if (!manifest) return; const skill = manifestToSkill(manifest, 'local'); if (!skill) { gitState.value = t('capabilities.invalidManifest'); return; } await upsert(skill); gitState.value = t('capabilities.localImported'); }
+async function importLocal() { if (!isAdmin.value) return; const manifest = await window.openclawxDesktop?.pickSkill(); if (!manifest) return; const skill = manifestToSkill(manifest, 'local'); if (!skill) { gitState.value = t('capabilities.invalidManifest'); return; } await upsert(skill); gitState.value = t('capabilities.localImported'); }
 async function importPastedSkill() {
   if (!isAdmin.value) return;
   const content = importManifestText.value.trim();
@@ -176,7 +176,7 @@ async function createWithAdministrator() {
     let existing = '';
     const target = skills.value.find((skill) => skill.id === existingSkillId.value);
     if (target?.path) existing = (await readSkillFile(target.path)).content || '';
-    const prompt = `You are Workmate's System Administrator. Apply Skill Creator principles: understand concrete use, keep instructions concise, use progressive disclosure, and use lowercase hyphen name. Return ONLY JSON {"name":"...","content":"full SKILL.md"}. SKILL.md frontmatter must only include name and description. Request: ${creatorRequest.value}${existing ? `\nExisting skill:\n${existing}` : ''}`;
+    const prompt = `You are OpenClawX's System Administrator. Apply Skill Creator principles: understand concrete use, keep instructions concise, use progressive disclosure, and use lowercase hyphen name. Return ONLY JSON {"name":"...","content":"full SKILL.md"}. SKILL.md frontmatter must only include name and description. Request: ${creatorRequest.value}${existing ? `\nExisting skill:\n${existing}` : ''}`;
     await streamChat({ profile: { id: 'administrator', name: 'System Administrator', toolIds: ['skill-authoring'], instructions: 'Create safe, concise skills.' }, messages: [{ role: 'user', content: prompt }], model: toModelPayload(activeConfig.value) }, (delta) => { creatorReply.value += delta; });
     draft.value = parseDraft(creatorReply.value);
     if (!draft.value) creatorError.value = t('capabilities.creatorParseError');
@@ -305,7 +305,7 @@ onMounted(() => { void refresh(); void loadModels(); });
   <section v-else class="flex h-full min-h-0 flex-col overflow-hidden">
     <div class="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col px-6 py-10 sm:px-12 sm:py-12">
       <header class="mb-6 shrink-0">
-        <p class="text-[11px] font-extrabold tracking-[.13em] text-[var(--accent)]">Workmate / GOVERNANCE</p>
+        <p class="text-[11px] font-extrabold tracking-[.13em] text-[var(--accent)]">OpenClawX / GOVERNANCE</p>
         <h1 class="mt-2 text-4xl font-bold tracking-[-.045em]">{{ t('capabilities.title') }}</h1>
         <p class="mt-3 text-[var(--muted)]">{{ t('capabilities.subtitle') }}</p>
       </header>

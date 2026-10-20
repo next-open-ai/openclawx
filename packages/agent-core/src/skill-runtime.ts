@@ -2,11 +2,11 @@ import { copyFile, mkdir, readFile, readdir, realpath, stat, writeFile,rename,un
 import {randomUUID} from 'node:crypto';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import {DocumentToolInputSchema,DocumentToolInputJsonSchema,type AgentSkillRuntime} from '@workmate/contracts';
+import {DocumentToolInputSchema,DocumentToolInputJsonSchema,type AgentSkillRuntime} from '@openclawx/contracts';
 import { Type, StringEnum, defineAgentTool,jsonSchemaParameters, type AgentTool } from './pi-tools.js';
 import {readDocument} from './document-service.js';
 import { PDF_SKILL_ID } from './builtin-skill-packages.js';
-import { pythonArgv, resolveWorkmatePython } from './python-runtime.js';
+import { pythonArgv, resolveOpenClawXPython } from './python-runtime.js';
 import { resolveAgentWorkspaceRoot } from './workspace-mode.js';
 import { assertResourcePath } from './resource-access.js';
 import {
@@ -339,7 +339,7 @@ export async function finalizeOutputDeliverables(
 }
 
 function approvedSkillRoot(skill: AgentSkillRuntime) {
-  const configuredRoot = process.env.WORKMATE_SKILLS_DIR;
+  const configuredRoot = process.env.OPENCLAWX_SKILLS_DIR;
   if (!configuredRoot || !skill.rootPath) return null;
   const root = path.resolve(configuredRoot);
   const candidate = path.resolve(skill.rootPath);
@@ -364,13 +364,13 @@ function runProcess(command: string, args: string[], cwd: string, options: { env
 
 /** Run with the resolved script Python; deps must stay under workspace `.python-packages`. */
 function runPython(rest: string[], cwd: string, options: { env?: NodeJS.ProcessEnv; timeoutMs?: number } = {}) {
-  const python = resolveWorkmatePython();
+  const python = resolveOpenClawXPython();
   const { command, args } = pythonArgv(python, rest);
   return runProcess(command, args, cwd, options);
 }
 
 function pythonCommandForExtension(extension: string): string {
-  if (extension === '.py') return resolveWorkmatePython();
+  if (extension === '.py') return resolveOpenClawXPython();
   if (extension === '.sh') return 'bash';
   return process.execPath;
 }
@@ -527,7 +527,7 @@ export function createSkillExecutionTools(input: {
       if (Buffer.byteLength(complete) > MAX_FILE_BYTES) {
         return { ok: false as const, error: `File exceeds ${MAX_FILE_BYTES} UTF-8 bytes. File unchanged.` };
       }
-      const temporary = path.join(path.dirname(file), `.workmate-write-${randomUUID()}.tmp`);
+      const temporary = path.join(path.dirname(file), `.openclawx-write-${randomUUID()}.tmp`);
       try {
         await writeFile(temporary, complete, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
         await workspacePath(targetRel);
@@ -848,8 +848,8 @@ export function createSkillExecutionTools(input: {
         const declared = result.stdout
           .split(/\r?\n/)
           .map((line) => line.trim())
-          .filter((line) => line.startsWith('WORKMATE_DELIVERABLE:'))
-          .map((line) => line.slice('WORKMATE_DELIVERABLE:'.length))
+          .filter((line) => line.startsWith('OPENCLAWX_DELIVERABLE:'))
+          .map((line) => line.slice('OPENCLAWX_DELIVERABLE:'.length))
           .filter((item) => isBusinessDeliverablePath(item));
         const artifacts = declared.length
           ? [...new Set(declared)]
@@ -1000,7 +1000,7 @@ export function createSkillExecutionTools(input: {
     }),
     defineAgentTool({
       name: 'export_data_app_custom_site',
-      description: 'Export the currently published HTML of an existing Workmate data app into this run workspace before conversational optimization.',
+      description: 'Export the currently published HTML of an existing OpenClawX data app into this run workspace before conversational optimization.',
       parameters: Type.Object({
         appId: Type.String({ minLength: 8, maxLength: 80 }),
         token: Type.String({ minLength: 8, maxLength: 200 }),
@@ -1010,7 +1010,7 @@ export function createSkillExecutionTools(input: {
         if (!canWriteWorkspace) return writeDenied();
         const targetRel = safeRelative(relative || 'output/index.html');
         if (!/\.html?$/i.test(targetRel)) return { ok: false as const, error: 'Export target must be an HTML file.' };
-        const origin = (process.env.WORKMATE_API_ORIGIN?.trim() || `http://127.0.0.1:${process.env.WORKMATE_API_PORT?.trim() || process.env.PORT?.trim() || '47832'}`).replace(/\/$/, '');
+        const origin = (process.env.OPENCLAWX_API_ORIGIN?.trim() || `http://127.0.0.1:${process.env.OPENCLAWX_API_PORT?.trim() || process.env.PORT?.trim() || '47832'}`).replace(/\/$/, '');
         try {
           const response = await fetch(`${origin}/api/data-apps/${encodeURIComponent(appId)}/site?token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(30_000) });
           if (!response.ok) return { ok: false as const, status: response.status, error: `Current site export failed with HTTP ${response.status}.` };
@@ -1028,7 +1028,7 @@ export function createSkillExecutionTools(input: {
     defineAgentTool({
       name: 'bind_data_app_custom_site',
       description:
-        'Bind a finished HTML file from this run workspace as the published custom site for a Workmate local data app. '
+        'Bind a finished HTML file from this run workspace as the published custom site for a OpenClawX local data app. '
         + 'Use after writing output/index.html. Reads the file on disk and uploads it — do NOT paste HTML into MCP fetch / PUT tool args.',
       parameters: Type.Object({
         appId: Type.String({ minLength: 8, maxLength: 80 }),
@@ -1057,8 +1057,8 @@ export function createSkillExecutionTools(input: {
           return { ok: false as const, error: 'HTML exceeds 2.5MB bind limit. Simplify the page.' };
         }
         const origin = (
-          process.env.WORKMATE_API_ORIGIN?.trim()
-          || `http://127.0.0.1:${process.env.WORKMATE_API_PORT?.trim() || process.env.PORT?.trim() || '47832'}`
+          process.env.OPENCLAWX_API_ORIGIN?.trim()
+          || `http://127.0.0.1:${process.env.OPENCLAWX_API_PORT?.trim() || process.env.PORT?.trim() || '47832'}`
         ).replace(/\/$/, '');
         const target = `${origin}/api/data-apps/${encodeURIComponent(appId)}/custom-site?token=${encodeURIComponent(token)}`;
         try {

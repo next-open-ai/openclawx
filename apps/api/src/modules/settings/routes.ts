@@ -4,12 +4,12 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { FastifyPluginAsync } from 'fastify';
-import { detectBundledPython, doclingEnhancedComponentRoot, pptxEnhancedComponentRoot, pythonArgv } from '@workmate/agent-core';
+import { detectBundledPython, doclingEnhancedComponentRoot, pptxEnhancedComponentRoot, pythonArgv } from '@openclawx/agent-core';
 import { authenticateRequest, requireAuth, requireAdmin, sendAuthError } from '../auth/service.js';
 import { executeStorageCleanup, scanStorageCleanup } from './storage-cleanup.js';
 import { publicRealtimeVoiceSettings, saveRealtimeVoiceSettings } from '../voice/settings.js';
 import { publicVoiceInputSettings, saveVoiceInputSettings } from '../voice/asr-settings.js';
-import {KnowledgeBaseRuntimeSchema} from '@workmate/contracts';
+import {KnowledgeBaseRuntimeSchema} from '@openclawx/contracts';
 import { legacyRealtimeMigrationSource, publicRealtimeConversationSettings, saveRealtimeConversationSettings } from '../voice/realtime-settings.js';
 import { readVoicePreferences, saveVoicePreferences } from '../voice/voice-preferences.js';
 
@@ -33,7 +33,7 @@ const PPTX_COMPONENT_VERSION = 1;
 const DOCLING_COMPONENT_VERSION = 1;
 
 function agentscopeRoot() {
-  return process.env.WORKMATE_AGENTSCOPE_ROOT?.trim() || path.resolve(process.cwd(), 'runtimes', 'agentscope-runtime');
+  return process.env.OPENCLAWX_AGENTSCOPE_ROOT?.trim() || path.resolve(process.cwd(), 'runtimes', 'agentscope-runtime');
 }
 
 function pptxComponentPaths() {
@@ -42,7 +42,7 @@ function pptxComponentPaths() {
 }
 
 function pptxPython() {
-  return process.env.WORKMATE_AGENTSCOPE_PYTHON?.trim()
+  return process.env.OPENCLAWX_AGENTSCOPE_PYTHON?.trim()
     || detectBundledPython(agentscopeRoot())?.command
     || (process.platform === 'win32' ? 'python' : 'python3');
 }
@@ -123,7 +123,7 @@ async function installPptxComponent() {
 }
 
 function dataDir(): string {
-  return process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate');
+  return process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx');
 }
 
 function settingsFile(name: SettingName) {

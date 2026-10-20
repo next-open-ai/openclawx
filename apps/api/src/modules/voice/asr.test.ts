@@ -4,14 +4,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import Fastify from 'fastify';
-import type { AsrEvent } from '@workmate/contracts';
+import type { AsrEvent } from '@openclawx/contracts';
 import { registerAsrRoutes } from './asr-routes.js';
 import { publicRealtimeVoiceSettings, readRealtimeVoiceSettings, resolveAsrKey, saveRealtimeVoiceSettings } from './settings.js';
 
 test('ASR-R1/R3: settings compatibility, secret selection, owner isolation, capacity and commands', async () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-asr-test-'));
-  const previous = { dir: process.env.WORKMATE_DATA_DIR, realtime: process.env.WORKMATE_VOLCENGINE_REALTIME_API_KEY, asr: process.env.WORKMATE_VOLCENGINE_ASR_API_KEY };
-  process.env.WORKMATE_DATA_DIR = root; delete process.env.WORKMATE_VOLCENGINE_REALTIME_API_KEY; delete process.env.WORKMATE_VOLCENGINE_ASR_API_KEY;
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-asr-test-'));
+  const previous = { dir: process.env.OPENCLAWX_DATA_DIR, realtime: process.env.OPENCLAWX_VOLCENGINE_REALTIME_API_KEY, asr: process.env.OPENCLAWX_VOLCENGINE_ASR_API_KEY };
+  process.env.OPENCLAWX_DATA_DIR = root; delete process.env.OPENCLAWX_VOLCENGINE_REALTIME_API_KEY; delete process.env.OPENCLAWX_VOLCENGINE_ASR_API_KEY;
   const app = Fastify(); const uploads: Buffer[] = []; let finished = 0; let closed = 0;
   let upstreamEvent: ((event: AsrEvent) => void) | undefined;
   try {
@@ -26,9 +26,9 @@ test('ASR-R1/R3: settings compatibility, secret selection, owner isolation, capa
     for (const file of ['voice-realtime-settings.v2.json', 'voice-input-settings.json', 'voice-preferences.json']) {
       assert.equal(fs.statSync(path.join(root, file)).mode & 0o777, 0o600);
     }
-    process.env.WORKMATE_VOLCENGINE_ASR_API_KEY = 'environment-secret'; assert.equal(resolveAsrKey(), 'environment-secret');
+    process.env.OPENCLAWX_VOLCENGINE_ASR_API_KEY = 'environment-secret'; assert.equal(resolveAsrKey(), 'environment-secret');
     saveRealtimeVoiceSettings({ asrReuseKey: true }); assert.equal(resolveAsrKey(), 'shared-secret-1234');
-    saveRealtimeVoiceSettings({ asrReuseKey: false, clearAsrApiKey: true }); delete process.env.WORKMATE_VOLCENGINE_ASR_API_KEY; assert.equal(resolveAsrKey(), '');
+    saveRealtimeVoiceSettings({ asrReuseKey: false, clearAsrApiKey: true }); delete process.env.OPENCLAWX_VOLCENGINE_ASR_API_KEY; assert.equal(resolveAsrKey(), '');
     saveRealtimeVoiceSettings({ asrReuseKey: true });
     app.addHook('preHandler', async (request) => {
       const user = request.headers['x-test-user'];
@@ -66,7 +66,7 @@ test('ASR-R1/R3: settings compatibility, secret selection, owner isolation, capa
     saveRealtimeVoiceSettings({ asrEnabled: false }); assert.equal((await post('session', {})).statusCode, 400);
   } finally {
     await app.close();
-    for (const [key, value] of Object.entries({ WORKMATE_DATA_DIR: previous.dir, WORKMATE_VOLCENGINE_REALTIME_API_KEY: previous.realtime, WORKMATE_VOLCENGINE_ASR_API_KEY: previous.asr })) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+    for (const [key, value] of Object.entries({ OPENCLAWX_DATA_DIR: previous.dir, OPENCLAWX_VOLCENGINE_REALTIME_API_KEY: previous.realtime, OPENCLAWX_VOLCENGINE_ASR_API_KEY: previous.asr })) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
     fs.rmSync(root, { recursive: true, force: true });
   }
 });

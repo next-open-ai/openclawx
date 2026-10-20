@@ -2,10 +2,10 @@ import { mkdir, writeFile, readFile, realpath, rm, stat } from 'node:fs/promises
 import path from 'node:path';
 import os from 'node:os';
 import { randomUUID } from 'node:crypto';
-import { AudioUploadSchema, AUDIO_UPLOAD_EXTENSIONS, AUDIO_UPLOAD_MAX_BYTES } from '@workmate/contracts';
+import { AudioUploadSchema, AUDIO_UPLOAD_EXTENSIONS, AUDIO_UPLOAD_MAX_BYTES } from '@openclawx/contracts';
 
 function inputRoot() {
-  return path.join(process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate'), 'audio-inputs');
+  return path.join(process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx'), 'audio-inputs');
 }
 
 /** The random reference is a capability: do not log or expose it outside its conversation. */

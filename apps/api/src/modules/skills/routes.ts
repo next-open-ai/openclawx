@@ -10,7 +10,7 @@ import { authenticateRequest, requireAdmin, requireAuth, sendAuthError } from '.
 const execFileAsync = promisify(execFile);
 
 function dataDir(): string {
-  return process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate');
+  return process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx');
 }
 
 function skillsRoot(): string {
@@ -224,7 +224,7 @@ async function runSkillsCli(reference: string) {
 async function importGitSkillRepository(value: string) {
   const source = normalizeSkillSource(value);
   if (!source.startsWith('https://')) throw new Error('Use an HTTPS Git repository URL.');
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-skill-'));
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-skill-'));
   const checkout = path.join(temporaryRoot, 'repository');
   try {
     await execFileAsync('git', ['clone', '--depth', '1', source, checkout], { timeout: 120_000, windowsHide: true });

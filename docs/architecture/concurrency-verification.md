@@ -1,4 +1,4 @@
-# Workmate 并发压测与验收清单
+# OpenClawX 并发压测与验收清单
 
 > 目的：把“看起来能并发”推进到“有证据证明可靠”。
 > 适用范围：当前单机、单 API 进程、AgentScope sidecar 池模式。
@@ -17,9 +17,9 @@
 ### 2.1 建议环境
 
 - Node.js >= 22
-- `WORKMATE_AGENT_ENGINE=agentscope`
+- `OPENCLAWX_AGENT_ENGINE=agentscope`
 - 本机 CPU / 内存可承载至少 `2` 个 sidecar 实例
-- 已完成 `workmate init`
+- 已完成 `openclawx init`
 - 至少配置一个可稳定返回的模型 provider
 
 ### 2.2 建议运行参数
@@ -27,14 +27,14 @@
 基础压测建议先从以下参数起步：
 
 ```bash
-export WORKMATE_AGENT_ENGINE=agentscope
-export WORKMATE_MAX_CONCURRENT_RUNS_GLOBAL=4
-export WORKMATE_MAX_CONCURRENT_RUNS_PER_USER=2
-export WORKMATE_MAX_QUEUE_WAIT_MS=120000
-export WORKMATE_AGENTSCOPE_POOL_SIZE=2
-export WORKMATE_AGENTSCOPE_SHARED_MAX_RUNS=4
-export WORKMATE_AGENTSCOPE_QUEUE_WAIT_MS=120000
-export WORKMATE_AGENTSCOPE_RESTART_COOLDOWN_MS=15000
+export OPENCLAWX_AGENT_ENGINE=agentscope
+export OPENCLAWX_MAX_CONCURRENT_RUNS_GLOBAL=4
+export OPENCLAWX_MAX_CONCURRENT_RUNS_PER_USER=2
+export OPENCLAWX_MAX_QUEUE_WAIT_MS=120000
+export OPENCLAWX_AGENTSCOPE_POOL_SIZE=2
+export OPENCLAWX_AGENTSCOPE_SHARED_MAX_RUNS=4
+export OPENCLAWX_AGENTSCOPE_QUEUE_WAIT_MS=120000
+export OPENCLAWX_AGENTSCOPE_RESTART_COOLDOWN_MS=15000
 ```
 
 然后启动：
@@ -54,7 +54,7 @@ pnpm concurrency:regression
 该命令会自动执行以下步骤：
 
 1. 准备或复用可用的 AgentScope runtime
-2. 创建隔离的临时 `WORKMATE_DATA_DIR`
+2. 创建隔离的临时 `OPENCLAWX_DATA_DIR`
 3. 启动独立 API 进程并显式启用 sidecar 池
 4. 运行 `scripts/concurrency-loadtest.mjs`
 5. 输出 JSON 结果并清理临时进程与目录
@@ -74,8 +74,8 @@ sidecarRestartCooldownMs=15000
 如需覆盖，可在命令前设置对应环境变量，例如：
 
 ```bash
-WORKMATE_AGENTSCOPE_POOL_SIZE=3 \
-WORKMATE_AGENTSCOPE_SHARED_MAX_RUNS=2 \
+OPENCLAWX_AGENTSCOPE_POOL_SIZE=3 \
+OPENCLAWX_AGENTSCOPE_SHARED_MAX_RUNS=2 \
 pnpm concurrency:regression
 ```
 
@@ -107,7 +107,7 @@ pnpm concurrency:regression
 
 ### D. 全局并发上限
 
-- [ ] 把 `WORKMATE_MAX_CONCURRENT_RUNS_GLOBAL` 设为 `2`
+- [ ] 把 `OPENCLAWX_MAX_CONCURRENT_RUNS_GLOBAL` 设为 `2`
 - [ ] 同时发起 `4` 个可观测长请求
 - [ ] 预期：最多 `2` 个进入运行，其余进入 dispatcher 队列
 - [ ] 预期：等待原因为 `global-capacity`
@@ -115,7 +115,7 @@ pnpm concurrency:regression
 
 ### E. 单用户并发上限
 
-- [ ] 把 `WORKMATE_MAX_CONCURRENT_RUNS_PER_USER` 设为 `1`
+- [ ] 把 `OPENCLAWX_MAX_CONCURRENT_RUNS_PER_USER` 设为 `1`
 - [ ] 同一用户从多个标签页同时发起 `3` 个请求
 - [ ] 预期：只有 `1` 个 run 在运行，其余等待
 - [ ] 预期：等待原因为 `user-capacity`
@@ -132,7 +132,7 @@ pnpm concurrency:regression
 
 ### G. Dispatcher 排队超时
 
-- [ ] 把 `WORKMATE_MAX_QUEUE_WAIT_MS` 暂时调低到 `5000`
+- [ ] 把 `OPENCLAWX_MAX_QUEUE_WAIT_MS` 暂时调低到 `5000`
 - [ ] 构造足够多的并发请求，使部分 run 无法及时得到容量
 - [ ] 预期：超时 run 进入失败态
 - [ ] 预期：错误信息明确指向 dispatcher queue timeout
@@ -156,7 +156,7 @@ pnpm concurrency:regression
 
 ### J. Sidecar 队列超时
 
-- [ ] 将 `WORKMATE_AGENTSCOPE_QUEUE_WAIT_MS` 暂时调低到 `5000`
+- [ ] 将 `OPENCLAWX_AGENTSCOPE_QUEUE_WAIT_MS` 暂时调低到 `5000`
 - [ ] 构造足够多请求使 sidecar 层持续无空闲容量
 - [ ] 预期：超时 run 失败
 - [ ] 预期：错误信息明确指向 sidecar pool queue timeout

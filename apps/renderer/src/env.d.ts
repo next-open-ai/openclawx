@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 interface Window {
-  workmateDesktop?: {
+  openclawxDesktop?: {
     pickSkill(): Promise<{ path: string; content: string } | null>;
     pickProjectDirectory(): Promise<string | null>;
     createProjectWorkspace(value: { name: string; parentDirectory?: string }): Promise<string>;
@@ -116,12 +116,12 @@ interface Window {
     setLocalEmbeddingEnabled(enabled: boolean): Promise<{
       ok: boolean;
       enabled: boolean;
-      status: Awaited<ReturnType<NonNullable<Window['workmateDesktop']>['getLocalEmbeddingStatus']>>;
+      status: Awaited<ReturnType<NonNullable<Window['openclawxDesktop']>['getLocalEmbeddingStatus']>>;
     }>;
     restartLocalEmbedding(): Promise<{
       ok: boolean;
       message: string;
-      status: Awaited<ReturnType<NonNullable<Window['workmateDesktop']>['getLocalEmbeddingStatus']>>;
+      status: Awaited<ReturnType<NonNullable<Window['openclawxDesktop']>['getLocalEmbeddingStatus']>>;
     }>;
     checkEnvironment(): Promise<EnvCheckReport>;
     onEnvCheckProgress(callback: (payload: EnvCheckProgressPayload) => void): () => void;

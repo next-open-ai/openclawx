@@ -1,4 +1,4 @@
-import type { SearchProviderRuntime } from '@workmate/contracts';
+import type { SearchProviderRuntime } from '@openclawx/contracts';
 import { Type, StringEnum, defineAgentTool, type AgentTool } from './pi-tools.js';
 
 type SearchResult = { title: string; url: string; snippet: string; publishedDate?: string; source?: string };

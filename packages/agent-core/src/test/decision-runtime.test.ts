@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { DecisionGuardPolicySchema, DecisionRuntimeConfigSchema, ModelCapabilitySchema, type DecisionRuntimeConfig } from '@workmate/contracts';
+import { DecisionGuardPolicySchema, DecisionRuntimeConfigSchema, ModelCapabilitySchema, type DecisionRuntimeConfig } from '@openclawx/contracts';
 import { createDecisionAgentTool, evaluateDecision, guardAgentTools } from '../decision-runtime.js';
 import { defineAgentTool, extractToolDetails, Type } from '../pi-tools.js';
 

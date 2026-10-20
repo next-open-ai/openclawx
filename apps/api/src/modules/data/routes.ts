@@ -1,4 +1,4 @@
-import { databaseCredentialBridgeSchema, dataAppProjectCreateSchema, dataAppProjectExecuteSchema, dataColumnSchema, dataObjectAnnotationsSchema, remoteDatabaseConnectionSchema, remoteDatabaseImportSchema, type RemoteDatabasePublicConnection, type DataColumn, type DataObjectModelSchema } from '@workmate/contracts';
+import { databaseCredentialBridgeSchema, dataAppProjectCreateSchema, dataAppProjectExecuteSchema, dataColumnSchema, dataObjectAnnotationsSchema, remoteDatabaseConnectionSchema, remoteDatabaseImportSchema, type RemoteDatabasePublicConnection, type DataColumn, type DataObjectModelSchema } from '@openclawx/contracts';
 import { configureDatabaseCredentialBridge } from './database-secrets.js';
 import { AppProjectCoordinator, AppProjectError } from './app-project.js';
 import { ManagedAppQueries } from './app-query.js';
@@ -9,19 +9,19 @@ import { readAnnotations, modelReadableSchema, jsonDataRows } from './data-objec
 import { migrateLiveData, liveBinding, liveObjectInfo, createLiveDataService } from './live-data-routes.js';
 import { compileAppSql, appSqlResult } from './app-sql.js';
 import { LiveDataError } from './live-database.js';
-import { structuredDataQuerySchema, type StructuredDataQuery } from '@workmate/contracts';
+import { structuredDataQuerySchema, type StructuredDataQuery } from '@openclawx/contracts';
 import { executeLocalStructuredQuery, StructuredQueryError } from './structured-query.js';
 import { resolveQueryRelations, validateRelations } from './query-relations.js';
 import { registerAgentDataAssociations } from './agent-associations.js';
 import fs from 'node:fs';
-import type { DataAppDelivery } from '@workmate/contracts';
+import type { DataAppDelivery } from '@openclawx/contracts';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import type { FastifyPluginAsync } from 'fastify';
 import * as XLSX from 'xlsx';
-import { TemplateTaskService, withKeyLock } from '@workmate/orchestrator';
+import { TemplateTaskService, withKeyLock } from '@openclawx/orchestrator';
 import { requireAuth } from '../auth/service.js';
 import { storeUploadedDataAsset, readOwnedAssetBytes } from '../assets/routes.js';
 import { canReadOwnedResource } from '../auth/ownership.js';
@@ -47,7 +47,7 @@ type DataAppType = '管理后台' | '数据看板' | '查询网站' | '自定义
 let dbPromise: Promise<SqlDatabase> | null = null;
 let sqlPromise: Promise<SqlJs> | null = null;
 
-function dataDir() { return process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate'); }
+function dataDir() { return process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx'); }
 // Data workbench has its own database and directory.  It must never share the
 // framework/asset registry database, so its lifecycle, backup and later cloud
 // migration remain independent.
@@ -889,7 +889,7 @@ function localPublishUrl(host: string, appId: string, token: string) {
 }
 
 function apiListenPort() {
-  return Number(process.env.WORKMATE_API_PORT || 47832);
+  return Number(process.env.OPENCLAWX_API_PORT || 47832);
 }
 
 function listLanIPv4Addresses() {
@@ -913,7 +913,7 @@ function publishUrlBundle(appId: string, token: string, requestHost?: string) {
   const fallbackHost = String(requestHost || '').trim() || `127.0.0.1:${port}`;
   const localHost = fallbackHost.includes('0.0.0.0') ? `127.0.0.1:${port}` : fallbackHost;
   const localUrl = localPublishUrl(localHost, appId, token);
-  const bindHost = String(process.env.WORKMATE_API_HOST || '127.0.0.1').trim();
+  const bindHost = String(process.env.OPENCLAWX_API_HOST || '127.0.0.1').trim();
   const lanEnabled = bindHost === '0.0.0.0' || bindHost === '::' || listLanIPv4Addresses().includes(bindHost);
   const lanUrls = lanEnabled ? listLanIPv4Addresses().map((ip) => localPublishUrl(`${ip}:${port}`, appId, token)) : [];
   return {
@@ -979,7 +979,7 @@ function appDelivery(db: SqlDatabase, appId: string): DataAppDelivery {
 function saveCustomSiteHtml(db: SqlDatabase, appId: string, html: string, note = '') {
   if (isManagedApp(db, appId)) {
     if (!db.exec('SELECT operation_id FROM data_app_queries WHERE app_id = ? AND verified_at > 0 LIMIT 1', [appId])[0]?.values?.length) throw new Error('请先使用 data_app_register_sql 或旧查询工具成功验证并登记至少一个查询操作，再绑定页面。');
-    if (!html.includes('workmateData.query')) throw new Error('受控应用必须使用 workmateData.query 调用已登记查询；不得直接访问旧数据或 CRUD 接口。');
+    if (!html.includes('openclawxData.query')) throw new Error('受控应用必须使用 openclawxData.query 调用已登记查询；不得直接访问旧数据或 CRUD 接口。');
   }
   const cleaned = String(html || '').trim();
   if (!cleaned || cleaned.length < 32) throw new Error('自定义站点 HTML 过短，请提交完整单页应用。');
@@ -1424,7 +1424,7 @@ load('').catch((error) => {
 }
 
 function publishedErrorHtml() {
-  return '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>数据应用不可用</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f7fb;color:#182033;font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.card{max-width:460px;margin:24px;padding:32px;border:1px solid #e1e5ef;border-radius:20px;background:#fff;box-shadow:0 12px 32px #24315c12}h1{margin:0 0 12px;font-size:22px}p{margin:0;line-height:1.7;color:#687086}</style></head><body><section class="card"><h1>此本机数据应用已不可用</h1><p>发布链接可能已过期或已被重新发布替换。请回到 Workmate 数据工作台，打开应用后点击“本机发布”获取新的链接。</p></section></body></html>';
+  return '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>数据应用不可用</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f7fb;color:#182033;font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.card{max-width:460px;margin:24px;padding:32px;border:1px solid #e1e5ef;border-radius:20px;background:#fff;box-shadow:0 12px 32px #24315c12}h1{margin:0 0 12px;font-size:22px}p{margin:0;line-height:1.7;color:#687086}</style></head><body><section class="card"><h1>此本机数据应用已不可用</h1><p>发布链接可能已过期或已被重新发布替换。请回到 OpenClawX 数据工作台，打开应用后点击“本机发布”获取新的链接。</p></section></body></html>';
 }
 
 function requestHost(value: unknown) {
@@ -1442,7 +1442,7 @@ function adaptCustomSiteOrigin(html: string, hostHeader: unknown) {
 
 function mobileUploadHtml(token: string) {
   const safeToken = JSON.stringify(token);
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>上传到 Workmate</title><style>*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(145deg,#eef2ff,#f8fafc 45%,#ecfeff);color:#172033;font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:grid;place-items:center;padding:20px}.card{width:min(100%,480px);background:#fff;border:1px solid #dfe5f2;border-radius:28px;padding:28px;box-shadow:0 24px 70px #3153a31c}.mark{width:52px;height:52px;border-radius:17px;display:grid;place-items:center;background:#4f6bed;color:#fff;font-weight:900;font-size:20px}h1{font-size:26px;margin:20px 0 8px}p{color:#687086;line-height:1.7;margin:0}.drop{display:block;margin-top:24px;border:1.5px dashed #aab8e8;border-radius:20px;padding:28px 18px;text-align:center;background:#f7f9ff}.drop b{display:block;color:#304fc4}.drop span{display:block;margin-top:8px;font-size:12px;color:#7c8498}input{position:absolute;opacity:0;pointer-events:none}button{width:100%;border:0;border-radius:14px;padding:13px;margin-top:16px;background:#4f6bed;color:#fff;font-weight:700;font-size:15px}.file{margin-top:15px;padding:12px;border-radius:12px;background:#f3f5fa;font-size:13px;word-break:break-all}.bar{height:8px;margin-top:16px;background:#edf0f6;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4f6bed,#16b8ad);transition:width .3s}.status{margin-top:12px;font-size:13px;color:#526079}.ok{color:#087f5b}.err{color:#c92a2a}</style></head><body><main class="card"><div class="mark">W</div><h1>上传数据到 Workmate</h1><p>选择手机中的 Excel 或 CSV。文件将安全传入当前电脑的数据工作台，原文件同时归档到资产库。</p><label class="drop" for="file"><b>选择 Excel / CSV 文件</b><span>支持 .xlsx、.csv，最大 8 MB</span></label><input id="file" type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><div id="fileName" class="file" hidden></div><button id="send" disabled>上传到数据工作台</button><div class="bar"><i id="progress"></i></div><div id="status" class="status">等待选择文件</div></main><script>const token=${safeToken},file=document.getElementById('file'),send=document.getElementById('send'),status=document.getElementById('status'),progress=document.getElementById('progress'),fileName=document.getElementById('fileName');let selected=null;file.onchange=()=>{selected=file.files[0]||null;send.disabled=!selected;fileName.hidden=!selected;fileName.textContent=selected?selected.name+' · '+Math.ceil(selected.size/1024)+' KB':'';status.textContent=selected?'文件已就绪':'等待选择文件'};send.onclick=()=>{if(!selected)return;if(selected.size>8388608){status.className='status err';status.textContent='文件超过 8 MB';return}send.disabled=true;status.className='status';status.textContent='正在读取文件…';progress.style.width='20%';const reader=new FileReader();reader.onerror=()=>fail('读取文件失败');reader.onprogress=e=>{if(e.lengthComputable)progress.style.width=(20+e.loaded/e.total*30)+'%'};reader.onload=async()=>{progress.style.width='55%';status.textContent='正在上传并识别数据…';try{const contentBase64=String(reader.result).split(',')[1]||'';const response=await fetch('/api/data-mobile-upload/'+encodeURIComponent(token)+'/import',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:selected.name,contentBase64})});const body=await response.json().catch(()=>({}));if(!response.ok)throw new Error(body.message||'上传失败');progress.style.width='100%';status.className='status ok';status.textContent='上传成功：发现 '+body.tableCount+' 张表、'+body.rowCount+' 条数据。可以回到电脑继续操作。'}catch(e){fail(e.message||'上传失败')}};reader.readAsDataURL(selected)};function fail(message){send.disabled=false;progress.style.width='0';status.className='status err';status.textContent=message}</script></body></html>`;
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>上传到 OpenClawX</title><style>*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(145deg,#eef2ff,#f8fafc 45%,#ecfeff);color:#172033;font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:grid;place-items:center;padding:20px}.card{width:min(100%,480px);background:#fff;border:1px solid #dfe5f2;border-radius:28px;padding:28px;box-shadow:0 24px 70px #3153a31c}.mark{width:52px;height:52px;border-radius:17px;display:grid;place-items:center;background:#4f6bed;color:#fff;font-weight:900;font-size:20px}h1{font-size:26px;margin:20px 0 8px}p{color:#687086;line-height:1.7;margin:0}.drop{display:block;margin-top:24px;border:1.5px dashed #aab8e8;border-radius:20px;padding:28px 18px;text-align:center;background:#f7f9ff}.drop b{display:block;color:#304fc4}.drop span{display:block;margin-top:8px;font-size:12px;color:#7c8498}input{position:absolute;opacity:0;pointer-events:none}button{width:100%;border:0;border-radius:14px;padding:13px;margin-top:16px;background:#4f6bed;color:#fff;font-weight:700;font-size:15px}.file{margin-top:15px;padding:12px;border-radius:12px;background:#f3f5fa;font-size:13px;word-break:break-all}.bar{height:8px;margin-top:16px;background:#edf0f6;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4f6bed,#16b8ad);transition:width .3s}.status{margin-top:12px;font-size:13px;color:#526079}.ok{color:#087f5b}.err{color:#c92a2a}</style></head><body><main class="card"><div class="mark">W</div><h1>上传数据到 OpenClawX</h1><p>选择手机中的 Excel 或 CSV。文件将安全传入当前电脑的数据工作台，原文件同时归档到资产库。</p><label class="drop" for="file"><b>选择 Excel / CSV 文件</b><span>支持 .xlsx、.csv，最大 8 MB</span></label><input id="file" type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><div id="fileName" class="file" hidden></div><button id="send" disabled>上传到数据工作台</button><div class="bar"><i id="progress"></i></div><div id="status" class="status">等待选择文件</div></main><script>const token=${safeToken},file=document.getElementById('file'),send=document.getElementById('send'),status=document.getElementById('status'),progress=document.getElementById('progress'),fileName=document.getElementById('fileName');let selected=null;file.onchange=()=>{selected=file.files[0]||null;send.disabled=!selected;fileName.hidden=!selected;fileName.textContent=selected?selected.name+' · '+Math.ceil(selected.size/1024)+' KB':'';status.textContent=selected?'文件已就绪':'等待选择文件'};send.onclick=()=>{if(!selected)return;if(selected.size>8388608){status.className='status err';status.textContent='文件超过 8 MB';return}send.disabled=true;status.className='status';status.textContent='正在读取文件…';progress.style.width='20%';const reader=new FileReader();reader.onerror=()=>fail('读取文件失败');reader.onprogress=e=>{if(e.lengthComputable)progress.style.width=(20+e.loaded/e.total*30)+'%'};reader.onload=async()=>{progress.style.width='55%';status.textContent='正在上传并识别数据…';try{const contentBase64=String(reader.result).split(',')[1]||'';const response=await fetch('/api/data-mobile-upload/'+encodeURIComponent(token)+'/import',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:selected.name,contentBase64})});const body=await response.json().catch(()=>({}));if(!response.ok)throw new Error(body.message||'上传失败');progress.style.width='100%';status.className='status ok';status.textContent='上传成功：发现 '+body.tableCount+' 张表、'+body.rowCount+' 条数据。可以回到电脑继续操作。'}catch(e){fail(e.message||'上传失败')}};reader.readAsDataURL(selected)};function fail(message){send.disabled=false;progress.style.width='0';status.className='status err';status.textContent=message}</script></body></html>`;
 }
 
 export function createStructuredDataGateway(factory?: RemoteFactory) {
@@ -1475,7 +1475,7 @@ export function createStructuredDataGateway(factory?: RemoteFactory) {
           primaryFields: t.columns.filter(c => c.primary).map(c => c.id), generatedFields: t.columns.filter(c => c.generated).map(c => c.id) }] : [];
       }) : [], notice: 'SQL使用对象表/字段ID，字段名不等于ID。写操作静态校验后仍需用户批准并开启对象写入。' };
     },
-    async sqlOperation(sourceId: string, tableIds: string[], operation: import('@workmate/contracts').DataAppSqlOperation, parameters: unknown, auth: Owner & { role?: string }, mode: 'validate' | 'read' | 'write' | 'rollback', signal?: AbortSignal) {
+    async sqlOperation(sourceId: string, tableIds: string[], operation: import('@openclawx/contracts').DataAppSqlOperation, parameters: unknown, auth: Owner & { role?: string }, mode: 'validate' | 'read' | 'write' | 'rollback', signal?: AbortSignal) {
       const db = await database(), source = getSource(db, sourceId, auth);
       if (!source) throw new StructuredQueryError('对象不存在或无权访问。', 'DATA_NOT_FOUND', 404);
       if (source.accessMode === 'live') {
@@ -1943,7 +1943,7 @@ export const dataRoutes: FastifyPluginAsync<{ remoteFactory?: RemoteFactory }> =
     return withKeyLock(`demo-init:${auth.orgId}:${auth.userId}`, async () => {
     const sourceId = await ensureDefaultSqliteSource(db, auth);
     const source = getSource(db, sourceId, auth)!;
-    let table = source.tables.find(item => item.sheetName === 'workmate_demo_sales_v1');
+    let table = source.tables.find(item => item.sheetName === 'openclawx_demo_sales_v1');
     if (!table) {
       const id = randomUUID(), physical = `demo_${id.replace(/-/g, '')}`;
       const names = ['客户编号', '客户名称', '月份', '收入', '成本'];
@@ -1953,7 +1953,7 @@ export const dataRoutes: FastifyPluginAsync<{ remoteFactory?: RemoteFactory }> =
       try {
         db.run(`CREATE TABLE ${quote(physical)} (c_1 TEXT, c_2 TEXT, c_3 TEXT, c_4 TEXT, c_5 TEXT)`);
         for (const row of records) db.run(`INSERT INTO ${quote(physical)} VALUES (?, ?, ?, ?, ?)`, row);
-        db.run('INSERT INTO data_tables (id, source_id, name, sheet_name, physical_name, row_count, columns_json) VALUES (?, ?, ?, ?, ?, ?, ?)', [id, sourceId, '测试数据 · 客户经营明细', 'workmate_demo_sales_v1', physical, records.length, JSON.stringify(columns)]);
+        db.run('INSERT INTO data_tables (id, source_id, name, sheet_name, physical_name, row_count, columns_json) VALUES (?, ?, ?, ?, ?, ?, ?)', [id, sourceId, '测试数据 · 客户经营明细', 'openclawx_demo_sales_v1', physical, records.length, JSON.stringify(columns)]);
         db.run('UPDATE data_sources SET table_count = table_count + 1, row_count = row_count + ? WHERE id = ?', [records.length, sourceId]);
         db.run('COMMIT'); flushDatabase(db);
       } catch (error) { db.run('ROLLBACK'); throw error; }
@@ -1970,7 +1970,7 @@ export const dataRoutes: FastifyPluginAsync<{ remoteFactory?: RemoteFactory }> =
     const table = getOwnedTable(db, body.sourceId ?? '', body.tableId ?? '', auth);
     if (!table) return reply.code(404).send({ message: '数据不存在或无权访问。' });
     const marker = db.exec('SELECT sheet_name FROM data_tables WHERE id = ?', [table.id])[0]?.values?.[0]?.[0];
-    if (marker !== 'workmate_demo_sales_v1') return reply.code(400).send({ message: '请选择闭环测试数据表。' });
+    if (marker !== 'openclawx_demo_sales_v1') return reply.code(400).send({ message: '请选择闭环测试数据表。' });
     const gatewayRows = queryGatewayRecords(db, table, '', 200).rows;
     const records = gatewayRows.filter((row) => row.values.c_1 === body.customerId && row.values.c_3 === body.period).map((row) => [row.values.c_2, row.values.c_4, row.values.c_5]);
     if (!records.length) return reply.code(400).send({ message: '该客户在所选月份没有数据，请选择其他月份。' });
@@ -2374,7 +2374,7 @@ export const dataRoutes: FastifyPluginAsync<{ remoteFactory?: RemoteFactory }> =
     if (!content.length || content.length > 8 * 1024 * 1024) return reply.code(400).send({ message: '首期仅支持 8 MB 以内的数据文件。' });
     try {
       const isSqlite = sqliteExtensions.has(extension);
-      // Uploaded databases are inspected in memory and copied into Workmate's
+      // Uploaded databases are inspected in memory and copied into OpenClawX's
       // isolated data store. They are never attached as the framework database.
       const discovered = isSqlite ? await sqliteRows(content) : extension === '.json'
         ? [discoverApiTable(jsonDataRows(JSON.parse(content.toString('utf8'))))]
@@ -2437,7 +2437,7 @@ export const publicDataAppRoutes: FastifyPluginAsync = async (app) => {
   app.get('/data-mobile-upload/:token', async (request, reply) => {
     const { token } = request.params as { token: string }; const db = await database();
     const row = db.exec('SELECT expires_at FROM data_mobile_upload_sessions WHERE token = ?', [token])[0]?.values?.[0];
-    if (!row || Number(row[0]) < Date.now()) return reply.code(410).type('text/html; charset=utf-8').send('<!doctype html><meta charset="utf-8"><title>上传链接已过期</title><body style="font:16px sans-serif;padding:40px">上传链接已过期，请回到 Workmate 重新生成二维码。</body>');
+    if (!row || Number(row[0]) < Date.now()) return reply.code(410).type('text/html; charset=utf-8').send('<!doctype html><meta charset="utf-8"><title>上传链接已过期</title><body style="font:16px sans-serif;padding:40px">上传链接已过期，请回到 OpenClawX 重新生成二维码。</body>');
     return reply.type('text/html; charset=utf-8').send(mobileUploadHtml(token));
   });
   app.post('/data-mobile-upload/:token/import', { bodyLimit: 12 * 1024 * 1024 }, async (request, reply) => {
@@ -2478,7 +2478,7 @@ export const publicDataAppRoutes: FastifyPluginAsync = async (app) => {
       return reply.type('text/html; charset=utf-8').send(adaptCustomSiteOrigin(custom.html, request.headers.host));
     }
     if (appDelivery(db, appId).status === 'awaiting-binding') {
-      return reply.type('text/html; charset=utf-8').send('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>定制应用待完成 · Workmate</title><body style="margin:0;background:#f5f7fb;color:#202536;font-family:system-ui"><main style="max-width:520px;margin:15vh auto;padding:32px;background:white;border-radius:20px"><h1 style="font-size:24px">定制应用尚未交付</h1><p style="line-height:1.8">应用已准备好，但定制页面尚未绑定。请返回 Workmate 对话查看执行结果，或在数据工作台继续创建。</p><p style="color:#697386">如果模型执行失败，修正问题后可继续同一应用；这里不会以模板页冒充定制成果。</p><button onclick="location.reload()" style="padding:12px 20px;border:0;border-radius:10px;background:#4965e8;color:white">刷新状态</button></main></body></html>');
+      return reply.type('text/html; charset=utf-8').send('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>定制应用待完成 · OpenClawX</title><body style="margin:0;background:#f5f7fb;color:#202536;font-family:system-ui"><main style="max-width:520px;margin:15vh auto;padding:32px;background:white;border-radius:20px"><h1 style="font-size:24px">定制应用尚未交付</h1><p style="line-height:1.8">应用已准备好，但定制页面尚未绑定。请返回 OpenClawX 对话查看执行结果，或在数据工作台继续创建。</p><p style="color:#697386">如果模型执行失败，修正问题后可继续同一应用；这里不会以模板页冒充定制成果。</p><button onclick="location.reload()" style="padding:12px 20px;border:0;border-radius:10px;background:#4965e8;color:white">刷新状态</button></main></body></html>');
     }
     return reply.type('text/html; charset=utf-8').send(publishedSiteHtml(appId, token));
   });

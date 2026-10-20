@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lifecycle launcher for the local Workmate test console."""
+"""Lifecycle launcher for the local OpenClawX test console."""
 import argparse
 import json
 import os
@@ -26,7 +26,7 @@ def health():
     try:
         with urlopen(URL + '/api/health', timeout=.8) as response:
             body = json.load(response)
-        return body if response.status == 200 and body.get('service') == 'workmate-test-console' else None
+        return body if response.status == 200 and body.get('service') == 'openclawx-test-console' else None
     except (OSError, URLError, ValueError):
         return None
 
@@ -128,7 +128,7 @@ def foreground():
 
 
 def help_text():
-    print('''Workmate 统一测试控制台快捷命令
+    print('''OpenClawX 统一测试控制台快捷命令
 
   ./tests/test-console start     后台启动（默认）
   ./tests/test-console open      启动并打开浏览器
@@ -140,7 +140,7 @@ def help_text():
   ./tests/test-console help      查看帮助
 
 环境变量：TEST_CONSOLE_PORT、TEST_CONSOLE_DATA_DIR、TEST_CONSOLE_PYTHON、
-WORKMATE_TEST_TARGET、WORKMATE_BENCHMARK_URL''')
+OPENCLAWX_TEST_TARGET、OPENCLAWX_BENCHMARK_URL''')
 
 
 def main():

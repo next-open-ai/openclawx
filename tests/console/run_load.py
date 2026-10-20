@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Preview or execute Workmate's bounded concurrency regression."""
+"""Preview or execute OpenClawX's bounded concurrency regression."""
 import argparse
 from datetime import datetime, timezone
 import json
@@ -28,7 +28,7 @@ def main():
         'runtime': ['pnpm', 'concurrency:loadtest'],
         'durable': ['pnpm', 'durable-task:regression'],
     }
-    env = {**os.environ, 'WORKMATE_LOADTEST_BASE_URL': args.target}
+    env = {**os.environ, 'OPENCLAWX_LOADTEST_BASE_URL': args.target}
     code = subprocess.call(commands[args.scenario], cwd=ROOT, env=env)
     report = {'version': 1, 'kind': 'load', 'scenario': args.scenario, 'startedAt': iso(),
               'finishedAt': iso(), 'passed': code == 0, 'stages': []}

@@ -9,7 +9,7 @@ import {
   type OntologyCandidate,
   type OntologyGovernanceCommand,
   type OntologyGraph,
-} from '@workmate/contracts';
+} from '@openclawx/contracts';
 import { listKnowledgeChunks } from './knowledge-runtime.js';
 import { importOntologyCandidates } from './ontology-runtime.js';
 import type { OntologyGovernanceIssue } from './ontology-runtime.js';

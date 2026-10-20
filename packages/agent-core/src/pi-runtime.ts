@@ -7,7 +7,7 @@ import {
   type Model,
   type SimpleStreamOptions,
 } from '@mariozechner/pi-ai';
-import type { AgentEvent, AgentProfile, AgentSkillRuntime, ModelConfig, RunModelRef, TokenUsage } from '@workmate/contracts';
+import type { AgentEvent, AgentProfile, AgentSkillRuntime, ModelConfig, RunModelRef, TokenUsage } from '@openclawx/contracts';
 import { createSkillExecutionTools, finalizeOutputDeliverables, isBusinessDeliverablePath, listOutputDeliverables } from './skill-runtime.js';
 import { withLenientJsonParse } from './json-repair.js';
 import { sanitizeToolPayloadsInMessages } from './context-sanitize.js';
@@ -569,7 +569,7 @@ function modelRefFromConfig(model: ModelConfig): RunModelRef {
   };
 }
 
-const MODEL_CAPABILITY_TOOLS: Record<string, import('@workmate/contracts').ModelCapability> = MODEL_CAPABILITY_BY_TOOL;
+const MODEL_CAPABILITY_TOOLS: Record<string, import('@openclawx/contracts').ModelCapability> = MODEL_CAPABILITY_BY_TOOL;
 
 /**
  * Completion gate for requests whose success necessarily includes a file.
@@ -586,7 +586,7 @@ export function requiresFileDeliverable(text: string): boolean {
 }
 
 export async function toPiHistoryMessages(
-  messages: import('@workmate/contracts').ChatModelMessage[],
+  messages: import('@openclawx/contracts').ChatModelMessage[],
   model: ModelConfig,
   conversationId?: string,
 ): Promise<AgentMessage[]> {
@@ -659,18 +659,18 @@ function yieldArtifactEvents(
 
 /**
  * Agent loop powered by @mariozechner/pi-agent-core + pi-ai.
- * Emits the same Workmate AgentEvent stream as the previous AI SDK path.
+ * Emits the same OpenClawX AgentEvent stream as the previous AI SDK path.
  */
 export async function* streamAgentReply(input: {
   profile: AgentProfile;
-  messages: import('@workmate/contracts').ChatModelMessage[];
+  messages: import('@openclawx/contracts').ChatModelMessage[];
   model: ModelConfig;
   skills?: AgentSkillRuntime[];
-  searchProviders?: import('@workmate/contracts').SearchProviderRuntime[];
-  mcpConnections?: import('@workmate/contracts').McpConnectionRuntime[];
-  knowledgeBases?: import('@workmate/contracts').KnowledgeBaseRuntime[];
-  modelCapabilities?: import('@workmate/contracts').ModelCapabilityRuntime[];
-  decisionRuntime?: import('@workmate/contracts').DecisionRuntimeConfig;
+  searchProviders?: import('@openclawx/contracts').SearchProviderRuntime[];
+  mcpConnections?: import('@openclawx/contracts').McpConnectionRuntime[];
+  knowledgeBases?: import('@openclawx/contracts').KnowledgeBaseRuntime[];
+  modelCapabilities?: import('@openclawx/contracts').ModelCapabilityRuntime[];
+  decisionRuntime?: import('@openclawx/contracts').DecisionRuntimeConfig;
   runId?: string;
   conversationId?: string;
   projectWorkspacePath?: string;
@@ -736,7 +736,7 @@ export async function* streamAgentReply(input: {
     }
 
     const skillsRaw = input.skills ?? [];
-    const libraryDir = process.env.WORKMATE_SKILLS_DIR?.trim();
+    const libraryDir = process.env.OPENCLAWX_SKILLS_DIR?.trim();
     const discovered = libraryDir ? discoverPiSkillsUnder(libraryDir) : [];
     const skills = mergeDiscoveredSkillDescriptions(skillsRaw, discovered);
     const mcp = filterMcpToolsetForTask(mcpLoaded, lastUserText, skills, { projectBound });
@@ -774,7 +774,7 @@ export async function* streamAgentReply(input: {
       lastUserText.includes('本次运行的用户材料') ? MATERIAL_TASK_CONTRACT : '',
       workspaceModeContract(workspaceMode),
       'Associated Skill instructions are preloaded before the first model turn whenever available, so prefer those specialized procedures immediately instead of exploring generic alternatives. Preloading is for reasoning only: if you need packaged Skill files or bundled Skill scripts, call load_skill for that relevant user Skill first. Workspace and artifact operations are platform Tools, not a Skill: follow each Tool schema and result exactly. Skill files are read-only. Never claim an operation ran unless its Tool returned a successful result. For artifact requests, do not stop at a plan: produce and verify the file, then commit it with commit_artifact. Once a verified deliverable exists, stop calling tools and return the result. In the user-facing answer, refer to the delivered asset by its filename, not its internal workspace path. Use reasonable defaults for non-critical details; if a required permission, script, dependency, or output path is unavailable, state the exact blocker and the one next user action.',
-      'You are a digital employee in Workmate. Introduce yourself using your assigned employee name; describe capabilities accurately without exaggeration. Internal runtime and tool names are not your product identity.',
+      'You are a digital employee in OpenClawX. Introduce yourself using your assigned employee name; describe capabilities accurately without exaggeration. Internal runtime and tool names are not your product identity.',
       'This is a new execution. Tool retryScope=current_run and retryable=false from earlier conversation turns do not block this execution. If the latest user explicitly requests transcription or retry and ASR is authorized, call model_transcribe_audio instead of repeating a historical refusal. Only tool results actually obtained in this execution count as current attempts; never invent attempt counts. A failure obtained in this execution still stops automatic retries as specified by the tool.',
       input.decisionRuntime?.enabled && input.decisionRuntime.mode !== 'off' && input.decisionRuntime.agentTool
         ? 'Decision Skill: decision_evaluate is for bounded classification, scoring, routing, or yes/no probability questions. Supply only necessary state and explicit finite options. Do not use it for prose generation, arithmetic, or actions. Treat low-confidence output as uncertainty and ask the user when the choice materially changes the outcome. Platform safety checks are enforced separately and never depend on you remembering to call this tool.'

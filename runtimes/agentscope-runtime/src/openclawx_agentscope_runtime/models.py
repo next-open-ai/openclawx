@@ -22,7 +22,7 @@ def _base_url(model: dict[str, Any]) -> str | None:
 
 
 def build_model_and_formatter(model: dict[str, Any]) -> tuple[ChatModelBase, Any]:
-    """Map Workmate ModelConfig → AgentScope 2.x model (formatter is attached on model)."""
+    """Map OpenClawX ModelConfig → AgentScope 2.x model (formatter is attached on model)."""
     provider = str(model.get("provider") or "openai-compatible")
     chat_model = str(model.get("chatModel") or "gpt-4o-mini")
     api_key = str(model.get("apiKey") or "EMPTY")

@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  --color-workmate-accent: var(--accent);
-  --color-workmate-surface: var(--surface);
-  --color-workmate-text: var(--text);
-  --color-workmate-muted: var(--muted);
+  --color-openclawx-accent: var(--accent);
+  --color-openclawx-surface: var(--surface);
+  --color-openclawx-text: var(--text);
+  --color-openclawx-muted: var(--muted);
 }
 
 :root {

@@ -1,4 +1,4 @@
-# Workmate full runtime image (global / VPN — default PyPI).
+# OpenClawX full runtime image (China mainland pip mirror).
 # Multi-stage: bake Node deps + AgentScope venv, then copy a cleaned tree.
 # Keeps @lancedb/lancedb and apache-arrow. Image stays offline-capable.
 
@@ -8,7 +8,10 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /opt/workmate
+RUN mkdir -p /root/.config/pip \
+  && printf '[global]\nindex-url = https://pypi.tuna.tsinghua.edu.cn/simple\n' > /root/.config/pip/pip.conf
+
+WORKDIR /opt/openclawx
 
 COPY package.docker.json ./package.json
 COPY README.md README-EN.md ./
@@ -21,14 +24,14 @@ COPY apps/gateway/dist ./apps/gateway/dist
 COPY packages/channel/package.json ./packages/channel/package.json
 COPY packages/channel/dist ./packages/channel/dist
 COPY runtimes/agentscope-runtime ./runtimes/agentscope-runtime
-COPY deploy/docker/workmate/slim-runtime.sh ./deploy/docker/workmate/slim-runtime.sh
+COPY deploy/docker/openclawx/slim-runtime.sh ./deploy/docker/openclawx/slim-runtime.sh
 
 RUN npm install --omit=dev --no-audit --no-fund \
-  && chmod +x bin/workmate.mjs deploy/docker/workmate/slim-runtime.sh \
+  && chmod +x bin/openclawx.mjs deploy/docker/openclawx/slim-runtime.sh \
   && python3 -m venv --copies runtimes/agentscope-runtime/.venv \
   && runtimes/agentscope-runtime/.venv/bin/python3 -m pip install --upgrade pip \
   && runtimes/agentscope-runtime/.venv/bin/python3 -m pip install -r runtimes/agentscope-runtime/requirements.txt \
-  && bash deploy/docker/workmate/slim-runtime.sh /opt/workmate \
+  && bash deploy/docker/openclawx/slim-runtime.sh /opt/openclawx \
   && npm cache clean --force \
   && rm -rf /root/.npm /root/.cache /tmp/*
 
@@ -39,19 +42,19 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production \
-    WORKMATE_DATA_DIR=/opt/workmate-data \
-    WORKMATE_API_HOST=0.0.0.0 \
-    WORKMATE_API_PORT=47832 \
-    WORKMATE_AGENT_ENGINE=agentscope
+    OPENCLAWX_DATA_DIR=/opt/openclawx-data \
+    OPENCLAWX_API_HOST=0.0.0.0 \
+    OPENCLAWX_API_PORT=47832 \
+    OPENCLAWX_AGENT_ENGINE=agentscope
 
-WORKDIR /opt/workmate
+WORKDIR /opt/openclawx
 
-COPY --from=builder /opt/workmate /opt/workmate
+COPY --from=builder /opt/openclawx /opt/openclawx
 
-RUN mkdir -p /opt/workmate-data \
-  && chmod +x bin/workmate.mjs
+RUN mkdir -p /opt/openclawx-data \
+  && chmod +x bin/openclawx.mjs
 
 EXPOSE 47832
-VOLUME ["/opt/workmate-data"]
+VOLUME ["/opt/openclawx-data"]
 
-CMD ["node", "bin/workmate.mjs", "start"]
+CMD ["node", "bin/openclawx.mjs", "start"]

@@ -35,7 +35,7 @@ const bundle = await build({ bundle:true,write:false,platform:'browser',format:'
   stdin:{loader:'ts',resolveDir:process.cwd(),contents:script.content.replace('export default','const Component =')+`;import {createApp} from 'vue';createApp(Component).mount('#app');`},
   plugins:[{name:'fixture',setup(builder){
     builder.onResolve({filter:/^vue$/},()=>({path:vueRequire.resolve('vue/dist/vue.esm-bundler.js')}));
-    builder.onResolve({filter:/^@workmate\/contracts$/},()=>({path:path.resolve('packages/contracts/dist/index.js')}));
+    builder.onResolve({filter:/^@openclawx\/contracts$/},()=>({path:path.resolve('packages/contracts/dist/index.js')}));
   }}],
 });
 const cssDir='apps/renderer/dist/assets';
@@ -56,8 +56,8 @@ const server=createServer(async(req,res)=>{
   res.setHeader('content-type','text/html');res.end('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"><style>:root{--background:#f7f8fc;--surface:#fff;--surface-muted:#f1f3f8;--text:#202637;--muted:#65708a;--border:#dce2ee;--accent:#4665df;--accent-soft:#eef1ff}body{margin:0;background:var(--background);color:var(--text);font-family:system-ui}</style><div id="app"></div><script type="module" src="/bundle.js"></script>');
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-const { chromium }=createRequire(import.meta.url)(process.env.WORKMATE_PLAYWRIGHT_MODULE || 'playwright');
-const browser=await chromium.launch({headless:true,...(process.env.WORKMATE_BROWSER_CHANNEL?{channel:process.env.WORKMATE_BROWSER_CHANNEL}:{})});
+const { chromium }=createRequire(import.meta.url)(process.env.OPENCLAWX_PLAYWRIGHT_MODULE || 'playwright');
+const browser=await chromium.launch({headless:true,...(process.env.OPENCLAWX_BROWSER_CHANNEL?{channel:process.env.OPENCLAWX_BROWSER_CHANNEL}:{})});
 try{
   const page=await browser.newPage({viewport:{width:1280,height:900}});const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await page.goto('http://127.0.0.1:'+server.address().port);
@@ -66,11 +66,11 @@ try{
   assert.equal(await page.getByRole('button',{name:'创建项目',exact:true}).isDisabled(),true);
   await page.getByLabel('项目名称').fill('九月经营分析');
   await page.getByLabel('项目说明').fill('持续补充经营数据与分析');
-  await page.screenshot({path:'/tmp/workmate-lightweight-project-desktop.png'});
+  await page.screenshot({path:'/tmp/openclawx-lightweight-project-desktop.png'});
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.equal(await page.getByRole('button',{name:'关闭',exact:true}).evaluate(button=>getComputedStyle(button).whiteSpace),'nowrap');
-  await page.screenshot({path:'/tmp/workmate-lightweight-project-mobile.png'});
+  await page.screenshot({path:'/tmp/openclawx-lightweight-project-mobile.png'});
   await page.getByRole('button',{name:'创建项目',exact:true}).click();
   await page.getByRole('alert').waitFor();
   assert.equal(await page.getByLabel('项目名称').inputValue(),'九月经营分析');
@@ -84,7 +84,7 @@ try{
   assert.equal(await page.getByRole('button',{name:'创建项目',exact:true}).isDisabled(),true);
   await page.getByLabel('API 服务所在电脑的目录').fill('/tmp/my-projects');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  await page.screenshot({path:'/tmp/workmate-lightweight-project-custom-mobile.png'});
+  await page.screenshot({path:'/tmp/openclawx-lightweight-project-custom-mobile.png'});
   await page.getByLabel('系统自动创建').check();
   assert.equal(await page.getByLabel('API 服务所在电脑的目录').count(),0);
   await page.getByLabel('自选保存位置').check();
@@ -107,9 +107,9 @@ try{
   await page.getByRole('button',{name:'更换位置',exact:true}).click();
   assert.match(await page.getByLabel('已选保存位置').innerText(),/经营分析/,'cancel keeps previous selection');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  await page.screenshot({path:'/tmp/workmate-lightweight-project-native-mobile.png'});
+  await page.screenshot({path:'/tmp/openclawx-lightweight-project-native-mobile.png'});
   await page.setViewportSize({width:1280,height:1000});
-  await page.screenshot({path:'/tmp/workmate-lightweight-project-native-desktop.png'});
+  await page.screenshot({path:'/tmp/openclawx-lightweight-project-native-desktop.png'});
   await page.getByRole('button',{name:'创建项目',exact:true}).click();
   await page.getByRole('status').waitFor();
   assert.equal(requests[3].workspace.parentPath,'/Users/example/Documents/我的项目与持续对话成果/经营分析');

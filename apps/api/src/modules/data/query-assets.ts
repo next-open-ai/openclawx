@@ -1,6 +1,6 @@
 import {createHash,randomUUID} from 'node:crypto';
-import {withKeyLock,type KeyValueStore} from '@workmate/orchestrator';
-import {saveQueryAssetSchema,listQueryAssetsSchema,runQueryAssetSchema,type QueryAsset,type QueryAssetDefinition,type DataObjectModelSchema} from '@workmate/contracts';
+import {withKeyLock,type KeyValueStore} from '@openclawx/orchestrator';
+import {saveQueryAssetSchema,listQueryAssetsSchema,runQueryAssetSchema,type QueryAsset,type QueryAssetDefinition,type DataObjectModelSchema} from '@openclawx/contracts';
 import type {AgentDataGateway} from './agent-query.js';
 import {StructuredQueryError} from './structured-query.js';
 type Owner={userId:string;orgId:string};

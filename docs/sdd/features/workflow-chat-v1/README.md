@@ -30,18 +30,18 @@ WC-T2/T3/T4：隔离 Fastify + 临时目录 + 确定性 runner 验证来源权�
 
 后续成果问答已按 [WQ-V1](../workflow-result-qa-v1/README.md) 实现：下文第一阶段“追问不关联上下文”描述仅指默认普通对话；用户明确点击「基于成果提问」后进入独立纯文本问答模式，不修改或重跑项目。
 
-- WC-T2/T3/T4：`pnpm --filter @workmate/api test` 39 通过、0 失败、2 个既有外部数据库环境用例跳过。新增 workflow-runs.test.ts 两项，使用临时 domain.json 实际关闭/重开、TXT 真实上传解析落盘及确定性 runner，验证并发请求一次调度、来源隔离、来源/输入冲突、定义快照不变、严格参数拒绝目录/source 注入、启动中断重试、失败恢复、取消保留登记成果、项目删除不可复活。摘要是实际 Run 文本；模拟成果登记不等于验证真实 PDF 质量。
-- WC-T1/T5：`WORKMATE_BROWSER_CHANNEL=chrome WORKMATE_PLAYWRIGHT_MODULE=<本机已有模块路径> node scripts/chat-workflow-regression.mjs` 通过。使用生产 Vue 组件及本机 HTTP 桩：搜索/选择、解析失败禁用与重试、提交失败锁定同一 requestId/要求/文档、停止/恢复、全文入口、登记文件按真实 runId/path 调用既有归档接口、成果卡片、读取失败保留记录、旧请求不串入新对话、隐藏停止刷新和 390px 布局。归档/浏览内容由桩返回，不宣称真实归档文件已验收。
+- WC-T2/T3/T4：`pnpm --filter @openclawx/api test` 39 通过、0 失败、2 个既有外部数据库环境用例跳过。新增 workflow-runs.test.ts 两项，使用临时 domain.json 实际关闭/重开、TXT 真实上传解析落盘及确定性 runner，验证并发请求一次调度、来源隔离、来源/输入冲突、定义快照不变、严格参数拒绝目录/source 注入、启动中断重试、失败恢复、取消保留登记成果、项目删除不可复活。摘要是实际 Run 文本；模拟成果登记不等于验证真实 PDF 质量。
+- WC-T1/T5：`OPENCLAWX_BROWSER_CHANNEL=chrome OPENCLAWX_PLAYWRIGHT_MODULE=<本机已有模块路径> node scripts/chat-workflow-regression.mjs` 通过。使用生产 Vue 组件及本机 HTTP 桩：搜索/选择、解析失败禁用与重试、提交失败锁定同一 requestId/要求/文档、停止/恢复、全文入口、登记文件按真实 runId/path 调用既有归档接口、成果卡片、读取失败保留记录、旧请求不串入新对话、隐藏停止刷新和 390px 布局。归档/浏览内容由桩返回，不宣称真实归档文件已验收。
 - 验收发现并修复弹窗初始焦点落在随后禁用的搜索框，导致 Escape 失效；固定焦点进入关闭按钮。单飞读取中启动结束会排队补刷，避免较早的空列表响应让新调用卡片消失；浏览器覆盖延迟首轮读取与提交交错。
-- `pnpm --filter @workmate/contracts build`、API 类型检查/构建、Renderer 类型检查/构建通过；`pnpm --filter @workmate/orchestrator test` 70/70、`pnpm concurrency:regression`、`node scripts/workflow-algorithm-regression.mjs`、`node scripts/project-live-state-regression.mjs`、`node --check scripts/chat-workflow-regression.mjs`、`git diff --check` 通过。构建保留既有混合导入和大 chunk 告警。
-- agent-browser CLI 不可用，按技能回退至本机已有 Playwright 与独立 Chrome；未安装依赖、未访问用户浏览器资料/密钥、未调用真实模型、未重跑用户项目或修改用户 domain.json。仅 Workmate 变更，无迁移；新增可选字段兼容旧调用，回滚代码不删除材料或成果。
+- `pnpm --filter @openclawx/contracts build`、API 类型检查/构建、Renderer 类型检查/构建通过；`pnpm --filter @openclawx/orchestrator test` 70/70、`pnpm concurrency:regression`、`node scripts/workflow-algorithm-regression.mjs`、`node scripts/project-live-state-regression.mjs`、`node --check scripts/chat-workflow-regression.mjs`、`git diff --check` 通过。构建保留既有混合导入和大 chunk 告警。
+- agent-browser CLI 不可用，按技能回退至本机已有 Playwright 与独立 Chrome；未安装依赖、未访问用户浏览器资料/密钥、未调用真实模型、未重跑用户项目或修改用户 domain.json。仅 OpenClawX 变更，无迁移；新增可选字段兼容旧调用，回滚代码不删除材料或成果。
 - 后续顺序不变：项目内显式调用 → 明确只读结果问答/修改语义 → 员工工具自动调用。本轮普通对话继续输入不会自动注入工作流结果，也不会自动重跑；通过“查看详情 / 继续协作”进入原项目。卡片按约 3 秒低频轮询，不宣称毫秒级推送；专用数据应用卡片与真实模型端到端验收仍待后续。
 
 ### WC-T6 入口布局调整 · 2026-10-10
 
 入口移至输入框底部工具栏、“添加协作者”左侧，面板隐藏原触发按钮，空态不保留按钮栏。`scripts/chat-workflow-regression.mjs` 校验生产 ChatWorkspace 入口位置和面板参数，并通过隔离 Vue 工具栏验证唯一入口、打开弹窗、Escape 焦点返回、390px 无溢出及既有调用全流程。测试通过；未调用真实模型。API、运行状态和存储不变，无迁移；回滚仅恢复入口布局。
 
-`pnpm --filter @workmate/renderer build`（含 vue-tsc）通过，保留既有混合导入与大 chunk 告警；`node --check scripts/chat-workflow-regression.mjs`、`git diff --check` 通过。浏览器技能因本机无 agent-browser CLI，回退已有 Playwright/独立 Chrome。此次只验收 renderer 布局与隔离交互，未重跑真实业务任务。
+`pnpm --filter @openclawx/renderer build`（含 vue-tsc）通过，保留既有混合导入与大 chunk 告警；`node --check scripts/chat-workflow-regression.mjs`、`git diff --check` 通过。浏览器技能因本机无 agent-browser CLI，回退已有 Playwright/独立 Chrome。此次只验收 renderer 布局与隔离交互，未重跑真实业务任务。
 
 ### WC-T7 输入框工具栏整理 · 2026-10-10
 
@@ -49,10 +49,10 @@ WC-T2/T3/T4：隔离 Fastify + 临时目录 + 确定性 runner 验证来源权�
 
 `scripts/chat-composer-layout-regression.mjs` 从生产 ChatWorkspace 抽取工具栏模板和 scoped CSS，以隔离 Vue 状态验证 1500/1100/850/600/390/320px、长模型名、模型/发送对齐、菜单无溢出与执行中禁用状态，全部通过。独立 Chrome 截图已检查宽/中/窄布局；`scripts/chat-workflow-regression.mjs` 既有调用全流程通过。首次布局测试的断点预期错误（使用视口而非输入容器宽度）已按实际容器宽度修正；执行态检查发现停止按钮缺少无障碍名称，已补充并复测通过。未调用真实模型或业务任务，无 API/存储修改和迁移。
 
-最终 `pnpm --filter @workmate/renderer build`（含 vue-tsc）、`node --check scripts/chat-composer-layout-regression.mjs` 和 `git diff --check` 通过。构建保留既有混合导入、大 chunk 告警。回滚只需恢复输入框模板/CSS，无后端或数据回滚要求。
+最终 `pnpm --filter @openclawx/renderer build`（含 vue-tsc）、`node --check scripts/chat-composer-layout-regression.mjs` 和 `git diff --check` 通过。构建保留既有混合导入、大 chunk 告警。回滚只需恢复输入框模板/CSS，无后端或数据回滚要求。
 
 ### WC-T8 详情返回原对话 · 2026-10-10
 
 App 为普通对话打开项目单独保存内存来源（用户/对话/项目），ProjectsPage 仅对匹配项目传递返回文案和事件；ProjectConversationWorkspace 默认仍返回项目列表。返回时校验原对话存在，不恢复已删除记录；离开项目页、用户变化及非对话入口清除来源。重载应用不持久化返回来源；执行记录与权限不变，无迁移。
 
-`node scripts/workflow-chat-return-regression.mjs` 通过：执行从生产 App 抽取的导航函数，验证返回原对话、原对话被删除、非对话入口、项目/用户隔离、离开/登出清理，并校验组件事件/默认文案接线。`node scripts/project-sharing-regression.mjs`、`pnpm --filter @workmate/renderer build`（含 vue-tsc）、`git diff --check` 通过。构建保留既有告警；本轮未进行真实桌面点击或业务任务执行。回滚只恢复 renderer 导航与文案，不删除项目/对话。
+`node scripts/workflow-chat-return-regression.mjs` 通过：执行从生产 App 抽取的导航函数，验证返回原对话、原对话被删除、非对话入口、项目/用户隔离、离开/登出清理，并校验组件事件/默认文案接线。`node scripts/project-sharing-regression.mjs`、`pnpm --filter @openclawx/renderer build`（含 vue-tsc）、`git diff --check` 通过。构建保留既有告警；本轮未进行真实桌面点击或业务任务执行。回滚只恢复 renderer 导航与文案，不删除项目/对话。

@@ -7,15 +7,15 @@
  *     (server-assembled chat) → text response routed back;
  *  3. text command surface (/help) works over the same envelope.
  *
- * Launch api: WORKMATE_ORCH_RUNNER=memory-echo WORKMATE_DATA_DIR=<tmp>
- *   WORKMATE_SECRETS_FILE=<file> WORKMATE_API_PORT=4418 node apps/api/dist/main.cjs
- * Run: WORKMATE_API_PORT=4418 node scripts/relay-smoke.mjs
+ * Launch api: OPENCLAWX_ORCH_RUNNER=memory-echo OPENCLAWX_DATA_DIR=<tmp>
+ *   OPENCLAWX_SECRETS_FILE=<file> OPENCLAWX_API_PORT=4418 node apps/api/dist/main.cjs
+ * Run: OPENCLAWX_API_PORT=4418 node scripts/relay-smoke.mjs
  */
 import assert from 'node:assert/strict';
 import { RelayServer } from '../apps/gateway/dist/relay/server.js';
 import { createGateway } from '../apps/gateway/dist/gateway.js';
 
-const port = process.env.WORKMATE_API_PORT || '4418';
+const port = process.env.OPENCLAWX_API_PORT || '4418';
 const apiBase = `http://127.0.0.1:${port}/api/orch`;
 const RELAY_PORT = 8790;
 const RELAY_URL = `ws://127.0.0.1:${RELAY_PORT}`;

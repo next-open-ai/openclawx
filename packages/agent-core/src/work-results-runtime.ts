@@ -1,5 +1,5 @@
 import {AsyncLocalStorage} from 'node:async_hooks';
-import {workResultInputs,workResultJsonSchemas,type WorkResultToolName} from '@workmate/contracts';
+import {workResultInputs,workResultJsonSchemas,type WorkResultToolName} from '@openclawx/contracts';
 import {defineAgentTool,jsonSchemaParameters} from './pi-tools.js';
 
 export type WorkResultExecutor=(name:WorkResultToolName,input:unknown,signal?:AbortSignal)=>Promise<unknown>;

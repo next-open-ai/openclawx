@@ -20,7 +20,7 @@ importers:
       '@larksuiteoapi/node-sdk':
         specifier: ^1.11.1
         version: 1.73.2
-      '@workmate/channel':
+      '@openclawx/channel':
         specifier: file:./packages/channel
         version: link:packages/channel
       apache-arrow:
@@ -60,13 +60,13 @@ importers:
       '@lancedb/lancedb':
         specifier: 0.22.3
         version: 0.22.3(apache-arrow@18.1.0)
-      '@workmate/agent-core':
+      '@openclawx/agent-core':
         specifier: workspace:*
         version: link:../../packages/agent-core
-      '@workmate/contracts':
+      '@openclawx/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@workmate/orchestrator':
+      '@openclawx/orchestrator':
         specifier: workspace:*
         version: link:../../packages/orchestrator
       apache-arrow:
@@ -143,7 +143,7 @@ importers:
       '@larksuiteoapi/node-sdk':
         specifier: ^1.11.1
         version: 1.73.2
-      '@workmate/channel':
+      '@openclawx/channel':
         specifier: workspace:*
         version: link:../../packages/channel
       dingtalk-stream:
@@ -159,7 +159,7 @@ importers:
 
   apps/renderer:
     dependencies:
-      '@workmate/contracts':
+      '@openclawx/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
       cytoscape:
@@ -214,15 +214,15 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
         version: 1.30.0(zod@3.25.76)
+      '@openclawx/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@openclawx/tools':
+        specifier: workspace:*
+        version: link:../tools
       '@sinclair/typebox':
         specifier: ^0.34.41
         version: 0.34.52
-      '@workmate/contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      '@workmate/tools':
-        specifier: workspace:*
-        version: link:../tools
       apache-arrow:
         specifier: 18.1.0
         version: 18.1.0
@@ -265,10 +265,10 @@ importers:
 
   packages/orchestrator:
     dependencies:
-      '@workmate/agent-core':
+      '@openclawx/agent-core':
         specifier: workspace:*
         version: link:../agent-core
-      '@workmate/contracts':
+      '@openclawx/contracts':
         specifier: workspace:*
         version: link:../contracts
 

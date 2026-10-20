@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@workmate/contracts';
+import type { AgentEvent } from '@openclawx/contracts';
 import { DEFAULT_RUN_TIMEOUT_MS } from './pi-runtime.js';
 import './execution-backends.js';
 import {
@@ -46,7 +46,7 @@ export function requiresDecisionGuardCompatibleBackend(
  * Single product entry: resolve an ExecutionBackend then stream AgentEvents.
  *
  * Routing: runtime-settings allowlist/default + ChatRequest.engine + optional hints.
- * Ops force: `resolve.override`, or `WORKMATE_AGENT_ENGINE` + `WORKMATE_AGENT_ENGINE_FORCE=1`.
+ * Ops force: `resolve.override`, or `OPENCLAWX_AGENT_ENGINE` + `OPENCLAWX_AGENT_ENGINE_FORCE=1`.
  */
 export async function* streamAgentReply(
   input: ExecutionBackendStreamInput,
@@ -70,7 +70,7 @@ export async function* streamAgentReply(
     preferProcessIsolation: resolve?.preferProcessIsolation,
   });
   if (backend.id !== 'pi' && requiresDecisionGuardCompatibleBackend(preparedInput)) {
-    console.info('[workmate] decision guard requires an execution backend with complete before-tool coverage', {
+    console.info('[openclawx] decision guard requires an execution backend with complete before-tool coverage', {
       requestedEngine: backend.id,
       fallbackEngine: 'pi',
       provider: preparedInput.decisionRuntime?.provider ?? 'jev',
@@ -78,7 +78,7 @@ export async function* streamAgentReply(
     backend = resolveExecutionBackend({ override: 'pi' });
   }
   assertVisionSupported(input.messages, input.model.supportsVision, backend.id, input.modelCapabilities);
-  console.info('[workmate] execution backend selected', {
+  console.info('[openclawx] execution backend selected', {
     engine: backend.id,
     requestEngine: preparedInput.engine ?? null,
     profileId: preparedInput.profile?.id ?? null,

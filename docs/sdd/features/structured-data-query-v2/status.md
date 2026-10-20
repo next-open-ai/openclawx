@@ -15,11 +15,11 @@
 
 `query-relations.test.ts`新增7项（含两方言各1项），覆盖严格契约、关系方向/复合键、真实sql.js链式LEFT/INNER、条件指标/HAVING/Top N、NULL、重复键与类型转换重复匹配拒绝、双远端方言事务/绑定/回滚、HTTP关系保存/旧客户端保留/跨用户跨组织/本地与实时绑定解析。`agent-query.test.ts`新增1项覆盖敏感指标条件、关联键/列、默认投影及查询中关系变更。
 
-- `pnpm --filter @workmate/contracts build`：通过。
-- `pnpm --filter @workmate/agent-core build`、`pnpm --filter @workmate/agent-core test`：通过，192项。
-- `pnpm --filter @workmate/api typecheck`、`pnpm --filter @workmate/api test`：通过，76项中74通过、2项原有真实数据库测试跳过、0失败。
-- `pnpm --filter @workmate/api build`：通过。
-- `pnpm --filter @workmate/renderer typecheck`：通过。未改UI，不做浏览器验收；未重复renderer构建。
+- `pnpm --filter @openclawx/contracts build`：通过。
+- `pnpm --filter @openclawx/agent-core build`、`pnpm --filter @openclawx/agent-core test`：通过，192项。
+- `pnpm --filter @openclawx/api typecheck`、`pnpm --filter @openclawx/api test`：通过，76项中74通过、2项原有真实数据库测试跳过、0失败。
+- `pnpm --filter @openclawx/api build`：通过。
+- `pnpm --filter @openclawx/renderer typecheck`：通过。未改UI，不做浏览器验收；未重复renderer构建。
 - `pnpm concurrency:regression`：通过，含DSH桥与AgentScope sidecar桩隔离。
 - `pnpm docs:build`：通过，已有chunk体积警告。
 - `git diff --check`：通过。

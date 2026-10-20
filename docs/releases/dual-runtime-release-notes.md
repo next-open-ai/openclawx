@@ -1,8 +1,8 @@
-# Workmate 双运行形态改造说明
+# OpenClawX 双运行形态改造说明
 
 ## 目标
 
-本轮改造的目标，是让 Workmate 同时支持两种发布和运行方式：
+本轮改造的目标，是让 OpenClawX 同时支持两种发布和运行方式：
 
 1. Electron 桌面应用打包发布
 2. npm 安装后由 Node.js 启动本地 Web 站点
@@ -98,7 +98,7 @@
 
 已验证：
 
-- `pnpm --filter @workmate/api typecheck`
+- `pnpm --filter @openclawx/api typecheck`
 - `pnpm web:build`
 - `pnpm agentscope:smoke`（此前阶段已接入）
 - Web 服务可正常启动
@@ -115,4 +115,4 @@
 
 ## 适合 PR 描述的摘要
 
-本 PR 完成 Workmate 从单一 Electron 桌面形态向“双运行形态”的关键升级：在保留桌面最优体验的同时，引入 npm Web Launcher，并将 providers、skills、workspace、assets 等主要服务能力从 Electron IPC 下沉到统一 HTTP API。前端页面保持尽量复用，并根据运行环境自动切换系统打开、Finder、下载、inline 预览、新标签页等最佳交互路径。与此同时，AgentScope 迁移主线继续推进，MCP Toolkit 集成、runtime bundling 与 tracing 也已落地。
+本 PR 完成 OpenClawX 从单一 Electron 桌面形态向“双运行形态”的关键升级：在保留桌面最优体验的同时，引入 npm Web Launcher，并将 providers、skills、workspace、assets 等主要服务能力从 Electron IPC 下沉到统一 HTTP API。前端页面保持尽量复用，并根据运行环境自动切换系统打开、Finder、下载、inline 预览、新标签页等最佳交互路径。与此同时，AgentScope 迁移主线继续推进，MCP Toolkit 集成、runtime bundling 与 tracing 也已落地。

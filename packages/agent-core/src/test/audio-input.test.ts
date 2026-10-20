@@ -6,9 +6,9 @@ import test from 'node:test';
 import { storeAudioInput, materializeAudioInput } from '../audio-input.js';
 
 test('audio uploads validate input, materialize privately and reject expiry/path escapes', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-audio-input-'));
-  const previous = process.env.WORKMATE_DATA_DIR;
-  process.env.WORKMATE_DATA_DIR = root;
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-audio-input-'));
+  const previous = process.env.OPENCLAWX_DATA_DIR;
+  process.env.OPENCLAWX_DATA_DIR = root;
   try {
     await assert.rejects(storeAudioInput({ name: 'bad.txt', base64: 'YXVkaW8=' }), /格式/);
     await assert.rejects(storeAudioInput({ name: 'bad.mp3', base64: '!!!!' }));
@@ -26,7 +26,7 @@ test('audio uploads validate input, materialize privately and reject expiry/path
     await symlink(path.join(root, 'outside.mp3'), path.join(root, 'audio-inputs', id));
     await assert.rejects(materializeAudioInput(`audio-upload:${id}`, workspace), /escapes/);
   } finally {
-    if (previous === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = previous;
+    if (previous === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = previous;
     await rm(root, { recursive: true, force: true });
   }
 });

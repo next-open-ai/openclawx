@@ -35,7 +35,7 @@ type ChannelMetaShape = {
 let gatewayProcess: ChildProcess | null = null;
 
 function dataDir(): string {
-  return process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate');
+  return process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx');
 }
 
 function secretsFile(): string {
@@ -51,7 +51,7 @@ function gatewayEntry(): string {
 }
 
 function gatewayApiUrl(): string {
-  const port = Number(process.env.WORKMATE_API_PORT ?? 47832);
+  const port = Number(process.env.OPENCLAWX_API_PORT ?? 47832);
   return `http://127.0.0.1:${port}/api/orch`;
 }
 
@@ -185,8 +185,8 @@ async function startGatewayIfEnabled(): Promise<{ running: boolean; pid: number 
     cwd: process.cwd(),
     env: {
       ...process.env,
-      WORKMATE_API_URL: gatewayApiUrl(),
-      WORKMATE_GATEWAY_CONFIG: runtimeGatewayConfigFile(),
+      OPENCLAWX_API_URL: gatewayApiUrl(),
+      OPENCLAWX_GATEWAY_CONFIG: runtimeGatewayConfigFile(),
     },
     stdio: 'inherit',
   });

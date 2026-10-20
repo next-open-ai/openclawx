@@ -6,7 +6,7 @@ import test from 'node:test';
 import { DshCapabilityAdapter } from '../dsh-capability-adapter.js';
 
 test('DSH adapter commits completed output only after a successful run boundary', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-dsh-capability-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-dsh-capability-'));
   await mkdir(path.join(root, 'output'), { recursive: true });
   await writeFile(path.join(root, 'output', 'site.html'), '<main>dsh</main>');
   const adapter = new DshCapabilityAdapter({
@@ -20,7 +20,7 @@ test('DSH adapter commits completed output only after a successful run boundary'
 
 test('DSH project mode requires the real project root and never conversation output', () => {
   const adapter = new DshCapabilityAdapter({
-    runId: 'dsh-project', workspaceRoot: '/tmp/workmate-dsh-project', workspaceAccess: 'write', workspaceMode: 'project',
+    runId: 'dsh-project', workspaceRoot: '/tmp/openclawx-dsh-project', workspaceAccess: 'write', workspaceMode: 'project',
   });
   assert.match(adapter.systemPromptContract(), /PROJECT MODE/);
   assert.match(adapter.systemPromptContract(), /Never create or use output\//);

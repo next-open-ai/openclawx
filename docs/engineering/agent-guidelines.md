@@ -7,8 +7,8 @@
 - 公共行为变更必须有可运行回归；
 - Renderer 不得直接依赖 Electron 或 Node；
 - 只有 `packages/agent-core` 可以调用模型 SDK；
-- 公共契约以 `@workmate/contracts` 为单一事实源；
-- 编排状态由 `@workmate/orchestrator` 管理；
+- 公共契约以 `@openclawx/contracts` 为单一事实源；
+- 编排状态由 `@openclawx/orchestrator` 管理；
 - 域数据保持单写者，密钥不得进入领域数据；
 - 公共行为和跨包接口使用稳定需求、任务与测试 ID；
 - 文档完成、代码实现和测试通过必须分别记录，不得虚报状态。

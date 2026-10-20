@@ -12,11 +12,11 @@
 
 ## 已执行证据
 
-- `pnpm --filter @workmate/contracts build`：通过。
-- `pnpm --filter @workmate/api typecheck`：通过。
-- `pnpm --filter @workmate/api test`：62 项中 60 通过、2 项原有真实数据库验收跳过、0 失败。新增 8 项回归覆盖契约、注入、真实 sql.js 250+ 行全表汇总、数值/日期/布尔、空值、分页、两个远端方言桩与 HTTP 权限/错误脱敏/旧接口兼容。
-- `pnpm --filter @workmate/api build`：通过。
-- `pnpm --filter @workmate/renderer typecheck`、`pnpm --filter @workmate/renderer build`：通过；已有静态/动态混合导入及大 chunk 警告，不影响构建。
+- `pnpm --filter @openclawx/contracts build`：通过。
+- `pnpm --filter @openclawx/api typecheck`：通过。
+- `pnpm --filter @openclawx/api test`：62 项中 60 通过、2 项原有真实数据库验收跳过、0 失败。新增 8 项回归覆盖契约、注入、真实 sql.js 250+ 行全表汇总、数值/日期/布尔、空值、分页、两个远端方言桩与 HTTP 权限/错误脱敏/旧接口兼容。
+- `pnpm --filter @openclawx/api build`：通过。
+- `pnpm --filter @openclawx/renderer typecheck`、`pnpm --filter @openclawx/renderer build`：通过；已有静态/动态混合导入及大 chunk 警告，不影响构建。
 - `pnpm docs:build`：通过，有打包体积警告。
 - `node --check scripts/data-workbench-preview.mjs`、`git diff --check`：通过。
 - `node scripts/data-workbench-preview.mjs`：仅隔离合成数据，内置浏览器验收默认明细成功、切换统计清除旧结果、求和显示 214.5、无匹配空态、模拟失败明确提示、修改条件后恢复成功；截图检查布局。最后新增的副本截断说明只做类型/构建验证，未再次浏览器复测。
@@ -25,7 +25,7 @@
 ## 未执行及已知边界
 
 - 没有连接真实 MySQL/PostgreSQL；结构化聚合/日期方言须在隔离实例再验收，桩测试不替代真库验证。
-- 没有访问用户业务库、调用模型或重启用户当前 Workmate 服务。用户需重启 API 并刷新界面使用新增能力。
+- 没有访问用户业务库、调用模型或重启用户当前 OpenClawX 服务。用户需重启 API 并刷新界面使用新增能力。
 - 本轮不接智能体 Tools/MCP，不实现员工挂载、多表/跨源、同比环比、行列级授权或查询审计持久化。
 - SQLite 为原生数值精度，不能承诺精确财务小数；类型校验会扫描所引用列，不是性能基准。实时数据类型依赖原库与登记 Schema 的一致性；原库 DDL 变化需检查绑定，不自动兼容。
 - 日期按存储日历值，不做统一用户时区转换；文字匹配遵循数据库排序规则。分页不是历史快照，原数据变更可能造成跨页变化；偏移最多 10000。

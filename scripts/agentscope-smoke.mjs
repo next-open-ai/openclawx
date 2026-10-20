@@ -42,14 +42,14 @@ function ensureRuntimePrepared() {
 function resolvePython() {
   const venvPy = ensureRuntimePrepared();
   if (fs.existsSync(venvPy)) return venvPy;
-  if (process.env.WORKMATE_AGENTSCOPE_PYTHON) return process.env.WORKMATE_AGENTSCOPE_PYTHON;
+  if (process.env.OPENCLAWX_AGENTSCOPE_PYTHON) return process.env.OPENCLAWX_AGENTSCOPE_PYTHON;
   return process.platform === 'win32' ? 'python' : 'python3';
 }
 
 const python = resolvePython();
 
 function matchPortLine(line) {
-  const m = String(line).trim().match(/^WORKMATE_AGENTSCOPE_PORT=(\d+)\s*$/);
+  const m = String(line).trim().match(/^OPENCLAWX_AGENTSCOPE_PORT=(\d+)\s*$/);
   return m ? Number(m[1]) : null;
 }
 
@@ -76,7 +76,7 @@ async function main() {
   // Also warms the Windows CI disk cache after a fresh pip install.
   const warm = spawnSync(
     python,
-    ['-c', 'import workmate_agentscope_runtime; print("agentscope-runtime-import-ok", flush=True)'],
+    ['-c', 'import openclawx_agentscope_runtime; print("agentscope-runtime-import-ok", flush=True)'],
     {
       cwd: runtimeRoot,
       env: {
@@ -99,7 +99,7 @@ async function main() {
 
   const stdoutLines = [];
   const stderrLines = [];
-  const child = spawn(python, ['-m', 'workmate_agentscope_runtime', '--host', '127.0.0.1', '--port', '0', '--token', token], {
+  const child = spawn(python, ['-m', 'openclawx_agentscope_runtime', '--host', '127.0.0.1', '--port', '0', '--token', token], {
     cwd: runtimeRoot,
     env: {
       ...process.env,
@@ -167,7 +167,7 @@ async function main() {
 
   const started = await rpc(ws, 'agent.run.start', {
     runId: 'smoke-run-1',
-    messages: [{ role: 'user', content: '你好，Workmate' }],
+    messages: [{ role: 'user', content: '你好，OpenClawX' }],
     profile: { id: 'general', name: 'General', instructions: 'hi', toolIds: [] },
     model: { provider: 'openai', chatModel: 'gpt-test', apiKey: 'x' },
   });
@@ -185,7 +185,7 @@ async function main() {
   console.log('text', deltas);
   console.log('finished', finished);
 
-  if (!deltas.includes('Workmate')) throw new Error('unexpected stub text');
+  if (!deltas.includes('OpenClawX')) throw new Error('unexpected stub text');
   if (finished?.status !== 'completed') throw new Error('run not completed');
 
   ws.close();

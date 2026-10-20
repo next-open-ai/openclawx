@@ -1,11 +1,11 @@
-# Workmate 运行形态
+# OpenClawX 运行形态
 
-Workmate 当前支持两种主要运行形态：
+OpenClawX 当前支持两种主要运行形态：
 
 1. Electron 桌面应用
 2. npm 安装后由 Node.js 启动的 Web Launcher
 
-两种形态共用同一套核心后端能力，数据目录默认都是 `~/.workmate`。
+两种形态共用同一套核心后端能力，数据目录默认都是 `~/.openclawx`。
 
 ## 环境要求
 
@@ -49,9 +49,9 @@ pnpm web:start
 或使用 CLI：
 
 ```bash
-workmate doctor
-workmate init
-workmate start
+openclawx doctor
+openclawx init
+openclawx start
 ```
 
 启动后会自动选择可用端口，默认从 `47832` 开始。
@@ -79,13 +79,13 @@ Web 模式的行为约定：
 默认引擎仍可使用现有方式。若要切到 AgentScope：
 
 ```bash
-WORKMATE_AGENT_ENGINE=agentscope pnpm dev
+OPENCLAWX_AGENT_ENGINE=agentscope pnpm dev
 ```
 
 Web 模式同样可使用：
 
 ```bash
-WORKMATE_AGENT_ENGINE=agentscope pnpm web:start
+OPENCLAWX_AGENT_ENGINE=agentscope pnpm web:start
 ```
 
 如需预装 AgentScope runtime：
@@ -119,31 +119,31 @@ pnpm agentscope:smoke
 
 ```bash
 pnpm web:build
-docker build -f deploy/docker/workmate/Dockerfile.global -t workmate:global .
+docker build -f deploy/docker/openclawx/Dockerfile.global -t openclawx:global .
 ```
 
 构建镜像（中国大陆网络环境）：
 
 ```bash
 pnpm web:build
-docker build -f deploy/docker/workmate/Dockerfile.cn -t workmate:cn .
+docker build -f deploy/docker/openclawx/Dockerfile.cn -t openclawx:cn .
 ```
 
 启动容器：
 
 ```bash
-docker run --rm -p 47832:47832 -v workmate-data:/opt/workmate-data workmate:global
+docker run --rm -p 47832:47832 -v openclawx-data:/opt/openclawx-data openclawx:global
 ```
 
 说明：
 
 - 两份 Dockerfile 都默认消费本地已构建好的 `apps/api/dist`、`apps/renderer/dist`、`apps/gateway/dist` 与 `packages/channel/dist`
-- `deploy/docker/workmate/Dockerfile.cn` 会在容器内写入清华 pip 源配置
-- `deploy/docker/workmate/Dockerfile.global` 不修改 pip 源
-- 容器内默认以 `WORKMATE_API_HOST=0.0.0.0` 对外监听
+- `deploy/docker/openclawx/Dockerfile.cn` 会在容器内写入清华 pip 源配置
+- `deploy/docker/openclawx/Dockerfile.global` 不修改 pip 源
+- 容器内默认以 `OPENCLAWX_API_HOST=0.0.0.0` 对外监听
 - 默认端口为 `47832`
 - 源码开发 Renderer 默认使用 `47831`；工程测试控制台独立使用 `47840`，不随产品运行时自动启动。
-- `WORKMATE_DATA_DIR` 位于 `/opt/workmate-data`（用户数据卷；桌面发布使用 `runtimes/agentscope-runtime/python` 下的可迁移独立 Python，开发和容器环境仍可使用 `.venv`，挂载数据卷不会覆盖运行时）
+- `OPENCLAWX_DATA_DIR` 位于 `/opt/openclawx-data`（用户数据卷；桌面发布使用 `runtimes/agentscope-runtime/python` 下的可迁移独立 Python，开发和容器环境仍可使用 `.venv`，挂载数据卷不会覆盖运行时）
 - 采用多阶段构建：builder 安装依赖并瘦身后，runtime 只拷贝清理过的树
 - 镜像保持开箱即用（含 Node 依赖、`@lancedb/lancedb`、`apache-arrow`、AgentScope Python runtime），首次启动无需再装依赖
 - 构建阶段会清理 npm/pip 缓存，并移除独立 Python 内的测试、缓存、开发头文件等运行时不需要的内容

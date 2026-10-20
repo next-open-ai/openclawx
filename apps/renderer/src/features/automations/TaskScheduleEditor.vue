@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type {TaskSchedule} from '@workmate/contracts';
+import type {TaskSchedule} from '@openclawx/contracts';
 const props=defineProps<{modelValue:TaskSchedule;disabled?:boolean}>();
 const emit=defineEmits<{'update:modelValue':[value:TaskSchedule]}>();
 const zone=Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -22,7 +22,7 @@ function weekday(day:number,checked:boolean){if(props.modelValue.kind!=='weekly'
       <label v-if="modelValue.kind==='monthly'">每月几号<input type="number" min="1" max="31" :value="modelValue.dayOfMonth" @input="patch({dayOfMonth:Number(($event.target as HTMLInputElement).value)})"><small>当月没有该日期时，在当月最后一天执行。</small></label>
       <details v-if="'timezone' in modelValue"><summary>时区 · {{modelValue.timezone}}</summary><label>执行时区<input aria-label="执行时区" :value="modelValue.timezone" placeholder="Asia/Shanghai" @change="patch({timezone:($event.target as HTMLInputElement).value})"></label></details>
       <label class="enabled"><input type="checkbox" :checked="modelValue.enabled" @change="patch({enabled:($event.target as HTMLInputElement).checked})">启用自动执行</label>
-      <p>Workmate 服务运行时自动触发，关闭本页面不影响执行；退出应用后暂停。错过的周期最多执行一次，不积压补跑。每次执行仍保存独立运行记录。</p>
+      <p>OpenClawX 服务运行时自动触发，关闭本页面不影响执行；退出应用后暂停。错过的周期最多执行一次，不积压补跑。每次执行仍保存独立运行记录。</p>
     </template>
   </fieldset>
 </template>

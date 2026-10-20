@@ -18,8 +18,8 @@ WR-T9：core 分类并保留安全诊断，API 绑定模型解析与日志，实
 
 ## 验证
 
-实际执行：`pnpm --filter @workmate/contracts build`通过；`pnpm --filter @workmate/agent-core test`（含构建）215项全部通过；`pnpm --filter @workmate/api test`131项，129通过、2个真实数据库用例按环境跳过；`pnpm --filter @workmate/api build`通过；`pnpm docs:build`、`git diff --check`通过。
+实际执行：`pnpm --filter @openclawx/contracts build`通过；`pnpm --filter @openclawx/agent-core test`（含构建）215项全部通过；`pnpm --filter @openclawx/api test`131项，129通过、2个真实数据库用例按环境跳过；`pnpm --filter @openclawx/api build`通过；`pnpm docs:build`、`git diff --check`通过。
 
-`pnpm --filter @workmate/api typecheck`失败于原有 `src/modules/voice/barge-in.test.ts:65` 的raw参数隐式any（TS7006）；本轮未修改该测试文件，没有把构建/测试成功当作全量类型检查成功。没有调用真实供应商、访问用户成果、重启用户服务或修改模型配置，现场根因仍待新版日志复现。本轮不改变并发调度/DSH或前端，未运行其专项回归。
+`pnpm --filter @openclawx/api typecheck`失败于原有 `src/modules/voice/barge-in.test.ts:65` 的raw参数隐式any（TS7006）；本轮未修改该测试文件，没有把构建/测试成功当作全量类型检查成功。没有调用真实供应商、访问用户成果、重启用户服务或修改模型配置，现场根因仍待新版日志复现。本轮不改变并发调度/DSH或前端，未运行其专项回归。
 
 复现后搜索日志的 `work_results.semantic`：`code=MODEL_MISSING/API_KEY_MISSING`核对员工文本模型配置，`MODEL_RESOLUTION_FAILED`核对配置解析，`TIMEOUT`为12秒截止，`CANCELLED`为主动取消，`PROVIDER_ERROR`为供应商请求失败，`OUTPUT_TRUNCATED`为输出长度截断，`INVALID_JSON/INVALID_RESPONSE/INVALID_CANDIDATE`分别表示格式/契约/候选ID问题。`RANKED`且selectedCount=0表示有效空匹配，不是调用失败。HTTP状态只在SDK暴露可信数值status时记录，不猜测、不保存原始错误文本。日志终态覆盖实际执行的语义ranker，未进入ranker的空候选/空query不产生此日志。

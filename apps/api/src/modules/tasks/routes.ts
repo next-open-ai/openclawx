@@ -1,22 +1,22 @@
 import type { FastifyPluginAsync,FastifyRequest } from 'fastify';
-import { TemplateTaskService, TemplateTaskError, templateAgentExecutor,reportUiHtml,reportPreviewResult } from '@workmate/orchestrator';
+import { TemplateTaskService, TemplateTaskError, templateAgentExecutor,reportUiHtml,reportPreviewResult } from '@openclawx/orchestrator';
 import { requireAuth } from '../auth/service.js';
 import { getOrchestrator } from '../orchestration/routes.js';
 import { ParameterProjects } from './parameter-project.js';
 import {parameterSkillOptions} from './parameter-skill-options.js';
 import path from 'node:path';
 import os from 'node:os';
-import { TaskParameterProjectOperationSchema,TaskRunListQuerySchema,TaskParameterProjectInfoSchema,TaskTemplateTrialRequestSchema,TaskTemplateDeleteSchema } from '@workmate/contracts';
-import type { TaskExportFormat } from '@workmate/contracts';
+import { TaskParameterProjectOperationSchema,TaskRunListQuerySchema,TaskParameterProjectInfoSchema,TaskTemplateTrialRequestSchema,TaskTemplateDeleteSchema } from '@openclawx/contracts';
+import type { TaskExportFormat } from '@openclawx/contracts';
 import {TaskApplications} from './task-applications.js';
 import {registerTaskCreationRoutes} from './creation-routes.js';
 
 export const templateTaskRoutes: FastifyPluginAsync = async app => {
   const orch = getOrchestrator();
   const service = new TemplateTaskService(orch.store,undefined,undefined,templateAgentExecutor(orch));
-  const projects = new ParameterProjects(orch, service,process.env.WORKMATE_DATA_DIR || path.join(os.homedir(),'.workmate'));
+  const projects = new ParameterProjects(orch, service,process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(),'.openclawx'));
   const operation = TaskParameterProjectOperationSchema;
-  const reports=new ParameterProjects(orch,service,process.env.WORKMATE_DATA_DIR||path.join(os.homedir(),'.workmate'),'report');
+  const reports=new ParameterProjects(orch,service,process.env.OPENCLAWX_DATA_DIR||path.join(os.homedir(),'.openclawx'),'report');
   const applications=new TaskApplications(orch,service,projects,error=>app.log.error(error,'任务应用执行启动失败'));
   const dataCatalog=async(request:FastifyRequest)=>{
     const response=await app.inject({method:'GET',url:'/api/data/gateway/units',headers:{...(request.headers.authorization?{authorization:request.headers.authorization}:{}),...(request.headers.cookie?{cookie:request.headers.cookie}:{})}});

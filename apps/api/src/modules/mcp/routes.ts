@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { McpProbeRequestSchema } from '@workmate/contracts';
-import { probeMcpConnection } from '@workmate/agent-core';
+import { McpProbeRequestSchema } from '@openclawx/contracts';
+import { probeMcpConnection } from '@openclawx/agent-core';
 import { authenticateRequest, requireAuth, sendAuthError } from '../auth/service.js';
 
 export const mcpRoutes: FastifyPluginAsync = async (app) => {

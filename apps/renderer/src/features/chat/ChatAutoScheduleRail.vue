@@ -281,8 +281,8 @@ function closeDetail() {
                   stroke-dasharray="40 92"
                 />
               </svg>
-              <i v-if="task.status === 'running'" class="workmate-run-spin" />
-              <i v-if="task.status === 'running'" class="workmate-run-pulse" />
+              <i v-if="task.status === 'running'" class="openclawx-run-spin" />
+              <i v-if="task.status === 'running'" class="openclawx-run-pulse" />
               <i v-if="task.status === 'completed'" class="schedule-check" />
               {{ employeeInitials(task.employeeId) }}
               <span :class="['absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white', statusDotClass(task.status)]" />
@@ -309,7 +309,7 @@ function closeDetail() {
                 class="relative grid h-10 w-10 place-items-center rounded-xl text-[11px] font-extrabold text-white"
                 :style="{ background: employeeColor(selectedTask.employeeId) }"
               >
-                <i v-if="selectedTask.status === 'running'" class="workmate-run-spin" />
+                <i v-if="selectedTask.status === 'running'" class="openclawx-run-spin" />
                 {{ employeeInitials(selectedTask.employeeId) }}
                 <span :class="['absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white', statusDotClass(selectedTask.status)]" />
               </span>
@@ -387,20 +387,20 @@ function closeDetail() {
 </template>
 
 <style scoped>
-.workmate-run-spin,
-.workmate-run-pulse {
+.openclawx-run-spin,
+.openclawx-run-pulse {
   pointer-events: none;
   position: absolute;
   inset: -3px;
   border-radius: 10px;
 }
-.workmate-run-spin {
+.openclawx-run-spin {
   border: 1.5px solid transparent;
   border-top-color: rgba(255, 255, 255, 0.95);
   border-right-color: rgba(255, 255, 255, 0.35);
   animation: schedule-spin 0.9s linear infinite;
 }
-.workmate-run-pulse {
+.openclawx-run-pulse {
   box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.45);
   animation: schedule-pulse 1.4s ease-out infinite;
 }

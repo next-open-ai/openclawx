@@ -1,7 +1,7 @@
 import { cp, lstat, mkdir, mkdtemp, readdir, readFile, rename, rm } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { promoteWorkspaceDeliverablesToProject } from '@workmate/agent-core';
+import { promoteWorkspaceDeliverablesToProject } from '@openclawx/agent-core';
 
 async function checkedCopy(source: string, destination: string) {
   const info = await lstat(source);
@@ -26,7 +26,7 @@ async function treeRevision(root: string) {
     hash.update(path.relative(root, target)).update(info.isDirectory() ? 'directory' : 'file');
     if (info.isDirectory()) for (const entry of (await readdir(target)).sort()) {
       // UI metadata is refreshed on reads, not a user edit to deliverables.
-      if (entry === '.workmate') continue;
+      if (entry === '.openclawx') continue;
       await walk(path.join(target, entry));
     }
     else if (info.isFile()) {
@@ -43,7 +43,7 @@ export async function prepareConversationWorkspace(projectRoot: string, runRoot:
   await mkdir(path.join(runRoot, 'output'), { recursive: true, mode: 0o700 });
   if ((await lstat(projectRoot)).isSymbolicLink()) throw new Error('项目目录不能是符号链接');
   for (const entry of await readdir(projectRoot)) {
-    if (['.git', '.workmate', 'node_modules', '__pycache__'].includes(entry)) continue;
+    if (['.git', '.openclawx', 'node_modules', '__pycache__'].includes(entry)) continue;
     await checkedCopy(path.join(projectRoot, entry), path.join(runRoot, entry === 'inputs' ? entry : `output/${entry}`));
   }
   if (await treeRevision(projectRoot) !== revision) throw new Error('项目文件在准备期间发生变化，请重试');

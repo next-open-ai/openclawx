@@ -4,8 +4,8 @@
 
 ## 1. 总原则
 
-1. **编排在服务端，UI 只是客户端** — 会话/项目/审批/Run 属 `@workmate/orchestrator`。
-2. **域数据单写者** — `~/.workmate/domain.json`（或 `WORKMATE_DATA_DIR`）仅 api 写。
+1. **编排在服务端，UI 只是客户端** — 会话/项目/审批/Run 属 `@openclawx/orchestrator`。
+2. **域数据单写者** — `~/.openclawx/domain.json`（或 `OPENCLAWX_DATA_DIR`）仅 api 写。
 3. **依赖单向** — 见下表；禁止 shortcut 跨层 import。
 
 ## 2. Monorepo 分层
@@ -60,7 +60,7 @@ gateway → channel →（不直接碰 orchestrator 内核细节）
 ## 5. 变更检查清单
 
 - [ ] 新代码落在正确包；未引入反向依赖
-- [ ] 契约变更同步 `@workmate/contracts` 与调用方
+- [ ] 契约变更同步 `@openclawx/contracts` 与调用方
 - [ ] 密钥未进入 domain KV 或日志
 - [ ] 配套回归（见 [testing.md](./testing.md)）
 - [ ] 跨进程调用定义了超时、取消、错误和版本兼容语义

@@ -24,7 +24,7 @@ import {
   OntologyCandidateUpsertRequestSchema, OntologyCandidateDeleteRequestSchema, OntologyCandidateMergeRequestSchema,
   OntologyPublishRequestSchema, OntologyVersionRequestSchema, OntologyAnalysisJobRequestSchema,
   OntologyGovernanceApplyRequestSchema, OntologyGovernanceSuggestRequestSchema,
-} from '@workmate/contracts';
+} from '@openclawx/contracts';
 import {
   createBailianKnowledgeBase,
   deleteBailianKnowledgeBase,
@@ -55,11 +55,11 @@ import {
   readOntologyGovernance, applyOntologyGovernance, undoOntologyGovernance, suggestOntologyGovernanceRepairs,
   updateBailianKnowledgeBase,
   updateKnowledgeBaseMeta,
-} from '@workmate/agent-core';
+} from '@openclawx/agent-core';
 
 type AnalysisJobData = { id: string; status: 'running'|'completed'|'failed'|'cancelled'; startedAt: number; completedAt?: number; phase: string; currentBatch: number; totalBatches: number; discovered?: number; result?: unknown; error?: string };
 type AnalysisJob = AnalysisJobData & { controller?: AbortController };
-function ontologyJobsFile() { return path.join(process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate'), 'ontology-analysis-jobs.json'); }
+function ontologyJobsFile() { return path.join(process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx'), 'ontology-analysis-jobs.json'); }
 function publicJob(job: AnalysisJob): AnalysisJobData { const { controller: _controller, ...data } = job; return data; }
 function loadOntologyJobs(): Map<string, AnalysisJob> {
   try {

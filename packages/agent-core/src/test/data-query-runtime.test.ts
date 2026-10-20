@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { dataAgentToolJsonSchemas } from '@workmate/contracts';
+import { dataAgentToolJsonSchemas } from '@openclawx/contracts';
 import { createDataQueryTools, withDataQueryAccess, dataQueryInstructions } from '../data-query-runtime.js';
 import type { DataQueryExecutor } from '../data-query-runtime.js';
 import { prepareAgentscopeHostTools } from '../agentscope/host-tools.js';
@@ -68,7 +68,7 @@ test('MDA-T23: prompts are capability-scoped, delivery-neutral and isolated betw
   assert.equal(dataQueryInstructions([{name:'bash'},{name:'toString'}]), '');
   const ordinary = dataQueryInstructions([{name:'data_get_schema'},{name:'data_query'}]);
   assert.match(ordinary,/只读问数/);
-  assert.doesNotMatch(ordinary,/data_app_|workmateData|output\/index|npm|CDN|fetch/);
+  assert.doesNotMatch(ordinary,/data_app_|openclawxData|output\/index|npm|CDN|fetch/);
   const sqlOnly = dataQueryInstructions([{name:'data_app_register_sql'}]);
   assert.match(sqlOnly,/参数化SQL/); assert.doesNotMatch(sqlOnly,/data_app_propose_schema|只读问数|InnoDB|UNION|VARCHAR|npm|CDN/);
   const schemaOnly = dataQueryInstructions([{name:'data_app_propose_schema'}]);

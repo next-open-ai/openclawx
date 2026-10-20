@@ -1,6 +1,6 @@
 # 项目续聊与输入能力 · PC-V1
 
-范围：Workmate。沿用 ProjectService / ChangeSet / DAG / RunEngine，不新增聊天执行器，不修改其他子项目。
+范围：OpenClawX。沿用 ProjectService / ChangeSet / DAG / RunEngine，不新增聊天执行器，不修改其他子项目。
 
 ## 需求、任务、契约与测试
 
@@ -27,11 +27,11 @@
 
 #### PC-V1.1 实际证据 · 2026-10-10
 
-- `pnpm --filter @workmate/contracts build`、`pnpm --filter @workmate/orchestrator test`：通过，后者 70/70；新增 `project-continuation.test.ts` 用临时真实 TXT/Markdown 文件、JSON 落盘存储和可控 runner 验证 PC-T5；`run-text-position.test.ts` 验证 PC-T6 可选字段兼容、非法偏移拒绝、文本与思维 UTF-16 偏移准确。不是真实模型或 PDF 导出质量验收。
+- `pnpm --filter @openclawx/contracts build`、`pnpm --filter @openclawx/orchestrator test`：通过，后者 70/70；新增 `project-continuation.test.ts` 用临时真实 TXT/Markdown 文件、JSON 落盘存储和可控 runner 验证 PC-T5；`run-text-position.test.ts` 验证 PC-T6 可选字段兼容、非法偏移拒绝、文本与思维 UTF-16 偏移准确。不是真实模型或 PDF 导出质量验收。
 - PC-T5 首次暴露恢复执行清空当前对话，已修复；回归同时证明显式全量再次调度仍重跑上游并归档旧对话，而非改变其原有含义。
-- `pnpm --filter @workmate/api test` / `typecheck` / `build`：通过；37 通过、2 个既有外部数据库用例跳过。PC-T7 使用生产路由、真实 loopback HTTP/SSE、确定性 memory-echo 和临时 domain.json 验证执行前握手、即时事件及关闭后重新读取真实持久化消息。
-- `pnpm --filter @workmate/renderer typecheck` / `build`：通过。`node scripts/project-live-state-regression.mjs`：PC-T6/T7 通过，覆盖流式消息保留、旧卡片元数据不丢、较旧 checkpoint 不倒退、偏移去重/部分重叠/缺口等待、旧事件兼容、提交前缓冲和订阅清理。
-- `WORKMATE_BROWSER_CHANNEL=chrome WORKMATE_PLAYWRIGHT_MODULE=<本机已有 Playwright 路径> node scripts/project-composer-regression.mjs`：通过；原输入框场景之外新增合成麦克风实际 PCM 上传、本机 ASR 桩最终修订、手动填入草稿不启动 Agent、明确发送后才执行。未使用用户麦克风、浏览器资料、模型/ASR 密钥；不是实际供应商识别准确率验收。agent-browser CLI 不可用，按技能回退至已有 Playwright/独立 Chrome。
+- `pnpm --filter @openclawx/api test` / `typecheck` / `build`：通过；37 通过、2 个既有外部数据库用例跳过。PC-T7 使用生产路由、真实 loopback HTTP/SSE、确定性 memory-echo 和临时 domain.json 验证执行前握手、即时事件及关闭后重新读取真实持久化消息。
+- `pnpm --filter @openclawx/renderer typecheck` / `build`：通过。`node scripts/project-live-state-regression.mjs`：PC-T6/T7 通过，覆盖流式消息保留、旧卡片元数据不丢、较旧 checkpoint 不倒退、偏移去重/部分重叠/缺口等待、旧事件兼容、提交前缓冲和订阅清理。
+- `OPENCLAWX_BROWSER_CHANNEL=chrome OPENCLAWX_PLAYWRIGHT_MODULE=<本机已有 Playwright 路径> node scripts/project-composer-regression.mjs`：通过；原输入框场景之外新增合成麦克风实际 PCM 上传、本机 ASR 桩最终修订、手动填入草稿不启动 Agent、明确发送后才执行。未使用用户麦克风、浏览器资料、模型/ASR 密钥；不是实际供应商识别准确率验收。agent-browser CLI 不可用，按技能回退至已有 Playwright/独立 Chrome。
 - `pnpm concurrency:regression`、`git diff --check`：通过。构建保留既有混合导入/大 chunk 警告。未同步其他子项目，未迁移用户数据，未重跑现有项目。真实模型费用与模型选择尚未确认，因此真实模型和实际桌面整链验收未执行；独立只读项目问答仍属后续设计，不把现有级联调度称作已解决。
 
 ### PC-V1 首轮验证

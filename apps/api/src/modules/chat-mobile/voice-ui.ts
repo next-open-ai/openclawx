@@ -8,8 +8,8 @@ export const mobileVoiceStyle = String.raw`
 const phone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.4 1.8.6 2.8.7a2 2 0 0 1 1.8 2.1Z"/></svg>';
 export const mobileCallButton = `<button class="callButton" id="callButton" type="button" aria-label="实时语音通话" aria-expanded="false" aria-controls="callSheet" title="实时语音通话">${phone}</button>`;
 export const mobileCallSheet = `
-<section class="callSheet" id="callSheet" hidden role="dialog" aria-modal="true" aria-label="Workmate 实时语音通话">
-  <header class="callTop"><div class="callBrand">Workmate<small>实时语音 · 当前对话</small></div><time class="callTimer" id="callTimer">00:00</time><button class="callClose" id="callClose" type="button">返回聊天</button></header>
+<section class="callSheet" id="callSheet" hidden role="dialog" aria-modal="true" aria-label="OpenClawX 实时语音通话">
+  <header class="callTop"><div class="callBrand">OpenClawX<small>实时语音 · 当前对话</small></div><time class="callTimer" id="callTimer">00:00</time><button class="callClose" id="callClose" type="button">返回聊天</button></header>
   <div class="callHero"><div class="callOrb" id="callOrb">${phone}</div><p class="callState" id="callState" aria-live="polite">准备通话</p><div class="callWave" id="callWave" aria-hidden="true">${'<i></i>'.repeat(29)}</div><p class="callHint" id="callHint">可以聊天，也可以请数字员工开始工作</p></div>
   <div class="callError" id="callError" role="alert" hidden></div>
   <div class="callCaptions" id="callCaptions"><div class="callEmpty">像打电话一样，自然地说出你的想法。<br>双方字幕会显示在这里。</div></div>
@@ -55,7 +55,7 @@ function caption(role,text,done=false){
   if(!node){
     const empty=captions.querySelector('.callEmpty');empty?.remove();
     node=document.createElement('div');node.className='callCaption '+role;
-    const label=document.createElement('small');label.textContent=role==='user'?'你':'Workmate';
+    const label=document.createElement('small');label.textContent=role==='user'?'你':'OpenClawX';
     const content=document.createElement('div');node.append(label,content);captions.append(node);
     if(role==='user')question=node;else answer=node;
     while(captions.children.length>40)captions.firstElementChild.remove();

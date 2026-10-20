@@ -1,19 +1,19 @@
-# Workmate Embedding Provider 主案 v1
+# OpenClawX Embedding Provider 主案 v1
 
 > 状态：方案稿，**暂不落代码实现**  
 > 日期：2026-09-08  
-> 目标：把本地 Docker 部署的 embedding server 作为一个标准 provider 接入 `workmate`，让知识库、经验记忆与其他向量能力像选择现成模型供应商一样配置和使用。
+> 目标：把本地 Docker 部署的 embedding server 作为一个标准 provider 接入 `openclawx`，让知识库、经验记忆与其他向量能力像选择现成模型供应商一样配置和使用。
 
 ## 1. 结论先行
 
 主案是：
 
 1. 把本地 Docker embedding server 统一包装成 **OpenAI-compatible Embeddings Provider**；
-2. 在 `workmate` 中按“**provider instance + configured embedding model**”的方式注册；
+2. 在 `openclawx` 中按“**provider instance + configured embedding model**”的方式注册；
 3. 用 `activeEmbeddingModelId` 作为系统默认向量模型；
 4. 本地知识库、经验记忆等默认继承该模型；
 5. 仅在少数需要隔离的知识库上使用 embedding override；
-6. embedding server 作为独立容器部署，不并入 `workmate` 主 API。
+6. embedding server 作为独立容器部署，不并入 `openclawx` 主 API。
 
 一句话说，就是：
 
@@ -24,7 +24,7 @@
 
 ## 2. 为什么这个主案成立
 
-`workmate` 当前实现已经具备以下抽象：
+`openclawx` 当前实现已经具备以下抽象：
 
 - `providerInstances`
 - `models`
@@ -59,7 +59,7 @@ baseUrl + apiKey + embeddingModel
 - embedding provider 负责“文本 -> 向量”
 - 向量库 provider 负责“向量存储 / 检索 / 召回”
 
-`workmate` 应继续把 embedding 看成模型 provider，把 `lancedb` / `qdrant` / `pinecone` 看成知识库 provider。
+`openclawx` 应继续把 embedding 看成模型 provider，把 `lancedb` / `qdrant` / `pinecone` 看成知识库 provider。
 
 ### 3.3 默认继承优先，局部 override 只作例外
 
@@ -192,14 +192,14 @@ Content-Type: application/json
 ### 6.1 推荐拓扑
 
 ```text
-workmate-api
+openclawx-api
   -> embedding-server (Docker, HTTP)
   -> vector store (LanceDB / others)
 ```
 
 首版推荐：
 
-- `workmate` 主 API 独立
+- `openclawx` 主 API 独立
 - embedding server 独立容器
 - 向量库按现有知识库机制接入
 
@@ -219,15 +219,15 @@ workmate-api
 
 #### 单机开发
 
-`workmate`、embedding server、LanceDB 同机即可，追求最快验证。
+`openclawx`、embedding server、LanceDB 同机即可，追求最快验证。
 
 #### 单机增强
 
-`workmate` 与 embedding server 分容器。这是首版最推荐的生产形态。
+`openclawx` 与 embedding server 分容器。这是首版最推荐的生产形态。
 
 #### 团队内网
 
-embedding server 可独立部署在共享 GPU 节点，由多个 `workmate` 实例复用。
+embedding server 可独立部署在共享 GPU 节点，由多个 `openclawx` 实例复用。
 
 #### 后续演进
 
@@ -455,7 +455,7 @@ HTTP 状态码本身不够表达“模型不存在”“维度不匹配”“服
 
 ## 15. 最终建议
 
-如果要在 `workmate` 里把 embedding 能力产品化，最稳妥的路径不是新增一整套并行机制，而是：
+如果要在 `openclawx` 里把 embedding 能力产品化，最稳妥的路径不是新增一整套并行机制，而是：
 
 1. 复用现有 provider 抽象；
 2. 让本地 Docker embedding server 说标准 HTTP 协议；
@@ -463,4 +463,4 @@ HTTP 状态码本身不够表达“模型不存在”“维度不匹配”“服
 4. 用知识库 override 处理少数例外；
 5. 把索引重建和兼容性治理做成显式产品行为。
 
-这样做，后面不论你底层换成本地容器、云 embedding、统一网关还是 GPU 节点，`workmate` 的产品面和使用心智都不用推倒重来。
+这样做，后面不论你底层换成本地容器、云 embedding、统一网关还是 GPU 节点，`openclawx` 的产品面和使用心智都不用推倒重来。

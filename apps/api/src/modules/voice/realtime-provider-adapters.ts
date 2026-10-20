@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { VOICE_WORK_INSTRUCTIONS,VOICE_HISTORY_INSTRUCTIONS, VOICE_WORK_TOOLS } from './work-bridge.js';
-import type { RealtimeVoiceUsage } from '@workmate/contracts';
+import type { RealtimeVoiceUsage } from '@openclawx/contracts';
 import { VOICE_PLAYBACK_TOOLS, VOICE_PLAYBACK_INSTRUCTIONS } from './playback-control.js';
 
 export type RealtimeProviderId = 'volcengine' | 'qwen';
@@ -151,7 +151,7 @@ const qwen: RealtimeProviderAdapter = {
   audioEvent: (audio) => ({ type: 'input_audio_buffer.append', event_id: id(), audio }),
   commitEvent: () => ({ type: 'input_audio_buffer.commit', event_id: id() }),
   interruptEvent: () => ({ type: 'response.cancel', event_id: id() }),
-  // Muting is enforced by Workmate's local audio pump. Qwen has no matching mute control event.
+  // Muting is enforced by OpenClawX's local audio pump. Qwen has no matching mute control event.
   muteEvent: () => null,
   textEvents: (text) => [
     { type: 'conversation.item.create', event_id: id(), item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] } },

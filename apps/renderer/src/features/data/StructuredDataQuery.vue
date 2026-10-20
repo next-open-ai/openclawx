@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { structuredDataQuerySchema, type DataQueryPredicate, type StructuredDataQuery, type StructuredDataQueryResult } from '@workmate/contracts';
+import { structuredDataQuerySchema, type DataQueryPredicate, type StructuredDataQuery, type StructuredDataQueryResult } from '@openclawx/contracts';
 import type { DataSource, DataTable } from '../../services/api';
 import { liveDataRequest } from '../../services/live-data';
 

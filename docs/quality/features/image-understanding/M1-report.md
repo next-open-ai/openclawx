@@ -4,11 +4,11 @@
 
 | 验证 | 命令/方式 | 结果 |
 | --- | --- | --- |
-| 公共契约 | `pnpm --filter @workmate/contracts build` | 通过 |
-| Agent Core | `pnpm --filter @workmate/agent-core test` | 108/108通过，含 VIS-T1/T2 |
-| Orchestrator | `pnpm --filter @workmate/orchestrator test` | 41/41通过，含原图跨摘要保留 |
-| API | `pnpm --filter @workmate/api typecheck`、`build` | 通过 |
-| Renderer | `pnpm --filter @workmate/renderer typecheck`、`build` | 通过；现有大 chunk/动态导入构建警告仍在 |
+| 公共契约 | `pnpm --filter @openclawx/contracts build` | 通过 |
+| Agent Core | `pnpm --filter @openclawx/agent-core test` | 108/108通过，含 VIS-T1/T2 |
+| Orchestrator | `pnpm --filter @openclawx/orchestrator test` | 41/41通过，含原图跨摘要保留 |
+| API | `pnpm --filter @openclawx/api typecheck`、`build` | 通过 |
+| Renderer | `pnpm --filter @openclawx/renderer typecheck`、`build` | 通过；现有大 chunk/动态导入构建警告仍在 |
 | 文档站 | `pnpm docs:build` | 通过，新增规格/指南/测试报告可构建 |
 | VIS-T3 完整 HTTP 闭环 | `node scripts/vision-chat-regression.mjs` | 通过 |
 | 隔离界面 | `VISION_UI=1 node scripts/vision-chat-regression.mjs` + 内置浏览器 | 登录临时账号、上传图片、缩略图、发送、追问、关闭视觉开关和禁用提示通过 |

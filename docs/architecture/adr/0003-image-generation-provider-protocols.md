@@ -32,7 +32,7 @@
 ## 约束
 
 1. 模型 HTTP 仅位于 `packages/agent-core`；
-2. 协议公共枚举位于 `@workmate/contracts`；
+2. 协议公共枚举位于 `@openclawx/contracts`；
 3. 404 必须报告状态码、方法和脱敏请求 URL，不得解释为提示词错误；
 4. 异步协议必须有总 deadline、终态判断和稳定 Task ID；
 5. Provider 返回的临时 URL 必须作为可追踪结果，后续资产持久化任务负责及时归档；

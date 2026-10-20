@@ -79,7 +79,7 @@ export function remediationForCheck(check: EnvCheckItem, report: EnvCheckReport 
       if (kind.os === 'macos') {
         return {
           summary: '安装或升级到 Node 22 LTS。',
-          steps: ['安装 Node 22 后重启 Workmate。', '确认 `node -v` 与 `npx --version` 都可用。'],
+          steps: ['安装 Node 22 后重启 OpenClawX。', '确认 `node -v` 与 `npx --version` 都可用。'],
           script: joinScript(['brew install node@22', 'brew link --overwrite node@22']),
         };
       }
@@ -104,7 +104,7 @@ export function remediationForCheck(check: EnvCheckItem, report: EnvCheckReport 
       if (kind.os === 'macos') {
         return {
           summary: '安装系统 Python 3.9+（推荐 3.12，匹配脚本与 AgentScope）并确保在 PATH 中；也可依赖预装 runtime。',
-          steps: ['可点「尝试安装 Python 3.12」由本机包管理器安装。', '安装完成后执行 `python3 --version` 验证并重启 Workmate。'],
+          steps: ['可点「尝试安装 Python 3.12」由本机包管理器安装。', '安装完成后执行 `python3 --version` 验证并重启 OpenClawX。'],
           script: 'brew install python@3.12',
           actionId: kind.docker ? undefined : 'install-python',
           canAutoFix: !kind.docker,
@@ -113,7 +113,7 @@ export function remediationForCheck(check: EnvCheckItem, report: EnvCheckReport 
       if (kind.os === 'windows') {
         return {
           summary: '安装系统 Python 3.9+（推荐 3.12）并加入 PATH；也可依赖预装 runtime。',
-          steps: ['可点「尝试安装 Python 3.12」使用 winget。', '安装后重新打开终端，再重启 Workmate。'],
+          steps: ['可点「尝试安装 Python 3.12」使用 winget。', '安装后重新打开终端，再重启 OpenClawX。'],
           script: 'winget install -e --id Python.Python.3.12 --accept-package-agreements --accept-source-agreements',
           actionId: kind.docker ? undefined : 'install-python',
           canAutoFix: !kind.docker,
@@ -200,7 +200,7 @@ export function remediationForCheck(check: EnvCheckItem, report: EnvCheckReport 
           : '需要准备 Python 3.10+，并让 AgentScope runtime 可用。',
         steps: [
           '若项目自带 `runtimes/agentscope-runtime/.venv`，优先使用内置 runtime。',
-          'Web/桌面可点「一键修复」执行 `workmate init` 等价逻辑。',
+          'Web/桌面可点「一键修复」执行 `openclawx init` 等价逻辑。',
           'Docker 建议把 venv 烘焙进镜像，而不是只在运行中临时安装。',
           ...dockerHint(kind),
         ],
@@ -211,7 +211,7 @@ export function remediationForCheck(check: EnvCheckItem, report: EnvCheckReport 
               'runtimes/agentscope-runtime/.venv/bin/python3 -m pip install --upgrade pip',
               'runtimes/agentscope-runtime/.venv/bin/python3 -m pip install -r runtimes/agentscope-runtime/requirements.txt',
             ])
-          : joinScript(['pnpm workmate:init', '# 如需强制重装 runtime', 'node bin/workmate.mjs init --reinstall']),
+          : joinScript(['pnpm openclawx:init', '# 如需强制重装 runtime', 'node bin/openclawx.mjs init --reinstall']),
         dockerSnippet: joinScript([
           'RUN python3 -m venv --copies runtimes/agentscope-runtime/.venv \\',
           '  && runtimes/agentscope-runtime/.venv/bin/python3 -m pip install --upgrade pip \\',
@@ -262,12 +262,12 @@ export function remediationForCheck(check: EnvCheckItem, report: EnvCheckReport 
     case 'storage': {
       const dataPath = check.found.includes('/') || check.found.includes('\\')
         ? check.found
-        : kind.os === 'windows' ? '%USERPROFILE%\\.workmate' : '~/.workmate';
+        : kind.os === 'windows' ? '%USERPROFILE%\\.openclawx' : '~/.openclawx';
       return {
         summary: kind.docker ? '数据目录不可写，需要修正卷挂载或容器用户权限。' : '需要修正本地数据目录权限或磁盘状态。',
         steps: kind.docker
           ? [
-              '确认 `WORKMATE_DATA_DIR` 指向的目录已挂载且容器用户可写。',
+              '确认 `OPENCLAWX_DATA_DIR` 指向的目录已挂载且容器用户可写。',
               '若使用 bind mount，检查宿主目录属主和权限。',
               '可先尝试一键修复创建目录；若仍失败，请检查 Compose 挂载。',
               '重新启动容器后再执行环境检查。',
@@ -278,25 +278,25 @@ export function remediationForCheck(check: EnvCheckItem, report: EnvCheckReport 
               '修正后重新执行环境检查。',
             ],
         script: kind.os === 'windows'
-          ? 'mkdir %USERPROFILE%\\.workmate'
+          ? 'mkdir %USERPROFILE%\\.openclawx'
           : `mkdir -p "${dataPath}"\nchmod 700 "${dataPath}"`,
         composeSnippet: joinScript([
           'services:',
-          '  workmate:',
-          '    image: workmate:cn',
+          '  openclawx:',
+          '    image: openclawx:cn',
           '    ports:',
           '      - "47832:47832"',
           '    environment:',
-          '      WORKMATE_DATA_DIR: /opt/workmate-data',
+          '      OPENCLAWX_DATA_DIR: /opt/openclawx-data',
           '    volumes:',
-          '      - workmate-data:/opt/workmate-data',
+          '      - openclawx-data:/opt/openclawx-data',
           '',
           'volumes:',
-          '  workmate-data:',
+          '  openclawx-data:',
         ]),
         logic: kind.docker
           ? ['Docker 建议显式挂载数据卷，并确保容器进程用户对挂载点可写。一键修复只会在当前容器文件系统内尝试 mkdir。']
-          : ['一键修复会创建 WORKMATE_DATA_DIR（默认 ~/.workmate）并设置 0700。'],
+          : ['一键修复会创建 OPENCLAWX_DATA_DIR（默认 ~/.openclawx）并设置 0700。'],
         actionId: 'fix-storage',
         canAutoFix: true,
       };
@@ -327,7 +327,7 @@ export function remediationForCheck(check: EnvCheckItem, report: EnvCheckReport 
     case 'electron':
       return {
         summary: 'Electron 桌面壳异常。',
-        steps: ['请重新安装桌面版 Workmate。', 'Web/Docker 形态不依赖 Electron。'],
+        steps: ['请重新安装桌面版 OpenClawX。', 'Web/Docker 形态不依赖 Electron。'],
       };
 
     default:
@@ -359,7 +359,7 @@ export function buildRemediationPack(report: EnvCheckReport | null): EnvRemediat
   const hostLines = [
     '#!/usr/bin/env bash',
     'set -euo pipefail',
-    `# Workmate environment remediation pack (${report.platform})`,
+    `# OpenClawX environment remediation pack (${report.platform})`,
     '',
   ];
   for (const plan of plans) {
@@ -370,7 +370,7 @@ export function buildRemediationPack(report: EnvCheckReport | null): EnvRemediat
   }
 
   const dockerLines = [
-    '# Workmate Dockerfile remediation fragments',
+    '# OpenClawX Dockerfile remediation fragments',
     '# Merge these RUN/FROM lines into your image build as needed.',
     '',
   ];
@@ -390,17 +390,17 @@ export function buildRemediationPack(report: EnvCheckReport | null): EnvRemediat
   const compose = plans.find((item) => item.composeSnippet)?.composeSnippet
     || joinScript([
       'services:',
-      '  workmate:',
-      '    image: workmate:cn',
+      '  openclawx:',
+      '    image: openclawx:cn',
       '    ports:',
       '      - "47832:47832"',
       '    environment:',
-      '      WORKMATE_DATA_DIR: /opt/workmate-data',
+      '      OPENCLAWX_DATA_DIR: /opt/openclawx-data',
       '    volumes:',
-      '      - workmate-data:/opt/workmate-data',
+      '      - openclawx-data:/opt/openclawx-data',
       '',
       'volumes:',
-      '  workmate-data:',
+      '  openclawx-data:',
     ]);
 
   // Exclude heavy optional installs (dsh) from batch "fix all".

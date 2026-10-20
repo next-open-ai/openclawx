@@ -2,7 +2,7 @@ import { createHash, createHmac } from 'node:crypto';
 import http from 'node:http';
 import https from 'node:https';
 import { setTimeout as delay } from 'node:timers/promises';
-import type { ModelCapabilityRuntime } from '@workmate/contracts';
+import type { ModelCapabilityRuntime } from '@openclawx/contracts';
 import { speechFetch as fetch, SpeechNetworkError } from './speech-http.js';
 
 type Report = (summary: string, progress?: number) => void;
@@ -16,7 +16,7 @@ function multipartToken(value: string) {
 /** Compatibility transport for OSS hosts on which Node fetch/undici resets TLS.
  * It is used only for temporary object upload, never for paid ASR submission. */
 async function uploadMultipartWithNode(input: MultipartUploadInput): Promise<Response> {
-  const boundary = `----workmate-${crypto.randomUUID()}`;
+  const boundary = `----openclawx-${crypto.randomUUID()}`;
   const parts: Buffer[] = [];
   for (const [name, value] of Object.entries(input.fields)) {
     parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${multipartToken(name)}"\r\n\r\n${value}\r\n`, 'utf8'));
@@ -193,7 +193,7 @@ export async function transcribeVolcengine(input: { config: ModelCapabilityRunti
       'X-Api-Request-Id': requestId,
       'X-Api-Sequence': '-1',
     },
-    body: JSON.stringify({ user: { uid: input.config.appId || 'workmate' }, audio: { data: Buffer.from(input.bytes).toString('base64') }, request: { model_name: 'bigmodel' } }),
+    body: JSON.stringify({ user: { uid: input.config.appId || 'openclawx' }, audio: { data: Buffer.from(input.bytes).toString('base64') }, request: { model_name: 'bigmodel' } }),
   });
   const data = await checkedJson(response, 'Volcengine ASR request failed');
   const status = response.headers.get('x-api-status-code');
@@ -254,7 +254,7 @@ export async function synthesizeVolcengine(input: { config: ModelCapabilityRunti
   const data = await checkedJson(await fetch(url, {
     method: 'POST', signal: input.signal,
     headers: { Authorization: `Bearer;${input.config.apiKey}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ app: { appid: input.config.appId, token: input.config.apiKey, cluster: 'volcano_tts' }, user: { uid: 'workmate' }, audio: { voice_type: input.voice, encoding: input.format === 'opus' ? 'ogg_opus' : input.format, speed_ratio: input.speed || 1 }, request: { reqid: crypto.randomUUID(), text: input.text, text_type: 'plain', operation: 'query' } }),
+    body: JSON.stringify({ app: { appid: input.config.appId, token: input.config.apiKey, cluster: 'volcano_tts' }, user: { uid: 'openclawx' }, audio: { voice_type: input.voice, encoding: input.format === 'opus' ? 'ogg_opus' : input.format, speed_ratio: input.speed || 1 }, request: { reqid: crypto.randomUUID(), text: input.text, text_type: 'plain', operation: 'query' } }),
   }), 'Volcengine TTS request failed');
   if (Number(data.code ?? 0) !== 3000 && Number(data.code ?? 0) !== 0) throw new Error(`Volcengine TTS failed: ${String(data.code)} ${String(data.message || '')}`.trim());
   const audio = String(data.data || data.audio || '');

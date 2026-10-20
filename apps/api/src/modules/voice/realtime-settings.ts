@@ -1,11 +1,11 @@
 import { readRealtimeVoiceSettings as readLegacySettings } from './legacy-settings.js';
 import { readSettingsFile, writeSettingsFile } from './settings-files.js';
-import { resolveProviderServiceEndpoint } from '@workmate/contracts';
+import { resolveProviderServiceEndpoint } from '@openclawx/contracts';
 import { getSecrets } from '../orchestration/secrets.js';
 
 export const DEFAULT_REALTIME_VOICE_MODEL = '1.2.6.1';
 export const DEFAULT_REALTIME_VOICE_ID = 'zh_female_vv_jupiter_bigtts';
-export const DEFAULT_REALTIME_VOICE_INSTRUCTIONS = '你是 Workmate 的实时语音助手。使用简洁自然的中文交流，不要声称执行了尚未执行的业务操作。';
+export const DEFAULT_REALTIME_VOICE_INSTRUCTIONS = '你是 OpenClawX 的实时语音助手。使用简洁自然的中文交流，不要声称执行了尚未执行的业务操作。';
 export type RealtimeConversationSettings = {
   enabled: boolean; workLinkEnabled: boolean; audioGateEnabled: boolean; apiKey: string;
   model: string; voice: string; instructions: string; enableProactiveSpeak: boolean;
@@ -61,7 +61,7 @@ export function resolveProviderRealtimeVoice(): ProviderVoiceRuntime | null {
 }
 export function resolveRealtimeKey(value = readRealtimeConversationSettings()) {
   const provider = resolveProviderRealtimeVoice();
-  return (provider?.provider === 'volcengine' ? process.env.WORKMATE_VOLCENGINE_REALTIME_API_KEY?.trim() : '') || provider?.apiKey || process.env.WORKMATE_VOLCENGINE_REALTIME_API_KEY?.trim() || value.apiKey;
+  return (provider?.provider === 'volcengine' ? process.env.OPENCLAWX_VOLCENGINE_REALTIME_API_KEY?.trim() : '') || provider?.apiKey || process.env.OPENCLAWX_VOLCENGINE_REALTIME_API_KEY?.trim() || value.apiKey;
 }
 export function resolveRealtimeRuntime(value = readRealtimeConversationSettings()) {
   const provider = resolveProviderRealtimeVoice();
@@ -70,7 +70,7 @@ export function resolveRealtimeRuntime(value = readRealtimeConversationSettings(
     provider: provider?.provider || 'volcengine' as const,
     model: provider?.model || value.model,
     voice: provider?.voice || value.voice,
-    endpoint: (provider?.provider === 'volcengine' ? process.env.WORKMATE_VOLCENGINE_REALTIME_URL?.trim() : '') || provider?.endpoint || process.env.WORKMATE_VOLCENGINE_REALTIME_URL?.trim() || 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue',
+    endpoint: (provider?.provider === 'volcengine' ? process.env.OPENCLAWX_VOLCENGINE_REALTIME_URL?.trim() : '') || provider?.endpoint || process.env.OPENCLAWX_VOLCENGINE_REALTIME_URL?.trim() || 'wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue',
     providerName: provider?.providerName || '旧版语音配置',
     source: provider ? 'provider' as const : 'legacy' as const,
   };
@@ -78,7 +78,7 @@ export function resolveRealtimeRuntime(value = readRealtimeConversationSettings(
 export function publicRealtimeConversationSettings(value = readRealtimeConversationSettings()) {
   const key = resolveRealtimeKey(value);
   const runtime = resolveRealtimeRuntime(value);
-  return { ...value, model: runtime.model, voice: runtime.voice, apiKey: undefined, configured: Boolean(key), apiKeyMasked: key ? `••••••••${key.slice(-4)}` : '', apiKeySource: process.env.WORKMATE_VOLCENGINE_REALTIME_API_KEY?.trim() ? 'environment' : runtime.source, providerName: runtime.providerName, audioGateEnabled: false };
+  return { ...value, model: runtime.model, voice: runtime.voice, apiKey: undefined, configured: Boolean(key), apiKeyMasked: key ? `••••••••${key.slice(-4)}` : '', apiKeySource: process.env.OPENCLAWX_VOLCENGINE_REALTIME_API_KEY?.trim() ? 'environment' : runtime.source, providerName: runtime.providerName, audioGateEnabled: false };
 }
 /** One-time desktop migration source. The authenticated admin immediately moves this secret into safeStorage. */
 export function legacyRealtimeMigrationSource(value = readRealtimeConversationSettings()) {

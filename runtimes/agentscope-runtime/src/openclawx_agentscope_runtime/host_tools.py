@@ -76,7 +76,7 @@ class WorkspaceNativeTool(ToolBase):
     async def check_permissions(self, tool_input: dict[str, Any], context: PermissionContext) -> PermissionDecision:
         if not self.is_read_only and self.workspace_access == "read":
             return PermissionDecision(behavior=PermissionBehavior.DENY, message="Workspace write is not permitted for this run.")
-        return PermissionDecision(behavior=PermissionBehavior.ALLOW, message=f"Workmate workspace policy allows `{self.name}`.")
+        return PermissionDecision(behavior=PermissionBehavior.ALLOW, message=f"OpenClawX workspace policy allows `{self.name}`.")
 
     async def call(self, **kwargs: Any) -> ToolChunk:
         try:
@@ -171,7 +171,7 @@ def build_host_toolkit(
     tools = [
         HostExternalTool(
             name="host_ping",
-            description="Health/echo tool executed by the Workmate host. Use to verify host tool bridge.",
+            description="Health/echo tool executed by the OpenClawX host. Use to verify host tool bridge.",
             input_schema={
                 "type": "object",
                 "properties": {"message": {"type": "string", "description": "Optional message to echo"}},

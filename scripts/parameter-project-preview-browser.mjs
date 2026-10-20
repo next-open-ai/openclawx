@@ -28,7 +28,7 @@ const bundle=await build({bundle:true,write:false,platform:'browser',format:'esm
   stdin:{loader:'js',resolveDir:process.cwd(),contents:`import {createApp} from 'vue';import Entry from './apps/renderer/src/features/projects/ProjectPreviewEntry.vue';localStorage.setItem('auth.session.token','synthetic-preview-session');createApp(Entry,{projectId:new URLSearchParams(location.search).has('report')?'report-p':new URLSearchParams(location.search).has('static')?'static-p':'parameter-p',projectName:'技能参数界面',running:false,canWrite:true}).mount('#app');`},
   plugins:[{name:'preview-fixture',setup(builder){
     builder.onResolve({filter:/^vue$/},()=>({path:vueRequire.resolve('vue/dist/vue.esm-bundler.js')}));
-    builder.onResolve({filter:/^@workmate\/contracts$/},()=>({path:path.resolve('packages/contracts/dist/index.js')}));
+    builder.onResolve({filter:/^@openclawx\/contracts$/},()=>({path:path.resolve('packages/contracts/dist/index.js')}));
     builder.onLoad({filter:/\.vue$/},args=>{
       const {descriptor}=parse(fs.readFileSync(args.path,'utf8'),{filename:args.path});
       const id=createHash('sha256').update(args.path).digest('hex').slice(0,8),scoped=descriptor.styles.some(x=>x.scoped);
@@ -59,8 +59,8 @@ const server=createServer((req,res)=>{
   res.setHeader('content-type','text/html');res.end('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"><style>:root{--surface:#fff;--surface-muted:#f1f3f8;--text:#202637;--muted:#65708a;--border:#dce2ee;--accent:#4665df}body{padding:24px;font-family:system-ui}dialog::backdrop{background:#0005}</style><div id="app"></div><script type="module" src="/bundle.js"></script></html>');
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-const playwright=createRequire(import.meta.url)(process.env.WORKMATE_PLAYWRIGHT_MODULE||'playwright');
-const browser=await playwright.chromium.launch({channel:process.env.WORKMATE_BROWSER_CHANNEL||'chrome',headless:true});
+const playwright=createRequire(import.meta.url)(process.env.OPENCLAWX_PLAYWRIGHT_MODULE||'playwright');
+const browser=await playwright.chromium.launch({channel:process.env.OPENCLAWX_BROWSER_CHANNEL||'chrome',headless:true});
 try{
   const page=await browser.newPage({viewport:{width:1280,height:850}});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -86,10 +86,10 @@ try{
   denied=false;await page.getByRole('button',{name:'重新加载最新成果'}).click();
   frame=page.locator('iframe').contentFrame();await frame.getByText('PDF 报告生成',{exact:true}).waitFor();
   await frame.getByRole('heading',{name:'技能参数 3'}).waitFor();
-  await page.screenshot({path:'/tmp/workmate-parameter-project-preview-desktop.png'});
+  await page.screenshot({path:'/tmp/openclawx-parameter-project-preview-desktop.png'});
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-  await page.screenshot({path:'/tmp/workmate-parameter-project-preview-mobile.png'});
+  await page.screenshot({path:'/tmp/openclawx-parameter-project-preview-mobile.png'});
   await page.getByRole('button',{name:'关闭',exact:true}).click();assert.equal(await page.locator('iframe').count(),0);
   await page.goto(`http://127.0.0.1:${server.address().port}/?static`);
   await page.getByRole('button',{name:'预览与发布',exact:true}).waitFor();

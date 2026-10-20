@@ -5,15 +5,15 @@ import { mkdtempSync, readFileSync, rmSync, mkdirSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import Fastify from 'fastify';
-import { Orchestrator } from '@workmate/orchestrator';
+import { Orchestrator } from '@openclawx/orchestrator';
 import { registerProjectInstructionRoutes } from './project-instructions.js';
 import { orchestrationRoutes, getOrchestrator, closeOrchestrator } from './routes.js';
 import { workspaceRoutes } from '../workspace/routes.js';
 
 test('LP-T1: authenticated conversation creation is private, empty, strict and never calls a model', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'workmate-lp-api-'));
-  const saved = { data: process.env.WORKMATE_DATA_DIR, runner: process.env.WORKMATE_ORCH_RUNNER };
-  process.env.WORKMATE_DATA_DIR = root; process.env.WORKMATE_ORCH_RUNNER = 'memory-echo';
+  const root = mkdtempSync(path.join(tmpdir(), 'openclawx-lp-api-'));
+  const saved = { data: process.env.OPENCLAWX_DATA_DIR, runner: process.env.OPENCLAWX_ORCH_RUNNER };
+  process.env.OPENCLAWX_DATA_DIR = root; process.env.OPENCLAWX_ORCH_RUNNER = 'memory-echo';
   const app = Fastify();
   app.addHook('preHandler', async request => { request.auth = { userId: String(request.headers['x-user'] || 'alice'), orgId: 'org', role: 'member', username: 'test', displayName: 'test', sessionId: 'mock' }; });
   await app.register(orchestrationRoutes, { prefix: '/api/orch' });
@@ -64,15 +64,15 @@ test('LP-T1: authenticated conversation creation is private, empty, strict and n
     assert.deepEqual(await getOrchestrator().engine.listRuns(), []);
   } finally {
     await app.close(); await closeOrchestrator();
-    if (saved.data === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = saved.data;
-    if (saved.runner === undefined) delete process.env.WORKMATE_ORCH_RUNNER; else process.env.WORKMATE_ORCH_RUNNER = saved.runner;
+    if (saved.data === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = saved.data;
+    if (saved.runner === undefined) delete process.env.OPENCLAWX_ORCH_RUNNER; else process.env.OPENCLAWX_ORCH_RUNNER = saved.runner;
     rmSync(root, { recursive: true, force: true });
   }
 });
 
 test('PC-T4: project documents are scoped, validated and materialized before follow-up', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'workmate-pc-'));
-  const saved = process.env.WORKMATE_DATA_DIR; process.env.WORKMATE_DATA_DIR = root;
+  const root = mkdtempSync(path.join(tmpdir(), 'openclawx-pc-'));
+  const saved = process.env.OPENCLAWX_DATA_DIR; process.env.OPENCLAWX_DATA_DIR = root;
   const orch = Orchestrator.memory(); const app = Fastify();
   app.addContentTypeParser('application/octet-stream', { parseAs: 'buffer' }, (_request, body, done) => done(null, body));
   app.addHook('preHandler', async request => { request.auth = { userId: String(request.headers['x-user'] || 'alice'), orgId: 'org', role: 'member', username: 'test', displayName: 'test', sessionId: 'mock' }; });
@@ -80,7 +80,7 @@ test('PC-T4: project documents are scoped, validated and materialized before fol
   const workspace = path.join(root, 'custom-project'); mkdirSync(workspace);
   const project = await orch.projects.createDraft({ goal: '分析', orgId: 'org', ownerUserId: 'alice', accessScope: 'private', workspacePath: workspace, mode: 'dag', tasks: [{ title: '分析', employeeId: 'general', objective: '分析材料', skillIds: [] }] });
   const base = `/projects/${project.id}`; const requestId = randomUUID();
-  const upload = (user = 'alice', id: string = requestId) => app.inject({ method: 'POST', url: `${base}/uploads/${id}`, headers: { 'content-type': 'application/octet-stream', 'x-workmate-file-name': encodeURIComponent('九月收入.txt'), 'x-user': user }, payload: Buffer.from('九月收入：150000元') });
+  const upload = (user = 'alice', id: string = requestId) => app.inject({ method: 'POST', url: `${base}/uploads/${id}`, headers: { 'content-type': 'application/octet-stream', 'x-openclawx-file-name': encodeURIComponent('九月收入.txt'), 'x-user': user }, payload: Buffer.from('九月收入：150000元') });
   const send = (payload: object, user = 'alice') => app.inject({ method: 'POST', url: `${base}/instructions`, headers: { 'x-user': user }, payload });
   const waitDone = async () => { for (let i = 0; i < 100; i++) { if ((await orch.projects.getProject(project.id))?.status !== 'running') return; await new Promise(resolve => setTimeout(resolve, 20)); } throw Error('project did not settle'); };
   try {
@@ -107,17 +107,17 @@ test('PC-T4: project documents are scoped, validated and materialized before fol
     assert.equal(text.statusCode, 200, text.body); await waitDone();
     assert.equal((await orch.projects.getProject(project.id))!.workspacePath, workspace);
     const isolated = await orch.projects.createDraft({ goal: '隔离应用', orgId: 'org', ownerUserId: 'alice', accessScope: 'private', workspacePath: workspace, executionWorkspaceMode: 'isolated', mode: 'dag', tasks: [{ title: '应用', employeeId: 'general', objective: '创建应用', skillIds: [] }] });
-    const isolatedUpload = await app.inject({ method: 'POST', url: `/projects/${isolated.id}/uploads/${requestId}`, headers: { 'content-type': 'application/octet-stream', 'x-workmate-file-name': 'input.txt' }, payload: Buffer.from('reference') });
+    const isolatedUpload = await app.inject({ method: 'POST', url: `/projects/${isolated.id}/uploads/${requestId}`, headers: { 'content-type': 'application/octet-stream', 'x-openclawx-file-name': 'input.txt' }, payload: Buffer.from('reference') });
     assert.equal(isolatedUpload.statusCode, 400, isolatedUpload.body);
     const isolatedSend = await app.inject({ method: 'POST', url: `/projects/${isolated.id}/instructions`, payload: input });
     assert.equal(isolatedSend.statusCode, 400, isolatedSend.body);
-  } finally { await app.close(); await orch.close(); if (saved === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = saved; rmSync(root, { recursive: true, force: true }); }
+  } finally { await app.close(); await orch.close(); if (saved === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = saved; rmSync(root, { recursive: true, force: true }); }
 });
 
 test('PC-T7: production SSE is ready before admission and persists immediate task output', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'workmate-project-sse-'));
-  const saved = { data: process.env.WORKMATE_DATA_DIR, runner: process.env.WORKMATE_ORCH_RUNNER, delay: process.env.WORKMATE_ORCH_RUNNER_DELAY_MS };
-  process.env.WORKMATE_DATA_DIR = root; process.env.WORKMATE_ORCH_RUNNER = 'memory-echo'; process.env.WORKMATE_ORCH_RUNNER_DELAY_MS = '0';
+  const root = mkdtempSync(path.join(tmpdir(), 'openclawx-project-sse-'));
+  const saved = { data: process.env.OPENCLAWX_DATA_DIR, runner: process.env.OPENCLAWX_ORCH_RUNNER, delay: process.env.OPENCLAWX_ORCH_RUNNER_DELAY_MS };
+  process.env.OPENCLAWX_DATA_DIR = root; process.env.OPENCLAWX_ORCH_RUNNER = 'memory-echo'; process.env.OPENCLAWX_ORCH_RUNNER_DELAY_MS = '0';
   const app = Fastify(); const controller = new AbortController();
   app.addHook('preHandler', async request => { request.auth = { userId: 'alice', orgId: 'org', role: 'member', username: 'test', displayName: 'test', sessionId: 'mock' }; });
   await app.register(orchestrationRoutes, { prefix: '/api/orch' });
@@ -153,9 +153,9 @@ test('PC-T7: production SSE is ready before admission and persists immediate tas
     assert.deepEqual((await rebooted.projects.getProject(project.id))?.messages, done.messages);
   } finally {
     controller.abort(); await reader?.cancel().catch(() => {}); await app.close(); await closeOrchestrator();
-    if (saved.data === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = saved.data;
-    if (saved.runner === undefined) delete process.env.WORKMATE_ORCH_RUNNER; else process.env.WORKMATE_ORCH_RUNNER = saved.runner;
-    if (saved.delay === undefined) delete process.env.WORKMATE_ORCH_RUNNER_DELAY_MS; else process.env.WORKMATE_ORCH_RUNNER_DELAY_MS = saved.delay;
+    if (saved.data === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = saved.data;
+    if (saved.runner === undefined) delete process.env.OPENCLAWX_ORCH_RUNNER; else process.env.OPENCLAWX_ORCH_RUNNER = saved.runner;
+    if (saved.delay === undefined) delete process.env.OPENCLAWX_ORCH_RUNNER_DELAY_MS; else process.env.OPENCLAWX_ORCH_RUNNER_DELAY_MS = saved.delay;
     rmSync(root, { recursive: true, force: true });
   }
 });

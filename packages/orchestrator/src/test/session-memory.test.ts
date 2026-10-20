@@ -66,7 +66,7 @@ test('buildSessionModelMessages injects summary pair + uncovered only', () => {
   );
   const modelMessages = buildSessionModelMessages(session);
   assert.equal(modelMessages[0]?.role, 'user');
-  assert.match(modelMessages[0]?.content || '', /Workmate context summary/);
+  assert.match(modelMessages[0]?.content || '', /OpenClawX context summary/);
   assert.match(modelMessages[0]?.content || '', /Prior goals/);
   assert.equal(modelMessages[1]?.role, 'assistant');
   assert.deepEqual(

@@ -4,7 +4,7 @@
  * gateway core and orchestration runtime stay transport-independent.
  *
  * Reference: openclawx gateway/channel layout (UnifiedMessage / IChannel /
- * StreamSink) — re-implemented here per Workmate constraints.
+ * StreamSink) — re-implemented here per OpenClawX constraints.
  */
 
 /** Optional attachment carried by an IM message. */

@@ -28,28 +28,28 @@ function requiredFile(value: string | undefined, label: string) {
 
 function validPort(value: string | undefined, fallback: number) {
   const port = value?.trim() ? Number(value) : fallback;
-  if (!Number.isInteger(port) || port < 1 || port > 65_535) throw new Error('WORKMATE_MOBILE_HTTPS_PORT 必须是 1–65535 的端口。');
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) throw new Error('OPENCLAWX_MOBILE_HTTPS_PORT 必须是 1–65535 的端口。');
   return port;
 }
 
 export function resolveMobileHttpsProxyConfig(env: NodeJS.ProcessEnv = process.env): MobileHttpsProxyConfig | null {
-  if (env.WORKMATE_MOBILE_HTTPS_ENABLED !== '1') return null;
+  if (env.OPENCLAWX_MOBILE_HTTPS_ENABLED !== '1') return null;
   const lanHosts = Object.values(os.networkInterfaces()).flatMap(entries => entries || [])
     .filter(entry => !entry.internal && (String(entry.family) === 'IPv4' || String(entry.family) === '4'))
     .map(entry => entry.address);
-  const port = validPort(env.WORKMATE_MOBILE_HTTPS_PORT, 47843);
-  const publicOrigin = String(env.WORKMATE_MOBILE_PUBLIC_ORIGIN || `https://${lanHosts[0] || '127.0.0.1'}:${port}`).trim();
+  const port = validPort(env.OPENCLAWX_MOBILE_HTTPS_PORT, 47843);
+  const publicOrigin = String(env.OPENCLAWX_MOBILE_PUBLIC_ORIGIN || `https://${lanHosts[0] || '127.0.0.1'}:${port}`).trim();
   let origin: URL;
-  try { origin = new URL(publicOrigin); } catch { throw new Error('启用手机 HTTPS 时必须配置有效的 WORKMATE_MOBILE_PUBLIC_ORIGIN。'); }
+  try { origin = new URL(publicOrigin); } catch { throw new Error('启用手机 HTTPS 时必须配置有效的 OPENCLAWX_MOBILE_PUBLIC_ORIGIN。'); }
   if (origin.protocol !== 'https:' || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) {
-    throw new Error('WORKMATE_MOBILE_PUBLIC_ORIGIN 必须是无路径、账号和查询参数的 HTTPS origin。');
+    throw new Error('OPENCLAWX_MOBILE_PUBLIC_ORIGIN 必须是无路径、账号和查询参数的 HTTPS origin。');
   }
-  const configuredCert = env.WORKMATE_MOBILE_HTTPS_CERT_FILE?.trim();
-  const configuredKey = env.WORKMATE_MOBILE_HTTPS_KEY_FILE?.trim();
+  const configuredCert = env.OPENCLAWX_MOBILE_HTTPS_CERT_FILE?.trim();
+  const configuredKey = env.OPENCLAWX_MOBILE_HTTPS_KEY_FILE?.trim();
   if (Boolean(configuredCert) !== Boolean(configuredKey)) throw new Error('手机 HTTPS 证书和私钥必须同时配置。');
   const managed = configuredCert ? null : ensureManagedMobileTls([origin.hostname, ...lanHosts], env);
   return {
-    host: String(env.WORKMATE_MOBILE_HTTPS_HOST || '0.0.0.0').trim() || '0.0.0.0',
+    host: String(env.OPENCLAWX_MOBILE_HTTPS_HOST || '0.0.0.0').trim() || '0.0.0.0',
     port,
     certFile: configuredCert ? requiredFile(configuredCert, '手机 HTTPS 证书') : managed!.certFile,
     keyFile: configuredKey ? requiredFile(configuredKey, '手机 HTTPS 私钥') : managed!.keyFile,
@@ -60,7 +60,7 @@ export function resolveMobileHttpsProxyConfig(env: NodeJS.ProcessEnv = process.e
 
 export function isAllowedMobileHttpsRequest(method: string | undefined, rawUrl: string | undefined) {
   if (method !== 'GET' && method !== 'POST') return false;
-  try { return new URL(rawUrl || '/', 'https://workmate.invalid').pathname.startsWith(MOBILE_PATH_PREFIX); }
+  try { return new URL(rawUrl || '/', 'https://openclawx.invalid').pathname.startsWith(MOBILE_PATH_PREFIX); }
   catch { return false; }
 }
 

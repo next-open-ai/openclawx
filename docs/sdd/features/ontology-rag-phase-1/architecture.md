@@ -51,8 +51,8 @@
 
 ## 模块边界
 
-- 公共 Schema：`@workmate/contracts`；
-- 图谱存储、查询规划和检索融合：`@workmate/agent-core`；
+- 公共 Schema：`@openclawx/contracts`；
+- 图谱存储、查询规划和检索融合：`@openclawx/agent-core`；
 - HTTP 路由：`apps/api`；
 - API 负责写入，renderer 不直接访问文件；
 - 候选抽取可调用应用模型，但模型只能输出待审核候选，且证据引用必须属于本次授权的文档切片；查询规划仍不调用大模型，保证可复现和可测试。

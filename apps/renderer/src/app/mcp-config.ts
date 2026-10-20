@@ -289,7 +289,7 @@ function toRuntime(item: McpConnection) {
 export function useMcpConfig() {
   const load = async (options?: { force?: boolean }) => {
     if (loaded.value && !options?.force && connections.value.length > 0) return;
-    const desktop = Boolean(window.workmateDesktop);
+    const desktop = Boolean(window.openclawxDesktop);
     try {
       const stored = desktop
         ? JSON.parse((await readStored(key)) || '[]')
@@ -303,7 +303,7 @@ export function useMcpConfig() {
   };
 
   const persist = async () => {
-    if (window.workmateDesktop) await writeStored(key, JSON.stringify(connections.value));
+    if (window.openclawxDesktop) await writeStored(key, JSON.stringify(connections.value));
     else await saveServerMcpConnections(connections.value);
   };
 

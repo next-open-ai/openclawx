@@ -4,7 +4,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 export function defaultDataDir() {
-  return process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate');
+  return process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx');
 }
 
 export function runtimeSourceRoot(projectRoot) {
@@ -40,8 +40,8 @@ function isSupportedPython(version) {
 }
 
 export function resolveBasePython() {
-  if (process.env.WORKMATE_AGENTSCOPE_PYTHON?.trim()) {
-    const forced = process.env.WORKMATE_AGENTSCOPE_PYTHON.trim();
+  if (process.env.OPENCLAWX_AGENTSCOPE_PYTHON?.trim()) {
+    const forced = process.env.OPENCLAWX_AGENTSCOPE_PYTHON.trim();
     const version = readPythonVersion(forced);
     return isSupportedPython(version) ? forced : null;
   }
@@ -91,7 +91,7 @@ export function detectAgentscopeRuntime(projectRoot, dataDir = defaultDataDir())
 
 /**
  * Prefer a project-bundled runtime (Docker / packaged installs) when it already
- * ships a usable portable Python. This keeps volume mounts over WORKMATE_DATA_DIR from
+ * ships a usable portable Python. This keeps volume mounts over OPENCLAWX_DATA_DIR from
  * wiping the baked AgentScope environment.
  */
 export function resolveBundledAgentscopeRuntime(projectRoot) {

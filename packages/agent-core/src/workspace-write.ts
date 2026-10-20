@@ -3,7 +3,7 @@
  * See docs/architecture/workspace-file-io.md and FW-V2.
  */
 import { randomUUID } from 'node:crypto';
-import type {WorkspaceWriteState,WorkspaceWriteError} from '@workmate/contracts';
+import type {WorkspaceWriteState,WorkspaceWriteError} from '@openclawx/contracts';
 
 export const MAX_FILE_BYTES = 96_000;
 /** Soft cap for a single `content` field — keep one-shot JSON small enough to survive tool encoding. */

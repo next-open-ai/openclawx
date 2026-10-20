@@ -19,7 +19,7 @@ function setup(file, services = {}, props = {}) {
     if (id === 'vue') return { ...vue, onMounted: fn => mounted.push(fn), onUnmounted: fn => unmounted.push(fn), onBeforeUnmount: fn => unmounted.push(fn) };
     if (id === '../../services/api' || id === '../../services/live-data') return services;
     if (id === './workbench-presentation') return { appPresentation: () => ({ canShare: false }) };
-    if (id === '@workmate/contracts') return { dataObjectAnnotationsSchema: { parse: () => ({ description: '' }) } };
+    if (id === '@openclawx/contracts') return { dataObjectAnnotationsSchema: { parse: () => ({ description: '' }) } };
     return {};
   };
   vm.runInNewContext(code, { exports, require: importer, Error, crypto: { randomUUID }, window: { navigator: {} }, document: { activeElement: null } });

@@ -43,7 +43,7 @@ onBeforeUnmount(()=>{disposed=true;shareRequest++;modal.value?.close();});
 
 <template>
   <dialog ref="modal" class="gallery" aria-labelledby="gallery-title" @cancel.prevent="emit('close')">
-    <header class="gallery-bar"><div class="brand"><BrandLogo /><b>Workmate</b><span>应用大厅</span></div><button class="secondary" type="button" @click="emit('close')">返回工作台</button></header>
+    <header class="gallery-bar"><div class="brand"><BrandLogo /><b>OpenClawX</b><span>应用大厅</span></div><button class="secondary" type="button" @click="emit('close')">返回工作台</button></header>
     <main class="gallery-content">
       <section class="intro"><p class="eyebrow">YOUR APPS, READY TO WORK</p><h1 id="gallery-title">让成果，成为日常工具。</h1><p>打开你已交付的应用，让真实数据开始工作。</p><div class="summary"><strong>{{ available.length }}</strong><span>个可用应用</span><span class="summary-note">本机运行 · 登录后使用</span></div></section>
       <div class="tools"><label class="search"><span class="sr-only">搜索应用</span><input v-model="search" type="search" placeholder="搜索应用名称…"></label><label class="sort"><span class="sr-only">应用排序</span><select v-model="sort"><option value="updated">最近更新</option><option value="name">按名称</option><option value="created">最新创建</option></select></label><button class="secondary" :disabled="loading" @click="load">{{ loading?'刷新中…':'刷新' }}</button></div>
@@ -56,9 +56,9 @@ onBeforeUnmount(()=>{disposed=true;shareRequest++;modal.value?.close();});
           <div class="card-body"><p class="app-type">{{ app.appType }}</p><h2>{{ app.name }}</h2><p class="updated">更新于 {{ formatAppTime(appModifiedAt(app)) }}</p><div class="card-actions"><button class="primary" type="button" @click="open(app)">打开使用 <span aria-hidden="true">↗</span></button><button class="secondary" type="button" :aria-label="`分享${app.name}的访问链接与二维码`" @click="share(app)">链接与二维码</button></div></div>
         </article>
       </section>
-      <p class="footnote">这里只展示当前账号已发布、可打开的数据应用。访问链接不授予数据权限，Workmate 需保持运行。</p>
+      <p class="footnote">这里只展示当前账号已发布、可打开的数据应用。访问链接不授予数据权限，OpenClawX 需保持运行。</p>
     </main>
-    <div v-if="sharing" class="share-shade" @click.self="sharing=undefined; shareRequest++"><section class="share-panel" role="region" aria-label="应用分享"><div class="share-heading"><h2>{{ sharing.name }}</h2><button class="secondary" @click="sharing=undefined; shareRequest++">关闭</button></div><img v-if="qr" :src="qr" alt="应用局域网访问二维码" width="220" height="220"><p v-else-if="!appAccessUrl(sharing,true)">暂无局域网地址；下面是仅供本机使用的链接。</p><p v-else-if="!shareError">正在生成二维码…</p><p v-if="shareError" class="error" role="alert">{{ shareError }}</p><label>访问链接<input :value="shareUrl" readonly aria-label="应用访问链接" @focus="($event.target as HTMLInputElement).select()"></label><button class="primary" @click="copy">{{ copied?'已复制':'复制链接' }}</button><p>手机请连接同一局域网，并使用 Workmate 账号登录。链接不会公开数据库或绕过访问权限。</p></section></div>
+    <div v-if="sharing" class="share-shade" @click.self="sharing=undefined; shareRequest++"><section class="share-panel" role="region" aria-label="应用分享"><div class="share-heading"><h2>{{ sharing.name }}</h2><button class="secondary" @click="sharing=undefined; shareRequest++">关闭</button></div><img v-if="qr" :src="qr" alt="应用局域网访问二维码" width="220" height="220"><p v-else-if="!appAccessUrl(sharing,true)">暂无局域网地址；下面是仅供本机使用的链接。</p><p v-else-if="!shareError">正在生成二维码…</p><p v-if="shareError" class="error" role="alert">{{ shareError }}</p><label>访问链接<input :value="shareUrl" readonly aria-label="应用访问链接" @focus="($event.target as HTMLInputElement).select()"></label><button class="primary" @click="copy">{{ copied?'已复制':'复制链接' }}</button><p>手机请连接同一局域网，并使用 OpenClawX 账号登录。链接不会公开数据库或绕过访问权限。</p></section></div>
   </dialog>
 </template>
 

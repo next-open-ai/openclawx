@@ -1,5 +1,5 @@
 {
-  "name": "@workmate/agent-core",
+  "name": "@openclawx/agent-core",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -21,8 +21,8 @@
     "@mariozechner/pi-coding-agent": "^0.51.2",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@sinclair/typebox": "^0.34.41",
-    "@workmate/contracts": "workspace:*",
-    "@workmate/tools": "workspace:*",
+    "@openclawx/contracts": "workspace:*",
+    "@openclawx/tools": "workspace:*",
     "apache-arrow": "18.1.0",
     "fflate": "^0.8.3",
     "pdfjs-dist": "5.4.296",

@@ -142,11 +142,11 @@ UTI-001 已完成，AMC-T-001～008 达到对应环境可执行范围，三个�
 | 2026-09-24 | 实现完成，待真实 Provider 验收 | 五类 mock Provider 协议测试、disabled 隐藏、公共契约、AgentScope/dsh Transport 专项测试通过；真实 eSight/图片/ASR/TTS 服务未提供，AMC-T-008 未执行 |
 | 2026-09-24 | 首批国产生图协议完成，待 E2E | 接受 ADR-0003；增加 `imageProtocol` 配置和 OpenAI Images、DashScope 同步、DashScope 异步适配器。图片专项 5/5、四包类型检查、renderer 与文档生产构建通过；智谱、火山、阿里真实端点尚未验收，腾讯/百度不在本批范围。详见 [AMC-IMG-001](image-generation-protocols.md) |
 | 2026-09-24 | 图片产物闭环与活动去重完成 | Provider 临时 URL 由 `agent-core` 自动下载到 Run 工作区，模型只收到本地 `path`；工具/能力事件以 `invocationId` 跨三引擎、Orchestrator、SSE、Renderer 归并，消除同名调用重复失败记录。图片专项 5/5、同名调用回归 1/1、四包类型检查及 renderer/VitePress 构建通过。 |
-| 2026-09-24 | Workmate 同步完成，待真实 Provider 验收 | 五类能力、员工开关、三类图片协议、异步进度及 URL 产物闭环已同步；图片专项 `5/5`、UTI 专项 `4/4`、同名 invocation 回归 `1/1`、契约回归、五包类型检查、API 与 Renderer 构建通过。未使用真实供应商凭据执行付费 E2E。 |
+| 2026-09-24 | OpenClawX 同步完成，待真实 Provider 验收 | 五类能力、员工开关、三类图片协议、异步进度及 URL 产物闭环已同步；图片专项 `5/5`、UTI 专项 `4/4`、同名 invocation 回归 `1/1`、契约回归、五包类型检查、API 与 Renderer 构建通过。未使用真实供应商凭据执行付费 E2E。 |
 | 2026-09-24 | 非实时 ASR/TTS 工程闭环，待真实 Provider 验收 | 文件式 ASR 与 TTS 完成工作区安全、格式/大小校验、进度、取消/超时、转写/音频资产和稳定错误。实时 Voice Session 明确不在本轮范围。详见 [AMC-AUDIO-001](non-realtime-speech.md)。 |
 | 2026-09-25 | Provider 自动配置工程闭环 | 内置推荐 Profile 可在新增连接时自动补齐模型、binding、默认员工按需授权，并可从 Provider 卡幂等重跑；既有手工配置不覆盖，完成后仍可逐项调整。通义 Workspace 分支、未知兼容 Provider 回退、脚本与隔离浏览器流程通过；真实 Provider 首次使用验证仍保留。详见 [AMC-AUTO-CONFIG-001](provider-auto-configuration.md)。 |
 | 2026-09-25 | M3.1 被动首次使用验证实现 | 应用模型真实调用终态可按能力和模型更新最近健康状态，区分可用、配置、权限和临时服务错误；模型页展示时间与精简诊断，不执行额外付费探测、不自动切换。分类与持久化回归通过，真实 Provider 验收待执行。详见 [AMC-HEALTH-001](provider-first-use-health.md)。 |
 
 实现状态不等于产品验收：真实 Provider、独立 usage/成本完整展示和安装态三引擎 E2E 未完成前，本工单不得标记“已验证”。
 
-本批最终状态：`AMC-001-09` 已实现并通过 mock/构建验证，进入“待真实 Provider 验收”；AMC-001 总工单维持“待真实 Provider 验收”，不提前关闭。Workmate `agent-core` 全量回归 `92/92` 通过。
+本批最终状态：`AMC-001-09` 已实现并通过 mock/构建验证，进入“待真实 Provider 验收”；AMC-001 总工单维持“待真实 Provider 验收”，不提前关闭。OpenClawX `agent-core` 全量回归 `92/92` 通过。

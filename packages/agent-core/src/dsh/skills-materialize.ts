@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { AgentSkillRuntime } from '@workmate/contracts';
+import type { AgentSkillRuntime } from '@openclawx/contracts';
 
 /** Platform harness skills that overlap dsh built-in fs/bash — skip materializing. */
 const SKIP_SKILL_IDS = new Set([
-  'workmate-workspace',
+  'openclawx-workspace',
   'skill-discovery',
   'skill-authoring',
 ]);
@@ -33,7 +33,7 @@ function uniqueKebab(base: string, used: Set<string>): string {
 function buildSkillMarkdown(skill: AgentSkillRuntime, kebabName: string): string {
   const description = String(skill.description || skill.name || kebabName).replace(/\s+/g, ' ').trim().slice(0, 500);
   const body = String(skill.instructions || skill.description || '').trim()
-    || `When the user task matches “${skill.name || kebabName}”, follow that skill’s purpose and obey the active Workmate workspace-mode contract for the final path.`;
+    || `When the user task matches “${skill.name || kebabName}”, follow that skill’s purpose and obey the active OpenClawX workspace-mode contract for the final path.`;
   const resources = (skill.resources ?? [])
     .filter((item) => item.path && item.content)
     .slice(0, 20)
@@ -52,17 +52,17 @@ function buildSkillMarkdown(skill: AgentSkillRuntime, kebabName: string): string
 }
 
 /**
- * Materialize Workmate-authorized skills into a dsh-discoverable directory:
+ * Materialize OpenClawX-authorized skills into a dsh-discoverable directory:
  * `<cwd>/.agents/skills/<kebab>/SKILL.md`
  *
  * Returns the skills root path when at least one skill was written; otherwise null.
  *
- * Note: Workmate progressive disclosure often sends `available` skills without
+ * Note: OpenClawX progressive disclosure often sends `available` skills without
  * `instructions` (pi hydrates via load_skill). dsh has no equivalent until the
  * files exist on disk — so we always write SKILL.md using instructions, else
  * description, else a short fallback, so associated skills stay callable.
  */
-export function materializeWorkmateSkillsForDsh(
+export function materializeOpenClawXSkillsForDsh(
   cwd: string,
   skills: AgentSkillRuntime[] | undefined,
 ): string | null {

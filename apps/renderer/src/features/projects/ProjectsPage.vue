@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import type { ProjectInstruction } from '@workmate/contracts';
+import type { ProjectInstruction } from '@openclawx/contracts';
 import type {
   Employee,
   EmployeeId,
@@ -706,7 +706,7 @@ function backFromWorkflowProject() {
 }
 const visibilityFilter = ref<"all" | "mine" | "org-shared" | "delegated">("all");
 const searchQuery = ref("");
-const desktopBridge = () => (window as Window & { workmateDesktop?: any }).workmateDesktop;
+const desktopBridge = () => (window as Window & { openclawxDesktop?: any }).openclawxDesktop;
 const shareableUsers = computed(() =>
   localUsers.value.filter((item) => item.id !== currentUserId.value),
 );
@@ -1688,7 +1688,7 @@ onBeforeUnmount(() => {
     >
       <header v-if="!selected" class="flex shrink-0 flex-wrap items-end justify-between gap-4">
         <div>
-          <p class="text-[11px] font-extrabold tracking-[.13em] text-[var(--accent)]">Workmate / PROJECT ORCHESTRATION</p>
+          <p class="text-[11px] font-extrabold tracking-[.13em] text-[var(--accent)]">OpenClawX / PROJECT ORCHESTRATION</p>
           <h1 class="mt-2 text-4xl font-bold tracking-[-.045em]">我的项目</h1>
           <p class="mt-3 text-[var(--muted)]">默认只展示当前登录用户归属的项目。把复杂目标交给多个数字员工：先确认编排，再让任务在隔离上下文中可靠运行。</p>
         </div>
@@ -1825,7 +1825,7 @@ onBeforeUnmount(() => {
                   <div class="min-w-0">
                     <p class="text-[11px] font-bold tracking-wide text-[var(--muted)]">项目空间</p>
                     <p class="mt-1 break-all text-xs leading-5 text-[var(--text)]">
-                      {{ isDesktopShell() ? (workspaceParent || '未指定时默认创建到 ~/.workmate/projects/项目名称-随机标识；若已选择目录，则该目录本身就是项目根目录。') : '将创建服务端托管项目空间。' }}
+                      {{ isDesktopShell() ? (workspaceParent || '未指定时默认创建到 ~/.openclawx/projects/项目名称-随机标识；若已选择目录，则该目录本身就是项目根目录。') : '将创建服务端托管项目空间。' }}
                     </p>
                   </div>
                   <button

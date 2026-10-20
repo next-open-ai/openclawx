@@ -3,8 +3,8 @@ import { mkdir, lstat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
-import { workflowDefinitionSchema, workflowExecutionInputSchema, workflowInvocationInputSchema, workflowUploadParamsSchema, type WorkflowDefinition, type WorkflowExecutionInput, type WorkflowExecutionSummary, type WorkflowInvocationSource, type WorkflowResultEvidence, type WorkflowResultReference } from '@workmate/contracts';
-import { withKeyLock, type Orchestrator } from '@workmate/orchestrator';
+import { workflowDefinitionSchema, workflowExecutionInputSchema, workflowInvocationInputSchema, workflowUploadParamsSchema, type WorkflowDefinition, type WorkflowExecutionInput, type WorkflowExecutionSummary, type WorkflowInvocationSource, type WorkflowResultEvidence, type WorkflowResultReference } from '@openclawx/contracts';
+import { withKeyLock, type Orchestrator } from '@openclawx/orchestrator';
 import { requireAuth, type AuthPrincipal } from '../auth/service.js';
 import { canReadOwnedResource, canWriteOwnedResource } from '../auth/ownership.js';
 import { materializeWorkflowFiles, workflowFileScope } from './workflow-files.js';
@@ -195,7 +195,7 @@ export function registerWorkflowRunRoutes(app: FastifyInstance, orch: Orchestrat
       try {
         if (!await orch.store.get(prefix(auth) + parsed.data.requestId) && !await orch.store.get(`definitions:v1:${scope(auth)}:workflows:${workflowId}`)) throw new Error('WORKFLOW_NOT_FOUND');
         const suffix = createHash('sha256').update(scope(auth)).digest('hex').slice(0, 16);
-        const workspacePath = path.join(process.env.WORKMATE_DATA_DIR || path.join(os.homedir(), '.workmate'), 'projects', `workflow-${suffix}-${parsed.data.requestId}`);
+        const workspacePath = path.join(process.env.OPENCLAWX_DATA_DIR || path.join(os.homedir(), '.openclawx'), 'projects', `workflow-${suffix}-${parsed.data.requestId}`);
         await mkdir(workspacePath, { recursive: true, mode: 0o700 });
         if ((await lstat(workspacePath)).isSymbolicLink()) throw new Error('WORKFLOW_WORKSPACE_UNSAFE');
         const result = await service.prepare(auth, workflowId, { ...parsed.data, workspacePath, source });
@@ -214,7 +214,7 @@ export function registerWorkflowRunRoutes(app: FastifyInstance, orch: Orchestrat
     if (!workflowUploadParamsSchema.safeParse({ id, requestId }).success) return reply.code(400).send({ message: '运行标识无效' });
     if (!await orch.store.get(`definitions:v1:${scope(owner)}:workflows:${id}`)) return reply.code(404).send({ message: '工作流不存在' });
     try {
-      const name = decodeURIComponent(String(request.headers['x-workmate-file-name'] || ''));
+      const name = decodeURIComponent(String(request.headers['x-openclawx-file-name'] || ''));
       if (!/\.(pdf|docx|pptx|ppsx|xlsx|xls|csv|md|txt|html|htm)$/i.test(name) || !Buffer.isBuffer(request.body)) throw new Error('请选择支持的文档文件');
       return await saveChatFile(workflowFileScope(owner, id, requestId), { name, bytes: request.body });
     } catch (cause) { return reply.code(400).send({ message: cause instanceof Error ? cause.message : '文档处理失败' }); }

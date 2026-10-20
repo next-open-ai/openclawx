@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {ref,onMounted} from 'vue';
-import type {TaskRunListItem} from '@workmate/contracts';
+import type {TaskRunListItem} from '@openclawx/contracts';
 import {templateTasksApi as api} from '../../services/template-tasks';
 import TaskRunMonitor from './TaskRunMonitor.vue';
 const emit=defineEmits<{'open-conversation':[id:string]}>();

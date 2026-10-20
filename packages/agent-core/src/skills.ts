@@ -1,4 +1,4 @@
-import type { McpConnectionRuntime } from '@workmate/contracts';
+import type { McpConnectionRuntime } from '@openclawx/contracts';
 
 export interface AgentSkill {
   id: string;

@@ -6,7 +6,7 @@ import {TemplateTaskService,taskRunJsonResult} from '../template-tasks.js';
 import {templateAgentExecutor} from '../template-agent.js';
 import {businessSummaryTemplate} from '../task-skills/business-summary/index.js';
 import {runContext} from './fake.js';
-import type {TemplateTaskRun} from '@workmate/contracts';
+import type {TemplateTaskRun} from '@openclawx/contracts';
 const owner={orgId:'app-org',userId:'app-user'};
 async function setup(orch:Orchestrator){const service=new TemplateTaskService(orch.store,undefined,undefined,templateAgentExecutor(orch));const {id:_id,version:_v,...base}=businessSummaryTemplate;let definition=await service.saveDefinition(owner,{...base,application:true,agent:{employeeId:'general',prompt:'执行任务'}});await service.trial(owner,definition.id,definition.revision,{});definition=await service.publish(owner,definition.id,definition.revision);const task=await service.save(owner,{name:'任务应用测试',templateId:definition.id,templateVersion:definition.draft.version,parameters:{}});return{service,task,definition};}
 async function until(fn:()=>Promise<boolean>){for(let n=0;n<150;n++){if(await fn())return;await new Promise(resolve=>setTimeout(resolve,20));}throw Error('test condition timed out');}

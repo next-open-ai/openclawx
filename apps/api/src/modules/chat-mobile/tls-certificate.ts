@@ -12,12 +12,12 @@ export type ManagedMobileTls = {
 };
 
 function tlsDirectory(env: NodeJS.ProcessEnv) {
-  const root = env.WORKMATE_DATA_DIR?.trim() || path.join(os.homedir(), '.workmate');
+  const root = env.OPENCLAWX_DATA_DIR?.trim() || path.join(os.homedir(), '.openclawx');
   return path.join(root, 'mobile-tls');
 }
 
 export function managedMobileCaFile(env: NodeJS.ProcessEnv = process.env) {
-  return path.join(tlsDirectory(env), 'workmate-mobile-ca.pem');
+  return path.join(tlsDirectory(env), 'openclawx-mobile-ca.pem');
 }
 
 function normalizedHosts(hosts: string[]) {
@@ -56,7 +56,7 @@ function createCa(commonName: string) {
   cert.serialNumber = certificateSerial();
   cert.validity.notBefore = new Date(Date.now() - 24 * 60 * 60_000);
   cert.validity.notAfter = new Date(Date.now() + 10 * 365 * 24 * 60 * 60_000);
-  const attributes = [{ name: 'commonName', value: commonName }, { name: 'organizationName', value: 'Workmate Local' }];
+  const attributes = [{ name: 'commonName', value: commonName }, { name: 'organizationName', value: 'OpenClawX Local' }];
   cert.setSubject(attributes);
   cert.setIssuer(attributes);
   cert.setExtensions([
@@ -75,7 +75,7 @@ function createServerCertificate(ca: ReturnType<typeof createCa>, hosts: string[
   cert.serialNumber = certificateSerial();
   cert.validity.notBefore = new Date(Date.now() - 24 * 60 * 60_000);
   cert.validity.notAfter = new Date(Date.now() + 824 * 24 * 60 * 60_000);
-  cert.setSubject([{ name: 'commonName', value: hosts[0] || 'localhost' }, { name: 'organizationName', value: 'Workmate Local' }]);
+  cert.setSubject([{ name: 'commonName', value: hosts[0] || 'localhost' }, { name: 'organizationName', value: 'OpenClawX Local' }]);
   cert.setIssuer(ca.cert.subject.attributes);
   cert.setExtensions([
     { name: 'basicConstraints', cA: false, critical: true },
@@ -94,9 +94,9 @@ export function ensureManagedMobileTls(hostsInput: string[], env: NodeJS.Process
   const hosts = normalizedHosts(hostsInput);
   const directory = tlsDirectory(env);
   const caFile = managedMobileCaFile(env);
-  const caKeyFile = path.join(directory, 'workmate-mobile-ca-key.pem');
-  const certFile = path.join(directory, 'workmate-mobile.pem');
-  const keyFile = path.join(directory, 'workmate-mobile-key.pem');
+  const caKeyFile = path.join(directory, 'openclawx-mobile-ca-key.pem');
+  const certFile = path.join(directory, 'openclawx-mobile.pem');
+  const keyFile = path.join(directory, 'openclawx-mobile-key.pem');
   const metadataFile = path.join(directory, 'metadata.json');
   fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
 
@@ -119,7 +119,7 @@ export function ensureManagedMobileTls(hostsInput: string[], env: NodeJS.Process
       keyPem,
     };
   } catch {
-    ca = createCa('Workmate Mobile Local CA');
+    ca = createCa('OpenClawX Mobile Local CA');
     fs.writeFileSync(caFile, ca.certPem, { encoding: 'utf8', mode: 0o644 });
     writePrivate(caKeyFile, ca.keyPem);
   }

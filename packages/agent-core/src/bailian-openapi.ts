@@ -167,7 +167,7 @@ export async function bailianOpenApiCreateIndex(input: BailianAuth & {
 }) {
   const auth = requireAuth(input);
   const name = clampBailianName(input.name);
-  const categoryName = clampBailianName(`workmate-${name}`.replace(/[^\u4e00-\u9fa5a-zA-Z0-9_.:-]/g, '-'));
+  const categoryName = clampBailianName(`openclawx-${name}`.replace(/[^\u4e00-\u9fa5a-zA-Z0-9_.:-]/g, '-'));
 
   const categoryData = await bailianOpenApiCall({
     ...auth,

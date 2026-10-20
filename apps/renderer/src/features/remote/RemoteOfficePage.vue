@@ -140,7 +140,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="mx-auto flex h-full max-w-4xl flex-col overflow-auto px-6 py-8 sm:px-10">
     <header class="mb-6">
-      <p class="text-[11px] font-extrabold uppercase tracking-[.13em] text-[var(--accent)]">Workmate / REMOTE & CHANNELS</p>
+      <p class="text-[11px] font-extrabold uppercase tracking-[.13em] text-[var(--accent)]">OpenClawX / REMOTE & CHANNELS</p>
       <h1 class="mt-1 text-3xl font-bold tracking-[-.03em]">{{ t('nav.remote') }}</h1>
       <p class="mt-2 text-sm text-[var(--muted)]">把外部 IM 与远程终端接入工作台。需要填写的敏感信息主要是 Bot Token、App Secret、Relay Token 等密钥；桌面端走系统级加密，Web/Docker 保存在服务端本地加密文件，非敏感配置存于本地域存储。</p>
     </header>

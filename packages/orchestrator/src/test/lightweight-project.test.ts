@@ -4,15 +4,15 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, symlinkSyn
 import os from 'node:os';
 import path from 'node:path';
 import { Orchestrator, type AgentRunner } from '../index.js';
-import type { ChatRequest } from '@workmate/contracts';
-import { CreateConversationProjectSchema } from '@workmate/contracts';
+import type { ChatRequest } from '@openclawx/contracts';
+import { CreateConversationProjectSchema } from '@openclawx/contracts';
 import { prepareConversationWorkspace, publishConversationWorkspace } from '../project-workspace.js';
 import { FakeRunner, runContext, waitFor } from './fake.js';
 
 test('LP-T1/T2/T3: creation does not run, independent turns retain history and failure cannot overwrite deliverables', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-light-project-'));
-  const previous = process.env.WORKMATE_WORKSPACES_DIR;
-  process.env.WORKMATE_WORKSPACES_DIR = path.join(root, 'runs');
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-light-project-'));
+  const previous = process.env.OPENCLAWX_WORKSPACES_DIR;
+  process.env.OPENCLAWX_WORKSPACES_DIR = path.join(root, 'runs');
   const workspace = path.join(root, 'project'); mkdirSync(path.join(workspace, 'inputs'), { recursive: true });
   writeFileSync(path.join(workspace, 'inputs', 'reference.txt'), '真实参考材料');
   const calls: ChatRequest[] = [];
@@ -79,13 +79,13 @@ test('LP-T1/T2/T3: creation does not run, independent turns retain history and f
     assert.equal((await orch.projects.getProject('project'))?.status, 'completed');
   } finally {
     await orch.close();
-    if (previous === undefined) delete process.env.WORKMATE_WORKSPACES_DIR; else process.env.WORKMATE_WORKSPACES_DIR = previous;
+    if (previous === undefined) delete process.env.OPENCLAWX_WORKSPACES_DIR; else process.env.OPENCLAWX_WORKSPACES_DIR = previous;
     rmSync(root, { recursive: true, force: true });
   }
 });
 
 test('LP-T3: unsafe or cancelled promotion preserves the existing project tree', async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-light-promotion-'));
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-light-promotion-'));
   const project = path.join(root, 'project'), run = path.join(root, 'run');
   mkdirSync(project); mkdirSync(path.join(run, 'output'), { recursive: true });
   writeFileSync(path.join(project, 'report.md'), '原版'); writeFileSync(path.join(run, 'output/report.md'), '新版');
@@ -106,8 +106,8 @@ test('LP-T3: unsafe or cancelled promotion preserves the existing project tree',
 });
 
 for (const allow of [false, true]) test(`LP-T2: approval ${allow ? 'allow resumes' : 'deny cancels'} without closing the conversation`, async () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'workmate-light-approval-'));
-  const previous = process.env.WORKMATE_WORKSPACES_DIR; process.env.WORKMATE_WORKSPACES_DIR = path.join(root, 'runs');
+  const root = mkdtempSync(path.join(os.tmpdir(), 'openclawx-light-approval-'));
+  const previous = process.env.OPENCLAWX_WORKSPACES_DIR; process.env.OPENCLAWX_WORKSPACES_DIR = path.join(root, 'runs');
   const workspace = path.join(root, 'project'); mkdirSync(workspace);
   const runner = new FakeRunner({ approvalOnCall: 1, approvals: [{ skillId: 'pdf', capability: 'workspace-write', summary: '写报告' }] });
   const orch = Orchestrator.memory({ runner, contextResolver: () => runContext() });
@@ -124,7 +124,7 @@ for (const allow of [false, true]) test(`LP-T2: approval ${allow ? 'allow resume
     assert.equal((await orch.projects.getProject(project.id))?.plan, undefined);
   } finally {
     await orch.close();
-    if (previous === undefined) delete process.env.WORKMATE_WORKSPACES_DIR; else process.env.WORKMATE_WORKSPACES_DIR = previous;
+    if (previous === undefined) delete process.env.OPENCLAWX_WORKSPACES_DIR; else process.env.OPENCLAWX_WORKSPACES_DIR = previous;
     rmSync(root, { recursive: true, force: true });
   }
 });

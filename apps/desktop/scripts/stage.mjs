@@ -8,7 +8,7 @@ const appsRoot = path.resolve(desktopRoot, '..');
 const projectRoot = path.resolve(appsRoot, '..');
 // Acceptance may stage into a fresh private directory without replacing the
 // developer's current release resources. Never erase an overridden target.
-const customStageRoot = process.env.WORKMATE_STAGE_DIR?.trim();
+const customStageRoot = process.env.OPENCLAWX_STAGE_DIR?.trim();
 const stageRoot = customStageRoot ? path.resolve(customStageRoot) : path.join(desktopRoot, 'stage');
 const runtimeRoot = path.join(projectRoot, 'runtimes', 'agentscope-runtime');
 const sqlJsDist = path.dirname(createRequire(path.join(desktopRoot, 'package.json')).resolve('sql.js/dist/sql-wasm.js'));
@@ -18,7 +18,7 @@ const sources = [
 ];
 
 if (customStageRoot) {
-  if (existsSync(stageRoot)) throw new Error('WORKMATE_STAGE_DIR must be a new directory; refusing to overwrite it.');
+  if (existsSync(stageRoot)) throw new Error('OPENCLAWX_STAGE_DIR must be a new directory; refusing to overwrite it.');
 } else {
   rmSync(stageRoot, { recursive: true, force: true });
 }
@@ -70,7 +70,7 @@ function copyDereferenced(source, destination) {
 }
 
 function stageDependency(name, resolver) {
-  if (seen.has(name) || name.startsWith('@workmate/')) return;
+  if (seen.has(name) || name.startsWith('@openclawx/')) return;
   // Some runtime dependencies (e.g. apache-arrow) wrongly list @types/* in
   // their runtime `dependencies`. Those are compile-time only and may not even
   // be resolvable in the CI pnpm layout — never stage or recurse into them.

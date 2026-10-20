@@ -277,7 +277,7 @@ class Handler(BaseHTTPRequestHandler):
                     credentialsReady=True))
             if path == '/api/health':
                 active = next((r for r in manager.rows() if r['status'] in ACTIVE), None)
-                return self.respond(200, dict(status='ok', service='workmate-test-console', version=1,
+                return self.respond(200, dict(status='ok', service='openclawx-test-console', version=1,
                                               activeRunId=active['id'] if active else None))
             if path == '/api/runs':
                 return self.respond(200, [manager.public(r) for r in manager.rows()])
@@ -333,8 +333,8 @@ def main():
     parser.add_argument('--port', type=int, default=47840)
     parser.add_argument('--data-dir', type=Path, default=Path(__file__).parent / 'data')
     args = parser.parse_args()
-    target = os.getenv('WORKMATE_TEST_TARGET', 'http://127.0.0.1:47832/api').rstrip('/')
-    benchmark = os.getenv('WORKMATE_BENCHMARK_URL', 'http://127.0.0.1:47840/')
+    target = os.getenv('OPENCLAWX_TEST_TARGET', 'http://127.0.0.1:47832/api').rstrip('/')
+    benchmark = os.getenv('OPENCLAWX_BENCHMARK_URL', 'http://127.0.0.1:47840/')
     for url in (target, benchmark):
         parsed = urlparse(url)
         if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password:

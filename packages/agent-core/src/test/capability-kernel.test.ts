@@ -6,7 +6,7 @@ import test from 'node:test';
 import { WorkspaceCapabilityKernel } from '../capability-kernel.js';
 
 async function kernelForTest() {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-capability-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-capability-'));
   return {
     root,
     kernel: new WorkspaceCapabilityKernel({
@@ -41,7 +41,7 @@ test('commitArtifact refuses process files and paths outside the workspace', asy
 });
 
 test('Pi shared capability kernel commits project files without an output wrapper', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-capability-project-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-capability-project-'));
   await writeFile(path.join(root, 'index.html'), '<main>pi project</main>');
   const kernel = new WorkspaceCapabilityKernel({
     runId: 'pi-project', workspaceRoot: root, workspaceAccess: 'write', workspaceMode: 'project',

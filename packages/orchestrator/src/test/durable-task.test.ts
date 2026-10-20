@@ -17,7 +17,7 @@ test('classifier upgrades substantial file work but not ordinary chat', () => {
 });
 
 test('uploaded sources are retained, deduplicated and collision-safe', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-durable-task-source-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-durable-task-source-'));
   const service = new DurableTaskService(new MemoryStore(), { tasksRoot: path.join(root, 'tasks'), runsRoot: path.join(root, 'runs') });
   try {
     const task = await service.create({ conversationId: 'conversation-source', objective: '修改上传文件并形成交付物' });
@@ -38,7 +38,7 @@ test('uploaded sources are retained, deduplicated and collision-safe', async () 
 });
 
 test('settled run is checkpointed and its safe working set materializes into a later run', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-durable-task-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-durable-task-'));
   const tasksRoot = path.join(root, 'tasks');
   const runsRoot = path.join(root, 'runs');
   const service = new DurableTaskService(new MemoryStore(), { tasksRoot, runsRoot });
@@ -75,7 +75,7 @@ test('settled run is checkpointed and its safe working set materializes into a l
 });
 
 test('a completed run with unfinished signals remains resumable', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-durable-task-incomplete-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-durable-task-incomplete-'));
   const service = new DurableTaskService(new MemoryStore(), { tasksRoot: path.join(root, 'tasks'), runsRoot: path.join(root, 'runs') });
   try {
     const task = await service.create({ conversationId: 'conversation-incomplete', objective: '生成完整视频' });
@@ -90,7 +90,7 @@ test('a completed run with unfinished signals remains resumable', async () => {
 });
 
 test('a clean follow-up closes a waiting task when a deliverable already exists', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-durable-task-auto-close-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-durable-task-auto-close-'));
   const service = new DurableTaskService(new MemoryStore(), { tasksRoot: path.join(root, 'tasks'), runsRoot: path.join(root, 'runs') });
   try {
     const task = await service.create({ conversationId: 'conversation-auto-close', objective: '生成最终视频' });
@@ -105,7 +105,7 @@ test('a clean follow-up closes a waiting task when a deliverable already exists'
 });
 
 test('task lifecycle and asset references remain conversation scoped', async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-durable-task-meta-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-durable-task-meta-'));
   const service = new DurableTaskService(new MemoryStore(), { tasksRoot: path.join(root, 'tasks'), runsRoot: path.join(root, 'runs') });
   try {
     const task = await service.create({ conversationId: 'conversation-a', objective: '制作报告' });

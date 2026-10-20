@@ -1,4 +1,4 @@
-# Workmate Embedding Provider v1 实施计划
+# OpenClawX Embedding Provider v1 实施计划
 
 > 依赖主案：[embedding-provider-v1.md](./embedding-provider-v1.md)  
 > 状态：实施计划，**暂不编写代码**  
@@ -6,7 +6,7 @@
 
 ## 1. 目标
 
-把本地 Docker 部署的 embedding server 接入 `workmate`，并在产品层表现为一个标准 provider，使以下能力能够统一复用：
+把本地 Docker 部署的 embedding server 接入 `openclawx`，并在产品层表现为一个标准 provider，使以下能力能够统一复用：
 
 - 系统默认 embedding
 - 经验记忆
@@ -210,7 +210,7 @@
 
 ## 5. 分层改造点
 
-下面按 `workmate` 当前分层，给出后续代码实施时的改造面。
+下面按 `openclawx` 当前分层，给出后续代码实施时的改造面。
 
 ### 5.1 Renderer / Settings
 
@@ -407,4 +407,4 @@
 - 先把配置、继承、协议、状态、重建语义定死；
 - 后续再渐进演进到更完整的统一 AI gateway。
 
-只要按这个顺序推进，`workmate` 就能在不重构主架构的前提下，稳定获得一条可持续扩展的 embedding provider 能力链路。
+只要按这个顺序推进，`openclawx` 就能在不重构主架构的前提下，稳定获得一条可持续扩展的 embedding provider 能力链路。

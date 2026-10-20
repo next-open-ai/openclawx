@@ -1,7 +1,7 @@
-import {readDocument} from '@workmate/agent-core';
-import type {DocumentInfo} from '@workmate/contracts';
-import {WorkResultItemSchema,WorkResultMatchesSchema,workResultInputs,type WorkResultItem,type WorkResultToolName,type WorkLookupResult,type WorkResultRanker} from '@workmate/contracts';
-import type {Orchestrator} from '@workmate/orchestrator';
+import {readDocument} from '@openclawx/agent-core';
+import type {DocumentInfo} from '@openclawx/contracts';
+import {WorkResultItemSchema,WorkResultMatchesSchema,workResultInputs,type WorkResultItem,type WorkResultToolName,type WorkLookupResult,type WorkResultRanker} from '@openclawx/contracts';
+import type {Orchestrator} from '@openclawx/orchestrator';
 import {listWorkAssets,readWorkAsset,assertWorkAssetOwner} from '../assets/routes.js';
 import {matchesWorkResult} from './matching.js';
 import {workResultSearchPlan} from './search-plan.js';

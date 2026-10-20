@@ -1,4 +1,4 @@
-import { VoiceModeSchema } from '@workmate/contracts';
+import { VoiceModeSchema } from '@openclawx/contracts';
 import { readRealtimeVoiceSettings as readLegacySettings } from './legacy-settings.js';
 import { readSettingsFile, writeSettingsFile } from './settings-files.js';
 type VoicePreferences = { defaultMode: 'realtime' | 'input' };

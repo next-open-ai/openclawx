@@ -10,7 +10,7 @@ export const inputHtml = `<!doctype html><html lang="zh-CN"><head><meta charset=
 <script>
 const rows=document.getElementById('rows'), form=document.getElementById('form'), save=document.getElementById('save');
 let channel='', busy=false;
-function changed(){if(channel)parent.postMessage({type:'workmate.task.dirty',channel},'*')}
+function changed(){if(channel)parent.postMessage({type:'openclawx.task.dirty',channel},'*')}
 form.oninput=changed;
 function add(row={name:'',revenue:'',cost:''}){
  if(rows.children.length>=100)return;
@@ -28,16 +28,16 @@ document.getElementById('add').onclick=()=>{if(!busy){add();changed()}};
 document.getElementById('sample').onclick=()=>{if(!busy){fill({period:document.getElementById('period').value||new Date().toISOString().slice(0,7),rows:[{name:'华东',revenue:120000,cost:80000},{name:'华南',revenue:90000,cost:65000}]});changed()}};
 window.addEventListener('message',event=>{
  if(event.source!==parent)return;const message=event.data;
- if(message?.type==='workmate.task.init'){channel=message.channel;save.textContent=message.submitLabel||'保存任务参数';fill(message.parameters||{});}
- if(message?.type==='workmate.task.confirm'&&message.channel===channel&&channel){if(!form.reportValidity())parent.postMessage({type:'workmate.task.confirm-error',channel,error:'请检查表单中的必填项和填写格式。'},'*');else save.click();}
- if(message?.type==='workmate.task.saved'&&message.channel===channel){busy=false;save.disabled=false;document.getElementById('error').textContent=message.error||'';document.getElementById('notice').textContent=message.error?'':(message.notice||'参数已保存，可在页面上方立即运行。');}
+ if(message?.type==='openclawx.task.init'){channel=message.channel;save.textContent=message.submitLabel||'保存任务参数';fill(message.parameters||{});}
+ if(message?.type==='openclawx.task.confirm'&&message.channel===channel&&channel){if(!form.reportValidity())parent.postMessage({type:'openclawx.task.confirm-error',channel,error:'请检查表单中的必填项和填写格式。'},'*');else save.click();}
+ if(message?.type==='openclawx.task.saved'&&message.channel===channel){busy=false;save.disabled=false;document.getElementById('error').textContent=message.error||'';document.getElementById('notice').textContent=message.error?'':(message.notice||'参数已保存，可在页面上方立即运行。');}
 });
 form.onsubmit=event=>event.preventDefault();
 form.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();save.click()}};
 save.onclick=()=>{if(busy||!channel||!form.reportValidity())return;
  const data={period:document.getElementById('period').value,rows:[...rows.children].map(tr=>Object.fromEntries([...tr.querySelectorAll('input')].map(input=>[input.dataset.key,input.dataset.key==='name'?input.value:Number(input.value)])))};
  if(!data.rows.length){document.getElementById('error').textContent='请至少填写一行';return;}
- busy=true;save.disabled=true;document.getElementById('notice').textContent='';parent.postMessage({type:'workmate.task.submit',channel,parameters:data},'*');
+ busy=true;save.disabled=true;document.getElementById('notice').textContent='';parent.postMessage({type:'openclawx.task.submit',channel,parameters:data},'*');
 };
-parent.postMessage({type:'workmate.task.ready'},'*');
+parent.postMessage({type:'openclawx.task.ready'},'*');
 </script></body></html>`;

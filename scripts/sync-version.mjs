@@ -36,4 +36,4 @@ for (const relativePath of manifests) {
   if (!dryRun) writeFileSync(manifestPath, `${JSON.stringify({ ...manifest, version }, null, 2)}\n`);
 }
 
-console.log(`Workmate release version: ${version}${dryRun ? ' (dry run)' : ''}`);
+console.log(`OpenClawX release version: ${version}${dryRun ? ' (dry run)' : ''}`);

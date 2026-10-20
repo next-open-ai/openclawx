@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import {onMounted,ref} from 'vue';
-import type {ExperienceSettingsState} from '@workmate/contracts';
+import type {ExperienceSettingsState} from '@openclawx/contracts';
 import {getStoredSessionToken} from '../../services/auth';
 import {useKnowledgeConfig} from '../../app/kb-config';
 const {bases,load}=useKnowledgeConfig();
 const state=ref<ExperienceSettingsState>({enabled:true,knowledgeBaseId:null,available:false}),busy=ref(false),error=ref(''),dirty=ref(false);
 async function request(method='GET',suffix='',body?:unknown){
   const base=window.location.protocol==='file:'?'http://127.0.0.1:47832':'';
-  const response=await fetch(base+'/api/experience/settings'+suffix,{method,headers:{'content-type':'application/json','x-workmate-session':getStoredSessionToken()||''},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(30000)});
+  const response=await fetch(base+'/api/experience/settings'+suffix,{method,headers:{'content-type':'application/json','x-openclawx-session':getStoredSessionToken()||''},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(30000)});
   const data=await response.json();if(!response.ok)throw Error(data.message||'经验设置操作失败');return data as ExperienceSettingsState;
 }
 async function save(test=false){busy.value=true;error.value='';try{state.value=await request('PUT','',{enabled:state.value.enabled,knowledgeBaseId:state.value.knowledgeBaseId});dirty.value=false;if(test)state.value=await request('POST','/test');}catch(cause){error.value=cause instanceof Error?cause.message:'操作失败';}finally{busy.value=false;}}

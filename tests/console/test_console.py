@@ -119,7 +119,7 @@ class ConsoleTests(unittest.TestCase):
             return urlopen(req, timeout=3)
         try:
             with call('/api/health') as response:
-                self.assertEqual(json.load(response)['service'], 'workmate-test-console')
+                self.assertEqual(json.load(response)['service'], 'openclawx-test-console')
             with call('/api/config') as response:
                 config = json.load(response)
             for headers in ({}, {'Content-Type':'application/json','Origin':'https://evil.example','X-Console-Token':config['token']}, {'Host':'evil.example'}):

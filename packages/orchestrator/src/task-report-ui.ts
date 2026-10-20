@@ -1,4 +1,4 @@
-import {TaskReportUiSchema,type TaskReportUi} from '@workmate/contracts';
+import {TaskReportUiSchema,type TaskReportUi} from '@openclawx/contracts';
 import {Script} from 'node:vm';
 
 /** Task reports receive only their immutable result. No authenticated data bridge. */

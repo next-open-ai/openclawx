@@ -60,7 +60,7 @@ function moduleDir(): string {
 }
 
 function siblingHarnessRoot(): string | null {
-  const fromEnv = process.env.WORKMATE_DSH_ROOT?.trim();
+  const fromEnv = process.env.OPENCLAWX_DSH_ROOT?.trim();
   if (fromEnv && isHarnessRoot(fromEnv)) return path.resolve(fromEnv);
   if (fromEnv && exists(fromEnv)) return path.resolve(fromEnv);
 
@@ -70,7 +70,7 @@ function siblingHarnessRoot(): string | null {
 }
 
 function resolveCordis(harnessRoot: string | null): string | null {
-  const fromEnv = process.env.WORKMATE_DSH_CORDIS?.trim();
+  const fromEnv = process.env.OPENCLAWX_DSH_CORDIS?.trim();
   if (fromEnv && exists(fromEnv)) return path.resolve(fromEnv);
   if (!harnessRoot) return null;
   const example = path.join(harnessRoot, 'examples/jsonrpc-agent/cordis.yml');
@@ -84,21 +84,21 @@ function resolveBin(harnessRoot: string | null): {
   source: string;
   spawnCwd?: string;
 } | null {
-  const binEnv = process.env.WORKMATE_DSH_BIN?.trim();
+  const binEnv = process.env.OPENCLAWX_DSH_BIN?.trim();
   if (binEnv) {
-    const extra = String(process.env.WORKMATE_DSH_ARGS || '')
+    const extra = String(process.env.OPENCLAWX_DSH_ARGS || '')
       .split(/\s+/)
       .map((item) => item.trim())
       .filter(Boolean);
     return {
       command: binEnv,
       args: extra,
-      source: 'WORKMATE_DSH_BIN',
-      spawnCwd: process.env.WORKMATE_DSH_ROOT?.trim() || harnessRoot || undefined,
+      source: 'OPENCLAWX_DSH_BIN',
+      spawnCwd: process.env.OPENCLAWX_DSH_ROOT?.trim() || harnessRoot || undefined,
     };
   }
 
-  // Prefer on-demand install under ~/.workmate/dsh-runtime (release path).
+  // Prefer on-demand install under ~/.openclawx/dsh-runtime (release path).
   const userRoot = dshRuntimeRoot();
   const userBin = resolveDshJsonrpcBin(userRoot);
   if (userBin) {
@@ -131,7 +131,7 @@ function resolveBin(harnessRoot: string | null): {
       };
     }
   } catch {
-    /* not installed in workmate */
+    /* not installed in openclawx */
   }
 
   if (harnessRoot) {
@@ -173,7 +173,7 @@ function resolveBin(harnessRoot: string | null): {
 
 /**
  * Resolve how to spawn the DeepSeek Harness JSON-RPC runtime.
- * @param options.cordisConfig — absolute cordis.yml (Workmate-generated or override).
+ * @param options.cordisConfig — absolute cordis.yml (OpenClawX-generated or override).
  */
 export function resolveDshLaunch(options?: { cordisConfig?: string }): DshLaunchSpec {
   const harnessRoot = siblingHarnessRoot();
@@ -194,15 +194,15 @@ export function resolveDshLaunch(options?: { cordisConfig?: string }): DshLaunch
     const probe = probeDshRuntime({ moduleDir: moduleDir() });
     throw new Error(
       'DeepSeek Harness runtime not found. '
-      + 'Open 环境检查 and run「安装 dsh 编码引擎」, or set WORKMATE_DSH_BIN. '
+      + 'Open 环境检查 and run「安装 dsh 编码引擎」, or set OPENCLAWX_DSH_BIN. '
       + `Expected user runtime at ${dshRuntimeRoot()}. `
       + `(${probe.detail}; looked relative to ${moduleDir()} and cwd ${process.cwd()}).`,
     );
   }
   if (!cordisConfig) {
     throw new Error(
-      'DeepSeek Harness cordis config missing. Workmate normally generates one per run; '
-      + 'or set WORKMATE_DSH_CORDIS to an absolute cordis.yml path.',
+      'DeepSeek Harness cordis config missing. OpenClawX normally generates one per run; '
+      + 'or set OPENCLAWX_DSH_CORDIS to an absolute cordis.yml path.',
     );
   }
 

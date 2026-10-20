@@ -1,4 +1,4 @@
-# Workmate 本地 Embedding Sidecar 实施计划
+# OpenClawX 本地 Embedding Sidecar 实施计划
 
 > 依赖架构主案：[embedding-local-sidecar-architecture.md](./embedding-local-sidecar-architecture.md)  
 > 关联主案：[embedding-provider-v1.md](./embedding-provider-v1.md)  
@@ -11,7 +11,7 @@
 
 1. 不把推理逻辑塞进主进程
 2. 不要求普通用户先理解 Docker 或 provider
-3. 能快速接入当前 `workmate` 的 embedding provider 主链路
+3. 能快速接入当前 `openclawx` 的 embedding provider 主链路
 4. 能渐进演进到更强的本地或远程 embedding 体系
 
 ## 2. 本期定义
@@ -84,7 +84,7 @@
 
 ### M4. Provider Auto-Registration
 
-负责把 sidecar 自动映射成 `workmate` 内部 provider 配置。
+负责把 sidecar 自动映射成 `openclawx` 内部 provider 配置。
 
 职责：
 
@@ -154,7 +154,7 @@ apps/renderer/src/app/local-embedding.ts
 建议把本地资源放在统一 runtime 目录，不要散落。
 
 ```text
-~/.workmate/runtime/embedding/
+~/.openclawx/runtime/embedding/
   manifests/
   downloads/
   models/
@@ -516,4 +516,4 @@ configuredModel.meta.normalize = <runtime manifest normalize>
 - 把架构接入做成**标准 provider**
 - 把后续演进留在**版本化 runtime 和索引治理**
 
-按这个路线做，你后面既能继续保持 `workmate` 主架构稳定，也能逐步把本地 embedding 能力产品化。
+按这个路线做，你后面既能继续保持 `openclawx` 主架构稳定，也能逐步把本地 embedding 能力产品化。

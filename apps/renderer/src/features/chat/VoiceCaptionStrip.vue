@@ -7,7 +7,7 @@ const panelId = useId();
 const expanded = ref(false);
 const entries = computed(() => props.captions.flatMap(caption => [
   ...(caption.question ? [{ key: `${caption.id}:question`, speaker: '你', text: caption.question }] : []),
-  ...(caption.answer ? [{ key: `${caption.id}:answer`, speaker: 'Workmate', text: caption.answer }] : []),
+  ...(caption.answer ? [{ key: `${caption.id}:answer`, speaker: 'OpenClawX', text: caption.answer }] : []),
 ]));
 const current = computed(() => entries.value.at(-1));
 </script>

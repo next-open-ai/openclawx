@@ -4,12 +4,12 @@ import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, readFileSync } from
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import Fastify from 'fastify';
-import type { Orchestrator } from '@workmate/orchestrator';
+import type { Orchestrator } from '@openclawx/orchestrator';
 import { registerProjectDraftFileRoutes } from './project-draft-files.js';
 
 test('MDA-T10: authorized isolated output drafts are read-only, bounded and never replace deliverables', async () => {
-  const parent = mkdtempSync(path.join(tmpdir(), 'workmate-draft-files-'));
-  const previous = process.env.WORKMATE_WORKSPACES_DIR; process.env.WORKMATE_WORKSPACES_DIR = parent;
+  const parent = mkdtempSync(path.join(tmpdir(), 'openclawx-draft-files-'));
+  const previous = process.env.OPENCLAWX_WORKSPACES_DIR; process.env.OPENCLAWX_WORKSPACES_DIR = parent;
   const owner = { orgId: 'org', ownerUserId: 'alice', accessScope: 'private' };
   const projects = { project: { ...owner, id: 'project', kind: 'conversation', tasks: [{ id: 'task', runId: 'run-1' }, { id: 'empty', runId: 'run-2' }] }, other: { ...owner, id: 'other', kind: 'conversation', tasks: [] } };
   const runs = { 'run-1': { ...owner, id: 'run-1', sessionId: 'project', taskId: 'task', status: 'failed' }, 'run-2': { ...owner, id: 'run-2', sessionId: 'project', taskId: 'empty', status: 'running' } };
@@ -47,5 +47,5 @@ test('MDA-T10: authorized isolated output drafts are read-only, bounded and neve
     for (let i = 0; i < 510; i++) writeFileSync(path.join(output, `file-${String(i).padStart(3, '0')}.txt`), 'draft');
     const bounded = (await app.inject(`${base}/draft-files`)).json();
     assert.equal(bounded.files.length, 500); assert.equal(bounded.truncated, true);
-  } finally { await app.close(); if (previous === undefined) delete process.env.WORKMATE_WORKSPACES_DIR; else process.env.WORKMATE_WORKSPACES_DIR = previous; }
+  } finally { await app.close(); if (previous === undefined) delete process.env.OPENCLAWX_WORKSPACES_DIR; else process.env.OPENCLAWX_WORKSPACES_DIR = previous; }
 });

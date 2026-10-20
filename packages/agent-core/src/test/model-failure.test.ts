@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { AgentEventSchema } from '@workmate/contracts';
+import { AgentEventSchema } from '@openclawx/contracts';
 import { diagnoseModelFailure } from '../model-failure.js';
 import { streamAgentReply } from '../pi-runtime.js';
 
@@ -58,7 +58,7 @@ test('RD-T5: balance errors survive SDK serialization, without exposing upstream
 });
 
 test('RD-T5: actual Pi SDK HTTP 402 becomes one visible balance failure before any tool runs', { timeout: 20_000 }, async () => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-balance-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-balance-'));
   let requests = 0;
   const server = createServer((request, response) => {
     requests++; request.resume();

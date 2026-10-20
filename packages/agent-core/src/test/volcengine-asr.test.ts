@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { WebSocketServer } from 'ws';
-import type { AsrEvent } from '@workmate/contracts';
+import type { AsrEvent } from '@openclawx/contracts';
 import { decodeAsrFrame, encodeAsrFrame, VolcengineAsrStream } from '../volcengine-asr.js';
 
 function response(data: unknown, flags = 1, sequence = 1, compressed = true, error = false) {

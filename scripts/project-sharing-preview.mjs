@@ -20,7 +20,7 @@ const bundle = await build({ bundle: true, write: false, platform: 'browser', fo
     }).mount('#app');` },
   plugins: [{ name: 'workflow-fixture', setup(builder) {
     builder.onResolve({ filter: /^vue$/ }, () => ({ path: vueRequire.resolve('vue/dist/vue.esm-bundler.js') }));
-    builder.onResolve({ filter: /^@workmate\/contracts$/ }, () => ({ path: path.resolve('packages/contracts/dist/index.js') }));
+    builder.onResolve({ filter: /^@openclawx\/contracts$/ }, () => ({ path: path.resolve('packages/contracts/dist/index.js') }));
     builder.onLoad({ filter: /\.vue$/ }, args => {
       const { descriptor } = parse(fs.readFileSync(args.path, 'utf8'), { filename: args.path });
       const id = createHash('sha256').update(args.path).digest('hex').slice(0, 8);

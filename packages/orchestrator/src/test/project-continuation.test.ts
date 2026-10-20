@@ -3,12 +3,12 @@ import test from 'node:test';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { ChatRequest } from '@workmate/contracts';
+import type { ChatRequest } from '@openclawx/contracts';
 import { Orchestrator, type AgentRunner } from '../index.js';
 import { runContext, waitFor } from './fake.js';
 
 test('PC-T5: material → real file → follow-up → edit → failure/cancel → durable reopen', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'workmate-project-continuation-'));
+  const root = mkdtempSync(path.join(tmpdir(), 'openclawx-project-continuation-'));
   const workspace = path.join(root, 'project'); mkdirSync(path.join(workspace, 'inputs'), { recursive: true }); mkdirSync(path.join(workspace, 'output'));
   writeFileSync(path.join(workspace, 'inputs', 'revenue.txt'), '九月收入150000，成本100000，利润50000');
   const report = path.join(workspace, 'output', 'report.md');

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { cleanupConversationSessionWorkspaces, deleteChatImages, readChatImage, assertVisionSupported, resolveExecutionBackend, loadExecutionRoutingConfig } from '@workmate/agent-core';
-import { ChatFilesSchema, ChatImagesSchema } from '@workmate/contracts';
-import type { ChatRequest, ModelConfig } from '@workmate/contracts';
+import { cleanupConversationSessionWorkspaces, deleteChatImages, readChatImage, assertVisionSupported, resolveExecutionBackend, loadExecutionRoutingConfig } from '@openclawx/agent-core';
+import { ChatFilesSchema, ChatImagesSchema } from '@openclawx/contracts';
+import type { ChatRequest, ModelConfig } from '@openclawx/contracts';
 import type { EventHub, HubListener } from './hub.js';
 import { deleteKey, listJsonIds, readJson, writeJson } from './repo.js';
 import type { OrcEvent } from './run-engine.js';
@@ -61,15 +61,15 @@ export interface ChatSessionServiceOptions {
   ) => ChatRunContext['mcpConnections'] | Promise<ChatRunContext['mcpConnections']>;
   durableTasks?: DurableTaskService;
   /** Resolve verified chat-file originals only after a request becomes a durable task. */
-  durableTaskSourceResolver?: (sessionId: string, attachments: import('@workmate/contracts').ChatFileAttachment[]) => Promise<DurableTaskSourceInput[]>;
+  durableTaskSourceResolver?: (sessionId: string, attachments: import('@openclawx/contracts').ChatFileAttachment[]) => Promise<DurableTaskSourceInput[]>;
 }
 
 export interface SendUserMessageInput {
   content: string;
-  attachments?: import('@workmate/contracts').ChatImageAttachment[];
-  fileAttachments?: import('@workmate/contracts').ChatFileAttachment[];
+  attachments?: import('@openclawx/contracts').ChatImageAttachment[];
+  fileAttachments?: import('@openclawx/contracts').ChatFileAttachment[];
   attachmentContext?: string;
-  workflowResult?: import('@workmate/contracts').WorkflowResultReference;
+  workflowResult?: import('@openclawx/contracts').WorkflowResultReference;
   responseMode?: 'text-only';
   /** Resolved runtime context; when omitted the service uses its resolver. */
   context?: ChatRunContext;

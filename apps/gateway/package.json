@@ -1,5 +1,5 @@
 {
-  "name": "@workmate/gateway",
+  "name": "@openclawx/gateway",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@larksuiteoapi/node-sdk": "^1.11.1",
-    "@workmate/channel": "workspace:*",
+    "@openclawx/channel": "workspace:*",
     "dingtalk-stream": "^2.1.5",
     "ws": "^8.18.0"
   },

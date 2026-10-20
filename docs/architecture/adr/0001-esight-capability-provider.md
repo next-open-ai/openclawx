@@ -4,12 +4,12 @@
 > 日期：2026-09-23  
 > 接受日期：2026-09-23  
 > 决策基线：eSight SDD 0.3.0  
-> 决策所有者：Workmate 架构组  
+> 决策所有者：OpenClawX 架构组
 > 需求与验证：[应用模型能力 SDD](../../sdd/features/application-model-capabilities/README.md)
 
 ## 1. 决策摘要
 
-Workmate 将 eSight 作为 `quantum-code` 能力模型接入现有模型管理和运行时：
+OpenClawX 将 eSight 作为 `quantum-code` 能力模型接入现有模型管理和运行时：
 
 - eSight 通过 OpenAI-compatible HTTP API 被 Model Provider 调用；
 - 主控 Agent 继续使用强通用模型负责规划、Loop、工具选择和汇总；
@@ -19,7 +19,7 @@ Workmate 将 eSight 作为 `quantum-code` 能力模型接入现有模型管理�
 - 编译、模拟、真机和外部状态操作继续通过 Tool/MCP 完成；
 - eSight 输出必须由独立 Verifier 验证。
 
-Workmate 已有模型管理，因此不为 eSight 新建一套平行 Model Gateway。若现有运行时缺少能力路由、健康、熔断和审计，则在现有模型运行时内补齐，而非部署重复网关。
+OpenClawX 已有模型管理，因此不为 eSight 新建一套平行 Model Gateway。若现有运行时缺少能力路由、健康、熔断和审计，则在现有模型运行时内补齐，而非部署重复网关。
 
 ## 2. 上下文
 
@@ -159,8 +159,8 @@ Quantummate 的 Provider Runtime 应按能力区分接口，而不是把所有�
 ## 7. 约束
 
 - 只有 `packages/agent-core` 可调用模型 SDK 或模型 HTTP 接口；
-- 契约在 `@workmate/contracts` 中定义；
-- 编排状态归 `@workmate/orchestrator`，由 `apps/api` 托管；
+- 契约在 `@openclawx/contracts` 中定义；
+- 编排状态归 `@openclawx/orchestrator`，由 `apps/api` 托管；
 - eSight 端点和密钥不得出现在 renderer、Skill 文本或域数据中；
 - 生成代码必须经过 Verifier；
 - 修复循环必须有硬上限；

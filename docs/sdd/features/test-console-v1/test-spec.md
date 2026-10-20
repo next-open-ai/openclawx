@@ -1,4 +1,4 @@
-# Workmate 测试控制台 V1 · Test spec
+# OpenClawX 测试控制台 V1 · Test spec
 
 - TC-R1：非法测试类型、套件、数值与并发参数被拒绝。
 - TC-R2：网页参数不能注入 Shell、目标地址或输出路径。

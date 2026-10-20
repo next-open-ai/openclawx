@@ -10,7 +10,7 @@ const paths = [
 for (const path of paths) {
   const source = readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
   assert.doesNotMatch(source, /Quantum\s*AI/i, `${path}: obsolete product identity`);
-  assert.match(source, /Workmate/, `${path}: expected product identity`);
+  assert.match(source, /OpenClawX/, `${path}: expected product identity`);
   assert.match(source, /employee name|员工名称/, `${path}: prefer configured employee name`);
 }
-console.log('PI-R1 PASS: API, legacy chat, project coordinator and pi defaults use Workmate identity.');
+console.log('PI-R1 PASS: API, legacy chat, project coordinator and pi defaults use OpenClawX identity.');

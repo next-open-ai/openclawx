@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { McpConnectionRuntime } from '@workmate/contracts';
+import type { McpConnectionRuntime } from '@openclawx/contracts';
 import { openDshMcpBridges } from '../mcp-dsh-bridge.js';
 import { warmMcpConnections } from '../mcp-runtime.js';
 
@@ -27,10 +27,10 @@ test('openDshMcpBridges passes through http connections unchanged', async () => 
 test('openDshMcpBridges rewrites warmed stdio to localhost http and signals tools/list', async () => {
   // Tiny fake MCP via `node -e` stdio is heavy; use the filesystem server only when
   // npx is available. Prefer a local echo-style command that speaks MCP is hard —
-  // instead skip unless WORKMATE_TEST_MCP_STDIO is set, and always cover pass-through.
-  const command = process.env.WORKMATE_TEST_MCP_STDIO?.trim();
+  // instead skip unless OPENCLAWX_TEST_MCP_STDIO is set, and always cover pass-through.
+  const command = process.env.OPENCLAWX_TEST_MCP_STDIO?.trim();
   if (!command) {
-    assert.ok(true, 'skip live stdio bridge (set WORKMATE_TEST_MCP_STDIO to enable)');
+    assert.ok(true, 'skip live stdio bridge (set OPENCLAWX_TEST_MCP_STDIO to enable)');
     return;
   }
   const [bin, ...args] = command.split(/\s+/);

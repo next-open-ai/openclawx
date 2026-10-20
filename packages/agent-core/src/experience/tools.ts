@@ -1,4 +1,4 @@
-import type { ModelConfig } from '@workmate/contracts';
+import type { ModelConfig } from '@openclawx/contracts';
 import { Type } from '@sinclair/typebox';
 import { defineAgentTool, type AgentTool } from '../pi-tools.js';
 import { currentExperienceContext,withExperienceContext } from './context.js';

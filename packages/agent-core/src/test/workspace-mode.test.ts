@@ -19,7 +19,7 @@ test('resolveWorkspaceMode distinguishes conversation vs project', () => {
 });
 
 test('resolveAgentWorkspaceRoot uses project path in project mode', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-ws-mode-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-ws-mode-'));
   try {
     const root = resolveAgentWorkspaceRoot({ runId: 'run-1', projectWorkspacePath: dir });
     assert.equal(root, path.resolve(dir));
@@ -29,16 +29,16 @@ test('resolveAgentWorkspaceRoot uses project path in project mode', () => {
 });
 
 test('resolveAgentWorkspaceRoot isolates conversation runs under workspaces/', () => {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-ws-base-'));
-  const prev = process.env.WORKMATE_WORKSPACES_DIR;
-  process.env.WORKMATE_WORKSPACES_DIR = base;
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-ws-base-'));
+  const prev = process.env.OPENCLAWX_WORKSPACES_DIR;
+  process.env.OPENCLAWX_WORKSPACES_DIR = base;
   try {
     const root = resolveAgentWorkspaceRoot({ runId: 'abc-123', projectWorkspacePath: undefined });
     assert.equal(root, path.join(base, 'abc-123'));
     assert.ok(fs.existsSync(root));
   } finally {
-    if (prev === undefined) delete process.env.WORKMATE_WORKSPACES_DIR;
-    else process.env.WORKMATE_WORKSPACES_DIR = prev;
+    if (prev === undefined) delete process.env.OPENCLAWX_WORKSPACES_DIR;
+    else process.env.OPENCLAWX_WORKSPACES_DIR = prev;
     fs.rmSync(base, { recursive: true, force: true });
   }
 });
@@ -51,7 +51,7 @@ test('mode contracts mention the correct deliverable location', () => {
 });
 
 test('snapshotWorkspaceFiles skips internal dirs', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-snap-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-snap-'));
   try {
     fs.writeFileSync(path.join(dir, 'index.html'), '<html></html>');
     fs.mkdirSync(path.join(dir, 'node_modules'));
@@ -68,7 +68,7 @@ test('snapshotWorkspaceFiles skips internal dirs', async () => {
 });
 
 test('project output reconciliation moves files to root and removes the wrapper', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-project-output-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-project-output-'));
   try {
     fs.mkdirSync(path.join(dir, 'output', 'assets', 'css'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'output', 'index.html'), '<html></html>');
@@ -84,7 +84,7 @@ test('project output reconciliation moves files to root and removes the wrapper'
 });
 
 test('project output reconciliation never overwrites root conflicts', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-project-conflict-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-project-conflict-'));
   try {
     fs.mkdirSync(path.join(dir, 'output'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'index.html'), 'root');

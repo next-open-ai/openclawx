@@ -8,10 +8,10 @@ UI 沿用现有 Vue/Tailwind/主题变量；默认展示必要项，TLS/CA 与�
 
 ## 命令与结果
 
-- `pnpm --filter @workmate/contracts build`：通过。
-- `pnpm --filter @workmate/api typecheck`、`pnpm --filter @workmate/api build`：通过。
-- `pnpm --filter @workmate/renderer typecheck`、`pnpm --filter @workmate/renderer build`：通过，既有大包/静态动态导入警告未扩大处理。
-- `WORKMATE_TEST_MYSQL_PORT=47961 WORKMATE_TEST_POSTGRES_PORT=47962 pnpm --filter @workmate/api test`：30/30 通过，0 skip；包括 MySQL 8.0.36、PostgreSQL 16 隔离 Docker 测试库的真实驱动验证。测试账号仅 SELECT 权限，TLS=false（回环地址上的隔离测试环境）。普通不带环境变量测试跳过两项真库用例。
+- `pnpm --filter @openclawx/contracts build`：通过。
+- `pnpm --filter @openclawx/api typecheck`、`pnpm --filter @openclawx/api build`：通过。
+- `pnpm --filter @openclawx/renderer typecheck`、`pnpm --filter @openclawx/renderer build`：通过，既有大包/静态动态导入警告未扩大处理。
+- `OPENCLAWX_TEST_MYSQL_PORT=47961 OPENCLAWX_TEST_POSTGRES_PORT=47962 pnpm --filter @openclawx/api test`：30/30 通过，0 skip；包括 MySQL 8.0.36、PostgreSQL 16 隔离 Docker 测试库的真实驱动验证。测试账号仅 SELECT 权限，TLS=false（回环地址上的隔离测试环境）。普通不带环境变量测试跳过两项真库用例。
 - `git diff --check`：通过。
 - `node scripts/data-workbench-preview.mjs`：实际 Vue 页面与内存模拟 API，默认连接、PostgreSQL 自动端口、连接测试、选库/选表、导入后详情已验证；连接成功后折叠字段，确认按钮固定在滚动区域外。390 × 844 窄屏验证无横向溢出，弹窗宽 358px，底部操作可见；不是用户真实数据库页面。
 - 验收完成后已关闭临时页面与模拟服务，删除本次创建的两套隔离测试容器及其临时卷；未访问或删除用户业务库。

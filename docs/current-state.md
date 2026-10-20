@@ -1,4 +1,4 @@
-# Workmate 当前功能状态
+# OpenClawX 当前功能状态
 
 > 实现快照日期：2026-10-13
 > 口径：以当前工作区实现、功能 SDD 和已执行回归为准；“已实现”不自动等于真实 Provider、真实设备或安装包验收完成。
@@ -29,11 +29,11 @@
 | 服务 | 默认地址 | 说明 |
 | --- | --- | --- |
 | Renderer 开发界面 | `127.0.0.1:47831` | 避开常见的 `5173` |
-| Workmate API | `127.0.0.1:47832` | Desktop、Web launcher 与 Gateway 共用正式 API |
+| OpenClawX API | `127.0.0.1:47832` | Desktop、Web launcher 与 Gateway 共用正式 API |
 | 手机 HTTPS 前置 | 独立可配置端口 | 仅代理 `/api/chat-mobile/`，不暴露管理接口 |
 | 测试控制台 | `127.0.0.1:47840` | `pnpm quality:console` 启动 |
 
-默认数据目录为 `~/.workmate`。端口可由对应环境变量覆盖，但客户端、代理和测试目标必须同步。
+默认数据目录为 `~/.openclawx`。端口可由对应环境变量覆盖，但客户端、代理和测试目标必须同步。
 
 ## 已知验收边界
 

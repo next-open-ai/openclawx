@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { AgentEvent, ChatRequest } from '@workmate/contracts';
+import type { AgentEvent, ChatRequest } from '@openclawx/contracts';
 
 export const AGENTSCOPE_PROTOCOL_VERSION = '1';
 

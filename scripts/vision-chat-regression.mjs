@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
-const root = await mkdtemp(path.join(os.tmpdir(), 'workmate-vision-e2e-'));
+const root = await mkdtemp(path.join(os.tmpdir(), 'openclawx-vision-e2e-'));
 const payloads = [];
 const provider = createServer(async (req, res) => {
   let raw = ''; for await (const chunk of req) raw += chunk;
@@ -33,16 +33,16 @@ await new Promise((resolve) => allocator.close(resolve));
 const base = `http://127.0.0.1:${apiPort}/api`;
 let serverLog = '';
 const child = spawn(process.execPath, ['apps/api/dist/main.cjs'], { env: {
-  ...process.env, WORKMATE_DATA_DIR: root, WORKMATE_API_PORT: String(apiPort),
-  WORKMATE_ORCH_RUNNER: '', WORKMATE_AGENT_ENGINE: 'pi', WORKMATE_AGENT_ENGINE_FORCE: '0',
-  WORKMATE_AGENTSCOPE_ENABLED: '0', WORKMATE_EXPERIENCE_DIR: path.join(root, 'experience'),
-  WORKMATE_SKILLS_DIR: path.join(root, 'skills'), WORKMATE_WEB_STATIC_DIR: process.env.VISION_UI === '1' ? path.resolve('apps/renderer/dist') : '',
+  ...process.env, OPENCLAWX_DATA_DIR: root, OPENCLAWX_API_PORT: String(apiPort),
+  OPENCLAWX_ORCH_RUNNER: '', OPENCLAWX_AGENT_ENGINE: 'pi', OPENCLAWX_AGENT_ENGINE_FORCE: '0',
+  OPENCLAWX_AGENTSCOPE_ENABLED: '0', OPENCLAWX_EXPERIENCE_DIR: path.join(root, 'experience'),
+  OPENCLAWX_SKILLS_DIR: path.join(root, 'skills'), OPENCLAWX_WEB_STATIC_DIR: process.env.VISION_UI === '1' ? path.resolve('apps/renderer/dist') : '',
 }, stdio: ['ignore', 'pipe', 'pipe'] });
 child.stdout.on('data', (data) => { serverLog = (serverLog + data).slice(-5000); });
 child.stderr.on('data', (data) => { serverLog = (serverLog + data).slice(-5000); });
 let token = '';
 async function call(route, method = 'GET', body, expected = 200, auth = token) {
-  const response = await fetch(base + route, { method, headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(auth ? { 'x-workmate-session': auth } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const response = await fetch(base + route, { method, headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(auth ? { 'x-openclawx-session': auth } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
   const data = await response.json();
   assert.equal(response.status, expected, `${route}: ${JSON.stringify(data)}`);
   return data;
@@ -60,7 +60,7 @@ try {
   const { attachment } = await call(url + '/images', 'POST', { name: '测试.png', dataBase64: png });
   await call(url + '/images', 'POST', { name: 'fake.png', dataBase64: 'PHN2Zy8+' }, 400);
   await call(url + '/images', 'POST', { name: 'x.png', dataBase64: png }, 401, '');
-  const response = await fetch(base + url + `/images/${attachment.id}`, { headers: { 'x-workmate-session': token } });
+  const response = await fetch(base + url + `/images/${attachment.id}`, { headers: { 'x-openclawx-session': token } });
   assert.equal(response.status, 200);
   assert.equal(Buffer.from(await response.arrayBuffer()).toString('base64'), png);
   await call('/auth/users', 'POST', { username: 'vision-member', displayName: 'Member', password: 'temporary-vision-test-password' });
@@ -68,11 +68,11 @@ try {
   await call(url + `/images/${attachment.id}`, 'GET', undefined, 404, memberToken);
   const second = await call('/orch/sessions', 'POST', { title: 'Other', employeeId: 'general' });
   const context = { profile: { id: 'general', name: 'Test', instructions: 'Answer briefly without tools.', toolIds: [] }, model: { provider: 'openai-compatible', chatModel: 'vision-mock', apiKey: 'local-test', supportsVision: true, baseUrl: `http://127.0.0.1:${provider.address().port}/v1` }, engine: 'pi', skills: [], searchProviders: [], knowledgeBases: [], mcpConnections: [], modelCapabilities: [] };
-  const bad = await fetch(base + `/orch/sessions/${second.session.id}/messages`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-workmate-session': token }, body: JSON.stringify({ content: 'cross session', attachments: [attachment], context }) });
+  const bad = await fetch(base + `/orch/sessions/${second.session.id}/messages`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-openclawx-session': token }, body: JSON.stringify({ content: 'cross session', attachments: [attachment], context }) });
   assert.ok(!bad.ok); assert.match((await bad.json()).message, /IMAGE_UNAVAILABLE/);
   await call('/chat', 'POST', { ...context, conversationId: session.id, messages: [{ role: 'user', content: 'bypass', attachments: [attachment] }] }, 400);
   for (const unsupported of [{ ...context, engine: 'dsh' }, { ...context, model: { ...context.model, supportsVision: false } }]) {
-    const result = await fetch(base + url + '/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-workmate-session': token }, body: JSON.stringify({ content: 'should reject', attachments: [attachment], context: unsupported }) });
+    const result = await fetch(base + url + '/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-openclawx-session': token }, body: JSON.stringify({ content: 'should reject', attachments: [attachment], context: unsupported }) });
     assert.ok(!result.ok); assert.match((await result.json()).message, /VISION_.*UNSUPPORTED/);
   }
   for (const [content, attachments] of [['分析图片', [attachment]], ['继续检查原图', undefined]]) {

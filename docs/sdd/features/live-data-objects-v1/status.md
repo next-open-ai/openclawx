@@ -8,13 +8,13 @@
 
 ## 已执行
 
-- `pnpm --filter @workmate/contracts build`：通过。
-- `pnpm --filter @workmate/api typecheck`、`pnpm --filter @workmate/renderer typecheck`：通过。
-- `pnpm --filter @workmate/api test`：52 项通过，2 项真实数据库验收因未配置隔离实例跳过。
-- `pnpm --filter @workmate/api build`、`pnpm --filter @workmate/renderer build`：通过（前端有现存打包体积/静态动态混合导入警告）。
+- `pnpm --filter @openclawx/contracts build`：通过。
+- `pnpm --filter @openclawx/api typecheck`、`pnpm --filter @openclawx/renderer typecheck`：通过。
+- `pnpm --filter @openclawx/api test`：52 项通过，2 项真实数据库验收因未配置隔离实例跳过。
+- `pnpm --filter @openclawx/api build`、`pnpm --filter @openclawx/renderer build`：通过（前端有现存打包体积/静态动态混合导入警告）。
 - `node --check apps/desktop/src/main/index.cjs`：通过。
 - `pnpm docs:build`：通过。
-- 隔离浏览器 fixture：`WORKMATE_DATA_PREVIEW_LIVE=1 node scripts/data-workbench-preview.mjs`；内置浏览器实测复用连接→选库→选表→建对象→默认只读禁写→开启写入确认→修改记录→成功反馈。仅模拟 HTTP 和业务行，不连接数据库。
+- 隔离浏览器 fixture：`OPENCLAWX_DATA_PREVIEW_LIVE=1 node scripts/data-workbench-preview.mjs`；内置浏览器实测复用连接→选库→选表→建对象→默认只读禁写→开启写入确认→修改记录→成功反馈。仅模拟 HTTP 和业务行，不连接数据库。
 
 ## 未执行与限制
 

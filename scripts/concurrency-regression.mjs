@@ -49,7 +49,7 @@ async function runDshMcpSkillsCase() {
 }
 
 async function waitForServer(baseUrl, options = {}) {
-  const timeoutMs = Number(options.timeoutMs || process.env.WORKMATE_CONCURRENCY_REGRESSION_READY_TIMEOUT_MS || '120000');
+  const timeoutMs = Number(options.timeoutMs || process.env.OPENCLAWX_CONCURRENCY_REGRESSION_READY_TIMEOUT_MS || '120000');
   const output = typeof options.output === 'function' ? options.output : () => '';
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
@@ -69,9 +69,9 @@ async function waitForServer(baseUrl, options = {}) {
 async function main() {
   const dshMcpSkills = await runDshMcpSkillsCase();
 
-  const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'workmate-concurrency-regression-'));
+  const tempRoot = mkdtempSync(path.join(os.tmpdir(), 'openclawx-concurrency-regression-'));
   const runtime = ensureAgentscopeRuntime(projectRoot, { dataDir: tempRoot });
-  const port = await choosePort(Number(process.env.WORKMATE_API_PORT || '4333'));
+  const port = await choosePort(Number(process.env.OPENCLAWX_API_PORT || '4333'));
   const baseUrl = `http://127.0.0.1:${port}/api`;
   const apiEntry = path.join(projectRoot, 'apps', 'api', 'dist', 'main.cjs');
   const loadtestEntry = path.join(projectRoot, 'scripts', 'concurrency-loadtest.mjs');
@@ -81,20 +81,20 @@ async function main() {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: {
       ...process.env,
-      WORKMATE_DATA_DIR: runtime.dataDir,
-      WORKMATE_API_HOST: '127.0.0.1',
-      WORKMATE_API_PORT: String(port),
-      WORKMATE_AGENT_ENGINE: 'agentscope',
-      WORKMATE_AGENTSCOPE_ENABLED: '1',
-      WORKMATE_AGENTSCOPE_ROOT: runtime.runtimeRoot,
-      WORKMATE_AGENTSCOPE_PYTHON: runtime.python,
-      WORKMATE_MAX_CONCURRENT_RUNS_GLOBAL: process.env.WORKMATE_MAX_CONCURRENT_RUNS_GLOBAL || '2',
-      WORKMATE_MAX_CONCURRENT_RUNS_PER_USER: process.env.WORKMATE_MAX_CONCURRENT_RUNS_PER_USER || '1',
-      WORKMATE_MAX_QUEUE_WAIT_MS: process.env.WORKMATE_MAX_QUEUE_WAIT_MS || '120000',
-      WORKMATE_AGENTSCOPE_POOL_SIZE: process.env.WORKMATE_AGENTSCOPE_POOL_SIZE || '2',
-      WORKMATE_AGENTSCOPE_SHARED_MAX_RUNS: process.env.WORKMATE_AGENTSCOPE_SHARED_MAX_RUNS || '1',
-      WORKMATE_AGENTSCOPE_QUEUE_WAIT_MS: process.env.WORKMATE_AGENTSCOPE_QUEUE_WAIT_MS || '120000',
-      WORKMATE_AGENTSCOPE_RESTART_COOLDOWN_MS: process.env.WORKMATE_AGENTSCOPE_RESTART_COOLDOWN_MS || '15000',
+      OPENCLAWX_DATA_DIR: runtime.dataDir,
+      OPENCLAWX_API_HOST: '127.0.0.1',
+      OPENCLAWX_API_PORT: String(port),
+      OPENCLAWX_AGENT_ENGINE: 'agentscope',
+      OPENCLAWX_AGENTSCOPE_ENABLED: '1',
+      OPENCLAWX_AGENTSCOPE_ROOT: runtime.runtimeRoot,
+      OPENCLAWX_AGENTSCOPE_PYTHON: runtime.python,
+      OPENCLAWX_MAX_CONCURRENT_RUNS_GLOBAL: process.env.OPENCLAWX_MAX_CONCURRENT_RUNS_GLOBAL || '2',
+      OPENCLAWX_MAX_CONCURRENT_RUNS_PER_USER: process.env.OPENCLAWX_MAX_CONCURRENT_RUNS_PER_USER || '1',
+      OPENCLAWX_MAX_QUEUE_WAIT_MS: process.env.OPENCLAWX_MAX_QUEUE_WAIT_MS || '120000',
+      OPENCLAWX_AGENTSCOPE_POOL_SIZE: process.env.OPENCLAWX_AGENTSCOPE_POOL_SIZE || '2',
+      OPENCLAWX_AGENTSCOPE_SHARED_MAX_RUNS: process.env.OPENCLAWX_AGENTSCOPE_SHARED_MAX_RUNS || '1',
+      OPENCLAWX_AGENTSCOPE_QUEUE_WAIT_MS: process.env.OPENCLAWX_AGENTSCOPE_QUEUE_WAIT_MS || '120000',
+      OPENCLAWX_AGENTSCOPE_RESTART_COOLDOWN_MS: process.env.OPENCLAWX_AGENTSCOPE_RESTART_COOLDOWN_MS || '15000',
     },
   });
 
@@ -114,7 +114,7 @@ async function main() {
         stdio: ['ignore', 'pipe', 'pipe'],
         env: {
           ...process.env,
-          WORKMATE_LOADTEST_BASE_URL: baseUrl,
+          OPENCLAWX_LOADTEST_BASE_URL: baseUrl,
         },
       });
 
@@ -141,7 +141,7 @@ async function main() {
     });
 
     process.stdout.write(JSON.stringify({
-      mode: 'workmate-regression',
+      mode: 'openclawx-regression',
       cases: {
         dshMcpSkills,
         agentscopeSidecar: {
@@ -149,13 +149,13 @@ async function main() {
           baseUrl,
           dataDir: runtime.dataDir,
           env: {
-            global: Number(process.env.WORKMATE_MAX_CONCURRENT_RUNS_GLOBAL || '2'),
-            perUser: Number(process.env.WORKMATE_MAX_CONCURRENT_RUNS_PER_USER || '1'),
-            dispatcherQueueWaitMs: Number(process.env.WORKMATE_MAX_QUEUE_WAIT_MS || '120000'),
-            sidecarPoolSize: Number(process.env.WORKMATE_AGENTSCOPE_POOL_SIZE || '2'),
-            sidecarMaxRuns: Number(process.env.WORKMATE_AGENTSCOPE_SHARED_MAX_RUNS || '1'),
-            sidecarQueueWaitMs: Number(process.env.WORKMATE_AGENTSCOPE_QUEUE_WAIT_MS || '120000'),
-            sidecarRestartCooldownMs: Number(process.env.WORKMATE_AGENTSCOPE_RESTART_COOLDOWN_MS || '15000'),
+            global: Number(process.env.OPENCLAWX_MAX_CONCURRENT_RUNS_GLOBAL || '2'),
+            perUser: Number(process.env.OPENCLAWX_MAX_CONCURRENT_RUNS_PER_USER || '1'),
+            dispatcherQueueWaitMs: Number(process.env.OPENCLAWX_MAX_QUEUE_WAIT_MS || '120000'),
+            sidecarPoolSize: Number(process.env.OPENCLAWX_AGENTSCOPE_POOL_SIZE || '2'),
+            sidecarMaxRuns: Number(process.env.OPENCLAWX_AGENTSCOPE_SHARED_MAX_RUNS || '1'),
+            sidecarQueueWaitMs: Number(process.env.OPENCLAWX_AGENTSCOPE_QUEUE_WAIT_MS || '120000'),
+            sidecarRestartCooldownMs: Number(process.env.OPENCLAWX_AGENTSCOPE_RESTART_COOLDOWN_MS || '15000'),
           },
           result,
         },
@@ -167,7 +167,7 @@ async function main() {
     await sleep(500);
     if (!api.killed) api.kill('SIGKILL');
     rmSync(tempRoot, { recursive: true, force: true });
-    if (output && process.env.WORKMATE_CONCURRENCY_REGRESSION_DEBUG === '1') {
+    if (output && process.env.OPENCLAWX_CONCURRENCY_REGRESSION_DEBUG === '1') {
       process.stderr.write(output);
     }
   }

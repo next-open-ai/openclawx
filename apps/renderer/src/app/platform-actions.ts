@@ -9,8 +9,8 @@ function openUrl(url: string) {
 export async function openExternalBestEffort(url: string) {
   const target = String(url || '').trim();
   if (!target) return;
-  if (isDesktopShell() && window.workmateDesktop?.openExternal) {
-    await window.workmateDesktop.openExternal(target);
+  if (isDesktopShell() && window.openclawxDesktop?.openExternal) {
+    await window.openclawxDesktop.openExternal(target);
     return;
   }
   openUrl(target);
@@ -25,16 +25,16 @@ export function copyableAssetUrl(assetId: string) {
 }
 
 export async function previewWorkspaceFileUrl(root: string, relative: string) {
-  if (isDesktopShell() && window.workmateDesktop) {
-    const registered = await window.workmateDesktop.registerPreviewRoot(root);
+  if (isDesktopShell() && window.openclawxDesktop) {
+    const registered = await window.openclawxDesktop.registerPreviewRoot(root);
     return `${registered.origin}/${relative.split('/').map(encodeURIComponent).join('/')}`;
   }
   return workspaceContentUrl(root, relative);
 }
 
 export async function previewAssetUrl(assetId: string, assetName: string) {
-  if (isDesktopShell() && window.workmateDesktop) {
-    const registered = await window.workmateDesktop.registerAssetPreviewRoot(assetId);
+  if (isDesktopShell() && window.openclawxDesktop) {
+    const registered = await window.openclawxDesktop.registerAssetPreviewRoot(assetId);
     return `${registered.origin}/${encodeURIComponent(assetName)}`;
   }
   return archivedAssetContentUrl(assetId);
@@ -42,7 +42,7 @@ export async function previewAssetUrl(assetId: string, assetName: string) {
 
 export async function openWorkspaceFileBestEffort(root: string, relative: string) {
   if (isDesktopShell()) {
-    await window.workmateDesktop?.openProjectFileInBrowser(root, relative);
+    await window.openclawxDesktop?.openProjectFileInBrowser(root, relative);
     return;
   }
   openUrl(workspaceContentUrl(root, relative));
@@ -50,7 +50,7 @@ export async function openWorkspaceFileBestEffort(root: string, relative: string
 
 export async function downloadWorkspaceFileBestEffort(root: string, relative: string) {
   if (isDesktopShell()) {
-    await window.workmateDesktop?.revealProjectFile(root, relative);
+    await window.openclawxDesktop?.revealProjectFile(root, relative);
     return;
   }
   openUrl(workspaceContentUrl(root, relative, { download: true }));
@@ -58,7 +58,7 @@ export async function downloadWorkspaceFileBestEffort(root: string, relative: st
 
 export async function revealWorkspaceFileBestEffort(root: string, relative: string) {
   if (isDesktopShell()) {
-    await window.workmateDesktop?.revealProjectFile(root, relative);
+    await window.openclawxDesktop?.revealProjectFile(root, relative);
     return true;
   }
   return false;
@@ -66,7 +66,7 @@ export async function revealWorkspaceFileBestEffort(root: string, relative: stri
 
 export async function openAssetBestEffort(assetId: string) {
   if (isDesktopShell()) {
-    await window.workmateDesktop?.openAssetInBrowser(assetId);
+    await window.openclawxDesktop?.openAssetInBrowser(assetId);
     return;
   }
   openUrl(archivedAssetContentUrl(assetId));
@@ -74,7 +74,7 @@ export async function openAssetBestEffort(assetId: string) {
 
 export async function downloadAssetBestEffort(assetId: string) {
   if (isDesktopShell()) {
-    await window.workmateDesktop?.saveAsset(assetId);
+    await window.openclawxDesktop?.saveAsset(assetId);
     return;
   }
   openUrl(archivedAssetContentUrl(assetId, { download: true }));
@@ -82,7 +82,7 @@ export async function downloadAssetBestEffort(assetId: string) {
 
 export async function revealAssetBestEffort(assetId: string) {
   if (isDesktopShell()) {
-    await window.workmateDesktop?.revealAsset(assetId);
+    await window.openclawxDesktop?.revealAsset(assetId);
     return true;
   }
   return false;

@@ -1,5 +1,5 @@
 import type {FastifyInstance} from 'fastify';
-import {TemplateTaskError,type TemplateTaskService} from '@workmate/orchestrator';
+import {TemplateTaskError,type TemplateTaskService} from '@openclawx/orchestrator';
 import {requireAuth} from '../auth/service.js';
 
 /** New tasks come from an application launch or a direct description, never a legacy template picker. */

@@ -23,7 +23,7 @@ const props = defineProps<{
   /** Spreadsheet asset/file: import into data workbench. */
   canImportData?: boolean;
   importingData?: boolean;
-  /** Full URL for HTML/PDF iframe (workmate-preview://… or blob:). */
+  /** Full URL for HTML/PDF iframe (openclawx-preview://… or blob:). */
   htmlUrl?: string;
   /** Raw text for md/code. */
   text?: string;

@@ -9,8 +9,8 @@ import { applyParentSecrets } from '../orchestration/secrets.js';
 import { readVoicePreferences } from './voice-preferences.js';
 
 test('VSM-R1/R2: legacy settings migrate into independent capability stores', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workmate-voice-modules-'));
-  const previous = process.env.WORKMATE_DATA_DIR; process.env.WORKMATE_DATA_DIR = root;
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openclawx-voice-modules-'));
+  const previous = process.env.OPENCLAWX_DATA_DIR; process.env.OPENCLAWX_DATA_DIR = root;
   try {
     fs.writeFileSync(path.join(root, 'voice-realtime-settings.json'), JSON.stringify({ enabled: true, apiKey: 'realtime-secret', voiceMode: 'input', asrEnabled: true, asrReuseKey: false, asrApiKey: 'asr-secret', asrResourceId: 'volc.bigasr.sauc.duration', model: 'legacy-model' }));
     assert.equal(readRealtimeConversationSettings().model, 'legacy-model');
@@ -46,7 +46,7 @@ test('VSM-R1/R2: legacy settings migrate into independent capability stores', ()
     assert.match(qwen.endpoint, /^wss:\/\/space-1\.cn-beijing\.maas\.aliyuncs\.com\/api-ws\/v1\/realtime$/);
   } finally {
     applyParentSecrets({});
-    if (previous === undefined) delete process.env.WORKMATE_DATA_DIR; else process.env.WORKMATE_DATA_DIR = previous;
+    if (previous === undefined) delete process.env.OPENCLAWX_DATA_DIR; else process.env.OPENCLAWX_DATA_DIR = previous;
     fs.rmSync(root, { recursive: true, force: true });
   }
 });

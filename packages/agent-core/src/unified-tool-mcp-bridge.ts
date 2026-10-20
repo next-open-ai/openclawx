@@ -2,7 +2,7 @@ import http from 'node:http';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, type CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import type { McpConnectionRuntime } from '@workmate/contracts';
+import type { McpConnectionRuntime } from '@openclawx/contracts';
 import type { UnifiedToolSession } from './unified-tool-runtime.js';
 
 function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
@@ -35,7 +35,7 @@ export async function openUnifiedToolMcpBridge(input: {
     waiters.clear();
   };
   const createServer = () => {
-    const server = new Server({ name: input.name ?? 'workmate-unified-tools', version: '1.0.0' }, { capabilities: { tools: {} } });
+    const server = new Server({ name: input.name ?? 'openclawx-unified-tools', version: '1.0.0' }, { capabilities: { tools: {} } });
     server.setRequestHandler(ListToolsRequestSchema, async () => {
       markListed();
       return { tools: input.session.descriptors.map((item) => ({ name: item.name, description: item.description, inputSchema: item.inputSchema as any })) };

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parameterValidator, type TaskParameterUi } from '@workmate/contracts';
+import { parameterValidator, type TaskParameterUi } from '@openclawx/contracts';
 import { parameterUiHtml } from '../task-parameter-ui.js';
 import { TemplateTaskService } from '../template-tasks.js';
 import { MemoryStore } from '../storage/memory.js';
@@ -66,7 +66,7 @@ test('TP-T1/T3: schema rejects missing, incorrect, unknown and unsupported value
  for(const params of [{product:'A'},{product:1,date:'2026-10-11'},{product:'A',date:'2026-02-30'},{product:'A',date:'2026-10-11',secret:true}])assert.equal(v.safeParse(params).success,false);
  assert.throws(()=>parameterValidator({...schema,oneOf:[]}),/不支持/);
  assert.throws(()=>parameterValidator({type:'object',properties:{},required:['missing']}),/required/);
- const html=parameterUiHtml(ui);assert.match(html,/body\{color:blue\}/);assert.match(html,/workmate.task.request/);assert.match(html,/connect-src 'none'/);assert.ok(!html.includes('src="main.js"'));
+ const html=parameterUiHtml(ui);assert.match(html,/body\{color:blue\}/);assert.match(html,/openclawx.task.request/);assert.match(html,/connect-src 'none'/);assert.ok(!html.includes('src="main.js"'));
  assert.throws(()=>parameterUiHtml({...ui,files:{...ui.files,'index.html':'<script src="https://evil.test/x.js"></script>'}}),/未打包/);
 });
 test('TP-T1/T2: drafts, published snapshots, task version and agent parameters remain isolated',async()=>{

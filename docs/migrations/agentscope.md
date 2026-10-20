@@ -1,8 +1,8 @@
-# Workmate × AgentScope 迁移进度
+# OpenClawX × AgentScope 迁移进度
 
 ## 已确认决策
 
-1. 从 EasyAI fork 为 Workmate（品牌 / `@workmate/*` / `~/.workmate`）。
+1. 从 EasyAI fork 为 OpenClawX（品牌 / `@openclawx/*` / `~/.openclawx`）。
 2. 用 **AgentScope Sidecar** 替换 pi 作为推理引擎；编排仍在 TypeScript。
 3. 跨进程协议：**WebSocket + JSON-RPC 2.0**（详见 `docs/architecture/agentscope-abi.md`）。
 4. 产品语义：流式 `message.delta`、审批 `tool.approval_required`、停止按钮必须真正 abort。
@@ -12,7 +12,7 @@
 - [x] 复制仓库并完成品牌替换
 - [x] ABI 文档
 - [x] Python runtime：hello / health / stub echo
-- [x] TS 客户端 + `WORKMATE_AGENT_ENGINE` 切换点
+- [x] TS 客户端 + `OPENCLAWX_AGENT_ENGINE` 切换点
 - [x] 冒烟 `pnpm agentscope:smoke`
 
 ## Phase 1
@@ -32,7 +32,7 @@
 ## Phase 3
 
 - [x] `agent.memory.summarize` Sidecar 方法
-- [x] `summarizeSessionMemory` 在 `WORKMATE_AGENT_ENGINE=agentscope` 时优先走 Sidecar
+- [x] `summarizeSessionMemory` 在 `OPENCLAWX_AGENT_ENGINE=agentscope` 时优先走 Sidecar
 - [x] `sessionSummary` 注入 system prompt
 - [x] ABI / 迁移文档更新；要求 Python ≥ 3.10（推荐 3.13 venv）
 
@@ -63,14 +63,14 @@
 ## 本地开发
 
 ```bash
-cd tools/workmate
+cd tools/openclawx
 /opt/homebrew/bin/python3.13 -m venv runtimes/agentscope-runtime/.venv
 ./runtimes/agentscope-runtime/.venv/bin/pip install -r runtimes/agentscope-runtime/requirements.txt
 pnpm install
 pnpm agentscope:smoke
 
 # 真实引擎（需模型密钥）：
-WORKMATE_AGENT_ENGINE=agentscope pnpm dev
+OPENCLAWX_AGENT_ENGINE=agentscope pnpm dev
 ```
 
-数据目录：`~/.workmate`。
+数据目录：`~/.openclawx`。

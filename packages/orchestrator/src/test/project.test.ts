@@ -7,7 +7,7 @@ async function createDraft(orch: Orchestrator, goal: string, mode: Project['mode
   const project = await orch.projects.createDraft({
     goal,
     mode,
-    workspacePath: '/tmp/workmate-workspace',
+    workspacePath: '/tmp/openclawx-workspace',
     coordinator: { provider: 'ollama', model: 'fake-model' },
     tasks: tasks.map((task) => ({ ...task, employeeId: 'general', skillIds: [] })),
   });
@@ -102,7 +102,7 @@ test('dag respects dependsOn ordering regardless of declaration order', async ()
     const project = await first.projects.createDraft({
       goal: '先建地基再盖楼',
       mode: 'dag',
-      workspacePath: '/tmp/workmate-workspace',
+      workspacePath: '/tmp/openclawx-workspace',
       coordinator: { provider: 'ollama', model: 'fake-model' },
       tasks: [
         { id: 'b', title: '后置', objective: 'B-盖楼', employeeId: 'general', skillIds: [], dependsOn: ['a'] },
@@ -261,7 +261,7 @@ test('dispatchInstruction invalidates target+downstream as ChangeSet without wip
     const project = await orch.projects.createDraft({
       goal: '增量指令',
       mode: 'dag',
-      workspacePath: '/tmp/workmate-workspace',
+      workspacePath: '/tmp/openclawx-workspace',
       coordinator: { provider: 'ollama', model: 'fake-model' },
       tasks: [
         { id: 'a', title: '上游', objective: 'A', employeeId: 'research', skillIds: [] },
@@ -352,7 +352,7 @@ test('replan bumps Plan version and can keep completed nodes', async () => {
     const project = await orch.projects.createDraft({
       goal: '成员变更',
       mode: 'parallel',
-      workspacePath: '/tmp/workmate-workspace',
+      workspacePath: '/tmp/openclawx-workspace',
       coordinator: { provider: 'ollama', model: 'fake-model' },
       tasks: [
         { id: 't1', title: '调研', objective: '调研', employeeId: 'research', skillIds: [] },
@@ -391,7 +391,7 @@ test('project and project runs persist ownerUserId with legacy compatibility', a
     const project = await orch.projects.createDraft({
       goal: 'owner project',
       mode: 'parallel',
-      workspacePath: '/tmp/workmate-workspace',
+      workspacePath: '/tmp/openclawx-workspace',
       ownerUserId: 'user-owner-2',
       coordinator: { provider: 'ollama', model: 'fake-model' },
       tasks: [{ title: '任务1', objective: '检查 owner 字段', employeeId: 'general', skillIds: [] }],
