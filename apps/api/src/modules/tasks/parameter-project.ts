@@ -7,6 +7,7 @@ import { TemplateTaskError, withKeyLock, parameterUiHtml,defaultReportSource,rep
 import { TaskParameterUiSchema, TaskParameterProjectPreviewSchema,TaskReportUiSchema } from '@workmate/contracts';
 import type { TaskParameterUi, TaskTemplateDefinition } from '@workmate/contracts';
 import { createConversationDirectory } from '../orchestration/conversation-directory.js';
+import {taskApplicationApiReference} from './task-applications.js';
 
 export const parameterProjectGuide = `# 任务参数收集 UI 项目
 此项目用于多轮创建/修改任务模板的参数界面。创建项目不自动调用 AI；请由用户发送第一轮要求。
@@ -40,6 +41,10 @@ export class ParameterProjects {
       const ui = this.kind==='report'?record.draft.reportUi:record.draft.parameterUi;
       // Source snapshot only; never copy browser credentials or runtime data.
       const files:Record<string,string> = ui ? {...ui.files} : {'index.html': '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>任务参数</title></head><body><form id="form"><h1>任务参数</h1><p>请在项目中用 AI 设计此表单。</p><button type="submit">确认参数</button></form><script>document.getElementById("form").onsubmit=async e=>{e.preventDefault();await platform.submit({})}</script></body></html>', 'input.schema.json':'{"type":"object","properties":{},"additionalProperties":false}'};
+      if(record.draft.application&&this.kind==='parameters'&&!ui){
+        files['index.html']='<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>任务应用</title><style>body{font:15px system-ui;padding:24px;color:#172033}label{display:grid;gap:10px}textarea{min-height:140px;padding:12px;border:1px solid #dce1e9;border-radius:10px}button{margin-top:18px;padding:10px 18px;background:#4263df;color:white;border:0;border-radius:9px}</style></head><body><form><label>任务补充说明（可选）<textarea id="request" maxlength="4000"></textarea></label><button>确认参数</button></form><script>platform.ready.then(()=>{document.getElementById("request").value=platform.getParameters().request||""});document.querySelector("form").onsubmit=async e=>{e.preventDefault();await platform.submit({request:document.getElementById("request").value})}</script></body></html>';
+        files['input.schema.json']=JSON.stringify({type:'object',properties:{request:{type:'string',maxLength:4000}},additionalProperties:false});
+      }
       if(this.kind==='report') {
         if(!ui){files['index.html']=defaultReportSource;delete files['input.schema.json'];}
         files['task-report.js']=`if(!window.platform)window.platform={ready:Promise.resolve(),getResult:()=>(${JSON.stringify(reportPreviewResult)})};`;
@@ -58,7 +63,8 @@ export class ParameterProjects {
         await mkdir(path.dirname(path.join(workspacePath,file)),{recursive:true});
         await writeFile(path.join(workspacePath,file),content,{flag:'wx'});
       }
-      const guide=this.kind==='report'?reportProjectGuide:parameterProjectGuide;
+      const guide=this.kind==='report'?reportProjectGuide:record.draft.application?parameterProjectGuide+'\n## 任务应用入口\n当前项目是任务应用。先阅读 TASK-API-REFERENCE.json 中的任务目标与宿主API参考，根据需求与 DATA-CATALOG.json设计业务参数表单。页面只使用platform.submit确认参数，立即执行/定时执行/执行记录由任务中心宿主提供，不要自行创建定时器或任意fetch。完成后点击“返回任务中心”，进入任务应用预览验证与发布；不需要手工操作五步模板。\n':parameterProjectGuide;
+      if(record.draft.application&&!files['TASK-API-REFERENCE.json'])await writeFile(path.join(workspacePath,'TASK-API-REFERENCE.json'),JSON.stringify({...taskApplicationApiReference,task:{name:record.draft.name,description:record.draft.description,agent:record.draft.agent}},null,2),{flag:'wx'});
       if (!files['README.md']) await writeFile(path.join(workspacePath,'README.md'),guide,{flag:'wx'});
       else if(!files['TASK-UI-GUIDE.md']) await writeFile(path.join(workspacePath,'TASK-UI-GUIDE.md'),guide,{flag:'wx'});
       if(this.kind==='report'&&!files['RESULT-REFERENCE.json'])await writeFile(path.join(workspacePath,'RESULT-REFERENCE.json'),JSON.stringify({version:1,sdk:'await platform.ready; platform.getResult()',shape:{title:'任务名称',data:'本次任务结果对象',preview:'仅设计预览时为 true'},employeeData:{text:'回答内容',artifacts:'交付物元信息',usage:'用量信息或 null',sessionId:'执行对话标识',agentRunId:'执行运行标识'},rules:'只读本次结果，不调用业务接口；未知字段显示空态或 JSON，不编造结果'},null,2),{flag:'wx'});

@@ -14,7 +14,7 @@ function directTemplate(task: {name:string;employeeId?:string;prompt?:string}): 
     resultType:'agent-task',resultVersion:'1.0',agent:{employeeId:task.employeeId!,prompt:task.prompt!},defaults:{}};
 }
 export function taskRunJsonResult(run:TemplateTaskRun) {
-  return TaskRunJsonResultSchema.parse({schemaVersion:'1.0',kind:'json-result',taskId:run.taskId,runId:run.id,taskRevision:run.taskRevision,status:run.status,
+  return TaskRunJsonResultSchema.parse({schemaVersion:'1.0',kind:'json-result',taskId:run.taskId,runId:run.id,taskRevision:run.taskRevision,status:run.status,agentStatus:run.agentStatus,
     trigger:run.trigger??'manual',scheduledFor:run.scheduledFor,
     input:{parameters:run.inputSnapshot,prompt:run.executionSnapshot?.prompt??run.template.agent?.prompt??'',employeeId:run.executionSnapshot?.employeeId??run.template.agent?.employeeId},
     output:run.executionSnapshot?.resultOutput??TaskResultOutputSchema.parse({}),data:run.result?.data??null,error:run.error??null,startedAt:run.startedAt,finishedAt:run.finishedAt});
@@ -23,7 +23,8 @@ export function taskRunJsonResult(run:TemplateTaskRun) {
 export class TemplateTaskError extends Error {
   constructor(message: string, readonly statusCode = 400, readonly problem?:TaskTemplateProblem) { super(message); }
 }
-export type TemplateAgentExecutor = (owner: TaskOwner, template: TaskTemplate, parameters: Record<string, unknown>, prompt: string, link: (sessionId: string, runId: string) => Promise<void>) => Promise<Record<string, unknown>>;
+type AgentLink=(sessionId:string,runId:string,status?:TemplateTaskRun['agentStatus'])=>Promise<void>;
+export type TemplateAgentExecutor = ((owner: TaskOwner, template: TaskTemplate, parameters: Record<string, unknown>, prompt: string, link: AgentLink) => Promise<Record<string, unknown>>)&{resume?:(owner:TaskOwner,run:TemplateTaskRun,link:AgentLink)=>Promise<Record<string,unknown>>};
 export interface TaskOwner { orgId: string; userId: string }
 export interface TaskSkillRuntime {
   id: string; version: string; inputHtml: string; descriptor?: TaskSkillDescriptor;
@@ -37,6 +38,7 @@ export interface TaskSkillRuntime {
 /** Server-owned pilot. Only compiled, explicitly registered Skill entries can run. */
 export class TemplateTaskService {
   private scheduling=false;
+  private recovering=new Set<string>();
   constructor(private readonly store: KeyValueStore,
     private readonly skills: TaskSkillRuntime[] = [businessSummarySkill],
     private readonly templates: TaskTemplate[] = [businessSummaryTemplate],
@@ -200,16 +202,38 @@ export class TemplateTaskService {
       return record;
     });
   }
-  /** Called once at API startup, before accepting requests. No automatic side-effect replay. */
-  async recoverInterrupted() {
-    for (const key of await this.store.keys('template-runs:')) {
-      const run = JSON.parse((await this.store.get(key))!) as TemplateTaskRun;
-      if (run.status !== 'running') continue;
-      run.status = 'failed'; run.finishedAt = Date.now(); run.error = '服务重启，上次执行中断，请重新运行';
-      run.jsonResult=taskRunJsonResult(run);
-      await this.store.set(key, JSON.stringify(run));
+  /** Restore observation of a persisted Agent turn, never replay its message/Skill. */
+  async recoverInterrupted(onError:(error:unknown)=>void=()=>{}) {
+    for(const key of await this.store.keys('template-runs:')){
+      const run=JSON.parse((await this.store.get(key))!) as TemplateTaskRun;
+      if(run.status!=='running'||this.recovering.has(key))continue;
+      if(run.template.agent&&run.sessionId&&run.agentRunId&&this.executeAgent?.resume){
+        const taskKeys=await this.store.keys('template-tasks:');
+        let owner:TaskOwner|undefined;
+        for(const taskKey of taskKeys){const task=JSON.parse((await this.store.get(taskKey))!) as TemplateTask;if(task.id===run.taskId&&key.startsWith(this.runPrefix({orgId:task.orgId,userId:task.ownerUserId},task.id))){owner={orgId:task.orgId,userId:task.ownerUserId};break;}}
+        if(owner){
+          this.recovering.add(key);const captured=owner;
+          void withKeyLock(key,()=>withKeyLock(`task-execution:${this.key(captured,run.taskId)}`,async()=>{
+            const latest=JSON.parse((await this.store.get(key))!) as TemplateTaskRun;if(latest.status!=='running')return;
+            const persist=async()=>{latest.jsonResult=taskRunJsonResult(latest);await this.store.set(key,JSON.stringify(latest));await this.store.flush();};
+            try{const output=await this.executeAgent!.resume!(captured,latest,async(sessionId,runId,status)=>{latest.sessionId=sessionId;latest.agentRunId=runId;latest.agentStatus=status;await persist();});this.assignResult(latest,output,latest.taskName??latest.template.name);}
+            catch(error){latest.status='failed';latest.error=error instanceof Error?error.message:'恢复跟踪失败';latest.steps.push({stage:'execution',status:'failed',at:Date.now()});}
+            delete latest.agentStatus;latest.finishedAt=Date.now();await persist();
+          })).catch(onError).finally(()=>this.recovering.delete(key));
+          continue;
+        }
+      }
+      run.status='failed';run.finishedAt=Date.now();run.error='服务重启，上次执行中断，请重新运行';delete run.agentStatus;
+      run.jsonResult=taskRunJsonResult(run);await this.store.set(key,JSON.stringify(run));
     }
     await this.store.flush();
+  }
+  private assignResult(run:TemplateTaskRun,output:Record<string,unknown>,title:string){
+    const template=run.template;
+    const data=template.agent?output:this.skill(template.output,'format').format(output);
+    run.result={id:randomUUID(),taskId:run.taskId,runId:run.id,type:template.agent?'agent-task':template.resultType,schemaVersion:template.agent?'1.0':template.resultVersion,title,data,view:structuredClone(template.view),createdAt:Date.now(),presentation:TaskPresentationSchema.parse(template.presentation??{}),reportUi:template.reportUi?structuredClone(template.reportUi):undefined,delivery:template.agent?{storage:'task-results',exports:['json']}:TaskDeliverySchema.parse(template.delivery??{})};
+    if(!run.steps.some(step=>step.stage==='execution'&&step.status==='completed'))run.steps.push({stage:'execution',status:'completed',at:Date.now()});
+    run.steps=run.steps.filter(step=>step.stage!=='output');run.steps.push({stage:'output',status:'completed',at:Date.now()});run.status='completed';
   }
   async template(id: string, version: string, owner?: TaskOwner) {
     const builtin = this.templates.find(item => item.id === id && item.version === version);
@@ -259,7 +283,7 @@ export class TemplateTaskService {
       await this.store.set(this.key(owner, id), JSON.stringify(task)); await this.store.flush();
     });
   }
-  async save(owner: TaskOwner, value: unknown, id?: string, revision?: number): Promise<TemplateTask> {
+  async save(owner: TaskOwner, value: unknown, id?: string, revision?: number, creationId?:string): Promise<TemplateTask> {
     const direct=!!value && typeof value==='object' && (value as {mode?:unknown}).mode==='direct';
     const input = direct ? {...DirectTaskInputSchema.parse(value),templateId:DIRECT_ID,templateVersion:'1',parameters:{}} : TemplateTaskInputSchema.parse(value);
     const template = direct ? directTemplate(input) : await this.template(input.templateId, input.templateVersion, owner);
@@ -267,8 +291,9 @@ export class TemplateTaskService {
       throw new TemplateTaskError('模板已停用，不能创建新任务');
     }
     const parameters = this.prepare(template, { ...template.defaults, ...input.parameters });
-    const taskId = id ?? randomUUID();
+    const taskId = id ?? creationId ?? randomUUID();
     return withKeyLock(this.key(owner, taskId), async () => {
+      if(creationId&&await this.store.get(this.key(owner,taskId))){const created=await this.get(owner,taskId);this.assertActive(created);return created;}
       const existing = id ? await this.get(owner, id) : undefined;
       if (existing) this.assertActive(existing);
       if (existing && existing.revision !== revision) throw new TemplateTaskError('任务已更新，请刷新后重新编辑', 409);
@@ -309,8 +334,8 @@ export class TemplateTaskService {
   async tickScheduled(now=Date.now()):Promise<void> {
     if(this.scheduling)return;
     this.scheduling=true;
+    const jobs:Array<Promise<unknown>>=[];
     try {
-      const jobs:Array<Promise<unknown>>=[];
       for(const taskKey of await this.store.keys('template-tasks:')) {
         if(jobs.length>=4)break;
         const claim=await withKeyLock(taskKey,async()=>{
@@ -331,8 +356,9 @@ export class TemplateTaskService {
           await withKeyLock(taskKey,async()=>{const raw=await this.store.get(taskKey);if(!raw)return;const task=JSON.parse(raw) as TemplateTask;task.scheduleState={...task.scheduleState,nextRunAt:task.scheduleState?.nextRunAt??null,lastError:error instanceof Error?error.message:'定时执行失败'};await this.store.set(taskKey,JSON.stringify(task));await this.store.flush();});
         }));
       }
-      await Promise.all(jobs);
     } finally {this.scheduling=false;}
+    // Guard claims, not the lifetime of Agent approvals/execution; later ticks can dispatch other tasks.
+    await Promise.all(jobs);
   }
   async run(owner: TaskOwner, id: string, requestId: string,trigger:'manual'|'scheduled'='manual',scheduledFor?:number): Promise<TemplateTaskRun> {
     const key = `${this.runPrefix(owner, id)}${encodeURIComponent(requestId)}`;
@@ -354,7 +380,7 @@ export class TemplateTaskService {
       }
       const template = task.mode==='direct'?directTemplate(task):await this.template(task.templateId, task.templateVersion, owner);
       const run: TemplateTaskRun = {
-        id: requestId, taskId: id, taskRevision: task.revision, template,
+        id: requestId, taskId: id, taskName:task.name, taskRevision: task.revision, template,
         trigger,scheduledFor,
         inputSnapshot: structuredClone(task.parameters), startedAt: Date.now(), status: 'running', steps: [],
         executionSnapshot:{prompt:task.prompt??template.agent?.prompt??'',employeeId:template.agent?.employeeId,resultOutput:TaskResultOutputSchema.parse(task.resultOutput??template.resultOutput??{})},
@@ -371,25 +397,16 @@ export class TemplateTaskService {
         run.steps.push({ stage, status: 'completed', at: Date.now() }); await persist();
         stage = 'execution';
         const output = template.agent
-          ? await (this.executeAgent ?? (() => { throw new TemplateTaskError('智能体执行器尚未接入'); }))(owner,template,input,(task.prompt ?? template.agent.prompt)+(run.executionSnapshot?.resultOutput.instructions?'\n\n结果输出要求：\n'+run.executionSnapshot.resultOutput.instructions:''),async (sessionId,runId) => {run.sessionId=sessionId;run.agentRunId=runId;await persist();})
+          ? await (this.executeAgent ?? (() => { throw new TemplateTaskError('智能体执行器尚未接入'); }))(owner,template,input,(task.prompt ?? template.agent.prompt)+(run.executionSnapshot?.resultOutput.instructions?'\n\n结果输出要求：\n'+run.executionSnapshot.resultOutput.instructions:''),async (sessionId,runId,status) => {run.sessionId=sessionId;run.agentRunId=runId;run.agentStatus=status;run.jsonResult=taskRunJsonResult(run);await persist();})
           : await this.skill(template.execution, 'execute').execute(input);
         run.steps.push({ stage, status: 'completed', at: Date.now() }); await persist();
         stage = 'output';
-        const data = template.agent ? output : this.skill(template.output, 'format').format(output);
-        run.result = {
-          id: randomUUID(), taskId: id, runId: run.id, type: template.agent ? 'agent-task' : template.resultType, schemaVersion: template.agent ? '1.0' : template.resultVersion,
-          title: task.name, data, view: structuredClone(template.view), createdAt: Date.now(),
-          presentation: TaskPresentationSchema.parse(template.presentation ?? {}),
-          reportUi:template.reportUi?structuredClone(template.reportUi):undefined,
-          delivery: template.agent ? {storage:'task-results',exports:['json']} : TaskDeliverySchema.parse(template.delivery ?? {}),
-        };
-        run.steps.push({ stage, status: 'completed', at: Date.now() });
-        run.status = 'completed';
+        this.assignResult(run,output,task.name);
       } catch (error) {
         run.status = 'failed'; run.error = error instanceof Error ? error.message : '执行失败';
         run.steps.push({ stage, status: 'failed', at: Date.now() });
       }
-      run.finishedAt = Date.now();run.jsonResult=taskRunJsonResult(run); await persist();
+      delete run.agentStatus;run.finishedAt = Date.now();run.jsonResult=taskRunJsonResult(run); await persist();
       return run;
     }));
   }

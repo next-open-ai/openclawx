@@ -2121,7 +2121,7 @@ onBeforeUnmount(() => {
             :running="selected?.status === 'running' || rosterBusy"
             :file-tree-epoch="fileTreeEpoch"
             :submit-instruction="dispatchSelectedProject"
-            :back-label="workflowDetailTrail.length ? '返回来源项目' : selected.id === returnToDataProjectId ? '返回数据对象' : selected.id === returnToTemplateProjectId ? '返回任务模板' : selected.id === returnToChatProjectId ? '返回对话工作台' : undefined"
+            :back-label="workflowDetailTrail.length ? '返回来源项目' : selected.id === returnToDataProjectId ? '返回数据对象' : selected.id === returnToTemplateProjectId ? '返回任务中心' : selected.id === returnToChatProjectId ? '返回对话工作台' : undefined"
             @back="backFromWorkflowProject"
             @open-workflow-project="openWorkflowProject"
             @open-workflows="emit('openWorkflows')"

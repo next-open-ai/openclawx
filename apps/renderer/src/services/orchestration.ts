@@ -695,6 +695,11 @@ export async function sessionRuns(id: string): Promise<ServerRunRecord[]> {
   return result.runs;
 }
 
+/** Read one authorized linked run; a monitor never needs other conversation runs. */
+export async function getRunRecord(id:string,signal?:AbortSignal):Promise<ServerRunRecord>{
+  return (await request<{run:ServerRunRecord}>(`/runs/${encodeURIComponent(id)}`,{signal})).run;
+}
+
 export async function sessionDurableTasks(id: string): Promise<{ tasks: DurableTask[]; activeTaskId: string | null }> {
   return request(`/sessions/${encodeURIComponent(id)}/tasks`);
 }

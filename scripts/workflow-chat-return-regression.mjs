@@ -9,7 +9,7 @@ const page = fs.readFileSync('apps/renderer/src/features/projects/ProjectsPage.v
 const workspace = fs.readFileSync('apps/renderer/src/features/projects/ProjectConversationWorkspace.vue','utf8');
 assert.match(app, /<ChatWorkspace[^\n]*@open-project="openProjectFromChat"/);
 assert.match(app, /<ProjectsPage[^\n]*:return-to-chat-project-id="projectChatOrigin\?\.projectId"[^\n]*@return-to-chat="returnToProjectChat"/);
-assert.match(page, /:back-label="workflowDetailTrail.length \? '返回来源项目' : selected.id === returnToTemplateProjectId \? '返回任务模板' : selected.id === returnToChatProjectId \? '返回对话工作台' : undefined"/);
+assert.match(page, /:back-label="workflowDetailTrail.length \? '返回来源项目' : selected.id === returnToDataProjectId \? '返回数据对象' : selected.id === returnToTemplateProjectId \? '返回任务中心' : selected.id === returnToChatProjectId \? '返回对话工作台' : undefined"/);
 assert.match(page, /@back="backFromWorkflowProject"/);
 assert.match(workspace, /← \{\{ backLabel \|\| '项目列表' \}\}/);
 const helperSource=fs.readFileSync('apps/renderer/src/app/project-chat-navigation.ts','utf8').replace('export interface','interface').replace('export function','function');
@@ -21,7 +21,7 @@ const user=ref({id:'u1'}),view=ref('chat'),active=ref({id:'chat-a'}),conversatio
 const writes=[],selected=[];
 const watch=(source,callback)=>watchers.push({source,callback});
 const setView=next=>{const previous=view.value;view.value=next;for(const w of watchers)if(w.source===view)w.callback(next,previous);};
-const api=new Function('ref','watch','user','view','activeConversation','conversations','writeStored','setView','selectConversation',compiled.code+';return {projectChatOrigin,openProjectFromChat,openProjectFromAssets,returnToProjectChat,projectChatReturnTarget,projectTemplateOrigin,returnDefinitionId,openProjectFromTemplate,returnToProjectTemplate};')(ref,watch,user,view,active,conversations,async(k,v)=>writes.push([k,v]),setView,id=>selected.push(id));
+const api=new Function('ref','watch','user','view','activeConversation','conversations','writeStored','setView','selectConversation','dataNavigationScope',compiled.code+';return {projectChatOrigin,openProjectFromChat,openProjectFromAssets,returnToProjectChat,projectChatReturnTarget,projectTemplateOrigin,returnDefinitionId,openProjectFromTemplate,returnToProjectTemplate};')(ref,watch,user,view,active,conversations,async(k,v)=>writes.push([k,v]),setView,id=>selected.push(id),ref('test-scope'));
 await api.openProjectFromChat('run-a');assert.equal(view.value,'projects');
 assert.deepEqual(api.projectChatOrigin.value,{projectId:'run-a',conversationId:'chat-a',userId:'u1'});
 active.value={id:'chat-b'};api.returnToProjectChat();assert.equal(view.value,'chat');assert.deepEqual(selected,['chat-a']);assert.equal(api.projectChatOrigin.value,null);

@@ -26,6 +26,7 @@ export const TaskTemplateSchema = z.object({
   input: EntrySchema, execution: EntrySchema, output: EntrySchema,
   view: EntrySchema, resultType: z.string(), resultVersion: z.string(),
   defaults: z.record(z.unknown()).optional(),
+  application:z.literal(true).optional(),
   parameterUi: TaskParameterUiSchema.optional(),
   reportUi:TaskReportUiSchema.optional(),resultOutput:TaskResultOutputSchema.optional(),
   agent: z.object({ employeeId: z.string().min(1).max(120), prompt: z.string().trim().min(1).max(8000) }).strict().optional(),
@@ -88,6 +89,8 @@ export interface TaskResult {
   delivery?: z.infer<typeof TaskDeliverySchema>;
 }
 export interface TemplateTaskRun {
+  taskName?:string;
+  agentStatus?:'queued'|'running'|'waiting-approval';
   trigger?:'manual'|'scheduled';scheduledFor?:number;
   id: string; taskId: string; taskRevision: number; template: TaskTemplate;
   inputSnapshot: Record<string, unknown>; startedAt: number; finishedAt?: number;
@@ -99,6 +102,7 @@ export interface TemplateTaskRun {
   jsonResult?: TaskRunJsonResult;
 }
 export const TaskRunJsonResultSchema = z.object({
+  agentStatus:z.enum(['queued','running','waiting-approval']).optional(),
   trigger:z.enum(['manual','scheduled']).optional(),scheduledFor:z.number().optional(),
   schemaVersion:z.literal('1.0'), kind:z.literal('json-result'),
   taskId:z.string(), runId:z.string(), taskRevision:z.number().int(),

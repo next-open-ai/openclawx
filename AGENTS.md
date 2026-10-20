@@ -14,6 +14,10 @@
 
 ## 工作契约
 
+### EasyMate业务同步
+
+共同业务变更应同步同目录EasyMate的对应契约、实现及回归，并运行其 `pnpm work-results:parity` 检查已登记成果检索模块。EasyMate继续保持单Pi Agent，不同步AgentScope/DSH、多Agent内核或Workmate品牌/端口/运行时路径；产品差异必须记录。此门禁只覆盖登记模块，不代表全业务自动同步。
+
 开始修改前必须：
 
 1. 检查工作区状态，识别并保护用户已有改动；

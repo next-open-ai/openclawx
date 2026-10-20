@@ -1,5 +1,7 @@
 import { defineConfig } from 'tsup';
 const closureEntry = { 'parameter-project.test': 'src/modules/tasks/parameter-project.test.ts', 'project-application.test': 'src/modules/orchestration/project-application.test.ts', 'data-app-closure.test': 'src/modules/data/data-app-closure.test.ts', 'app-project.test': 'src/modules/data/app-project.test.ts', 'definition-routes.test': 'src/modules/orchestration/definition-routes.test.ts', 'workflow-runs.test': 'src/modules/orchestration/workflow-runs.test.ts' };
+Object.assign(closureEntry,{'creation-routes.test':'src/modules/tasks/creation-routes.test.ts'});
+Object.assign(closureEntry,{'task-applications.test':'src/modules/tasks/task-applications.test.ts'});
 Object.assign(closureEntry, { 'live-data.test': 'src/modules/data/live-data.test.ts' });
 Object.assign(closureEntry, { 'structured-query.test': 'src/modules/data/structured-query.test.ts' });
 Object.assign(closureEntry, { 'query-relations.test': 'src/modules/data/query-relations.test.ts' });

@@ -1,5 +1,9 @@
 # WR-R1–R5 / WR-T1 · 工作成果只读检索
 
+2026-10-15：WR-R10 / WR-T10 [元数据查找与可用降级](metadata-search.md)取代下文12秒与仅关键词兜底，新增时间/类型直接查找。
+
+2026-10-15：WR-R9 / WR-T9 [语义检索诊断](diagnostics.md)，只增加安全终态日志，不改变召回策略。
+
 2026-10-14更新：文档读取改用[统一文档服务UD-v1](../unified-document-service-v1/README.md)，覆盖现有Word/PPT/表格等入口。UD-R3取代下文WR-R8的桥接自动派单：读取只返回结果，模型显式start_work(assetIds)才委托员工。
 
 状态：已实现并完成隔离回归，真实语音/安装包待验收；版本：1.0；日期：2026-10-14。关联：[语音工作桥](../realtime-voice-v1/status.md)、[全局架构](../../../architecture/architecture.md)、[验证记录](status.md)。

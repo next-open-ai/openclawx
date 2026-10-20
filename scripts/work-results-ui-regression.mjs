@@ -12,6 +12,8 @@ const semantic=parseWorkLookupEvent({name:'search_work_results',result:{ok:true,
 assert.equal(semantic.items[0].id,item.id);
 const fallback=parseWorkLookupEvent({name:'search_work_results',result:{ok:true,status:'partial',searchMode:'fallback',scope:'current',spokenSummary:'语义筛选暂不可用，本次仅返回关键词候选，不能据此判断不存在',items:[item]}});
 assert.equal(fallback.items[0].id,item.id);assert.match(fallback.summary,/语义筛选暂不可用/);assert.equal(fallback.error,'');
+const recentFallback=parseWorkLookupEvent({name:'search_work_results',result:{ok:true,status:'partial',code:'WORK_SEMANTIC_UNAVAILABLE',searchMode:'fallback',scope:'history',spokenSummary:'未完成语义匹配，先列出最近候选；候选不保证符合主题，不能据此判断成果不存在。',items:[item]}});
+assert.equal(recentFallback.items[0].id,item.id);assert.match(recentFallback.summary,/未完成语义匹配/);assert.equal(recentFallback.error,'');
 const failed=parseWorkLookupEvent({name:'read_work_result',result:{ok:false,status:'failed',code:'WORK_FILE_MISSING',spokenSummary:'文件已移除'}});
 assert.equal(failed.error,'文件已移除');assert.equal(failed.items.length,0);
 assert.match(parseWorkLookupEvent({name:'search_work_results',result:{ok:true,items:[{...item,id:'bad'}]}}).error,/格式/);

@@ -4,6 +4,7 @@ import {WorkResultItemSchema,WorkResultMatchesSchema,workResultInputs,type WorkR
 import type {Orchestrator} from '@workmate/orchestrator';
 import {listWorkAssets,readWorkAsset,assertWorkAssetOwner} from '../assets/routes.js';
 import {matchesWorkResult} from './matching.js';
+import {workResultSearchPlan} from './search-plan.js';
 
 type Owner={userId:string;orgId:string};
 type OwnedWorkSource={ownerUserId?:string|null;userId?:string|null;orgId?:string;accessScope?:string;accessGrants?:unknown[]};
@@ -25,7 +26,9 @@ export function createWorkResultService(orch:Orchestrator,owner:Owner,conversati
     try{
       await check(signal);
       if(name==='search_work_results'){
-        const {query,scope,limit}=workResultInputs.search_work_results.parse(parsed.data);
+        const search=workResultInputs.search_work_results.parse(parsed.data);
+        const plan=workResultSearchPlan(search);
+        const {scope}=plan,{limit}=search,query=plan.topic;
         if(scope==='current'&&!conversationId)return error('WORK_CURRENT_REQUIRED','当前没有关联对话，请使用history范围查找历史成果。');
         const current=scope==='current'?await orch.chat.getChatSession(conversationId!):undefined;
         const currentRuns=current?[...new Set(current.messages.filter(m=>m.runId&&!m.superseded).map(m=>m.runId!))].reverse().slice(0,100):[];
@@ -58,7 +61,7 @@ export function createWorkResultService(orch:Orchestrator,owner:Owner,conversati
             runs.push({kind:'run',id,name:session.title.slice(0,240),conversationId:session.id,runId:id,createdAt:run!.startedAt,status:run!.status,summary:summaries.get(id)});
           }
         }
-        const pool=[...assets,...runs].sort((a,b)=>b.createdAt-a.createdAt||a.id.localeCompare(b.id));
+        const pool=[...assets,...runs].filter(plan.accepts).sort((a,b)=>b.createdAt-a.createdAt||a.id.localeCompare(b.id));
         const keyword=(item:WorkResultItem)=>matchesWorkResult(query,item.name)||Boolean(item.summary&&matchesWorkResult(query,item.summary));
         const matched=pool.filter(keyword);
         let items=matched.slice(0,limit),searchMode:'keyword'|'semantic'|'fallback'='keyword';
@@ -85,17 +88,21 @@ export function createWorkResultService(orch:Orchestrator,owner:Owner,conversati
             }
             if(valid.data.matches.some(match=>match.confidence>=0.65)&&!selected.length)throw Error('WORK_RANK_UNAVAILABLE');
             items=selected.slice(0,limit);truncated ||= selected.length>limit;searchMode='semantic';
-          }catch{searchMode='fallback';}
+          }catch{
+            searchMode='fallback';
+            items=[...matched,...pool.filter(item=>!keyword(item))].slice(0,limit);
+            truncated ||= pool.length>limit;
+          }
           // Revalidate everything sent to the model, even when it selects no results.
           await check(signal);await verify(candidates);
         }
         truncated ||= searchMode!=='semantic'&&matched.length>limit;
         await verify(items);await check(signal);
         const scopeLabel=scope==='current'?'当前对话':'历史成果';
-        const spokenSummary=searchMode==='fallback'?`语义筛选暂不可用，本次仅返回${scopeLabel}的${items.length}项关键词候选；不能据此判断成果不存在。可换关键词或查看原对话。`:
+        const spokenSummary=searchMode==='fallback'?`未完成语义匹配，先列出${scopeLabel}的${items.length}项最近候选供您选择；候选不保证符合主题，不能据此判断成果不存在。`:
           items.length?`在${scopeLabel}${searchMode==='semantic'?'按语义':''}找到${items.length}项候选成果，请查看列表；有多个候选时请选择。${truncated?'候选有截断，可缩小关键词或打开原对话。':''}`:
           `在${scopeLabel}本次候选中未找到匹配成果。${truncated?'候选有截断，不代表全部历史不存在。':''}${scope==='current'?'请继续使用history范围检索，不能据此判定历史没有成果。':'可换关键词或打开原对话核对。'}不会自动重新生成。`;
-        return{ok:true,status:searchMode==='fallback'?'partial':items.length?'found':'empty',spokenSummary,items,truncated,searchMode,scope};
+        return{ok:true,status:searchMode==='fallback'?'partial':items.length?'found':'empty',code:searchMode==='fallback'?'WORK_SEMANTIC_UNAVAILABLE':undefined,spokenSummary,items,truncated,searchMode,scope};
       }
       const {assetId,runId}=workResultInputs.read_work_result.parse(parsed.data);
       let text='',truncated=false,item:WorkResultItem,documentInfo:DocumentInfo|undefined;

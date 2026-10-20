@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync,FastifyRequest } from 'fastify';
 import { TemplateTaskService, TemplateTaskError, templateAgentExecutor,reportUiHtml,reportPreviewResult } from '@workmate/orchestrator';
 import { requireAuth } from '../auth/service.js';
 import { getOrchestrator } from '../orchestration/routes.js';
@@ -8,6 +8,8 @@ import path from 'node:path';
 import os from 'node:os';
 import { TaskParameterProjectOperationSchema,TaskRunListQuerySchema,TaskParameterProjectInfoSchema,TaskTemplateTrialRequestSchema,TaskTemplateDeleteSchema } from '@workmate/contracts';
 import type { TaskExportFormat } from '@workmate/contracts';
+import {TaskApplications} from './task-applications.js';
+import {registerTaskCreationRoutes} from './creation-routes.js';
 
 export const templateTaskRoutes: FastifyPluginAsync = async app => {
   const orch = getOrchestrator();
@@ -15,16 +17,26 @@ export const templateTaskRoutes: FastifyPluginAsync = async app => {
   const projects = new ParameterProjects(orch, service,process.env.WORKMATE_DATA_DIR || path.join(os.homedir(),'.workmate'));
   const operation = TaskParameterProjectOperationSchema;
   const reports=new ParameterProjects(orch,service,process.env.WORKMATE_DATA_DIR||path.join(os.homedir(),'.workmate'),'report');
+  const applications=new TaskApplications(orch,service,projects,error=>app.log.error(error,'任务应用执行启动失败'));
+  const dataCatalog=async(request:FastifyRequest)=>{
+    const response=await app.inject({method:'GET',url:'/api/data/gateway/units',headers:{...(request.headers.authorization?{authorization:request.headers.authorization}:{}),...(request.headers.cookie?{cookie:request.headers.cookie}:{})}});
+    const catalog=response.statusCode===200?response.json():{units:[],notice:'目录读取失败，运行时使用 units 接口重试'};
+    if(JSON.stringify(catalog).length>128000)throw new TemplateTaskError('数据目录超过128KB，请先整理数据单元');
+    return catalog;
+  };
+  app.get('/task-applications',async request=>({applications:await applications.list(requireAuth(request))}));
+  app.post('/task-applications',async(request,reply)=>{const owner=requireAuth(request);return reply.code(201).send(await applications.create(owner,request.body,await dataCatalog(request)));});
+  app.post<{Params:{id:string}}>('/task-applications/:id/launch',async(request,reply)=>reply.code(202).send(await applications.launch(requireAuth(request),request.params.id,request.body)));
   app.get<{Params:{id:string}}>('/task-report-projects/:id',async request=>reports.info(requireAuth(request),request.params.id));
   app.get<{Params:{id:string}}>('/task-report-projects/:id/preview',async request=>reports.previewReport(requireAuth(request),request.params.id));
   app.post<{Params:{id:string}}>('/task-template-definitions/:id/report-project',async request=>{const input=operation.parse(request.body);return reports.open(requireAuth(request),request.params.id,input.revision,input.employeeId);});
   app.post<{Params:{id:string}}>('/task-template-definitions/:id/import-report-ui',async request=>{const input=operation.parse(request.body);return {definition:await reports.import(requireAuth(request),request.params.id,input.revision)};});
   app.get<{Params:{id:string}}>('/task-parameter-projects/:id',async request=>{const owner=requireAuth(request),info=await projects.info(owner,request.params.id);if(info.definitionId)return info;const report=await reports.info(owner,request.params.id);return TaskParameterProjectInfoSchema.parse(report.definitionId?{...report,kind:'report'}:info);});
   app.get<{Params:{id:string}}>('/task-parameter-projects/:id/preview',async request=>projects.preview(requireAuth(request),request.params.id));
-  app.post<{Params:{id:string}}>('/task-template-definitions/:id/parameter-project',async request => {const input=operation.parse(request.body);const auth=requireAuth(request);const response=await app.inject({method:'GET',url:'/api/data/gateway/units',headers:{...(request.headers.authorization?{authorization:request.headers.authorization}:{}),...(request.headers.cookie?{cookie:request.headers.cookie}:{})}});const catalog=response.statusCode===200?response.json():{units:[],notice:'目录读取失败，运行时使用 units 接口重试'};if(JSON.stringify(catalog).length>128000)throw new TemplateTaskError('数据目录超过128KB，请先整理数据单元');return projects.open(auth,request.params.id,input.revision,input.employeeId,catalog)});
+  app.post<{Params:{id:string}}>('/task-template-definitions/:id/parameter-project',async request=>{const input=operation.parse(request.body),owner=requireAuth(request);return projects.open(owner,request.params.id,input.revision,input.employeeId,await dataCatalog(request));});
   app.post<{Params:{id:string}}>('/task-template-definitions/:id/import-parameter-ui',async request => {const input=operation.parse(request.body);return {definition:await projects.import(requireAuth(request),request.params.id,input.revision)}});
   app.post<{Params:{id:string};Body:{version:string;parameters:unknown}}>('/task-templates/:id/validate-parameters',async request => ({parameters:await service.validateParameters(requireAuth(request),request.params.id,request.body?.version,request.body?.parameters)}));
-  await service.recoverInterrupted();
+  await service.recoverInterrupted(error=>app.log.error(error,'恢复任务观察失败'));
   let scheduler:ReturnType<typeof setInterval>|undefined;
   const tick=()=>void service.tickScheduled().catch(error=>app.log.error(error,'任务定时调度失败'));
   app.addHook('onReady',async()=>{scheduler=setInterval(tick,15_000);scheduler.unref();tick();});
@@ -43,7 +55,7 @@ export const templateTaskRoutes: FastifyPluginAsync = async app => {
     const owner=requireAuth(request),input=TaskTemplateDeleteSchema.parse(request.body);
     await service.deleteDefinition(owner,request.params.id,input.revision);return {deleted:true};
   });
-  app.post('/task-template-definitions', async (request, reply) => reply.code(201).send({ definition: await service.saveDefinition(requireAuth(request), request.body) }));
+  registerTaskCreationRoutes(app,service);
   app.get<{ Params: { id: string } }>('/task-template-definitions/:id', async request => ({ definition: await service.definition(requireAuth(request), request.params.id) }));
   app.put<{ Params: { id: string }; Body: { revision: number; configuration: unknown } }>('/task-template-definitions/:id', async request => ({
     definition: await service.saveDefinition(requireAuth(request), request.body?.configuration, request.params.id, request.body?.revision),
@@ -78,7 +90,6 @@ export const templateTaskRoutes: FastifyPluginAsync = async app => {
     if(!run)throw new TemplateTaskError('运行记录不存在',404);
     return reply.type('application/json').header('Content-Disposition',`attachment; filename="json-result.json"`).send(JSON.stringify(run.jsonResult,null,2));
   });
-  app.post('/template-tasks', async (request, reply) => reply.code(201).send({ task: await service.save(requireAuth(request), request.body) }));
   app.get<{ Params: { id: string } }>('/template-tasks/:id', async request => service.detail(requireAuth(request), request.params.id));
   app.put<{Params:{id:string}}>('/template-tasks/:id/schedule',async request=>({task:await service.updateSchedule(requireAuth(request),request.params.id,request.body)}));
   app.put<{ Params: { id: string }; Body: { revision: number; input: unknown } }>('/template-tasks/:id', async request => {

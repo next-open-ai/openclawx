@@ -68,7 +68,7 @@ export class RealtimeVoiceSession {
     this.adapter = realtimeProviderAdapter(String(config.provider || 'volcengine'));
     this.usageMeter = new RealtimeUsageMeter(this.adapter.id, String(config.model || DEFAULT_REALTIME_VOICE_MODEL), this.createdAt);
     if (this.config.workLinkEnabled) {
-      this.workBridge = new VoiceWorkBridge(getOrchestrator(), owner, () => Boolean(this.config.workLinkEnabled) && readRealtimeConversationSettings().workLinkEnabled, this.config.conversationId as string | undefined,activeDataRunOwner,createVoiceWorkResultRanker(getOrchestrator(),owner,()=>this.workBridge?.currentConversationId));
+      this.workBridge = new VoiceWorkBridge(getOrchestrator(), owner, () => Boolean(this.config.workLinkEnabled) && readRealtimeConversationSettings().workLinkEnabled, this.config.conversationId as string | undefined,activeDataRunOwner,createVoiceWorkResultRanker(getOrchestrator(),owner,()=>this.workBridge?.currentConversationId,event=>this.lifecycleLog({voiceSessionId:this.id,...event})));
       // Completion notices are user-facing realtime events. A short bounded
       // poll keeps them prompt without coupling task lifetime to the voice UI.
       this.workTimer = setInterval(() => { void this.pollWork(); }, 600);

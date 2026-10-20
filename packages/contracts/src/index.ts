@@ -1,5 +1,6 @@
 import { z } from 'zod';
 export * from './task-templates.js';
+export * from './task-applications.js';
 export * from './workspace-write.js';
 
 export const HealthResponseSchema = z.object({

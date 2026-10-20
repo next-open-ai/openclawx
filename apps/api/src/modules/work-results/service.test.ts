@@ -10,6 +10,8 @@ import {VoiceWorkBridge} from '../voice/work-bridge.js';
 import {createWorkResultRunner} from './runner.js';
 import {createWorkResultTools} from '@workmate/agent-core';
 import {matchesWorkResult} from './matching.js';
+import {workResultSearchPlan} from './search-plan.js';
+import {workResultInputs} from '@workmate/contracts';
 import type {WorkResultRanker} from '@workmate/contracts';
 import {createServer} from 'node:http';
 import {createVoiceWorkResultRanker} from './voice-ranking.js';
@@ -24,6 +26,64 @@ const root=await fs.mkdtemp(path.join(os.tmpdir(),'workmate-work-results-'));
 process.env.WORKMATE_DATA_DIR=root;
 test.after(async()=>{await fs.rm(root,{recursive:true,force:true});});
 const makeOrch=()=>new Orchestrator({store:new MemoryStore(),runner:createScriptedRunner(),chatContextResolver:async()=>context});
+
+test('WR-T10: Shanghai date boundaries, metadata intent and topic preservation',()=>{
+  const now=Date.parse('2026-10-15T16:01:00Z'); // Shanghai Oct 16 00:01
+  const input=workResultInputs.search_work_results.parse({query:'帮我找一下今天写的文件'});
+  const plan=workResultSearchPlan(input,now);
+  assert.equal(plan.topic,'');assert.equal(plan.created,'today');assert.equal(plan.fileType,'file');assert.equal(plan.scope,'history');
+  assert.equal(workResultSearchPlan({...input,query:'查一下今天我写的文件'},now).topic,'');
+  const asset={kind:'asset' as const,id:crypto.randomUUID(),name:'report.pdf',createdAt:Date.parse('2026-10-15T16:00:00Z')};
+  assert.equal(plan.accepts(asset),true);
+  assert.equal(plan.accepts({...asset,createdAt:asset.createdAt-1}),false);
+  assert.equal(plan.accepts({...asset,createdAt:asset.createdAt+86_400_000}),false);
+  assert.equal(plan.accepts({...asset,kind:'run'}),false);
+  const yesterday=workResultSearchPlan({...input,created:'yesterday'},now);
+  assert.equal(yesterday.accepts({...asset,createdAt:asset.createdAt-1}),true);assert.equal(yesterday.accepts(asset),false);
+  const recent=workResultSearchPlan({...input,query:'最近写的pdf文件'},now);
+  assert.equal(recent.topic,'');assert.equal(recent.fileType,'pdf');assert.equal(recent.accepts({...asset,name:'no-extension',mimeType:'application/pdf; charset=binary'}),true);
+  assert.equal(recent.accepts({...asset,name:'report.txt',mimeType:'text/plain'}),false);
+  const themed=workResultSearchPlan({...input,query:'帮我找一下今天生成的三亚攻略PDF文件'},now);
+  assert.equal(themed.topic,'三亚攻略');
+  assert.equal(workResultSearchPlan({...input,query:'当前对话今天写的文件'},now).scope,'current');
+  assert.equal(workResultSearchPlan({...input,query:'海边攻略'},now).topic,'海边攻略');
+  assert.equal(workResultInputs.search_work_results.safeParse({created:'tomorrow'}).success,false);
+  assert.equal(workResultInputs.search_work_results.safeParse({query:'',fileType:'pdf',created:'recent'}).success,true);
+});
+
+test('WR-T10: direct metadata lookup skips LLM, sorts, filters, handles history/current and safe fallback',async()=>{
+  const orch=makeOrch(),user={...owner,userId:'metadata-search'};
+  try{
+    const stored=await storeUploadedDataAsset({name:'seed.pdf',content:pdfBytes(),auth:user});
+    const row=(await listWorkAssets(user,'',undefined,20)).find(item=>item.id===stored.id)!;
+    const now=Date.now(),start=Math.floor((now+28_800_000)/86_400_000)*86_400_000-28_800_000;
+    const newer={...row,id:crypto.randomUUID(),name:'new.PDF',createdAt:start,mimeType:'application/octet-stream'};
+    const older={...row,id:crypto.randomUUID(),name:'old',createdAt:start-1,mimeType:'application/pdf'};
+    const text={...row,id:crypto.randomUUID(),name:'report.txt',createdAt:now,mimeType:'text/plain'};
+    let calls=0,lastScope:string|undefined;
+    const deps={read:readWorkAsset,verify:async()=>{},list:async(_owner:unknown,_query:unknown,scope?:string)=>{lastScope=scope;return[older,text,newer];}};
+    const service=createWorkResultService(orch,user,undefined,()=>true,deps,async()=>{calls++;throw Error('provider failed');});
+    const today=await service('search_work_results',{query:'帮我找一下今天写的文件'});
+    assert.equal(today.scope,'history');assert.equal(lastScope,undefined);assert.equal(today.status,'found');
+    assert.deepEqual(today.items?.map(item=>item.id),[text.id,newer.id]);assert.equal(calls,0);
+    const pdf=await service('search_work_results',{query:'最近写的pdf文件',limit:1});
+    assert.equal(pdf.items?.[0].id,newer.id);assert.equal(pdf.truncated,true);assert.equal(calls,0);
+    const yesterday=await service('search_work_results',{query:'',created:'yesterday',fileType:'pdf'});
+    assert.deepEqual(yesterday.items?.map(item=>item.id),[older.id]);assert.equal(calls,0);
+    const fallback=await service('search_work_results',{query:'今天的海边攻略PDF',scope:'history'});
+    assert.equal(calls,1);assert.equal(fallback.status,'partial');assert.equal(fallback.items?.[0].id,newer.id);
+    assert.equal(fallback.items?.some(item=>item.id===older.id||item.id===text.id),false);
+    assert.match(fallback.spokenSummary,/不保证符合主题/);
+    const noPdf=createWorkResultService(orch,user,undefined,()=>true,{...deps,list:async()=>[text]},async()=>{throw Error('must not call');});
+    assert.equal((await noPdf('search_work_results',{created:'today',fileType:'pdf'})).status,'empty');
+    const session=await orch.chat.createChatSession({...user,ownerUserId:user.userId,employeeId:'general',title:'scope'});
+    const current=createWorkResultService(orch,user,session.id,()=>true,deps,async()=>{throw Error('must not call');});
+    assert.equal((await current('search_work_results',{query:'当前对话今天写的文件'})).scope,'current');assert.equal(lastScope,session.id);
+    const revoked=createWorkResultService(orch,user,undefined,()=>false,deps);
+    assert.equal((await revoked('search_work_results',{created:'today',fileType:'file'})).code,'WORK_NOT_AVAILABLE');
+    assert.equal((await service('search_work_results',{created:'today'},AbortSignal.abort())).code,'WORK_CANCELLED');
+  }finally{await orch.close();}
+});
 
 test('UD-T2: assets and chat attachments share Word, slide and HTML extraction',async()=>{
   const orch=makeOrch(),user={...owner,userId:'unified-document-entries'};
@@ -107,7 +167,7 @@ test('UD-T3: explicit delegated completion can be read; unavailable model does n
   }finally{await orch.close();}
 });
 
-test('WR-T7: ordinary runner and voice text-model resolver use actual SDK against local stub',async()=>{
+test('WR-T7/T9: ordinary runner and voice text-model resolver use actual SDK with safe diagnostics',async()=>{
   const orch=makeOrch(),user={...owner,userId:'semantic-sdk'},previousSecrets=getSecrets();
   const asset=await storeUploadedDataAsset({name:'三亚旅行.pdf',content:pdfBytes(),auth:user});
   const models:string[]=[];
@@ -134,13 +194,30 @@ test('WR-T7: ordinary runner and voice text-model resolver use actual SDK agains
       {id:'default-chat',modelId:'default-text-model',capability:'chat',providerInstanceId:'test'},
     ],activeChatModelId:'default-chat'}});
     await orch.store.set(`user:${user.userId}:workspace.employee-runtime-prefs`,JSON.stringify({general:{defaultModelId:'voice-chat'}}));
-    const voice:VoiceWorkBridge=new VoiceWorkBridge(orch,user,()=>true,session.id,()=>true,createVoiceWorkResultRanker(orch,user,()=>voice.currentConversationId));
+    const diagnostics:Record<string,unknown>[]=[];
+    const voice:VoiceWorkBridge=new VoiceWorkBridge(orch,user,()=>true,session.id,()=>true,createVoiceWorkResultRanker(orch,user,()=>voice.currentConversationId,event=>diagnostics.push(event)));
     const found=await voice.call('voice-sdk-search','search_work_results',{query:'海边度假攻略',scope:'history'}) as any;
     assert.equal(found.searchMode,'semantic');assert.equal(found.items[0].id,asset.id);
+    assert.equal(diagnostics.length,1);assert.equal(diagnostics[0].event,'work_results.semantic');
+    assert.equal(diagnostics[0].code,'RANKED');assert.equal(diagnostics[0].model,'employee-text-model');
+    assert.equal(diagnostics[0].modelSource,'employee_text');assert.equal(diagnostics[0].conversationId,session.id);
+    assert.equal(diagnostics[0].selectedCount,1);assert.ok(Number(diagnostics[0].elapsedMs)>=0);
+    assert.match(String(diagnostics[0].rankId),/^[a-f0-9-]{36}$/);
+    assert.doesNotMatch(JSON.stringify(diagnostics),/海边|apiKey|baseUrl|summary|private-provider-body-secret/);
+    assert.equal(found.diagnostic,undefined);
+    const denied=await createVoiceWorkResultRanker(orch,{...user,userId:'not-owner'},session.id,event=>diagnostics.push(event))('secret query',[found.items[0]]);
+    assert.equal(denied.diagnostic?.code,'SOURCE_UNAVAILABLE');assert.equal(diagnostics.length,2);
+    assert.notEqual(diagnostics[0].rankId,diagnostics[1].rankId);
+    const broken={chat:{async getChatSession(){throw Error('private-config-secret');}}} as unknown as Orchestrator;
+    const unavailable=await createVoiceWorkResultRanker(broken,user,session.id,event=>diagnostics.push(event))('secret query',[]);
+    assert.equal(unavailable.diagnostic?.code,'MODEL_RESOLUTION_FAILED');
+    assert.doesNotMatch(JSON.stringify(diagnostics),/secret query|private-config-secret/);
+    const despiteLogger=await createVoiceWorkResultRanker(orch,user,session.id,()=>{throw Error('logger failed');})('海边',[found.items[0]]);
+    assert.equal(despiteLogger.status,'ranked');
     await orch.store.delete(`user:${user.userId}:workspace.employee-runtime-prefs`);
     await orch.store.set('user:other:workspace.employee-runtime-prefs',JSON.stringify({general:{defaultModelId:'voice-chat'}}));
     await createVoiceWorkResultRanker(orch,user,session.id)('海边',[found.items[0]]);
-    assert.deepEqual(models,['run-selected-model','employee-text-model','default-text-model']);
+    assert.deepEqual(models,['run-selected-model','employee-text-model','employee-text-model','default-text-model']);
   }finally{applyParentSecrets(previousSecrets);server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));await orch.close();}
 });
 
@@ -161,7 +238,7 @@ test('WR-T7: semantic recall without keyword overlap, trusted IDs, fallback and 
     const fallback=await unavailable('search_work_results',{query:'三亚',scope:'history'});
     assert.equal(fallback.status,'partial');assert.equal(fallback.searchMode,'fallback');assert.equal(fallback.items?.[0].id,asset.id);assert.doesNotMatch(JSON.stringify(fallback),/secret upstream/);
     const noKeywords=await unavailable('search_work_results',{query:'海边度假攻略',scope:'history'});
-    assert.equal(noKeywords.status,'partial');assert.equal(noKeywords.items?.length,0);assert.match(noKeywords.spokenSummary,/不能据此/);
+    assert.equal(noKeywords.status,'partial');assert.equal(noKeywords.items?.[0].id,asset.id);assert.match(noKeywords.spokenSummary,/未完成语义匹配/);assert.match(noKeywords.spokenSummary,/不能据此/);assert.equal(noKeywords.code,'WORK_SEMANTIC_UNAVAILABLE');
     const forged=createWorkResultService(orch,user,undefined,()=>true,undefined,async()=>({status:'ranked',matches:[{kind:'asset',id:alien.id,confidence:0.9}]}));
     assert.equal((await forged('search_work_results',{query:'三亚',scope:'history'})).searchMode,'fallback');
     const empty=createWorkResultService(orch,user,undefined,()=>true,undefined,async()=>({status:'ranked',matches:[]}));

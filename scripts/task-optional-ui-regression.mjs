@@ -1,23 +1,2 @@
-import assert from 'node:assert/strict';
-import {readFileSync,realpathSync} from 'node:fs';
-import {createRequire} from 'node:module';
-import vm from 'node:vm';
-import {randomUUID} from 'node:crypto';
-import * as contracts from '../packages/contracts/dist/index.js';
-const require=createRequire(new URL('../apps/renderer/package.json',import.meta.url));
-const vue=require('vue'),ts=require('typescript');
-const {parse,compileScript}=createRequire(realpathSync(require.resolve('vue/package.json')))('@vue/compiler-sfc');
-const source=readFileSync('apps/renderer/src/features/automations/TemplateTasksPanel.vue','utf8');
-const code=ts.transpileModule(compileScript(parse(source).descriptor,{id:'optional-ui'}).content,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const template={id:'optional',version:'1',name:'无定制界面',agent:{employeeId:'general',prompt:'完成任务'},defaults:{}};
-let inputs=0,saved;
-const api={input:async()=>{inputs++;return {html:'custom-or-native'};},save:async input=>{saved=JSON.parse(JSON.stringify(input));return {task:{...saved,id:'task'}};},detail:async()=>({task:{...saved,id:'task'},runs:[]}),list:async()=>({tasks:[]})};
-const exports={};
-vm.runInNewContext(code,{exports,require:id=>id==='vue'?{...vue,onMounted(){},onBeforeUnmount(){}}:id==='@workmate/contracts'?contracts:id.endsWith('/template-tasks')?{templateTasksApi:api}:id.endsWith('/i18n')?{useI18n:()=>({t:x=>x})}:{},crypto:{randomUUID},window:{},structuredClone,Error});
-const state=exports.default.setup({employees:[]},{expose(){},emit(){}});
-await state.edit(template);assert.equal(inputs,0);assert.equal(state.createStage.value,'basic');assert.equal(state.inputHtml.value,'');
-assert.equal(state.prompt.value,'完成任务');await state.saveTask();assert.deepEqual(saved.parameters,{});assert.equal(saved.templateId,'optional');assert.equal(saved.mode,undefined);
-await state.edit(template,{name:'修改',parameters:{month:'九月'},prompt:'修改任务'});assert.equal(inputs,0);assert.equal(state.createStage.value,'basic');assert.equal(state.parameters.value.month,'九月');
-await state.edit({...template,parameterUi:{}});assert.equal(inputs,1);assert.equal(state.createStage.value,'parameters');
-await state.edit({...template,agent:undefined});assert.equal(inputs,2);assert.equal(state.createStage.value,'parameters');
-console.log('TP-T21 PASS: production task panel skips optional form on creation/edit, preserves defaults/parameters, custom and native Skill forms unchanged.');
+// Compatibility command: legacy creation was retired; assert task lifecycle instead.
+import './task-management-regression.mjs';

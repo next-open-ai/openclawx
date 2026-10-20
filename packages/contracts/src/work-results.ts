@@ -3,10 +3,11 @@ import {zodToJsonSchema} from 'zod-to-json-schema';
 import {DocumentInfoSchema} from './documents.js';
 
 export const workResultInputs={
-  search_work_results:z.object({query:z.string().trim().max(120).default(''),scope:z.enum(['current','history']).default('current'),limit:z.number().int().min(1).max(20).default(10)}).strict(),
+  search_work_results:z.object({query:z.string().trim().max(120).default(''),scope:z.enum(['current','history']).default('current'),limit:z.number().int().min(1).max(20).default(10),created:z.enum(['today','yesterday','recent']).optional(),fileType:z.enum(['pdf','file']).optional()}).strict(),
   read_work_result:z.object({assetId:z.string().uuid().optional(),runId:z.string().uuid().optional()}).strict().refine(value=>Boolean(value.assetId)!==Boolean(value.runId),'请选择一个成果ID'),
 };
 export type WorkResultToolName=keyof typeof workResultInputs;
+export type WorkResultSearchInput=z.infer<typeof workResultInputs.search_work_results>;
 export const workResultJsonSchemas=Object.fromEntries(Object.entries(workResultInputs).map(([name,schema])=>[name,zodToJsonSchema(schema,{$refStrategy:'none'})])) as Record<WorkResultToolName,Record<string,unknown>>;
 export const WorkResultItemSchema=z.object({
   kind:z.enum(['asset','run']),id:z.string().uuid(),name:z.string().max(240),createdAt:z.number(),
@@ -15,7 +16,13 @@ export const WorkResultItemSchema=z.object({
 }).strict();
 export type WorkResultItem=z.infer<typeof WorkResultItemSchema>;
 export const WorkResultMatchesSchema=z.object({matches:z.array(z.object({kind:z.enum(['asset','run']),id:z.string().uuid(),confidence:z.number().min(0).max(1)}).strict()).max(60)}).strict();
-export type WorkResultRanking={status:'ranked'|'unavailable';matches:z.infer<typeof WorkResultMatchesSchema>['matches']};
+export const WorkResultRankingDiagnosticSchema=z.object({
+  code:z.enum(['RANKED','MODEL_MISSING','API_KEY_MISSING','MODEL_RESOLUTION_FAILED','SOURCE_UNAVAILABLE','CANCELLED','TIMEOUT','PROVIDER_ERROR','OUTPUT_TRUNCATED','INVALID_JSON','INVALID_RESPONSE','INVALID_CANDIDATE']),
+  elapsedMs:z.number().nonnegative(),candidateCount:z.number().int().nonnegative().max(60),
+  provider:z.string().max(80).optional(),model:z.string().max(160).optional(),httpStatus:z.number().int().min(100).max(599).optional(),
+}).strict();
+export type WorkResultRankingDiagnostic=z.infer<typeof WorkResultRankingDiagnosticSchema>;
+export type WorkResultRanking={status:'ranked'|'unavailable';matches:z.infer<typeof WorkResultMatchesSchema>['matches'];diagnostic?:WorkResultRankingDiagnostic};
 export type WorkResultRanker=(query:string,candidates:WorkResultItem[],signal?:AbortSignal)=>Promise<WorkResultRanking>;
 export const WorkLookupResultSchema=z.object({ok:z.boolean(),status:z.string(),code:z.string().optional(),spokenSummary:z.string().max(240),items:z.array(WorkResultItemSchema).max(20).optional(),text:z.string().max(16000).optional(),truncated:z.boolean().optional(),searchMode:z.enum(['keyword','semantic','fallback']).optional(),scope:z.enum(['current','history']).optional(),taskId:z.string().uuid().optional(),conversationId:z.string().uuid().optional(),documentInfo:DocumentInfoSchema.optional()}).strict();
 export type WorkLookupResult=z.infer<typeof WorkLookupResultSchema>;
